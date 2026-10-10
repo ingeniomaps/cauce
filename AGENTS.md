@@ -85,7 +85,9 @@ tres formas en que una medición necesita el mundo, y se agrega uno cuando hace 
     suelto    la instancia sola, para medir un comando que no depende de la cola.
     tarea     una tarea en cola, reclamada y con plan, para los guards que miran ese estado.
     sidecar   instancia y producto en repositorios distintos, para lo que depende de desde qué árbol se
-              pregunte — ahí `runner()` resuelve un id distinto de cada lado.
+              pregunte — ahí `runner()` resuelve un id distinto de cada lado. La ruta que imprime es la de
+              la instancia, y el producto queda al lado, en `../app`: los dos cuelgan de la carpeta del
+              banco, que es lo que se rehace.
 
 Dos cosas que muerden si se ignoran. La ruta sale **sola** por `stdout` porque es entrada de otra cosa:
 el escenario `tarea` necesita además que la medición exporte `CAUCE_RUNNER` con el id del banco, y ese

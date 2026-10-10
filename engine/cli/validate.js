@@ -86,6 +86,7 @@ function check(dir, cli) {
         errors.push(...C.validateOpsConfig(config))
         warnings.push(...C.configWarnings(config))
         warnings.push(...MG.coverageWarnings(R.reposFor(path.dirname(configPath), '.'), config))
+        warnings.push(...R.nestedRootWarnings(path.dirname(configPath)))
         if (Array.isArray(config.workspaceRoots)) {
           // Un CI clona la instancia sola, sin los repositorios de al lado (caso 231). La bandera la pide quien
           // corre, y no se deduce del ambiente: lo que se saltea se nombra en cada corrida.

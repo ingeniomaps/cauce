@@ -63,6 +63,39 @@ function reposFor(opsRoot, service) {
     .filter((repo, index, all) => all.indexOf(repo) === index)
 }
 
+// El repositorio anidado que el de la instancia registra como enlace de git —lo que deja un `git add` que lo
+// incluye— y que toca a una raíz declarada: es la raíz, está debajo de ella, o la contiene. En el árbol
+// principal no se nota. Una línea de trabajo es un worktree, y un worktree no puebla ese enlace: la carpeta
+// nace vacía, `ops line` no la enlaza porque ya existe, y quien pregunta de qué repositorio es recibe el de la
+// instancia. Todo en verde (caso 352).
+//
+// Un submódulo declarado en `.gitmodules` queda afuera: ése sí se puebla, con `git submodule update`. Y las
+// rutas se comparan resueltas, porque git contesta la real y la instancia puede nombrarse por un enlace.
+function nestedRootWarnings(opsRoot) {
+  const top = git(opsRoot, 'rev-parse', '--show-toplevel')
+  if (top.status !== 0) return []
+  const repo = fs.realpathSync(top.stdout.trim())
+  const inside = (dir) => path.relative(repo, fs.existsSync(dir) ? fs.realpathSync(dir) : dir).split(path.sep).join('/')
+  const declared = declaredRoots(opsRoot).map((root) => inside(root.dir))
+  // La raíz que es el repositorio entero, o que lo contiene, tiene debajo a todos sus enlaces: es la de una
+  // instancia embebida que declara `.` o `..`, y filtrada junto con las de afuera no avisaba nunca.
+  const whole = declared.some((one) => one.split('/').every((part) => part === '' || part === '..'))
+  const roots = declared.filter((one) => one && !one.startsWith('..'))
+  if (!whole && !roots.length) return []
+  // Con `-z` los nombres llegan enteros: un espacio en la ruta o en el nombre del submódulo no los parte.
+  const clean = (one) => one.replace(/^\.\//, '').replace(/\/+$/, '')
+  const modules = new Set((git(repo, 'config', '-z', '-f', '.gitmodules', '--get-regexp', '\\.path$').stdout || '')
+    .split('\0').map((entry) => clean(entry.slice(entry.indexOf('\n') + 1))).filter(Boolean))
+  const links = (git(repo, 'ls-files', '-s', '-z').stdout || '').split('\0')
+    .filter((entry) => entry.startsWith('160000 ')).map((entry) => entry.slice(entry.indexOf('\t') + 1))
+  const touches = (link) => whole || roots.some((root) => root === link || root.startsWith(`${link}/`)
+    || link.startsWith(`${root}/`))
+  return links.filter((link) => !modules.has(link) && touches(link))
+    .map((link) => `workspaceRoots: ${link} es un repositorio que el de la instancia registra como enlace de `
+      + 'git, así que en una línea de trabajo esa carpeta queda vacía. Desde la raíz del repositorio, sacalo del '
+      + `índice —git rm --cached "${link}"— e ignoralo, o movelo afuera`)
+}
+
 // El repositorio del servicio cuando no hay duda. Sin ninguno o con varios devuelve vacío, y quien
 // pregunta decide qué decir: para `check` es la degradación ya declarada —mirar sólo la fecha—, y para
 // `worktree` es un error que tiene que nombrar los candidatos.
@@ -263,4 +296,6 @@ function commitStatus(opsRoot, items) {
 }
 
 module.exports = {
-  serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }
+  serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus,
+  nestedRootWarnings,
+}

@@ -102,10 +102,23 @@ const AUTHOR = 'banco de cauce'
 // con él se fue lo que el cargo había escrito; el juez leyó un directorio vacío y concluyó que la
 // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que git
 // contesta exacto.
-function makeBench(root, dir, force, name) {
-  const dirty = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
-  if ((dirty.stdout || '').trim() && !force) {
-    fail(`${dir} tiene trabajo sin recoger. Guardá lo que esa corrida dejó antes de rehacerlo, `
+//
+// `wipe` es lo que se borra y `repos` los repositorios que cuelgan de ahí: en casi todos los bancos, la
+// instancia misma. En el que trae un producto al lado se rehace la carpeta que contiene a los dos, así que el
+// trabajo sin recoger puede estar en cualquiera de ellos o suelto en esa carpeta —el árbol de una tarea, una
+// nota—, y todo eso se iría con el borrado.
+function makeBench(root, dir, force, name, { repos = [dir], wipe = dir } = {}) {
+  const dirtyRepo = (repo) => fs.existsSync(path.join(repo, '.git'))
+    && (spawnSync('git', ['-C', repo, 'status', '--porcelain'], { encoding: 'utf8' }).stdout || '').trim()
+  let stray = []
+  // Si la carpeta entera es un repositorio —el banco de antes de este cambio—, su `status` ya cubre todo.
+  if (wipe !== dir && !fs.existsSync(path.join(wipe, '.git'))) {
+    const known = repos.map((repo) => path.basename(repo))
+    try { stray = fs.readdirSync(wipe).filter((name) => !known.includes(name)) } catch { stray = [] }
+  }
+  const left = [wipe, ...repos].find(dirtyRepo) || (stray.length && path.join(wipe, stray[0]))
+  if (left && !force) {
+    fail(`${left} tiene trabajo sin recoger. Guardá lo que esa corrida dejó antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', USAGE)
   }
   // Rodear un borrado a medias deja la corrida siguiendo sobre un banco que no es nuevo, y lo que falla
@@ -115,7 +128,7 @@ function makeBench(root, dir, force, name) {
   //
   // **Y de acá para abajo el directorio no existe.** Eso es lo que sostiene que el andamiaje y el enlace
   // se escriban sin defensas: hasta el 073, los dos llevaban una por si algo sobrevivía al borrado.
-  const problema = clearBench(dir, path.join(root, '.cauce-eval'))
+  const problema = clearBench(wipe, path.join(root, '.cauce-eval'))
   if (problema) fail(problema, USAGE)
   // Sin `force`, y eso es lo que hay que poder decir: sólo servía si algún archivo sobrevivía al borrado,
   // y la comprobación de arriba garantiza que no queda ninguno. Lo llevaba porque el mismo test falló tres
@@ -249,11 +262,14 @@ function populate(dir, scenario, git) {
   // `sidecar`: el producto es un repositorio aparte, con su propio `.git`. Sin eso los dos lados resuelven
   // el mismo id y el defecto que se quiere medir no aparece — pasó al reproducir el caso 152.
   //
-  // Y va **dentro** del banco, no al lado. Afuera quedaba fuera de lo que `clearBench` alcanza, así que la
-  // instancia nacía limpia y su producto seguía con la historia de la corrida anterior: un banco a medias,
-  // que es peor que ninguno porque se lee como nuevo. Medido rehaciéndolo dos veces — la marca de la
-  // primera sobrevivía y el conteo de commits no se movía.
-  const app = path.join(dir, 'app')
+  // Va **al lado** de la instancia y los dos dentro del banco, que es como los tiene una empresa. Adentro de
+  // la instancia quedaba registrado como enlace de git, que es el defecto que cuenta `nestedRootWarnings`. El
+  // borrado lo sigue alcanzando porque lo que se rehace es la carpeta que contiene a los dos — afuera de
+  // ella, el producto sobrevivía con la historia de la corrida anterior, y un banco a medias se lee nuevo.
+  //
+  // La raíz se declara sobre el producto y no sobre esa carpeta, que es lo que trae `init`: la carpeta no es
+  // un repositorio y cuelga del toolkit, así que una tarea sin servicio resolvía al repositorio del toolkit.
+  const app = path.join(path.dirname(dir), 'app')
   fs.mkdirSync(path.join(app, 'src'), { recursive: true })
   fs.writeFileSync(path.join(app, 'src', 'app.js'), 'module.exports = 1\n')
   const config = path.join(dir, 'ops.config.json')
@@ -275,8 +291,12 @@ function measurementBench(root, scenario, force) {
   if (!SCENARIOS.includes(scenario)) {
     fail(`escenario desconocido: ${scenario || '(ninguno)'}. Hay ${SCENARIOS.join(', ')}.`, USAGE)
   }
-  const dir = path.join(root, '.cauce-eval', '_medicion', scenario)
-  const { env, git } = makeBench(root, dir, force, `Banco de medición (${scenario})`)
+  const bench = path.join(root, '.cauce-eval', '_medicion', scenario)
+  // Con un producto al lado, el banco es la carpeta que contiene a los dos y la instancia vive adentro.
+  const paired = scenario === 'sidecar'
+  const dir = paired ? path.join(bench, 'ops') : bench
+  const { env, git } = makeBench(root, dir, force, `Banco de medición (${scenario})`,
+    paired ? { repos: [dir, path.join(bench, 'app')], wipe: bench } : {})
   populate(dir, scenario, { env })
   seal(dir, git, `banco de medición: ${scenario}`)
   return dir

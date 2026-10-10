@@ -58,6 +58,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`check` avisa de un repositorio anidado que una línea de trabajo va a encontrar vacío.** Si una raíz de
+  `workspaceRoots` vive dentro de la instancia y el repositorio de la instancia la registró como enlace de
+  git —lo que deja un `git add` que la incluye—, una línea nace con esa carpeta vacía y todo sigue en verde.
+  `check` lo dice y trae el comando que lo corrige. Un submódulo declarado en `.gitmodules` no se avisa, y
+  una instancia con sus servicios al lado no se ve afectada (caso 352).
 - **La fila que deja una parada bloquea la tarea, o la parada dice que no.** La fila podía salir con la
   tarea, la épica y la decisión juntas en la primera columna: no bloqueaba nada, `check` la rechazaba, y la
   relectura contestaba que estaba pendiente. Ahora el pedido dice que ahí va el slug solo, la comparación la
