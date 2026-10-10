@@ -119,8 +119,12 @@ const REDIRECT = /(?:^|\s)\d*&?[<>]{1,2}&?\d*\s*\S*/g
 // `\EOF`—: la lectura común deja ese cuerpo, y acá una línea suya con `rm` o `mkdir` se leía como comando.
 // Y `export D=…` asigna igual que `D=…`. `local` no: fuera de una función falla y deja la variable vacía.
 const HEREDOC_BODY = /<<(-?)\s*\\?(['"]?)(\w[\w.-]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
-const EXPORTED = /(^|[;&\n]\s*)(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
-const asRead = (command) => String(command).replace(HEREDOC_BODY, '<<$3$4').replace(EXPORTED, '$1')
+const EXPORTED = /(^|[;&\n])[ \t]*(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
+// Las líneas en blanco se juntan antes que nada. No le dicen nada a un shell, y lo que lee el comando de acá
+// en más —varias expresiones de las que comparten todos los guards— vuelve atrás en cada corrida de saltos:
+// con cuarenta mil tardaba cuatro segundos.
+const asRead = (command) => String(command).replace(/\n(?:[ \t]*\n)+/g, '\n').replace(HEREDOC_BODY, '<<$3$4')
+  .replace(EXPORTED, '$1')
 
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
 // la carpeta al cerrarse: sin eso, `(cd /otra && ls); rm -rf build` juzgaba `build` dentro de `/otra`.
@@ -135,10 +139,16 @@ const asRead = (command) => String(command).replace(HEREDOC_BODY, '<<$3$4').repl
 // que sea —`ns::f`, `build.clean`—, con la llave en la línea de abajo o con el cuerpo entre paréntesis.
 const DEFINES = /^\s*(?:function\s+[^\s(){}$=]+(?:\s*\(\s*\))?|[^\s(){}$=]+\s*\(\s*\))\s*[{(]?/
 
-// El tramo sin lo que lo envuelve: el paréntesis o la llave que lo abre y los paréntesis que lo cierran. En dos
-// pasos y no con una sola expresión: la que había volvía atrás en cada corrida de espacios, y con cuarenta mil
-// tardaba dos segundos. La llave que cierra un grupo no hace falta sacarla: va en su propio tramo.
-const unwrapped = (text) => text.trim().replace(/^[({]+\s*/, '').replace(/\)+$/, '').trimEnd()
+// El tramo sin lo que lo envuelve: el paréntesis o la llave que lo abre y los paréntesis que lo cierran. Los de
+// cierre se cuentan desde el final, a mano: una expresión anclada al final vuelve atrás en cada corrida de
+// espacios o de paréntesis que no sea la última, y con ochenta mil tardaba segundos. La llave que cierra un
+// grupo no hace falta sacarla: va en su propio tramo.
+function unwrapped(text) {
+  const open = text.trim().replace(/^[({]+\s*/, '')
+  let end = open.length
+  while (end && open[end - 1] === ')') end -= 1
+  return open.slice(0, end).trimEnd()
+}
 function steps(command, cwd) {
   const { cdTarget, QUOTED_CD } = require('./shell')
   const found = []

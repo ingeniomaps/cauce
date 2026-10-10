@@ -185,6 +185,18 @@ test('un comando largo con funciones y llaves se lee en un tiempo que crece con 
   passes(`echo${' '.repeat(40000)}x; rm -rf service/src`)
   passes(`echo "${'\n'.repeat(20000)}"; rm -rf service/src`)
   assert.ok(Date.now() - started < 3000, `tardó ${Date.now() - started} ms`)
+  // Lo de arriba comparte el tope con lo que el guard ya tardaba antes de este caso, así que la lectura nueva
+  // se mide sola: corridas de saltos de línea, de espacios y de paréntesis, que es donde una expresión que
+  // vuelve atrás se hace cuadrática.
+  const { steps } = require('../../engine/hooks/shell-changes')
+  for (const [name, text] of [['saltos de línea', `echo a${'\n'.repeat(80000)}rm -rf service/src`],
+    ['espacios', `echo${' '.repeat(80000)}x; rm -rf service/src`],
+    ['paréntesis', `echo "${')'.repeat(80000)}" x; rm -rf service/src`],
+    ['paréntesis sueltos', `echo ${')'.repeat(80000)} x; rm -rf service/src`]]) {
+    const from = Date.now()
+    steps(text, '/srv/proyecto')
+    assert.ok(Date.now() - from < 500, `${name}: ${Date.now() - from} ms`)
+  }
 })
 
 test('lo declarado como escribible fuera de las raíces también se puede borrar', () => {

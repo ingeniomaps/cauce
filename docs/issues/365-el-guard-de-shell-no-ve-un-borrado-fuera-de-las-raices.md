@@ -378,6 +378,14 @@ verbo se perdía—; y una expresión que limpiaba cada tramo volvía atrás en 
 segundos con cuarenta mil. Qué es definir una función se lee ahora ancho, porque equivocarse hacia ese lado
 sólo deja de juzgar lo relativo.
 
+Y la revisión de después mostró que la lentitud estaba arreglada a medias: la expresión seguía volviendo
+atrás en una corrida de paréntesis, y con una corrida de saltos de línea el guard tardaba cuatro veces lo
+que tardaba antes de este caso, porque lee el comando con varias expresiones de las que comparten todos
+los guards, que ya eran lentas ahí. Los paréntesis se cuentan ahora a mano, y las líneas en blanco se
+juntan antes de leer nada. La lectura nueva se mide sola, sin compartir tope con lo que ya había: ochenta
+mil saltos, espacios o paréntesis, menos de medio segundo cada uno. Lo que el guard ya tardaba antes de
+este caso con esas entradas sigue igual, y no es de acá.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.

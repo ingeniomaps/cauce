@@ -90,16 +90,18 @@ function migrations(input) {
     // revisiones seguidas encontraron otra regla que faltaba. El costo de no hacerlo se elige: si el archivo
     // trae algo destructivo frena, también cuando el parche se lo quita o cuando estaba en su reversión, y
     // la salida es la aprobación de abajo. Por eso el mensaje dice de dónde viene, y no que el parche lo trae.
-    // Un renombrado en varios saltos dentro del mismo parche viene del primero de la cadena, que es el que
-    // está en disco.
-    let from = section && section.movedFrom
-    for (let hops = 0; hops < 8 && from && sections.get(from) && sections.get(from).movedFrom; hops += 1) {
-      from = sections.get(from).movedFrom
-    }
-    const carried = from ? M.destructive(onDisk(path.resolve(cwdOf(input), from)) || '') : null
+    // No se sigue de qué archivo viene cuál. Un parche puede renombrar en varios saltos, ocupar el nombre de
+    // origen con otro renombrado o armar un ciclo, y una cadena seguida se deja llevar a un archivo limpio. Se
+    // mira todo archivo que el parche renombra: si alguno trae algo destructivo y el destino es una migración,
+    // frena, y el mensaje dice cuál.
+    const arrives = section && section.movedFrom !== undefined
+    const carries = (one) => M.destructive(onDisk(path.resolve(cwdOf(input), one)) || '')
+    const from = arrives ? M.patchMoves(patchOf(input)).map((one) => one.from).find(carries) : undefined
+    const carried = from ? carries(from) : null
     if (carried) {
-      block(`${raw} llega desde ${from}, que trae ${carried.kind}: \`${carried.what}\`. Se juzga el archivo como `
-        + 'está, sin calcular qué le cambia el parche.\n' + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
+      block(`${raw} entra como migración por un renombrado, y el parche renombra ${from}, que trae `
+        + `${carried.kind}: \`${carried.what}\`. Se juzga ese archivo como está, sin calcular qué le cambia el `
+        + `parche.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input)}`)
     }
     // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
     // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva

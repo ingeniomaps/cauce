@@ -81,7 +81,7 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
   write('drop.sql', 'DROP TABLE users;', '')
   // Y el mensaje dice de dónde viene lo que frena: no es algo que el parche escriba.
   blocked('migrations', move('drop.sql', '003_drop.sql', ' DROP TABLE users;', '+-- listo'),
-    /003_drop\.sql llega desde service\/scratch\/drop\.sql.*DROP TABLE/s)
+    /003_drop\.sql.*renombra service\/scratch\/drop\.sql.*DROP TABLE/s)
   // También sin tocarle una línea, y con finales de línea de Windows.
   blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
     '*** Move to: service/migrations/004_drop.sql')), /DROP TABLE/)
@@ -90,7 +90,17 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
   // Un renombrado en dos saltos dentro del mismo parche viene del mismo archivo.
   blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
     '*** Move to: service/scratch/tmp.sql', '*** Update File: service/scratch/tmp.sql',
-    '*** Move to: service/migrations/400.sql')), /400\.sql llega desde service\/scratch\/drop\.sql/)
+    '*** Move to: service/migrations/400.sql')), /400\.sql.*renombra service\/scratch\/drop\.sql/)
+  // Y no se sigue la cadena, que se puede armar para que termine en otro lado: se mira todo archivo que el
+  // parche renombra. Con el nombre de origen ocupado por otro renombrado, o en un ciclo, frena igual.
+  write('limpio.sql', 'CREATE TABLE t (id int);', '')
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
+    '*** Move to: service/migrations/401.sql', '*** Update File: service/scratch/limpio.sql',
+    '*** Move to: service/scratch/drop.sql')), /401\.sql.*drop\.sql.*DROP TABLE/s)
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
+    '*** Move to: service/migrations/a.sql', '*** Update File: service/migrations/a.sql',
+    '*** Move to: service/migrations/b.sql', '*** Update File: service/migrations/b.sql',
+    '*** Move to: service/scratch/drop.sql')), /DROP TABLE/)
   // Lo que el parche agrega al renombrarlo cuenta, aunque lo que traía estuviera limpio.
   write('ok.sql', 'CREATE TABLE t (id int);', '')
   blocked('migrations', move('ok.sql', '006_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)

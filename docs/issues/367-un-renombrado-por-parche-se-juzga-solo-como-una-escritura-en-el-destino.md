@@ -103,8 +103,8 @@ reglas, las dos de una línea:
 
 - **Migraciones.** Un archivo que un parche renombra hacia una ruta de migración se juzga, además de por lo
   que el parche le agrega, **por lo que trae en disco, entero**. Entero incluye su reversión: el mismo parche
-  puede sacarle o correrle el marcador, y lo que era reversión pasa a aplicarse. El mensaje dice de dónde
-  viene: «… llega desde <origen>, que trae …».
+  puede sacarle o correrle el marcador, y lo que era reversión pasa a aplicarse. No se sigue de qué archivo
+  viene cuál: se mira **todo archivo que el parche renombra**, y el mensaje dice cuál trae qué.
 - **Pruebas.** Renombrar una prueba cuenta como borrarla cuando el nombre nuevo **no es una prueba para este
   guard**, y sólo entonces. Qué es una prueba lo decide la misma función que ya decidía para el borrado.
 
@@ -260,10 +260,14 @@ Con eso las dos reglas quedaron como dice «Cómo quedó, al final»: sin nada p
 sobre esa versión; una sobrevivió y se llevó su caso de prueba, y otra era una condición que, razonada, no
 cambia ningún resultado y se quitó.
 
-La revisión siguiente no encontró nada nuevo en estas dos reglas. Dejó una cosa, arreglada: un renombrado
-en dos saltos dentro del mismo parche —`a` a `b`, y `b` a la migración— buscaba en disco el nombre del
-medio, que todavía no existe, y no leía nada. Se sigue la cadena hasta el archivo que sí está. Si la
-herramienta que aplica el parche acepta secciones en cadena no se comprobó.
+La revisión siguiente no encontró nada nuevo en estas dos reglas. Dejó una cosa: un renombrado en dos saltos
+dentro del mismo parche —`a` a `b`, y `b` a la migración— buscaba en disco el nombre del medio, que
+todavía no existe, y no leía nada. Se arregló siguiendo la cadena hasta el archivo que sí está, **y eso
+estuvo mal**: la revisión de después mostró que una cadena se puede armar para que termine en otro lado
+—ocupando el nombre de origen con otro renombrado, o con un ciclo— y lea un archivo limpio. Ya no se sigue
+ninguna cadena: si el destino es una migración, se mira todo archivo que el parche renombra. El costo es de
+la misma clase que el de arriba: un parche que además renombra otro archivo con algo destructivo frena. Si
+la herramienta que aplica el parche acepta secciones en cadena no se comprobó.
 
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo
