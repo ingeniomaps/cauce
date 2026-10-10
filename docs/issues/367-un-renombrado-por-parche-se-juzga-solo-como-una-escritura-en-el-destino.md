@@ -1,14 +1,15 @@
 ---
 caso: 367
 titulo: un renombrado por parche se juzga sólo como una escritura en el destino
-estado: abierto
+estado: resuelto
+resuelto-en: 0.106.1
 prioridad: media
 version-detectada: 0.106.0
 ---
 
 # 367 — Un `apply_patch` que renombra con `*** Move to:` se juzga como una escritura en el destino y nada más: no se lee el contenido que el archivo ya traía, ni se cuenta que el nombre viejo desaparece
 
-**🔴 abierto** · detectado en 0.106.0 · prioridad **media**.
+**🟢 resuelto en 0.106.1** · detectado en 0.106.0 · prioridad **media**.
 
 **Prioridad media**: son dos huecos de guards que ya existen, alcanzables sólo con Codex, que es quien
 renombra por parche. Ninguno es una regresión: los dos pasaban igual antes del 366.
@@ -90,6 +91,56 @@ juzga su ruta, no su contenido.
    una prueba; moverla y que siga siéndolo no pierde nada.
 3. **Leer del disco un archivo que el mismo parche crea más arriba.** El orden dentro del sobre importa y
    hoy ningún guard lo sigue.
+
+## Cierre
+
+**Resuelto en 0.106.1.**
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix 1, juzgar lo que va a quedar en la migración — se hizo, y más ancho que lo propuesto.** El caso
+  pedía hacerlo sólo cuando el origen no era una migración. La condición no se podía ver caer: renombrar una
+  migración que ya existe lo frena antes la regla de no reescribirlas, por el origen. Se juzga siempre que
+  haya archivo de origen que leer: lo que traía, menos lo que el parche quita, más lo que agrega.
+- **Fix 2, el origen de una prueba renombrada — se hizo.** Cuenta como borrarla sólo si el nombre nuevo deja
+  de ser una prueba.
+- **Fix 3, mirar los otros guards de archivos — se miró, y no les pasa.** Con un renombrado en los dos
+  sentidos, desde un archivo cuidado y hacia uno:
+
+  ```
+  FRENA  generated    x.generated.js → x.js          FRENA  generated    x.js → x.generated.js
+  FRENA  secrets      .env → notas.txt               FRENA  secrets      notas.txt → .env
+  FRENA  engine       <motor>/a.js → service/a.js    FRENA  engine       service/a.js → <motor>/a.js
+  FRENA  ops-config   ops.config.json → viejo.json   FRENA  ops-config   nuevo.json → ops.config.json
+  ```
+
+  Deciden por la ruta, y las dos rutas ya estaban a la vista: la de origen por su `*** Update File:` y la
+  de destino desde el 366. Los dos de este caso son los que miran otra cosa: el contenido, y que un nombre
+  desaparezca.
+- **Qué podría salir mal 1, la migración con un `DROP` que el parche quita — no se frena**, y está probado.
+- **2, mudar una prueba a otra carpeta — no se frena** si sigue siendo una prueba, y está probado.
+- **3, el archivo que el mismo parche crea más arriba — queda como estaba.** Sin archivo en disco que leer
+  se juzga lo que el parche trae para esa sección, igual que antes de este caso. El orden dentro del sobre
+  sigue sin seguirse.
+
+### Qué se corrió
+
+- **Los dos parches de la reproducción**, después del cambio:
+
+  ```
+  FRENA   migrations      Move to: un archivo con DROP en disco pasa a ser migración
+  FRENA   test-evidence   Move to: la prueba pasa a llamarse a.js.txt
+  ```
+
+- Rojo previo: las dos pruebas nuevas de `test/hooks/patch-move.test.js`, antes del cambio.
+- Ocho mutaciones en rojo, en una copia fuera del árbol: no leer el origen, no restar lo quitado, no sumar lo
+  agregado, tratar un origen que no está como destructivo, no mirar los renombrados de pruebas, frenar toda
+  mudanza de una prueba, frenar la de cualquier archivo, y perder de dónde viene el renombrado. La de no
+  sumar lo agregado sobrevivió la primera vez y se llevó su caso de prueba.
+- La tabla de los otros guards, de arriba.
+
+Como el 366, se midió con el sobre que manda Codex y no con una sesión suya: la cuenta de esta máquina sigue
+sin cupo.
 
 ## Contexto de descubrimiento
 

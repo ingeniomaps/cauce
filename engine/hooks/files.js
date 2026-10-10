@@ -13,6 +13,7 @@ const {
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 const { landing } = require('../core/files')
+const { patchMoves } = require('../core/migrations')
 const { beyond, reached } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
@@ -144,6 +145,11 @@ function testEvidence(input) {
   for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
     const removed = match[1].trim()
     if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}${how(removed)}`)
+  }
+  // Renombrarla a un nombre que ya no es de prueba la saca de la suite igual que borrarla (caso 367).
+  for (const { from, to } of patchMoves(patchOf(input))) {
+    if (!isTestFile(from) || isTestFile(to) || approved(input, from)) continue
+    block(`${from} borra una prueba: renombrada a ${to} deja de serlo.\n${why}${how(from)}`)
   }
   const content = contentOf(input)
   if (!content) return

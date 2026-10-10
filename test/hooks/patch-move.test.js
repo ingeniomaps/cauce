@@ -61,3 +61,41 @@ test('una migración renombrada se sigue juzgando por su sección, no por el sob
     '*** End Patch'].join('\n')
   blocked('migrations', { cwd: root, tool_name: 'apply_patch', tool_input: { command: onto } }, /DROP TABLE/)
 })
+
+// Caso 367. Un renombrado llega con contenido que el parche no trae y deja sin su nombre al archivo de origen.
+const patchOf = (...lines) => ['*** Begin Patch', ...lines, '*** End Patch'].join('\n')
+const asCodex = (root, patch) => ({ cwd: root, tool_name: 'apply_patch', tool_input: { command: patch } })
+
+test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una migración', () => {
+  const root = project('ops-hook-patch-move-contenido-')
+  fs.mkdirSync(path.join(root, 'service', 'scratch'))
+  fs.mkdirSync(path.join(root, 'service', 'migrations'))
+  fs.writeFileSync(path.join(root, 'service', 'scratch', 'drop.sql'), 'DROP TABLE users;\n')
+  fs.writeFileSync(path.join(root, 'service', 'migrations', '001_old.sql'), 'DROP TABLE legacy;\n')
+  const move = (from, to, ...hunk) => asCodex(root,
+    patchOf(`*** Update File: ${from}`, `*** Move to: ${to}`, '@@', ...hunk))
+  blocked('migrations', move('service/scratch/drop.sql', 'service/migrations/003_drop.sql',
+    ' DROP TABLE users;', '+-- listo'), /003_drop\.sql.*DROP TABLE/s)
+  // Y lo que el parche le agrega al renombrarlo también cuenta, aunque lo que traía estuviera limpio.
+  fs.writeFileSync(path.join(root, 'service', 'scratch', 'ok.sql'), 'CREATE TABLE t (id int);\n')
+  blocked('migrations', move('service/scratch/ok.sql', 'service/migrations/005_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)
+  // Lo que el parche quita ya no va a estar: no se frena por lo que deja de existir.
+  assert.doesNotThrow(() => execute('migrations', move('service/scratch/drop.sql', 'service/migrations/003_ok.sql',
+    '-DROP TABLE users;', '+CREATE TABLE users (id int);')))
+  // Renombrar una migración que ya existe es reescribirla, y eso lo frena la regla de siempre, por el origen.
+  blocked('migrations', move('service/migrations/001_old.sql', 'service/migrations/002_old.sql',
+    ' DROP TABLE legacy;', '+-- nota'), /001_old\.sql existe/)
+  // Sin archivo de origen que leer —lo crea el mismo parche, o no está— queda lo que el parche trae.
+  assert.doesNotThrow(() => execute('migrations', move('service/scratch/no-existe.sql',
+    'service/migrations/004_x.sql', '+CREATE TABLE t (id int);')))
+})
+
+test('renombrar una prueba a un nombre que ya no lo es cuenta como borrarla', () => {
+  const root = project('ops-hook-patch-move-prueba-')
+  const move = (from, to) => asCodex(root, patchOf(`*** Update File: ${from}`, `*** Move to: ${to}`, '@@', '-x', '+y'))
+  blocked('test-evidence', move('service/src/a.test.js', 'service/attic/a.js.txt'),
+    /service\/src\/a\.test\.js borra una prueba.*a\.js\.txt/s)
+  // Mudarla y que siga siendo una prueba no pierde nada; y renombrar lo que no era una prueba, tampoco.
+  assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.test.js', 'service/lib/a.test.js')))
+  assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.js', 'service/src/b.js')))
+})

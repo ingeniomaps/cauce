@@ -45,6 +45,10 @@ function editOf(input, file) {
   return { disk, old: fields.old_string, all: fields.replace_all === true }
 }
 
+const onDisk = (file) => {
+  try { return fs.readFileSync(file, 'utf8') } catch { return null }
+}
+
 function migrations(input) {
   if (process.env.OPS_MIGRATIONS_OVERRIDE === '1') return
   // Las dos condiciones deciden sobre el mismo alcance, y por eso comparten el filtro. El bloqueo por
@@ -69,9 +73,14 @@ function migrations(input) {
     // mientras no diga sobre qué está decidiendo. Y cuando la migración se partió, dice que la reversión
     // no se juzgó, para que quien lo lea no busque la sentencia en el bloque equivocado.
     const section = sections.get(raw)
-    const scope = section
-      ? M.judgedPatch(normalized, section)
-      : M.judged(normalized, contentOf(input), editOf(input, file))
+    // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
+    // juzga lo que va a quedar, no sólo lo agregado (caso 367). Sin archivo de origen que leer —lo crea el
+    // mismo parche, o no está— queda lo que el parche trae.
+    const moved = section && section.movedFrom !== undefined
+    const before = moved ? onDisk(path.resolve(cwdOf(input), section.movedFrom)) : null
+    const scope = before !== null ? M.judged(normalized, M.movedText(before, section))
+      : section ? M.judgedPatch(normalized, section)
+        : M.judged(normalized, contentOf(input), editOf(input, file))
     const found = M.destructive(scope.text)
     if (found) {
       const where = scope.label ? ` en el bloque que aplica (la reversión, \`${scope.label}\`, no se juzga)` : ''

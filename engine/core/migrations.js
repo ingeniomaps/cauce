@@ -176,7 +176,7 @@ function patchSections(patch) {
   for (const line of String(patch).split('\n')) {
     const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
     if (header) {
-      current = { kind: header[1].toLowerCase(), lines: [] }
+      current = { kind: header[1].toLowerCase(), lines: [], path: header[2].trim() }
       sections.set(header[2].trim(), current)
     } else if (current && /^\*\*\* Move to:/.test(line)) {
       moved.push([line.replace(/^\*\*\* Move to:\s*/, '').trim(), current])
@@ -188,11 +188,30 @@ function patchSections(patch) {
   // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba contra el
   // sobre entero, que es lo que partir por secciones vino a quitar. Si el parche ya trae otra sección con ese
   // nombre, se suman: pisarla dejaba sin juzgar lo que esa otra agrega.
+  // `movedFrom` dice de qué archivo viene el que ahora tiene este nombre: llega con lo que ya traía (caso 367).
   for (const [name, section] of moved) {
     const there = sections.get(name)
-    sections.set(name, there ? { kind: 'update', lines: [...there.lines, ...section.lines] } : section)
+    const lines = there ? [...there.lines, ...section.lines] : section.lines
+    sections.set(name, { kind: there ? 'update' : section.kind, lines, movedFrom: section.path })
   }
   return sections
+}
+
+// Lo que va a quedar en un archivo renombrado: lo que traía en disco, menos lo que el parche le quita, más lo
+// que le agrega. Restar lo quitado es lo que deja renombrar una migración mientras se le saca lo destructivo.
+function movedText(disk, section) {
+  const kept = String(disk).split('\n')
+  for (const { op, text } of section.lines) {
+    const at = op === '-' ? kept.indexOf(text) : -1
+    if (at >= 0) kept.splice(at, 1)
+  }
+  return [...kept, ...section.lines.filter((line) => line.op === '+').map((line) => line.text)].join('\n')
+}
+
+// Los renombrados de un parche: de qué ruta a cuál.
+function patchMoves(patch) {
+  return [...patchSections(patch)].filter(([, section]) => section.movedFrom !== undefined)
+    .map(([to, section]) => ({ from: section.movedFrom, to }))
 }
 
 // Lo que hay que juzgar de un archivo del parche, con el mismo contrato que `judged` (caso 199). Un archivo
@@ -281,5 +300,6 @@ function coverageWarnings(repos, config) {
 }
 
 module.exports = {
-  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, judgedPatch, patchSections, destructive, coverageWarnings,
+  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, judgedPatch, patchSections, patchMoves, movedText, destructive,
+  coverageWarnings,
 }
