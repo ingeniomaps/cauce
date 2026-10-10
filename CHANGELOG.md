@@ -42,6 +42,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Con Codex y Gemini instalados, Gemini ya no avisa un conflicto por cada cargo al abrir la sesión.** Gemini
+  CLI lee `.agents/skills/` —la carpeta de Codex— como alias de `.gemini/skills/`, con precedencia, así que
+  cada cargo estaba dos veces y lo decía uno por uno: 53 líneas antes de la primera respuesta. Ahora Gemini
+  instala sus punteros en `.agents/skills/`, los mismos que Codex, y hay uno solo por cargo. **Al reinstalar
+  el adaptador de Gemini** se quitan de `.gemini/skills/` los punteros que generó Cauce; uno que hayas editado
+  se queda, y la instalación lo nombra. Desinstalar uno de los dos runners conserva los punteros mientras el
+  otro siga instalado (caso 371).
 - **El guard de pruebas reconoce más nombres de prueba fuera de una carpeta de pruebas.** Un `a.test.mjs`, un
   `a.spec.cts`, una prueba de Cypress (`a.cy.ts`) o de punta a punta (`a.e2e.ts`) no contaban como prueba
   si no vivían bajo `test/`, así que borrarlas, apagarlas con un `skip` o renombrarlas pasaba. Ahora cuentan,
