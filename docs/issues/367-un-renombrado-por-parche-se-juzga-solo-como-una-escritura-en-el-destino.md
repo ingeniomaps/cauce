@@ -269,6 +269,8 @@ ninguna cadena: si el destino es una migración, se mira todo archivo que el par
 la misma clase que el de arriba: un parche que además renombra otro archivo con algo destructivo frena. Si
 la herramienta que aplica el parche acepta secciones en cadena no se comprobó. Y cuál de esos archivos trae
 algo se busca una vez por parche: buscado por cada destino, uno con mil renombrados tardaba ocho segundos.
+Los renombrados se leen del texto del parche y no de sus secciones, que se guardan por destino: dos al mismo
+nombre dejaban sólo el último, y el archivo del primero no se miraba.
 
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo

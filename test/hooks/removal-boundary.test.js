@@ -107,6 +107,11 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
     // Y lo que viene después de esa línea en blanco no es un destino más del borrado de arriba.
     `rm -rf \\\n  service/a \\\n\n  ${OUT}/b`,
+    // Un `<<` que no abre un heredoc —un desplazamiento, uno citado, un here-string— no tapa al que sí lo abre
+    // más adelante en la misma línea.
+    `N=$((1<<20)); cat > service/limpiar.sh <<\\EOF\nrm -rf ${OUT}/cache\nEOF`,
+    `echo "uso: prog << entrada" && cat > service/notas.md <<'FIN-1'\nmkdir ${OUT}/d\nFIN-1`,
+    `wc -c <<<hola; cat > service/x.sh <<'E.O.F'\ntouch ${OUT}/t\nE.O.F`,
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]

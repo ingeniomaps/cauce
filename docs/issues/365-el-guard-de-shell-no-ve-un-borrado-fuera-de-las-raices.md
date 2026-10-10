@@ -393,6 +393,13 @@ abajo se leía como un destino más de un `rm` de varias líneas. La línea que 
 junta. La misma revisión midió que quitar el cuerpo de los heredocs con una expresión recorría el resto del
 texto por cada uno que ya venía vacío —mil doscientos milisegundos con seis mil—; se hace línea por línea.
 
+Y hacerlo línea por línea trajo la suya: se miraba sólo el primer `<<` de cada línea. Con un desplazamiento
+`$((1<<20))`, un `<<` citado o un here-string antes del heredoc de verdad, su cuerpo dejaba de quitarse y se
+leía como comandos. Se toma el primero de la línea cuyo terminador está más abajo. Fue la segunda regresión
+seguida nacida de arreglar una lentitud que ninguna sesión real tiene —decenas de miles de líneas en blanco,
+o de heredocs, en un solo comando—. Lo que queda de esa clase no se sigue tocando: el guard tarda como
+mucho el doble que antes de este caso, y sólo con entradas así.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.

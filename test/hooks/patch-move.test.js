@@ -101,6 +101,10 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
     '*** Move to: service/migrations/a.sql', '*** Update File: service/migrations/a.sql',
     '*** Move to: service/migrations/b.sql', '*** Update File: service/migrations/b.sql',
     '*** Move to: service/scratch/drop.sql')), /DROP TABLE/)
+  // Dos renombrados al mismo destino: el segundo no tapa de dónde venía el primero.
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
+    '*** Move to: service/migrations/402.sql', '*** Update File: service/scratch/limpio.sql',
+    '*** Move to: service/migrations/402.sql')), /402\.sql.*drop\.sql.*DROP TABLE/s)
   // Lo que el parche agrega al renombrarlo cuenta, aunque lo que traía estuviera limpio.
   write('ok.sql', 'CREATE TABLE t (id int);', '')
   blocked('migrations', move('ok.sql', '006_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)

@@ -198,10 +198,17 @@ function patchSections(patch) {
   return sections
 }
 
-// Los renombrados de un parche: de qué ruta a cuál.
+// Los renombrados de un parche: de qué ruta a cuál. Se leen del texto y no de las secciones, que se guardan
+// por destino: dos renombrados al mismo nombre dejaban ahí sólo el último, y el origen del primero se perdía.
 function patchMoves(patch) {
-  return [...patchSections(patch)].filter(([, section]) => section.movedFrom !== undefined)
-    .map(([to, section]) => ({ from: section.movedFrom, to }))
+  const found = []
+  let from = ''
+  for (const line of String(patch).split(/\r?\n/)) {
+    const header = line.match(/^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/)
+    if (header) from = header[1].trim()
+    else if (/^\*\*\* Move to:/.test(line)) found.push({ from, to: line.replace(/^\*\*\* Move to:\s*/, '').trim() })
+  }
+  return found
 }
 
 // Lo que hay que juzgar de un archivo del parche, con el mismo contrato que `judged` (caso 199). Un archivo

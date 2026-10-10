@@ -118,7 +118,7 @@ const REDIRECT = /(?:^|\s)\d*&?[<>]{1,2}&?\d*\s*\S*/g
 // El cuerpo de un heredoc es dato también cuando su delimitador no son sólo letras —`END-1`, `E.O.F`, `1`,
 // `\EOF`—: la lectura común deja ese cuerpo, y acá una línea suya con `rm` o `mkdir` se leía como comando.
 // Y `export D=…` asigna igual que `D=…`. `local` no: fuera de una función falla y deja la variable vacía.
-const OPENS = /<<-?\s*\\?(['"]?)(\w[\w.-]*)\1/
+const OPENS = /<<-?\s*\\?(['"]?)(\w[\w.-]*)\1/g
 const EXPORTED = /(^|[;&\n])[ \t]*(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
 
 // El comando sin el cuerpo de sus heredocs, línea por línea y no con una expresión: la lectura común ya vació
@@ -132,9 +132,11 @@ function withoutBodies(text) {
   const kept = []
   for (let at = 0; at < lines.length; at += 1) {
     kept.push(lines[at])
-    const opens = lines[at].match(OPENS)
-    if (!opens || !(last.get(opens[2]) > at)) continue
-    while (lines[at + 1].trim() !== opens[2]) at += 1
+    // De todos los `<<` de la línea, el primero cuyo terminador está más abajo: un desplazamiento, uno citado o
+    // un here-string también se escriben así, y no abren nada.
+    const opens = [...lines[at].matchAll(OPENS)].map((one) => one[2]).find((name) => last.get(name) > at)
+    if (opens === undefined) continue
+    while (lines[at + 1].trim() !== opens) at += 1
   }
   return kept.join('\n')
 }

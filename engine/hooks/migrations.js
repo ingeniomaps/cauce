@@ -69,7 +69,7 @@ function migrations(input) {
   const carries = (one) => M.destructive(onDisk(path.resolve(cwdOf(input), one)) || '')
   let sought
   const carrier = () => {
-    if (!sought) sought = { from: [...sections.values()].map((one) => one.movedFrom).filter(Boolean).find(carries) }
+    if (!sought) sought = { from: M.patchMoves(patchOf(input)).map((one) => one.from).find(carries) }
     return sought.from
   }
   for (const raw of filesOf(input)) {
