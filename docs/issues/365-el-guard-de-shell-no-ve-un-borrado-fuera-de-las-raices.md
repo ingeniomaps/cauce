@@ -341,6 +341,13 @@ legítimos, y se arreglaron los tres:
 Rojo previo y una mutación por cada una. La comparación contra el motor anterior, repetida: los mismos 43
 frenos nuevos, ninguno perdido; y `destructive`, ninguno nuevo y ninguno perdido.
 
+La tercera de esas correcciones trajo su propia regresión, que encontró la revisión siguiente: al cerrar el
+cuerpo de una función la carpeta volvía siempre a la de antes, también cuando la función **se llamaba**
+después, y `ir() { cd afuera; }; ir; rm -rf sub` dejaba de frenar. Ahora los `cd` del cuerpo se guardan con
+el nombre de la función y se repiten donde se la llama, también si la llama otra función. Y el cierre de un
+cuerpo con una redirección detrás —`} >&2`— no se reconocía, quedaba abierto, y la próxima llave suelta
+deshacía un `cd` de verdad.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.

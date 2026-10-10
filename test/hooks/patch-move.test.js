@@ -126,6 +126,26 @@ test('lo que va a quedar en un archivo renombrado se arma aplicando el parche do
   blocked('migrations', move('reversion.sql', '040.sql', ' -- +goose Up', '+-- nota'), /DROP TABLE/)
   assert.doesNotThrow(() => execute('migrations', move('reversion.sql', '041.sql', ' CREATE TABLE t (id int);',
     '+-- +goose Down')))
+  // Un hunk que sólo agrega y no dice dónde no tapa lo que el archivo ya traía: no se supone que cae arriba.
+  write('puro.sql', 'DROP TABLE x;', '')
+  blocked('migrations', move('puro.sql', '052.sql', '+-- +goose Down'), /DROP TABLE/)
+  // El ancla de un hunk —el texto que va después de `@@`— dice desde dónde se busca.
+  const anchored = (name, to, anchor, ...hunk) => asCodex(root, patchOf(`*** Update File: service/scratch/${name}`,
+    `*** Move to: service/migrations/${to}`, `@@ ${anchor}`, ...hunk))
+  blocked('migrations', anchored('twice.sql', '050.sql', '-- +goose Down', '-DROP TABLE t;', '+SELECT 1;'),
+    /DROP TABLE/)
+  // Un ancla que no está en el archivo no se saltea: el hunk no se puede ubicar, y el archivo se juzga como está.
+  blocked('migrations', anchored('puro.sql', '053.sql', 'no-existe', '-DROP TABLE x;', '+SELECT 1;'), /DROP TABLE/)
+  // Y el ancla también se busca desde donde terminó el hunk anterior, no desde arriba.
+  write('ancla.sql', '-- +goose Up', '-- bloque', 'DROP TABLE t;', '-- +goose Down', '-- bloque', 'DROP TABLE t;', '')
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/ancla.sql',
+    '*** Move to: service/migrations/054.sql', '@@', ' -- +goose Down', '+-- nota',
+    '@@ -- bloque', '-DROP TABLE t;', '+SELECT 1;')), /DROP TABLE/)
+  // Y cada hunk se busca desde donde terminó el anterior: el segundo no vuelve a la primera línea parecida.
+  write('dos.sql', '-- +goose Up', 'DROP TABLE t;', 'CREATE TABLE u (id int);', '-- +goose Down', 'DROP TABLE t;', '')
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/dos.sql',
+    '*** Move to: service/migrations/051.sql', '@@', '-CREATE TABLE u (id int);', '+CREATE TABLE u (id bigint);',
+    '@@', '-DROP TABLE t;', '+SELECT 1;')), /DROP TABLE/)
   // Si el parche no se puede ubicar en el archivo, se juzga el archivo como está: no se supone que quitó nada.
   write('lejos.sql', 'DROP TABLE x;', '')
   blocked('migrations', move('lejos.sql', '030.sql', ' esto no está', '-ni esto', '+SELECT 1;'), /DROP TABLE/)
@@ -150,4 +170,8 @@ test('una prueba que cambia de extensión o de herramienta sigue siendo una prue
     ['service/src/a.spec.ts', 'service/cypress/e2e/a.cy.ts']]) {
     assert.doesNotThrow(() => execute('test-evidence', move(from, to)), `${from} → ${to}`)
   }
+  // Pero un nombre que ningún runner levanta es apagarla, tenga el `.test.` que tenga.
+  for (const [from, to] of [['service/src/a.test.js', 'service/src/a.test.bak'],
+    ['service/src/a.test.js', 'service/src/a.test.txt'], ['service/src/a.spec.ts', 'service/src/a.spec.disabled'],
+    ['service/pkg/a_test.go', 'service/pkg/a.test.off']]) blocked('test-evidence', move(from, to), /borra una prueba/)
 })

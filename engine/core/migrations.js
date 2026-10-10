@@ -177,16 +177,16 @@ function patchSections(patch) {
   for (const line of String(patch).split(/\r?\n/)) {
     const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
     if (header) {
-      current = { kind: header[1].toLowerCase(), lines: [], hunks: [[]], path: header[2].trim() }
+      current = { kind: header[1].toLowerCase(), lines: [], hunks: [{ anchor: '', lines: [] }], path: header[2].trim() }
       sections.set(header[2].trim(), current)
     } else if (current && /^\*\*\* Move to:/.test(line)) {
       moved.push([line.replace(/^\*\*\* Move to:\s*/, '').trim(), current])
     } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
-    else if (current && line.startsWith('@@')) current.hunks.push([])
+    else if (current && line.startsWith('@@')) current.hunks.push({ anchor: line.slice(2).trim(), lines: [] })
     else if (current && !line.startsWith('*** ')) {
       const one = { op: line[0] || ' ', text: line.slice(1) }
       current.lines.push(one)
-      current.hunks[current.hunks.length - 1].push(one)
+      current.hunks[current.hunks.length - 1].lines.push(one)
     }
   }
   // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba contra el
@@ -206,17 +206,30 @@ function patchSections(patch) {
 // que lo agregado a la reversión; lo quitado es la línea que el hunk señala y no la primera que se le parece.
 // La primera versión restaba y sumaba líneas sueltas, y erraba en los dos sentidos (revisión del 367).
 //
-// `null` si algún hunk no se puede ubicar: quien llama no puede suponer entonces que el parche quitó algo.
+// Tres cosas dicen dónde cae un hunk, y las tres se siguen: el ancla que va después de `@@`, que es la línea
+// desde la que se busca; el orden, porque cada hunk se busca desde donde terminó el anterior; y su contexto.
+// Sin ellas, con una línea repetida se aplicaba sobre la primera aparición.
+//
+// `null` si algún hunk no se puede ubicar, y eso incluye al que sólo agrega sin decir dónde: quien llama no
+// puede suponer entonces que el parche quitó ni tapó nada. Ponerlo arriba dejaba que un marcador de reversión
+// agregado así convirtiera en reversión todo lo que el archivo traía.
 function movedText(disk, section) {
   const lines = String(disk).split(/\r?\n/)
-  for (const hunk of (section.hunks || []).filter((one) => one.length)) {
-    const old = hunk.filter((line) => line.op !== '+').map((line) => line.text)
-    const next = hunk.filter((line) => line.op !== '-').map((line) => line.text)
+  let from = 0
+  for (const hunk of (section.hunks || []).filter((one) => one.lines.length)) {
+    const old = hunk.lines.filter((line) => line.op !== '+').map((line) => line.text)
+    const next = hunk.lines.filter((line) => line.op !== '-').map((line) => line.text)
+    if (hunk.anchor) {
+      const anchored = lines.findIndex((text, at) => at >= from && text.trim() === hunk.anchor)
+      if (anchored < 0) return null
+      from = anchored + 1
+    } else if (!old.length) return null
     const fits = (at) => old.every((text, offset) => lines[at + offset] === text)
     let at = -1
-    for (let start = 0; at < 0 && start + old.length <= lines.length; start += 1) if (fits(start)) at = start
+    for (let start = from; at < 0 && start + old.length <= lines.length; start += 1) if (fits(start)) at = start
     if (at < 0) return null
     lines.splice(at, old.length, ...next)
+    from = at + next.length
   }
   return lines.join('\n')
 }

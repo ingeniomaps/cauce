@@ -130,23 +130,34 @@ function steps(command, cwd) {
   const outer = []
   let base = cwd
   const joined = expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3')
-  // El cuerpo de una función no corre al definirla: su `cd` no deja parado a lo que viene después.
+  // El cuerpo de una función no corre al definirla: su `cd` no deja parado a lo que viene después. Corre
+  // cuando se la llama, así que los `cd` de su cuerpo se guardan con su nombre y se repiten ahí.
   const bodies = []
+  const functions = new Map()
+  const moved = (to) => {
+    for (const body of bodies) body.moves.push(to)
+    if (to === undefined) return os.homedir()
+    if (to === null) return null
+    if (MKTEMP.test(to)) return path.join(os.tmpdir(), 'mktemp')
+    if (path.isAbsolute(home(to))) return home(to)
+    return base === null ? null : cdTarget(to, base)
+  }
   for (const { text, opens, closes } of pieces(joined)) {
-    if (/^\s*(?:function\s+[\w-]+\s*(?:\(\))?|[\w-]+\s*\(\))\s*\{/.test(text)) bodies.push(base)
-    else if (/^\s*\}\s*$/.test(text) && bodies.length) base = bodies.pop()
+    const defines = text.match(/^\s*(?:function\s+([\w-]+)\s*(?:\(\))?|([\w-]+)\s*\(\))\s*\{/)
+    if (defines) bodies.push({ name: defines[1] || defines[2], base, moves: [] })
     for (let level = 0; level < opens; level += 1) outer.push(base)
     // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
     // `cd /otra 2>/dev/null` es un `cd`.
     const piece = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
     const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
-    if (cd) {
-      const to = cd[1]
+    // La llave que cierra el cuerpo de una función, con lo que traiga detrás: una redirección no la abre.
+    if (/^\s*\}\s*$/.test(piece) && bodies.length) {
+      const body = bodies.pop()
+      functions.set(body.name, body.moves)
+      base = body.base
+    } else if (cd) {
       // Sin destino, `cd` deja en la carpeta personal.
-      if (to === undefined) base = os.homedir()
-      else if (MKTEMP.test(to)) base = path.join(os.tmpdir(), 'mktemp')
-      else if (path.isAbsolute(home(to))) base = home(to)
-      else base = base === null ? null : cdTarget(to, base)
+      base = moved(cd[1])
     } else {
       // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
       const words = shellWords(withoutSubstitutions(piece).trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, ''))
@@ -159,9 +170,9 @@ function steps(command, cwd) {
       // nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
       if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
         const to = rest.filter((word) => !word.startsWith('-'))
-        const named = to.length === 1 ? home(to[0]) : null
-        if (named && path.isAbsolute(named)) base = named
-        else base = named && base !== null ? cdTarget(named, base) : null
+        base = moved(to.length === 1 ? to[0] : null)
+      } else if (functions.has(verb)) {
+        for (const to of functions.get(verb)) base = moved(to)
       } else found.push({ verb, rest, base })
     }
     for (let level = 0; level < closes && outer.length; level += 1) base = outer.pop()

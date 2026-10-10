@@ -168,7 +168,36 @@ Cinco cosas de este caso, todas reproducidas, y las cinco se arreglaron.
 
 Rojo previo de las cuatro, y quince mutaciones más en rojo. Cuatro sobrevivieron la primera vez: dos se
 llevaron su caso de prueba —dónde cae un marcador de reversión agregado, y que lo que otra sección agrega
-sigue contando cuando el archivo renombrado existe— y dos eran código que sobraba y se quitó.
+sigue contando cuando el archivo renombrado existe— y a las otras dos se les quitó el código, dándolo por
+sobrante. **Eso estuvo mal**, y lo encontró la revisión siguiente.
+
+### Lo que encontró la segunda revisión (2026-10-10)
+
+Cuatro cosas de este caso, y tres eran regresiones respecto de la versión anterior de este mismo arreglo.
+
+- **Un hunk que sólo agrega se ponía en la primera línea del archivo.** Un marcador de reversión agregado
+  así volvía reversión todo lo que el archivo traía, y un `DROP` que ya estaba pasaba. Era una de las dos
+  piezas quitadas por «sobrante». Un hunk que no dice dónde va no se ubica: se juzga el archivo como está.
+- **Cada hunk se buscaba desde la primera línea.** Con una línea repetida, el segundo hunk caía sobre la
+  primera aparición. Era la otra pieza quitada. Ahora cada uno se busca desde donde terminó el anterior.
+- **El ancla de un hunk se descartaba.** El texto que va después de `@@` dice desde qué línea se busca, y
+  sin leerlo quitar el `DROP` de la reversión seguía tapando el del bloque que aplica, que es lo que la
+  corrección anterior decía haber arreglado. Lo había arreglado para el marcador escrito como contexto y no
+  como ancla.
+- **`a.test.bak`, `a.spec.disabled` y `a.test.off` contaban como «sigue siendo una prueba».** La regla que
+  dejaba pasar un cambio de extensión aceptaba cualquiera, y ésas son justo la forma de apagar una prueba.
+  Ahora tiene que ser una extensión que corra.
+
+Lo que la revisión comprobó y no dio defecto: los parches de migraciones **sin** renombrado dan el mismo
+veredicto que antes de este caso —el lector de secciones cambió para todos, y era lo que más había que
+mirar—; y con finales de línea de Windows, los cuatro veredictos que cambian pasan a ser los del mismo
+parche con finales de Unix.
+
+Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
+falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo
+segundo. Acá no se demostró, se supuso, y las dos piezas quitadas hacían falta. Esta vez las tres
+mutaciones que sobrevivieron se llevaron su caso de prueba, y ninguna se resolvió quitando código salvo una
+condición que, razonada, hacía peor el resultado.
 
 ## Contexto de descubrimiento
 

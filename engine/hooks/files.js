@@ -136,8 +136,9 @@ function isTestFile(raw) {
 
 // Un nombre que sigue siendo de prueba aunque `isTestFile` no lo cuente entre los que cuida: otra extensión
 // —`.mjs`, `.cjs`, `.mts`— u otra herramienta —`.cy.ts`, `.e2e.ts`—. Renombrar hacia uno de éstos no saca la
-// prueba de ningún lado, y frenarlo era frenar una migración de módulos corriente.
-const STILL_A_TEST = /\.(?:test|spec|cy|e2e)\.[a-z]+$/i
+// prueba de ningún lado, y frenarlo era frenar una migración de módulos corriente. La extensión tiene que ser
+// una que corra: `a.test.bak` o `a.spec.disabled` es justo la forma de apagar una prueba.
+const STILL_A_TEST = /\.(?:test|spec|cy|e2e)\.[cm]?[jt]sx?$/i
 
 function testEvidence(input) {
   if (process.env.OPS_TEST_EVIDENCE_OVERRIDE === '1') return

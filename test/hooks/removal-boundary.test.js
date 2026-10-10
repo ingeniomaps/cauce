@@ -52,6 +52,10 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     `(cd ${OUT} && n=$(ls | wc -l); rm -rf old)`, `cd ${OUT} 2>/dev/null && rm -rf old`,
     `if ! rm -rf ${OUT}/x; then echo no; fi`, `while rm ${OUT}/x; do :; done`,
     `export D=${OUT}; rm -rf $D/sub`, `pushd ${OUT} && rm -rf sub`, `if cd ${OUT}; then rm -rf sub; fi`,
+    // Una función que hace `cd` afuera y después se llama deja parado ahí; y el cierre de otra con redirección
+    // no se queda abierto para deshacer un `cd` de verdad.
+    `go() {\n  cd ${OUT}\n}\ngo\nrm -rf sub`,
+    `a() {\n  cd ${OUT}\n}\nb() {\n  a\n}\nb\nrm -rf sub`, `f() { echo a; } >&2\ncd ${OUT}\n{ echo x\n}\nrm -rf sub`,
     `rm -rf "${OUT}/con espacio/sub"`, `cd "${OUT}/con espacio" && rm -rf old`, `cd -P ${OUT} && rm -rf old`,
     `cd "$X"; if cd ${OUT}; then rm -rf sub; fi`, 'if cd ../../../../../../../..; then rm -rf no-es-de-nadie; fi',
   ]
@@ -95,7 +99,7 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     // Una ruta entre comillas con espacios es una sola, tenga lo que tenga después del espacio.
     'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
     // El `cd` del cuerpo de una función que nadie llama no mueve nada.
-    'f() {\n  cd /\n}\nrm -rf z',
+    'f() {\n  cd /\n}\nrm -rf z', 'a() {\n  cd /\n}\nb() {\n  a\n}\nrm -rf z',
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]
