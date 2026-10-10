@@ -184,7 +184,7 @@ que esperaban a esa persona.
 |---|---|---|
 | Una decisión que cambia cómo se construye | `adr/` | se consulta dentro de un año |
 | Una norma que hay que cumplir siempre | `business-rules/` o `rules/` | la lee un agente en cada tarea |
-| Algo que sólo puede hacer una persona | `HUMAN_ACTIONS.md` | frena su tarea hasta que se resuelva |
+| Algo que sólo puede hacer una persona | `human/`, una acción por archivo | frena su tarea hasta que se resuelva |
 | Una idea, una deuda, una lección | `inbox/<sección>/`, una por archivo | espera promoción humana |
 | Lo que una tarea entregó, con su evidencia | `done/<slug>.md` | es lo que se audita |
 | Qué tarea estoy haciendo | `claims/` | para que nadie la tome dos veces |

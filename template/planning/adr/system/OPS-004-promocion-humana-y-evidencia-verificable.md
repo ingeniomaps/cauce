@@ -15,7 +15,7 @@ fallas funcionales.
 
 **Los agentes pueden proponer, pero una persona controla la promoción de intención nueva y las acciones externas.**
 Una tarea solo termina con aceptación observable y resultados reales de las verificaciones aplicables. Los
-bloqueos que requieren autoridad se registran en `HUMAN_ACTIONS.md`, en el checkpoint del hito o en `AWAITING_REVIEW.md`.
+bloqueos que requieren autoridad se registran como acción humana en `human/`, en el checkpoint del hito o en `AWAITING_REVIEW.md`.
 
 ## Alternativas consideradas
 

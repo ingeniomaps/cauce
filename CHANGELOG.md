@@ -55,6 +55,12 @@ diseño — eso vive en el commit y en el código.
   cuál borrar. El motor rige con `upgrade`; que los recorridos escriban en la carpeta nueva, al reinstalar el
   runner (caso 351).
 
+- **Las reglas y la documentación del molde nombran `planning/human/` como el lugar de una acción humana.**
+  R17 y R19 decían `HUMAN_ACTIONS.md`, y lo mismo once textos del molde: el protocolo, el diagrama del
+  recorrido, las plantillas de recorrido y de ADR, la guía de equipo. Es el nombre del lugar, no una conducta
+  nueva: los recorridos y los cargos ya escribían en la carpeta. Lo mismo en los contratos de
+  `growth-marketer`, `finops-engineer` y `ux-designer` y en los recorridos `feasibility-review` e
+  `incident-review`. Tu tabla se sigue leyendo (caso 359).
 
 ### Corregido
 

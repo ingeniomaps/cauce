@@ -38,8 +38,8 @@ slug son un error de `check`, y ese error llega un mes tarde.
 
 ## Lo que este archivo no es
 
-- **No bloquea.** Una recurrencia vencida no frena ninguna tarea. Lo que sí frena vive en
-  `HUMAN_ACTIONS.md`; ponerlo acá entrena a ignorar lo que vence, que es lo único que este archivo hace.
+- **No bloquea.** Una recurrencia vencida no frena ninguna tarea. Lo que sí frena es una acción
+  humana, en `human/`; ponerlo acá entrena a ignorar lo que vence, que es lo único que este archivo hace.
 - **No es una cola.** Nada de acá está aprobado para ejecutarse. `BACKLOG.md` sigue siendo la única cola
   y se escribe a mano.
 - **No es el INBOX.** Una idea se promueve una vez y se borra; esto vuelve, y por eso se queda.

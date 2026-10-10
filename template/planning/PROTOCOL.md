@@ -131,7 +131,7 @@ saltar. Una tarea mal marcada `express` es justamente la que se salta la fase do
    tarea la lleva un runner —el reclamo, que es compartido: `business-rules/system/BR-OPS-005`—.
 3. INBOX nunca se ejecuta automáticamente — `business-rules/system/BR-OPS-002`.
 4. No declarar éxito sin comandos, resultados y exit codes reales — `business-rules/system/BR-OPS-004`.
-5. No inventar credenciales ni decisiones; registrar HUMAN_ACTIONS.
+5. No inventar credenciales ni decisiones; registrar una acción humana en `human/`.
 6. No ampliar alcance; lo adyacente vuelve al INBOX.
 7. No reescribir este proceso dentro de una tarea de producto.
 8. No push, amend, force, deploy o escritura externa sin autorización explícita.

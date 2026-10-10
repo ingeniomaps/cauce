@@ -10,7 +10,7 @@ INBOX ──promoción humana──▶ roadmap ──historias listas──▶ B
   └───────────── deuda adyacente ─────────────────────────────┤
                                                               │
               AWAITING_REVIEW ◀── checkpoint de hito ─────────┤
-               HUMAN_ACTIONS ◀── lo que decide una persona ───┘
+                      human/ ◀── lo que decide una persona ───┘
 ```
 
 ## Preparar
@@ -32,7 +32,7 @@ imprime una tarea, ésa es la que corresponde, ya con su aceptación y sus crite
 entrega a un workflow.
 
 Las dos flechas que salen del carril son las del diagrama: lo que aparece durante el trabajo y no
-entra en la tarea vuelve al INBOX, y lo que necesita a una persona va a `HUMAN_ACTIONS.md` y para esa
+entra en la tarea vuelve al INBOX, y lo que necesita a una persona va a `human/` como acción humana y para esa
 línea de trabajo.
 
 ## Cerrar
