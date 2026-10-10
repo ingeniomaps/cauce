@@ -260,5 +260,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 62 desde el 2026-10-07: la reparación del cierre y la fila que deja cuando no alcanza citan
   // `tools/ops.js check` (caso 310). El cierre ya lo dictaba; sólo cambió cuántas veces aparece.
-  assert.equal(hits, 62, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 63 desde el 2026-10-09: otra consigna de `context`, la que comprueba que el checkpoint del hito frene
+  // (caso 347). Clasificada como la del 180.
+  assert.equal(hits, 63, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

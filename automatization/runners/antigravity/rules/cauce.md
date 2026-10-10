@@ -7,6 +7,7 @@ contradice a una del sistema, rige la propia.
 {{RULES:list}}
 
 `{{OPS_DIR}}planning/wip/<runner>.md` es el mutex de
-ejecución y `{{OPS_DIR}}planning/AWAITING_REVIEW.md` bloquea una corrida nueva. No promociones ideas desde INBOX, no
+ejecución, y un checkpoint pendiente —el de tu línea en `{{OPS_DIR}}planning/checkpoints/` o `{{OPS_DIR}}planning/AWAITING_REVIEW.md`, que
+frena a todas— bloquea una corrida nueva. No promociones ideas desde INBOX, no
 inventes aprobaciones o credenciales y no hagas push ni deploy. Cierra cada tarea con verificación real y
 evidencia en DONE.

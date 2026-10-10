@@ -91,7 +91,7 @@ test('el checkpoint del hito también se commitea, con la regla de rama de plann
   assert.match(gate(on.prompts), /la rama de trabajo de planning que ya exista/)
 
   const off = await runFlow(contract({ humanCheckpoint: true, commitPerTask: false }))
-  assert.ok(gate(off.prompts).includes('AWAITING_REVIEW'), 'el checkpoint se escribe igual')
+  assert.ok(gate(off.prompts).includes('checkpoints/H1.md'), 'el checkpoint se escribe igual')
   assert.doesNotMatch(gate(off.prompts), /await review of/, 'pero no se commitea')
 })
 

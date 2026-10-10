@@ -36,6 +36,7 @@ const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
 const LN = require('../planning/lines')
+const CK = require('../planning/checkpoints')
 const OW = require('../automation/own-workflows')
 const CT = require('./contract')
 const { fail, planningRoot, TODAY, REFUSED } = require('./io')
@@ -144,6 +145,8 @@ function check(dir, cli) {
   const adopted = AD.read(root)
   errors.push(...SZ.oversizedUnits({ epics, milestones }))
   errors.push(...LN.lineErrors(milestones))
+  errors.push(...CK.errors(root))
+  warnings.push(...LN.mergeWarnings(root, milestones))
   errors.push(...PC.validateState({
     epics, milestones, done, wips, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))

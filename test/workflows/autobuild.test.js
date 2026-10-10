@@ -226,7 +226,7 @@ test('blocked se lee por su valor, y lo que no es del vocabulario no se adivina'
 
   const gate = await conBlocked('awaiting-review')
   assert.equal(gate.reason, 'awaiting-human-review')
-  assert.match(gate.detail, /AWAITING_REVIEW\.md/)
+  assert.match(gate.detail, /AWAITING_REVIEW\.md/, 'sin saber cuál, nombra el de siempre')
 
   const humanas = await conBlocked('blocked-on-human')
   assert.equal(humanas.reason, 'blocked-on-human', 'tiene motivo propio: no es el checkpoint de hito')
@@ -247,6 +247,12 @@ test('un checkpoint humano sin resolver corta antes de tocar nada', async () => 
   })
   assert.equal(result.reason, 'awaiting-human-review')
   assert.ok(!reached(asked, 'Plan'), 'ni se planifica')
+
+  // Con dos líneas hay más de un checkpoint, y la parada nombra el que `context` dijo que la frena.
+  const named = await runFlow({}, { contexts: [{ blocked: 'awaiting-review', checkpoint: 'checkpoints/auth-uno.md',
+    hasTask: true, wipActive: false, queued: 1, readOk: true }] })
+  assert.match(named.result.detail, /planning\/checkpoints\/auth-uno\.md tiene un checkpoint humano sin resolver/)
+  assert.doesNotMatch(named.result.detail, /AWAITING_REVIEW/)
 })
 
 test('el hito cambia y la corrida cierra en vez de seguir con el siguiente', async () => {
@@ -261,19 +267,22 @@ test('el hito cambia y la corrida cierra en vez de seguir con el siguiente', asy
 test('con checkpoint configurado el hito terminado queda esperando una firma', async () => {
   const withGate = { ...baseScript()[KEY.contract], humanCheckpoint: true }
   const { written } = await runFlow({ [KEY.contract]: withGate })
-  assert.ok(
-    written.some((text) => text.includes('AWAITING_REVIEW')),
-    'el hito terminado deja el gate escrito, que es lo que impide que la próxima corrida siga sola',
-  )
+  const isGate = (text) => text.includes('planning/checkpoints/H1.md')
+  assert.ok(written.some(isGate),
+    'el hito terminado deja el gate escrito, que es lo que impide que la próxima corrida siga sola')
   // Y apagado no lo escribe: es configuración del proyecto, no una ceremonia fija.
   const { written: withoutGate } = await runFlow()
-  assert.ok(!withoutGate.some((text) => text.includes('AWAITING_REVIEW')))
+  assert.ok(!withoutGate.some((text) => /checkpoints\/|AWAITING_REVIEW/.test(text)))
 
-  // Qué estado lleva el archivo y por qué está junto a la lectura de la compuerta
-  // (`engine/planning/parser.js`). Acá se fija sólo que la fase lo pida al escribirlo.
-  const escrito = written.find((text) => text.includes('AWAITING_REVIEW'))
+  // Qué lleva el archivo y por qué está junto a la lectura de la compuerta
+  // (`engine/planning/checkpoints.js`). Acá se fija sólo que la fase lo pida al escribirlo.
+  const escrito = written.find(isGate)
   assert.match(escrito, /status: pendiente/, 'el archivo nace con su estado escrito')
+  assert.match(escrito, /hito: H1/, 'con el hito, que es también su nombre')
+  assert.match(escrito, /"line:" a secas/, 'y con la línea: fuera de una, vacía')
   assert.match(escrito, /resuelta/, 'y dice con qué se destraba, que es lo que evita el borrado')
+  // Lo que se quita: el archivo único por instancia, que dos líneas se pisaban (caso 347).
+  assert.doesNotMatch(escrito, /AWAITING_REVIEW/)
 })
 
 test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {

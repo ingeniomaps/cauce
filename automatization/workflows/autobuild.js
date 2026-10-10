@@ -41,7 +41,10 @@ const queueFile = () => `${P}/${(planning && planning.file) || 'BACKLOG.md'}`
 // Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
 const doneFile = (slug) => `${P}/done/${slug}.md`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
+// El checkpoint de un hito vive en su propio archivo; `GATE` es el de las instancias anteriores, que el motor
+// sigue leyendo y que frena a todas las líneas. Por qué uno por hito está en `engine/planning/checkpoints.js`.
 const GATE = `${P}/AWAITING_REVIEW.md`
+const CHECKPOINTS = `${P}/checkpoints`
 
 // Estado de planning tal como lo emite `ops context --json`; ningún modelo parsea BACKLOG ni WIP.
 // De a pares, y sin regex: una comilla dentro de un literal de regex desincroniza a las dos puertas que
@@ -57,6 +60,13 @@ const HUMAN_ROW = {
   properties: { readOk: { type: 'boolean' }, tasks: { type: 'array', items: { type: 'string' } } },
 }
 
+// Si el checkpoint recién escrito frena a esta línea, leído de `context` y no del archivo.
+const CHECKPOINT_HELD = {
+  type: 'object', additionalProperties: false, required: ['readOk', 'blocked', 'checkpoints'],
+  properties: { readOk: { type: 'boolean' }, blocked: { type: 'string' },
+    checkpoints: { type: 'array', items: { type: 'string' } } },
+}
+
 const CONTEXT = {
   type: 'object', additionalProperties: false,
   required: ['blocked', 'hasTask', 'wipActive', 'queued', 'cast', 'readOk'],
@@ -66,11 +76,13 @@ const CONTEXT = {
     // lee igual que una cola terminada, y Pick la toma como permiso para promover.
     readOk: { type: 'boolean' },
     // Vocabulario cerrado, igual que `lane` acá abajo, y por la misma razón: el motor emite tres valores
-    // y nada más —`ops context` los decide con un `existsSync` y un conteo—, así que dejarlo como texto
+    // y nada más —`ops context` los decide leyendo los checkpoints y con un conteo—, así que dejarlo como texto
     // libre le pedía a quien lo transcribe que acertara una convención invisible. Un modelo que rellena
     // «el valor vacío» puede escribir la cadena vacía o **escribir las comillas**, y las dos satisfacían
     // el esquema: medido en una instancia real, 3 de 24 lecturas llegaron como `"\"\""` (caso 083).
     blocked: { type: 'string', enum: ['', 'awaiting-review', 'blocked-on-human'] },
+    // Cuál checkpoint frena, relativo al planning, cuando `blocked` es `awaiting-review`.
+    checkpoint: { type: 'string' },
     hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
@@ -795,8 +807,8 @@ const halt = async (reason, detail = '') => {
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => clerk(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile y line de sus ` +
-  `campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile, checkpoint y ` +
+  `line de sus campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
   `pending tal cual si viene —y ` +
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
@@ -812,6 +824,16 @@ const readContext = () => clerk(
 )
 
 let planning = await readContext()
+// La línea es la de la carpeta donde corre y no cambia en la corrida: se toma acá porque la última lectura,
+// con el hito ya terminado, es justo la que el cierre usa para escribir el checkpoint.
+// Llega transcripta por un agente, y un valor vacío a veces llega con sus comillas escritas (caso 083): lo que
+// no es un nombre de línea no se le dicta a quien escribe el checkpoint.
+const unquoted = (value) => {
+  let out = String(value || '').trim()
+  while (out.length > 1 && QUOTES.includes(out[0]) && out[out.length - 1] === out[0]) out = out.slice(1, -1).trim()
+  return out
+}
+const runLine = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(unquoted((planning || {}).line)) ? unquoted(planning.line) : ''
 if (!planning) return halt('context-unavailable', `no se pudo leer el estado de ${P}`)
 // Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
 // cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
@@ -833,7 +855,8 @@ while (blocker.length > 1 && QUOTES.includes(blocker[0]) && blocker[blocker.leng
   blocker = blocker.slice(1, -1).trim()
 }
 if (blocker === 'awaiting-review') {
-  return halt('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
+  const held = String(planning.checkpoint || '').trim()
+  return halt('awaiting-human-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
 }
 if (blocker === 'blocked-on-human') {
   return halt('blocked-on-human', `toda la cola espera una acción humana. Está en ${HUMAN}`
@@ -2080,15 +2103,54 @@ if (learned.length) {
 // Sólo cuando el hito terminó. Cortada a pedido, la corrida deja tareas del mismo hito en la cola: escribir
 // la compuerta ahí decía «hito terminado» sobre uno que no lo estaba, y frenaba la corrida siguiente hasta
 // que alguien la destrabara a mano —visto en la primera corrida real con `--max 1` (caso 293)—.
-if (completed.length && contract.humanCheckpoint && !cut) await scribe(
-  `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
-  `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
-  `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
-  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.` +
+// El frontmatter se dicta campo por campo porque es lo que el motor lee: el nombre del archivo y `hito:` dicen
+// cuál es, y `line:` a quién frena. Sin `line:` frenaría a todas las líneas, que es el defecto del caso 347.
+//
+// Y después se relee. El archivo lo escribe un agente, y un `line:` mal escrito deja el checkpoint pendiente
+// sin frenar a su propia línea: con el archivo único eso no podía pasar, porque frenaba sin depender de
+// ningún valor. Lo que se comprueba es que `context` frene, no que el archivo esté — y que frene por éste:
+// con otro checkpoint pendiente la línea está frenada igual, y resuelto aquél arrancaría sin esta revisión.
+let checkpointNote = ''
+if (completed.length && contract.humanCheckpoint && !cut) {
+  const file = `${CHECKPOINTS}/${currentMilestone}.md`
+  const front = `"status: pendiente", "hito: ${currentMilestone}" y `
+    + (runLine ? `"line: ${runLine}"` : '"line:" a secas, sin valor')
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
-  (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
-    `review of ${currentMilestone}".${TWO_COMMANDS}${PLANNING_BRANCH()}` : ''),
-  { label: 'human-checkpoint' },
-)
-return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })
+  const committing = (message) => (contract.commitPerTask
+    ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "${message}".${TWO_COMMANDS}${PLANNING_BRANCH()}`
+    : '')
+  await scribe(
+    `Creá ${file} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones ` +
+    `humanas pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter de ` +
+    `tres campos, uno por renglón y en este orden: ${front}. Decí que se destraba cambiando status a ` +
+    `"resuelta" —no borrando el archivo, que es lo que deja leer después qué se revisó—. Nunca hagas push ni ` +
+    `deploy.${committing(`chore(planning): await review of ${currentMilestone}`)}`,
+    { label: 'human-checkpoint' },
+  )
+  const holds = async () => {
+    const read = await clerk(
+      `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Copiá blocked y checkpoints de sus campos, ` +
+      'tal cual. Poné readOk en true sólo si el comando salió con código 0 y devolvió JSON. El comando es la ' +
+      'fuente de verdad: no abras archivos de planning.',
+      { schema: CHECKPOINT_HELD, label: 'checkpoint-held' },
+    )
+    if (!read || !read.readOk) return null
+    return unquoted(read.blocked) === 'awaiting-review'
+      && (read.checkpoints || []).some((one) => unquoted(one) === `checkpoints/${currentMilestone}.md`)
+  }
+  let held = await holds()
+  if (held === false) {
+    await scribe(
+      `${file} quedó escrito y no frena a esta línea, así que la corrida siguiente arrancaría sin la revisión. ` +
+      `Corregí sólo su frontmatter: tres campos, uno por renglón y en este orden, ${front}; sin comillas ni ` +
+      `nada más en esos renglones.${committing(`chore(planning): fix the checkpoint of ${currentMilestone}`)}`,
+      { label: 'human-checkpoint-fix' },
+    )
+    held = await holds()
+  }
+  if (held === null) checkpointNote = `no se pudo comprobar que ${file} frene a esta línea: revisalo a mano`
+  else if (!held) checkpointNote = `${file} no quedó frenando a esta línea: revisá su frontmatter a mano`
+}
+return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran,
+  ...(checkpointNote ? { checkpoint: checkpointNote } : {}) })

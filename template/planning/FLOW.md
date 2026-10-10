@@ -38,4 +38,4 @@ línea de trabajo.
 ## Cerrar
 
 Al terminar la última historia, cambiar la épica a `closed`, archivar su evidencia y ejecutar el check.
-Cruzar a otro hito crea `AWAITING_REVIEW.md` si la configuración exige checkpoint humano.
+Cruzar a otro hito crea `checkpoints/<hito>.md` si la configuración exige checkpoint humano.

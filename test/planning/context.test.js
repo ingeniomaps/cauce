@@ -144,7 +144,7 @@ service: app
   fs.writeFileSync(path.join(planning, 'AWAITING_REVIEW.md'), '# Checkpoint\n\nRevisar el hito demo.\n')
   const gated = run(['context', planning])
   assert.equal(gated.status, 0, gated.stderr)
-  assert.match(gated.stdout, /^BLOCKED\s+awaiting-review — Revisar el hito demo\.$/m)
+  assert.match(gated.stdout, /^BLOCKED\s+awaiting-review — AWAITING_REVIEW\.md: Revisar el hito demo\.$/m)
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, 'awaiting-review')
 })
 

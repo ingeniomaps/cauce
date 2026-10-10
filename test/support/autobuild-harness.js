@@ -184,6 +184,10 @@ async function runFlow(changes = {}, options = {}) {
     if (options.label === 'planning-block' && !(key in script)) {
       return silent.includes(options.label) ? null : { committed: true, hash: 'b10c', branch: 'work/planning' }
     }
+    // La relectura del checkpoint recién escrito, que en el camino feliz dice que frena.
+    if (options.label === 'checkpoint-held' && !(key in script)) {
+      return { readOk: true, blocked: 'awaiting-review', checkpoints: ['checkpoints/H1.md'] }
+    }
     if (!(key in script)) throw new Error(`el guion no cubre ${key}`)
     // Una respuesta puede ser una función cuando el escenario necesita contestar distinto en cada vuelta.
     const answer = script[key]

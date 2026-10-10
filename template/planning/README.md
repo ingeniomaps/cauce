@@ -11,7 +11,8 @@ Se lee y se escribe en cada tarea.
 | `wip/` | El plan en vuelo de cada runner; recuperación y mutex por runner. No viaja por git. |
 | `claims/` | Qué tarea tomó cada quien; un archivo por tarea. |
 | `HUMAN_ACTIONS.md` | Acciones externas que requieren una persona. |
-| `AWAITING_REVIEW.md` | Gate efímero; mientras existe no inicia trabajo. |
+| `checkpoints/` | Un archivo por hito terminado que espera revisión; frena a la línea que lo escribió hasta que diga `resuelta`. |
+| `AWAITING_REVIEW.md` | Freno de toda la instancia, escrito a mano; mientras no diga `resuelta` ninguna línea inicia trabajo. |
 | `QA.md` | Cómo se prueba una entrega en la fase QA, paso por paso. |
 | `gate-known-red` | Opcional. Los gates que ya estaban en rojo, `<raíz>: <gate> — <motivo>`: `verify` no frena el commit por ellos y `check` los lista mientras sigan ahí. |
 

@@ -17,6 +17,7 @@ const LS = require('../planning/lessons')
 const BK = require('../planning/backlog')
 const RN = require('../planning/renumber')
 const LN = require('../planning/lines')
+const CK = require('../planning/checkpoints')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
 const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
@@ -146,6 +147,9 @@ function tree(dir, cli) {
   if (claims.length) {
     console.log(`${paint('1', 'CLAIM')}  ${claims.map((one) => `${one.slug} · ${one.owner}`).join('  ')}`)
   }
+  // Todos los pendientes, también los de otra línea: no frenan a quien mira, pero alguien los tiene que revisar.
+  const waiting = CK.pending(root).map((one) => `${one.file}${one.line ? ` · línea ${one.line}` : ''}`)
+  if (waiting.length) console.log(`${paint('1', 'CHECKPOINT')}  ${waiting.join('  ')}`)
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
@@ -183,7 +187,8 @@ function context(dir, cli) {
     if (own) hitoOmitido = `${hito} no se aplica: ya tenés ${own.slug} tomada`
     else state.milestones = state.milestones.filter((one) => one.slug === hito)
   }
-  const gate = path.join(root, 'AWAITING_REVIEW.md')
+  const holding = CK.holding(root, line)
+  const [held] = holding
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)
   const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, from)
@@ -192,7 +197,13 @@ function context(dir, cli) {
   const report = {
     // Toda la cola trabada por una persona no es lo mismo que no tener cola, y decir lo segundo manda a
     // buscar trabajo que no existe en vez de a resolver la fila que lo destraba.
-    blocked: P.checkpointHolds(root) ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
+    blocked: held ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
+    // Cuál frena, relativo al planning. Sin esto la parada decía «hay un checkpoint sin resolver» y con dos
+    // líneas nadie sabía de qué hito ni de quién (caso 347).
+    checkpoint: held ? held.file : '',
+    // Todos los que frenan: quien acaba de escribir uno necesita saber si el suyo está entre ellos, y con
+    // otro pendiente adelante el primero no se lo dice.
+    checkpoints: holding.map((one) => one.file),
     task: task && {
       slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
       // En qué archivo de la cola vive, que es donde se clasifica, se parte y se cierra (caso 212).
@@ -250,8 +261,9 @@ function context(dir, cli) {
   const reglas = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)
 
   if (report.blocked === 'awaiting-review') {
-    const first = P.read(gate).split('\n').find((line) => line.trim() && !line.startsWith('#')) || ''
-    return console.log(`BLOCKED  awaiting-review — ${first.trim()}`)
+    const body = P.read(path.join(root, held.file)).replace(/^---\n[\s\S]*?\n---\n/, '')
+    const first = body.split('\n').find((one) => one.trim() && !one.startsWith('#')) || ''
+    return console.log(`BLOCKED  awaiting-review — ${held.file}: ${first.trim()}`)
   }
   if (report.blocked === 'blocked-on-human') {
     const row = humanActions.find((action) => skipped.includes(action.task)) || humanActions[0]

@@ -6,7 +6,8 @@
 
 `{{OPS_DIR}}planning/PROTOCOL.md` es la fuente de verdad. Ejecuta `/cauce:autobuild` fase por fase; los
 workflows JS de Claude son referencia, no un runtime compatible. `{{OPS_DIR}}planning/wip/<runner>.md` es el mutex
-y `{{OPS_DIR}}planning/AWAITING_REVIEW.md` bloquea una corrida nueva.
+y un checkpoint pendiente —el de tu línea en `{{OPS_DIR}}planning/checkpoints/` o `{{OPS_DIR}}planning/AWAITING_REVIEW.md`, que frena a
+todas— bloquea una corrida nueva.
 
 Los hooks de `.gemini/settings.json` son obligatorios y bloquean por su cuenta. **Requieren que la
 carpeta esté marcada como confiable**: si no lo está, Gemini los desactiva y avisa con

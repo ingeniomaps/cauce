@@ -126,6 +126,17 @@ mergear. La línea sale de la rama, no de un argumento: no hay nada que recordar
 muestra en la línea `LINE`, con los hitos que no te ofrece. Y los reclamos se ven entre los árboles: `context`
 y `claim` leen también los de los otros worktrees de la instancia, porque cada línea los commitea en su rama.
 
+El checkpoint entre hitos también es por línea. Cuando una línea termina un hito y el proyecto pide revisión
+humana, queda en `checkpoints/<hito>.md` con su `line:`, y frena a esa línea y a ninguna otra: quien trabaja
+en `admin` sigue mientras `auth` espera que la revisen, también después de traer su rama. Para detener todo a
+propósito está `AWAITING_REVIEW.md`, que frena a todas. `checkpoints/README.md` tiene el detalle.
+
+Al juntar dos líneas, casi nada de lo que cada una escribió choca: la cola, el INBOX, la evidencia, los
+reclamos y los checkpoints son un archivo por unidad. Quedan dos archivos que las dos escriben.
+`HUMAN_ACTIONS.md` lo resuelve git —ver «Lo que git tiene que saber», más abajo—. `LESSONS.md` no: si las dos
+líneas anotaron una lección, su tabla choca al juntarse, y se resuelve a mano quedándose con las filas de las
+dos. Ahí el conflicto es correcto, porque una corrida puede actualizar una fila que ya estaba.
+
 **Un id por agente.** Sin eso los dos resuelven la misma identidad de git y el segundo toma por propia la
 tarea del primero. Al abrir una sesión, `ops runners planning` dice qué runners tienen trabajo abierto;
 el agente pregunta cuál se retoma o si arranca uno nuevo, y **exporta el id él mismo**. A una persona no
@@ -186,3 +197,12 @@ decisiones del repositorio las pierde.
 `.gitattributes` declara que `HUMAN_ACTIONS.md` y su histórico se concatenan en vez de conflictuar cuando
 dos personas registran un bloqueo el mismo día. Llega con la instancia y sus bordes están escritos ahí
 adentro. La evidencia de una tarea no lo necesita: vive en su propio archivo y nadie escribe el de nadie.
+
+Hay un caso en que la regla no está: cuando la instancia vive dentro de un repositorio que ya tenía su propio
+`.gitattributes`, `init` conserva el del repositorio. Ahí dos líneas que registren un bloqueo chocan al
+juntarse. `ops check` lo avisa cuando hay líneas en uso, y la salida es agregar una línea al `.gitattributes`
+de la raíz del repositorio —el aviso la trae con la ruta que corresponde—:
+
+    planning/HUMAN_ACTIONS.md merge=union
+
+Para comprobarlo: `git check-attr merge planning/HUMAN_ACTIONS.md` tiene que contestar `merge: union`.

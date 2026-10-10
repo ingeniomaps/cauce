@@ -33,6 +33,17 @@ diseño — eso vive en el commit y en el código.
   separado y frenó tres veces una entrega probada por cómo estaban escritos. Build le pone un id corto a
   cada rojo y el borde lo cita; quien no lo cite sigue pasando por el nombre, con las reglas de siempre.
   Rige al reinstalar el runner (caso 350).
+- **El checkpoint entre hitos es un archivo por hito y frena sólo a su línea de trabajo.** Era un único
+  `AWAITING_REVIEW.md`: con dos líneas, la que traía la rama de la otra quedaba frenada por un hito ajeno, y
+  cuando las dos habían cerrado un hito git juntaba las dos ediciones sin avisar y dejaba `resuelta` sobre un
+  checkpoint que nadie había revisado. Ahora `autobuild` escribe `planning/checkpoints/<hito>.md` con su
+  `line:`, `ops context` nombra el que te frena y `ops tree` lista los pendientes de todas las líneas. No hay
+  que migrar nada: un `AWAITING_REVIEW.md` que ya tengas sigue frenando a todos hasta que diga `resuelta`, y
+  es la forma de parar la instancia entera a propósito. El motor rige con `upgrade`; que el recorrido escriba
+  el archivo nuevo, al reinstalar el runner (caso 347).
+- **`check` avisa si `HUMAN_ACTIONS.md` va a chocar entre líneas.** El molde entrega `merge=union` para esa
+  tabla, pero una instancia que vive en un repositorio con su propio `.gitattributes` no lo recibe. Con
+  líneas en uso y filas en la tabla, `check` lo dice y trae la línea exacta que hay que agregar (caso 347).
 
 
 ### Corregido
