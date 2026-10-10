@@ -300,8 +300,9 @@ variables que el comando asigna— tampoco. Todo lo que este caso lee de nuevo v
 
 Con eso se van, junto con las regresiones, las mejoras de `destructive` que este cierre contaba más
 arriba: no ve el `rm -rf .` detrás de un `then`, ni el de varias líneas, ni cuida la carpeta personal por
-nombre. Nada de eso lo pedía este caso. Y queda escrito un hueco suyo que apareció en el camino y que
-tampoco es de este caso: `cd ~ && rm -rf .` pasa ese guard, antes y ahora.
+nombre. Nada de eso lo pedía este caso. Un hueco suyo que apareció en el camino salió después como caso
+propio, medido aparte: el [368](./368-con-el-proyecto-fuera-de-la-carpeta-personal-un-cd-a-ella-y-rm-rf-punto-pasa.md),
+que es lo único que ese archivo cambió en esta versión.
 
 Lo demás de esa revisión, sobre el guard de límites, se arregló: una sustitución entre comillas con sus
 propias comillas adentro —`"$(docker exec app sh -c "cd /app && rm -rf /app/cache")"`— se leía como
@@ -358,10 +359,11 @@ que arregló la revisión del conjunto: `echo "$(echo "uno && rm -f <banco>/otra
 sólo cita el borrado. Los ocho anteriores, igual en los dos runners. El noveno corrió con Claude Code;
 Gemini lo rechazó por su cuenta, «Command injection detected», antes de que el guard lo viera.
 
-**Con Antigravity no se corrió.** Ejecuta la copia registrada por usuario y para probar hay que reemplazarla
-un rato. Al ir a hacerlo había dos sesiones suyas abiertas en la máquina y la copia registrada había sido
-editada minutos antes: reemplazarla les habría cambiado los guards a esas sesiones. **Con Codex tampoco**,
-por el cupo. Para los dos vale lo medido con Gemini —el mismo guard, con su propio hook— y no más que eso.
+**Con Antigravity 1.2.17 también**, con el motor final y ocho de esos comandos: los mismos cinco
+rechazados, los mismos tres que corren, y el disco intacto. No hizo falta tocar su copia registrada, que es
+una por usuario: busca la instancia desde la carpeta de la sesión, así que una sesión abierta en el banco
+corre los guards del banco. **Con Codex no se pudo**, por el cupo: para él vale lo medido con los otros
+tres —el mismo guard, con el hook de cada uno— y no más que eso.
 
 ## Contexto de descubrimiento
 
