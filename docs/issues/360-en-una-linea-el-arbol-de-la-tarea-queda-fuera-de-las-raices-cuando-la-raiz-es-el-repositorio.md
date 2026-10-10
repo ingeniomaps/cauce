@@ -290,6 +290,67 @@ rama: el [362](./362-en-una-instancia-embebida-el-commit-de-una-tarea-no-se-encu
 y el [363](./363-en-una-linea-embebida-los-recorridos-commiteados-siguen-apuntando-a-la-carpeta-original.md).
 Por el segundo, la corrida necesitó reinstalar el runner en la línea con `--force` antes de lanzarse.
 
+### Sesiones reales con otros runners (2026-10-10)
+
+Todo lo anterior se corrió con Claude Code. Se armó un banco `sidecar` con el motor de la rama, los runners
+`gemini` y `antigravity` instalados, una línea `auth`, una tarea reclamada y su árbol, y se abrieron
+sesiones reales en la carpeta de la línea. Con **Gemini CLI 0.55.1** (`gemini -y -p`, la carpeta confiada
+con `GEMINI_CLI_TRUST_WORKSPACE=true`) y con **Antigravity CLI 1.2.17** (`agy -p`, con la copia de la línea
+registrada), las dos dieron lo mismo:
+
+```
+con la herramienta de archivos
+  suelto.txt, en la carpeta de la sesión     frenado: «…/suelto.txt está fuera de las raíces declaradas»
+  <servicio>-<tarea>/src/nuevo.js            se creó
+por shell
+  echo hola > suelto.txt                     frenado: «el comando escribe en …/suelto.txt, fuera de las raíces»
+  echo … > <servicio>-<tarea>/src/shell.js   corrió
+  rm <servicio>-<tarea>/src/shell.js         corrió
+```
+
+El guard corre con el hook de cada runner, deja trabajar en el árbol de la tarea —escribir y borrar— y frena
+lo de afuera, por las dos herramientas.
+
+Tres cosas de la medición misma, porque las tres dieron primero un resultado que no medía nada:
+
+- **Gemini con `--skip-trust` no carga los hooks del proyecto.** Las dos primeras sesiones escribieron
+  `suelto.txt` sin que nada las frenara. Es lo que el `GEMINI.md` que instalamos ya avisa.
+- **El guard de shell exime el temporal del sistema**, por diseño. Con el banco bajo `/tmp` el `echo` de
+  afuera pasaba; las sesiones de shell de arriba son sobre un banco en `/var/tmp`.
+- **Antigravity ejecuta la copia registrada por usuario**, no la del proyecto. Se respaldó la que había, se
+  registró la de la línea y al terminar se restauró, idéntica al respaldo.
+
+Y dos que no son de este caso. En una línea el servicio es un enlace al original, y Gemini no escribe a
+través de un enlace que sale de su espacio de trabajo (`Path not in workspace`): no estorba, porque el
+trabajo de una tarea va a su árbol, que es una carpeta de verdad dentro de la línea. Y con Codex y Gemini
+instalados juntos, Gemini imprime una línea «Skill conflict detected» por cargo, porque lee los punteros de
+`.agents/skills` y los de `.gemini/skills`: es ruido al abrir y no cambia qué cargo se usa.
+
+**Con Codex no se pudo**: la cuenta de esta máquina agotó su cupo hasta el 2026-11-04 y la sesión termina
+antes de la primera herramienta. Para Codex queda lo que ya había: el guard invocado por su shim con la
+forma de pedido de Codex, que es lo que cubren las pruebas.
+
+### Sobre la forma de una instancia real (2026-10-10)
+
+Una copia de una instancia real que trabaja por líneas, en `/var/tmp`, sin remotos y con el motor de la
+rama: sidecar, con una raíz que es la carpeta que contiene una veintena de servicios —se copiaron tres, cada
+uno con su repositorio— y otra raíz fuera. La original no se tocó: mismo commit, mismos árboles y nada sin
+commitear antes y después.
+
+- `upgrade` y `check`: en verde, con los avisos que la instancia ya tenía. Los 214 commits de servicios que
+  no se copiaron salen «no se comprobaron porque su repositorio no está en esta máquina», que es lo que el
+  359 hizo decir en vez de darlos por ausentes.
+- `ops line`: arma la carpeta de la línea con los tres servicios enlazados al original y el runner
+  instalado apuntando a ella. `claim` y `worktree` dejan el árbol de la tarea adentro de esa carpeta,
+  `<servicio>-<tarea>`, registrado como árbol del servicio.
+- `evidence` sobre 258 entradas cerradas: 0,17 s y 86 MB.
+- Una sesión real de Claude Code en la línea: escribir en el árbol de la tarea pasó, y escribir en el
+  servicio original por su ruta entera se frenó, «está fuera de las raíces declaradas».
+
+De ahí salió un defecto que no es de este caso ni de esta versión, el
+[365](./365-el-guard-de-shell-no-ve-un-borrado-fuera-de-las-raices.md): el mismo guard deja pasar un `rm -rf`
+sobre esa ruta. Se arregló en 0.106.1.
+
 ## Contexto de descubrimiento
 
 Corrida real de `/autobuild` para comprobar de punta a punta el checkpoint de un hito en una línea, sobre el

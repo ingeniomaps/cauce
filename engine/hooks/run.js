@@ -147,7 +147,7 @@ const hookMetadata = [
   {
     name: 'shell-boundary',
     event: 'PreToolUse · shell',
-    purpose: 'Frena el destino evidente de un comando que escribe fuera de las raíces declaradas, o en la '
+    purpose: 'Frena el destino evidente de un comando que escribe o borra fuera de las raíces declaradas, o en la '
       + 'aprobación de la persona.',
   },
   {

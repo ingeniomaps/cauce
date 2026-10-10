@@ -509,6 +509,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/hooks/shell-changes.js": {
+    "lines": 100,
+    "branches": 99,
+    "functions": 100
+  },
   "engine/core/task-trees.js": {
     "lines": 100,
     "branches": 94,
@@ -517,6 +522,11 @@
   "engine/core/readable.js": {
     "lines": 100,
     "branches": 100,
+    "functions": 100
+  },
+  "engine/automation/machine-bound.js": {
+    "lines": 100,
+    "branches": 80,
     "functions": 100
   }
 }

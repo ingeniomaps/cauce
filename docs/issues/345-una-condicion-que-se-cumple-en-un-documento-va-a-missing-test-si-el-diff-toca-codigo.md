@@ -152,8 +152,8 @@ criterio de código. Es el que la restricción por diff cuidaba, y es lo que se 
 - **Tradeoff «abre la puerta que el comentario de `:1703` cuidaba» — medido, y acotado.** El comentario se
   movió al pedido y dice lo que de verdad sostiene cada caso: `check` juzga el `n/a` entero contra el commit,
   y en la tarea mixta cada `n/a` queda escrito con su razón. En las nueve corridas de abajo, el criterio de
-  código sin prueba salió `missing-test` las nueve veces. No está medido con otro modelo ni con criterios
-  de otra clase; lo mide la primera instancia que lo use.
+  código sin prueba salió `missing-test` las nueve veces. Con otros dos modelos y un criterio
+  de otra clase salió igual: está en «Medición con otros modelos», más abajo.
 - **Tradeoff «depende de que Ready la siga» — no aplica**: la forma 1 no se hizo.
 - **Tradeoff «hay proyectos que quieren la prueba de prosa» — sigue en pie, y cambia de lado.** Antes la
   conseguían sin pedirla, cuando el diff traía código. Ahora la piden: la condición dice que una prueba lo
@@ -217,6 +217,28 @@ De este caso: Verify devolvió la condición de código cubierta por su prueba y
 `no-surface` —«se cumple en un documento», «se cumple en un comentario»—, sin vuelta de pruebas faltantes.
 Done las escribió una por una, `A → n/a — Se cumple en un documento, docs/RIESGOS.md línea 5…`, junto a la
 traza de la prueba, y `ops check` quedó en verde sobre un commit que toca código.
+
+### Medición con otros modelos (2026-10-10)
+
+Lo que el recorrido de arriba dejaba sin medir. El mismo servicio de prueba y el pedido de Verify sacado del
+arnés, con una aceptación de cinco condiciones: la 1 es código con su prueba, la 2 es código sin prueba —un
+encabezado de la respuesta—, la 3 se cumple en `docs/RIESGOS.md`, la 4 en un comentario, y la 5 es la clase
+que faltaba: una conducta del código que vive a medias en un archivo de datos —«los segundos se leen de
+`config/limits.json` y no quedan fijos en el código»—, que es la que más invita a contestar que no hay qué
+ejecutar.
+
+Hipótesis escrita antes: 2 y 5 salen `missing-test`, 3 y 4 `no-surface`. La desmentía que la 2 o la 5
+salieran `no-surface`.
+
+```
+claude-sonnet-5-5, 2 corridas   1 covered  2 [missing-test]  3 [no-surface]  4 [no-surface]  5 [missing-test]
+claude-haiku-5-5,  2 corridas   1 covered  2 [missing-test]  3 [no-surface]  4 [no-surface]  5 [missing-test]
+```
+
+Las cuatro iguales, USD 0,25 en total. La razón de la 5, textual de una: «Es una conducta del código y ningún
+test la codifica». Tiene el mismo límite que la medición original —el esquema lo impone una instrucción al
+final del pedido y no la herramienta— y uno propio: son modelos de la misma familia. Con un runner de otro
+proveedor no se midió.
 
 ## Contexto de descubrimiento
 

@@ -45,6 +45,10 @@ function editOf(input, file) {
   return { disk, old: fields.old_string, all: fields.replace_all === true }
 }
 
+const onDisk = (file) => {
+  try { return fs.readFileSync(file, 'utf8') } catch { return null }
+}
+
 function migrations(input) {
   if (process.env.OPS_MIGRATIONS_OVERRIDE === '1') return
   // Las dos condiciones deciden sobre el mismo alcance, y por eso comparten el filtro. El bloqueo por
@@ -60,6 +64,14 @@ function migrations(input) {
   const isMigration = M.pattern(root ? configOf(root) : {})
   // Un parche trae varios archivos en un sobre: cada uno se juzga por su sección, no por el sobre entero.
   const sections = M.patchSections(patchOf(input))
+  // Cuál de los archivos que el parche renombra trae algo destructivo, si alguno. Se busca una vez y recién
+  // cuando hace falta: buscado por cada destino, un parche con cientos de renombrados tardaba segundos.
+  const carries = (one) => M.destructive(onDisk(path.resolve(cwdOf(input), one)) || '')
+  let sought
+  const carrier = () => {
+    if (!sought) sought = { from: M.patchMoves(patchOf(input)).map((one) => one.from).find(carries) }
+    return sought.from
+  }
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
     if (!isMigration.test(normalized)) continue
@@ -77,6 +89,25 @@ function migrations(input) {
       const where = scope.label ? ` en el bloque que aplica (la reversión, \`${scope.label}\`, no se juzga)` : ''
       block(`${raw} contiene ${found.kind}${where}: \`${found.what}\`.\n`
         + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
+    }
+    // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
+    // juzga además ese contenido, entero y como está en disco (caso 367). Entero incluye su reversión: el
+    // mismo parche puede sacarle o correrle el marcador, y lo que era reversión pasa a aplicarse.
+    //
+    // No se calcula cómo va a quedar después del parche. Se intentó, imitando a quien lo aplica, y cuatro
+    // revisiones seguidas encontraron otra regla que faltaba. El costo de no hacerlo se elige: si el archivo
+    // trae algo destructivo frena, también cuando el parche se lo quita o cuando estaba en su reversión, y
+    // la salida es la aprobación de abajo. Por eso el mensaje dice de dónde viene, y no que el parche lo trae.
+    // No se sigue de qué archivo viene cuál. Un parche puede renombrar en varios saltos, ocupar el nombre de
+    // origen con otro renombrado o armar un ciclo, y una cadena seguida se deja llevar a un archivo limpio. Se
+    // mira todo archivo que el parche renombra: si alguno trae algo destructivo y el destino es una migración,
+    // frena, y el mensaje dice cuál.
+    const from = section && section.movedFrom !== undefined ? carrier() : undefined
+    const carried = from ? carries(from) : null
+    if (carried) {
+      block(`${raw} entra como migración por un renombrado, y el parche renombra ${from}, que trae `
+        + `${carried.kind}: \`${carried.what}\`. Se juzga ese archivo como está, sin calcular qué le cambia el `
+        + `parche.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input)}`)
     }
     // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
     // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva

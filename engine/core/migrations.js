@@ -171,18 +171,48 @@ function judged(file, text, edit = {}) {
 // lo que venía después, y pasaba lo que el guard viejo, que juzgaba el sobre entero, frenaba.
 function patchSections(patch) {
   const sections = new Map()
+  const moved = []
   let current = null
-  for (const line of String(patch).split('\n')) {
+  // Los finales de línea de Windows se quitan al partir: con el `\r` pegado ninguna cabecera se reconocía.
+  for (const line of String(patch).split(/\r?\n/)) {
     const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
     if (header) {
-      current = { kind: header[1].toLowerCase(), lines: [] }
+      current = { kind: header[1].toLowerCase(), lines: [], path: header[2].trim() }
       sections.set(header[2].trim(), current)
+    } else if (current && /^\*\*\* Move to:/.test(line)) {
+      moved.push([line.replace(/^\*\*\* Move to:\s*/, '').trim(), current])
     } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
     else if (current && !line.startsWith('@@') && !line.startsWith('*** ')) {
       current.lines.push({ op: line[0] || ' ', text: line.slice(1) })
     }
   }
+  // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba contra el
+  // sobre entero, que es lo que partir por secciones vino a quitar. Si el parche ya trae otra sección con ese
+  // nombre, se suman: pisarla dejaba sin juzgar lo que esa otra agrega.
+  // `movedFrom` dice de qué archivo viene el que ahora tiene este nombre: llega con lo que ya traía (caso 367).
+  for (const [name, section] of moved) {
+    const there = sections.get(name)
+    const lines = there ? [...there.lines, ...section.lines] : section.lines
+    sections.set(name, { kind: there ? 'update' : section.kind, lines, movedFrom: section.path })
+  }
   return sections
+}
+
+// Los renombrados de un parche: de qué ruta a cuál. Se leen del texto y no de las secciones, que se guardan
+// por destino: dos renombrados al mismo nombre dejaban ahí sólo el último, y el origen del primero se perdía.
+function patchMoves(patch) {
+  const found = []
+  let from = ''
+  for (const line of String(patch).split(/\r?\n/)) {
+    const header = line.match(/^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/)
+    if (header) from = header[1].trim()
+    // Fuera del sobre no hay archivo al que atribuirle un renombrado: uno suelto después del final no cuenta.
+    else if (/^\*\*\* End Patch\s*$/.test(line)) from = ''
+    else if (from && /^\*\*\* Move to:/.test(line)) {
+      found.push({ from, to: line.replace(/^\*\*\* Move to:\s*/, '').trim() })
+    }
+  }
+  return found
 }
 
 // Lo que hay que juzgar de un archivo del parche, con el mismo contrato que `judged` (caso 199). Un archivo
@@ -271,5 +301,6 @@ function coverageWarnings(repos, config) {
 }
 
 module.exports = {
-  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, judgedPatch, patchSections, destructive, coverageWarnings,
+  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, judgedPatch, patchSections, patchMoves, destructive,
+  coverageWarnings,
 }

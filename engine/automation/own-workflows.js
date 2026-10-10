@@ -18,10 +18,26 @@ const SOURCE = 'workflows'
 // Marca lo generado, para poder retirarlo cuando su fuente se borra sin tocar un archivo que escribió otro.
 const header = (file) => `// Generado por \`automation install\` desde ${SOURCE}/${file}: se edita allá, no acá.\n`
 
-function installOwnWorkflows(root, name, runner, paths, output) {
+// Dónde quedan: junto a los de Cauce, en la carpeta de recorridos del runner. Sin ella, el runner no tiene.
+function ownTargetDir(runner, paths) {
   const artifact = (runner.artifacts || []).find((one) => /(^|\/)workflows\//.test(one.target))
-  if (!artifact) return
-  const targetDir = path.join(paths.install, path.dirname(artifact.target))
+  return artifact ? path.join(paths.install, path.dirname(artifact.target)) : ''
+}
+
+// Lo que quedó escrito por `installOwnWorkflows`, con la fuente de cada uno.
+function ownGenerated(root, runner, paths) {
+  const targetDir = ownTargetDir(runner, paths)
+  if (!targetDir || !fs.existsSync(targetDir)) return []
+  const mine = (file) => {
+    try { return fs.readFileSync(path.join(targetDir, file), 'utf8').startsWith(header(file)) } catch { return false }
+  }
+  return fs.readdirSync(targetDir).filter(mine)
+    .map((file) => ({ target: path.join(targetDir, file), source: path.join(root, SOURCE, file) }))
+}
+
+function installOwnWorkflows(root, name, runner, paths, output) {
+  const targetDir = ownTargetDir(runner, paths)
+  if (!targetDir) return
   const theirs = new Set(runner.artifacts.map((one) => path.basename(one.target)))
   const sourceDir = path.join(root, SOURCE)
   const files = fs.existsSync(sourceDir)
@@ -66,4 +82,4 @@ function ownWorkflowErrors(root, automationRoot = packagedAutomation(root)) {
   return errors
 }
 
-module.exports = { installOwnWorkflows, ownWorkflowErrors }
+module.exports = { installOwnWorkflows, ownGenerated, ownWorkflowErrors }
