@@ -20,7 +20,7 @@ const {
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead } = require('./shell-changes')
 const { landing } = require('../core/files')
-const { beyond, reached, real, removed } = require('./boundary')
+const { beyond, reached, real, removed, refusal } = require('./boundary')
 const AP = require('./approval')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
@@ -417,6 +417,7 @@ function writesWithBase(command, cwd) {
 
 function shellBoundary(input) {
   const allowed = writableRoots(input)
+  const found = []
   for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
@@ -434,8 +435,7 @@ function shellBoundary(input) {
     if (own) block(own)
     if (!allowed || DEVICES.test(file) || TEMP.test(lands)) continue
     const out = beyond(input, base || '/', raw, allowed)
-    const where = out && `${reached(out)}, fuera de las raíces declaradas en ops.config.json`
-    if (out) block(`el comando escribe en ${where}. ${DECLARE_IT}`)
+    if (out) found.push({ verb: 'escribe', out })
   }
   // Borrar afuera es cambiar lo de afuera, y crear una carpeta o un archivo vacío también (caso 365). Lo que
   // no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga: `cd "$DIR" && rm -rf
@@ -447,7 +447,7 @@ function shellBoundary(input) {
   const ran = steps(command, cwdOf(input))
   const changes = [
     ...removals(ran).map((one) => ({ ...one, verb: 'borra', lands: removed })),
-    ...creations(ran).map((one) => ({ ...one, verb: 'escribe en', lands: landing })),
+    ...creations(ran).map((one) => ({ ...one, verb: 'escribe', lands: landing })),
   ]
   for (const { raw, base, verb, lands } of changes) {
     // `${F##*/}` no es la variable: es un pedazo de su valor. Reemplazarla ahí juzgaba la ruta entera.
@@ -456,9 +456,11 @@ function shellBoundary(input) {
     const at = lands(base || '/', named)
     if (TEMP.test(at)) continue
     const out = beyond(input, base || '/', named, allowed, at)
-    const where = out && `${reached(out)}, fuera de las raíces declaradas en ops.config.json`
-    if (out) block(`el comando ${verb} ${where}. ${DECLARE_IT}`)
+    if (out) found.push({ verb, out })
   }
+  const why = refusal(input, found, (all) => 'el comando '
+    + all.map(({ verb, out }) => `${verb === 'escribe' ? 'escribe en' : verb} ${reached(out)}`).join(' y '))
+  if (why) block(why)
 }
 
 function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {

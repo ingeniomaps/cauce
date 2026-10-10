@@ -64,8 +64,8 @@ function pending(root, files, input, asked) {
 // dice nada del siguiente, porque el índice ya es otro. Nadie lo había decidido para los gates —heredaban
 // por venir todos de `pending`—, y se midió: con otro mensaje en curso, un commit de gobernanza pasaba
 // (caso 119).
-function pendingNow(root, files, input) {
-  return CHAT.unauthorizedNow(input, left(root, files))
+function pendingNow(root, files, input, asked) {
+  return CHAT.unauthorizedNow(input, left(root, files), asked)
 }
 
 // El archivo que el guard va a leer, nombrado desde la carpeta en la que está la sesión. En sidecar la

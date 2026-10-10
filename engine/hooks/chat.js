@@ -411,8 +411,8 @@ function unauthorized(input, items, asked = named) {
 
 // Lo mismo sin conceder y sin heredar: lo que no está en el mensaje en curso queda pendiente aunque la
 // sesión lo haya dejado pasar antes.
-function unauthorizedNow(input, items) {
-  const cleared = new Set(authorized(input, items, { inherit: false }).map((one) => one.item))
+function unauthorizedNow(input, items, asked = named) {
+  const cleared = new Set(authorized(input, items, { asked, inherit: false }).map((one) => one.item))
   return items.filter((item) => !cleared.has(item))
 }
 
