@@ -125,11 +125,15 @@ const TEST_OFF = [
   [/#\[ignore\]/, 'ignore'],
 ]
 
+// Qué cuenta como prueba por el nombre, medido sobre repositorios reales (caso 369): los infijos `.cy.` y
+// `.e2e.` y las extensiones de módulo no traían un solo archivo que no fuera una prueba. La forma con guion
+// —`load-test.js`, `*.fake-spec.ts`— sí, y queda afuera; el sufijo `Test` de Java o C# no se midió y no entra
+// hasta que una instancia con esos lenguajes lo pida.
 function isTestFile(raw) {
   const file = raw.replace(/\\/g, '/')
   const base = path.basename(file)
   return /(?:^|\/)(?:tests?|specs?|__tests__)\//i.test(file)
-    || /\.(?:test|spec)\.[jt]sx?$/i.test(base)
+    || /\.(?:test|spec|cy|e2e)\.(?:[cm][jt]s|[jt]sx?)$/i.test(base)
     || /_(?:test|spec)\.(?:go|py|rb|ts|js|jsx|tsx|rs|exs?)$/i.test(base)
     || /^test_.+\.py$/i.test(base)
 }
