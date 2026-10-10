@@ -44,12 +44,14 @@ function removedDirectories(command, cwd) {
 }
 
 // Sin salida por chat ni por archivo, como la regla de `/` y `~`: es la clase que gobierna R23. Se cuida
-// el directorio actual, la raíz ops y las raíces declaradas, nombradas enteras o por un ancestro.
+// el directorio actual, la raíz ops, las raíces declaradas y la carpeta personal, nombradas enteras o por un
+// ancestro. La carpeta personal va por nombre: quedaba cuidada sólo por contener a las otras, y con el
+// proyecto fuera de ella un `cd ~ && rm -rf .` pasaba (caso 368).
 function removesTheTree(input, command) {
   const cwd = cwdOf(input)
   const ops = opsRoot(input)
   const roots = ops ? (configOf(ops).workspaceRoots || []).filter((one) => one && one.path) : []
-  const kept = [cwd, ...(ops ? [ops] : []), ...roots.map((one) => path.resolve(ops, one.path))]
+  const kept = [cwd, ...(ops ? [ops] : []), ...roots.map((one) => path.resolve(ops, one.path)), os.homedir()]
   for (const { raw, base } of removedDirectories(command, cwd)) {
     if (/[$`\u0000]/.test(raw)) continue
     const named = home(raw)
@@ -65,7 +67,8 @@ function removesTheTree(input, command) {
     const target = path.resolve(base || '/', named)
     const hit = kept.find((one) => one === target || one.startsWith(target + path.sep))
     if (!hit) continue
-    const what = hit === cwd ? 'el directorio actual' : hit === ops ? 'la raíz ops' : `la raíz ${hit}`
+    const what = hit === cwd ? 'el directorio actual' : hit === ops ? 'la raíz ops'
+      : hit === os.homedir() ? 'la carpeta personal' : `la raíz ${hit}`
     return `'rm -r' sobre ${target} se lleva ${what} (destino resuelto desde ${base}): es la clase que `
       + 'gobierna R23 y no tiene salida. Nombrá la carpeta concreta que querés borrar.'
   }

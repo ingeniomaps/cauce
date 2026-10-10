@@ -29,6 +29,9 @@ diseño — eso vive en el commit y en el código.
   archivos mirara a dónde iba (caso 366). Y por lo que trae: un archivo con SQL destructivo renombrado a una
   carpeta de migraciones se frena como si se lo escribiera ahí, y renombrar una prueba a un nombre que ya no
   es de prueba se frena como borrarla (caso 367).
+- **`cd ~ && rm -rf .` se frena también con el proyecto fuera de tu carpeta personal.** El guard destructivo
+  la cuidaba sólo por contener al proyecto; en un servidor o un contenedor, donde no lo contiene, ese
+  borrado pasaba (caso 368).
 
 - **Lo que el runner instala con la ruta de tu carpeta escrita ya no entra a git.** Los recorridos de Claude y
   el puente de Antigravity llevan la ruta de la instancia. En una instancia embebida vivían en el
