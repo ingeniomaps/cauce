@@ -130,9 +130,14 @@ function read({ text, opens, closes }) {
   const clean = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
   const header = clean.match(HEADER)
   const piece = header ? clean.slice(header[0].length) : clean
-  const one = { opens, closes, defines: header ? header[1] || header[2] : '' }
-  // La llave que cierra el cuerpo de una función, con lo que traiga detrás: una redirección no la abre.
+  // Los paréntesis de `nombre()` no son un subshell: contados, el `cd` de una función escrita en una línea
+  // se deshacía al terminar el tramo de la cabecera.
+  const own = header && /\(\)/.test(header[0]) ? 1 : 0
+  const one = { opens: opens - own, closes: closes - own, defines: header ? header[1] || header[2] : '' }
+  // La llave que cierra, con lo que traiga detrás: una redirección no la abre. Y la que abre un grupo, para
+  // saber de quién es la que cierra: sin contarla, un `{ …; }` dentro de una función le cerraba el cuerpo.
   if (/^\s*\}\s*$/.test(piece)) return { ...one, kind: 'close' }
+  one.group = /^\s*\{(?:\s|$)/.test(piece)
   const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
   if (cd) return { ...one, kind: 'cd', to: cd[1] }
   // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
@@ -151,32 +156,41 @@ function read({ text, opens, closes }) {
   return { ...one, kind: 'run', name: words[0] || '', verb, rest }
 }
 
+// Las llaves abiertas mientras se lee: el cuerpo de una función o un grupo. Cada `}` cierra la última.
+const opened = (stack, one, entry) => {
+  if (one.defines) stack.push(entry)
+  if (one.group) stack.push(null)
+}
+
 // Las funciones que el comando define y que, llamadas, pueden dejar parado en otro lado: las que hacen `cd`
 // en su cuerpo —fuera de un subshell, que lo devuelve— y las que llaman a una de ésas, definida antes o
-// después. El nombre se compara entero: `./bin/ir` no es la función `ir`.
+// después. El nombre se compara entero: `./bin/ir` no es la función `ir`. Se recorre una vez y se propaga
+// por quién llama a quién: el trabajo crece con el texto y no con su cuadrado.
 function movers(parsed) {
-  const direct = new Set()
-  const calls = new Map()
-  const bodies = []
+  const moving = new Set()
+  const callers = new Map()
+  const braces = []
   let depth = 0
   for (const one of parsed) {
-    if (one.defines) bodies.push({ name: one.defines, depth })
+    opened(braces, one, { name: one.defines, depth })
     depth += one.opens
-    const body = bodies[bodies.length - 1]
-    if (one.kind === 'close') bodies.pop()
-    else if (body && one.kind === 'cd' && depth === body.depth) direct.add(body.name)
-    else if (body && one.kind === 'run') calls.set(body.name, [...(calls.get(body.name) || []), one.name])
+    const body = braces.findLast((entry) => entry)
+    if (one.kind === 'close') braces.pop()
+    else if (body && one.kind === 'cd' && depth === body.depth) moving.add(body.name)
+    else if (body && one.kind === 'run') {
+      if (!callers.has(one.name)) callers.set(one.name, [])
+      callers.get(one.name).push(body.name)
+    }
     depth = Math.max(0, depth - one.closes)
   }
-  for (let grew = true; grew;) {
-    grew = false
-    for (const [name, called] of calls) {
-      if (direct.has(name) || !called.some((other) => direct.has(other))) continue
-      direct.add(name)
-      grew = true
+  for (const pending = [...moving]; pending.length;) {
+    for (const caller of callers.get(pending.pop()) || []) {
+      if (moving.has(caller)) continue
+      moving.add(caller)
+      pending.push(caller)
     }
   }
-  return direct
+  return moving
 }
 
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
@@ -193,13 +207,14 @@ function steps(command, cwd) {
   const moving = movers(parsed)
   const found = []
   const outer = []
-  const bodies = []
+  const braces = []
   let base = cwd
   for (const one of parsed) {
-    if (one.defines) bodies.push(base)
+    opened(braces, one, { base })
     for (let level = 0; level < one.opens; level += 1) outer.push(base)
     if (one.kind === 'close') {
-      if (bodies.length) base = bodies.pop()
+      const closed = braces.pop()
+      if (closed) base = closed.base
     } else if (one.kind === 'cd') {
       // Sin destino, `cd` deja en la carpeta personal.
       if (one.to === null) base = null

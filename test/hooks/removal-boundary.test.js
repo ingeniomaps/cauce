@@ -55,11 +55,15 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     // El cierre de una función con una redirección no se queda abierto para deshacer un `cd` de verdad.
     `f() { echo a; } >&2\ncd ${OUT}\n{ echo x\n}\nrm -rf sub`,
     // Una función que envuelve al verbo no lo esconde, y llamar a una que no hace `cd` no pierde dónde se está.
+    // Una función escrita en una línea se lee igual que en varias: su `cd` vale para lo que sigue adentro.
+    `limpia() { cd ${OUT}; rm -rf sub; }`,
     `rm() {\n  echo no\n}\nrm -rf ${OUT}/x`, `rm() {\n  cd /srv/x\n}\nrm -rf ${OUT}/x`,
     'log() {\n  echo x\n}\nlog\nrm -rf ../../../../../../../../no-es-de-nadie',
     // Un binario que se llama como una función no es la función, y el cuerpo de una se lee donde está escrito.
     'go() {\n  cd /srv/x\n}\n./bin/go build\nrm -rf ../../../../../../../../no-es-de-nadie',
     'limpia() {\n  rm -rf ../../../../../../../../no-es-de-nadie\n}',
+    // Un grupo entre llaves dentro del cuerpo no cierra la función: lo que sigue sigue siendo de ella.
+    'f() {\n  { echo a; }\n  cd "$DIR"\n}\nrm -rf ../../../../../../../../no-es-de-nadie',
     // Ni el `cd` que una función hace dentro de un subshell, que no sale de él.
     'ver() {\n  (cd "$D" && ls)\n}\nver\nrm -rf ../../../../../../../../no-es-de-nadie',
     // Después de llamar a una que sí hace `cd` no se sabe dónde se está, pero una ruta entera se juzga igual.
@@ -109,6 +113,11 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
     // El `cd` del cuerpo de una función que nadie llama no mueve nada.
     'f() {\n  cd /\n}\nrm -rf z', 'a() {\n  cd /\n}\nb() {\n  a\n}\nrm -rf z',
+    // Tampoco en una línea, ni con un grupo entre llaves antes del `cd`.
+    `entra() { cd ${OUT}; }; rm -rf service/src`,
+    `prep() {\n  { echo a; date; } >> log\n  cd ${OUT}\n}\nmkdir -p service/build`,
+    `entra() { cd ${OUT}; }; entra; rm -rf sub`,
+    'f() {\n  { cd /srv/x; }\n}\nf\nrm -rf ../../../../../../../../no-se-sabe',
     // Y si se la llama, no se sigue: el guard no interpreta funciones. Queda sin saber dónde está, que es no
     // juzgar lo relativo; también cuando la llama otra, definida antes o después.
     `ir() {\n  cd ${OUT}\n}\nir\nrm -rf sub`, `a() {\n  cd ${OUT}\n}\nb() {\n  a\n}\nb\nrm -rf sub`,
@@ -166,6 +175,13 @@ test('una cadena larga de funciones que se llaman no cuelga el guard', () => {
   const started = Date.now()
   passes([...chain, 'f29', 'rm -rf sub'].join('\n'))
   assert.ok(Date.now() - started < 2000, `tardó ${Date.now() - started} ms`)
+  // Y el trabajo crece con el texto, no con su cuadrado: un cuerpo de veinte mil líneas, y ocho mil funciones
+  // donde cada una llama a la que se define después.
+  const long = Date.now()
+  passes(['x() {', ...Array.from({ length: 20000 }, (_, at) => `  echo ${at}`), '}', 'rm -rf service/src'].join('\n'))
+  passes([...Array.from({ length: 8000 }, (_, at) => `g${at}() {\n  g${at + 1}\n}`), 'g8000() {\n  cd /srv/x\n}',
+    'g0', 'rm -rf sub'].join('\n'))
+  assert.ok(Date.now() - long < 2000, `tardó ${Date.now() - long} ms`)
 })
 
 test('lo declarado como escribible fuera de las raíces también se puede borrar', () => {

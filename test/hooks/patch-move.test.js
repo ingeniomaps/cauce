@@ -69,28 +69,40 @@ test('una migración renombrada se sigue juzgando por su sección, no por el sob
 const patchOf = (...lines) => ['*** Begin Patch', ...lines, '*** End Patch'].join('\n')
 const asCodex = (root, patch) => ({ cwd: root, tool_name: 'apply_patch', tool_input: { command: patch } })
 
+// No se calcula cómo va a quedar el archivo después del parche. Se intentó, imitando a quien lo aplica, y cada
+// revisión encontró otra regla que faltaba. Se juzga lo que el archivo trae y, aparte, lo que el parche agrega.
 test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una migración', () => {
   const root = project('ops-hook-patch-move-contenido-')
   fs.mkdirSync(path.join(root, 'service', 'scratch'))
   fs.mkdirSync(path.join(root, 'service', 'migrations'))
-  fs.writeFileSync(path.join(root, 'service', 'scratch', 'drop.sql'), 'DROP TABLE users;\n')
-  fs.writeFileSync(path.join(root, 'service', 'migrations', '001_old.sql'), 'DROP TABLE legacy;\n')
+  const write = (name, ...lines) => fs.writeFileSync(path.join(root, 'service', 'scratch', name), lines.join('\n'))
   const move = (from, to, ...hunk) => asCodex(root,
-    patchOf(`*** Update File: ${from}`, `*** Move to: ${to}`, '@@', ...hunk))
-  blocked('migrations', move('service/scratch/drop.sql', 'service/migrations/003_drop.sql',
-    ' DROP TABLE users;', '+-- listo'), /003_drop\.sql.*DROP TABLE/s)
-  // Y lo que el parche le agrega al renombrarlo también cuenta, aunque lo que traía estuviera limpio.
-  fs.writeFileSync(path.join(root, 'service', 'scratch', 'ok.sql'), 'CREATE TABLE t (id int);\n')
-  blocked('migrations', move('service/scratch/ok.sql', 'service/migrations/005_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)
-  // Lo que el parche quita ya no va a estar: no se frena por lo que deja de existir.
-  assert.doesNotThrow(() => execute('migrations', move('service/scratch/drop.sql', 'service/migrations/003_ok.sql',
-    '-DROP TABLE users;', '+CREATE TABLE users (id int);')))
+    patchOf(`*** Update File: service/scratch/${from}`, `*** Move to: service/migrations/${to}`, '@@', ...hunk))
+  write('drop.sql', 'DROP TABLE users;', '')
+  blocked('migrations', move('drop.sql', '003_drop.sql', ' DROP TABLE users;', '+-- listo'),
+    /003_drop\.sql.*DROP TABLE/s)
+  // También sin tocarle una línea, y con finales de línea de Windows.
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
+    '*** Move to: service/migrations/004_drop.sql')), /DROP TABLE/)
+  fs.writeFileSync(path.join(root, 'service', 'scratch', 'crlf.sql'), 'CREATE TABLE t (id int);\r\nDROP TABLE t;\r\n')
+  blocked('migrations', move('crlf.sql', '005_c.sql', '+-- nota'), /DROP TABLE/)
+  // Lo que el parche agrega al renombrarlo cuenta, aunque lo que traía estuviera limpio.
+  write('ok.sql', 'CREATE TABLE t (id int);', '')
+  blocked('migrations', move('ok.sql', '006_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)
+  assert.doesNotThrow(() => execute('migrations', move('ok.sql', '007_ok.sql', '+CREATE INDEX i ON t (id);')))
+  // Lo que traía se juzga como una migración: un DROP en su reversión no es del bloque que aplica.
+  write('marcada.sql', '-- +goose Up', 'CREATE TABLE t (id int);', '-- +goose Down', 'DROP TABLE t;', '')
+  assert.doesNotThrow(() => execute('migrations', move('marcada.sql', '008_m.sql', '+-- nota')))
+  // El costo, que se elige: si el archivo trae un DROP y el mismo parche se lo quita, frena igual. No se
+  // adivina qué línea quita el parche; la salida es la aprobación que este guard ya ofrece.
+  blocked('migrations', move('drop.sql', '009_ok.sql', '-DROP TABLE users;', '+CREATE TABLE users (id int);'),
+    /DROP TABLE/)
   // Renombrar una migración que ya existe es reescribirla, y eso lo frena la regla de siempre, por el origen.
-  blocked('migrations', move('service/migrations/001_old.sql', 'service/migrations/002_old.sql',
-    ' DROP TABLE legacy;', '+-- nota'), /001_old\.sql existe/)
+  fs.writeFileSync(path.join(root, 'service', 'migrations', '001_old.sql'), 'DROP TABLE legacy;\n')
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/migrations/001_old.sql',
+    '*** Move to: service/migrations/002_old.sql', '@@', ' DROP TABLE legacy;', '+-- nota')), /001_old\.sql existe/)
   // Sin archivo de origen que leer —lo crea el mismo parche, o no está— queda lo que el parche trae.
-  assert.doesNotThrow(() => execute('migrations', move('service/scratch/no-existe.sql',
-    'service/migrations/004_x.sql', '+CREATE TABLE t (id int);')))
+  assert.doesNotThrow(() => execute('migrations', move('no-existe.sql', '010_x.sql', '+CREATE TABLE t (id int);')))
 })
 
 test('renombrar una prueba a un nombre que ya no lo es cuenta como borrarla', () => {
@@ -101,76 +113,6 @@ test('renombrar una prueba a un nombre que ya no lo es cuenta como borrarla', ()
   // Mudarla y que siga siendo una prueba no pierde nada; y renombrar lo que no era una prueba, tampoco.
   assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.test.js', 'service/lib/a.test.js')))
   assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.js', 'service/src/b.js')))
-})
-
-// Lo que encontró la revisión del 367: «lo que va a quedar» se calculaba por aproximación.
-test('lo que va a quedar en un archivo renombrado se arma aplicando el parche donde cae', () => {
-  const root = project('ops-hook-patch-move-aplicado-')
-  fs.mkdirSync(path.join(root, 'service', 'scratch'))
-  const write = (name, ...lines) => fs.writeFileSync(path.join(root, 'service', 'scratch', name), lines.join('\n'))
-  const move = (name, to, ...hunk) => asCodex(root,
-    patchOf(`*** Update File: service/scratch/${name}`, `*** Move to: service/migrations/${to}`, '@@', ...hunk))
-  // Lo agregado cae donde el hunk dice, no al final: acá es el bloque que aplica, no la reversión.
-  write('marked.sql', '-- +goose Up', 'CREATE TABLE t (id int);', '-- +goose Down', 'DROP TABLE t;', '')
-  blocked('migrations', move('marked.sql', '003_m.sql', ' -- +goose Up', '+DROP TABLE users;',
-    ' CREATE TABLE t (id int);'), /DROP TABLE/)
-  // Y lo quitado es la línea que el hunk señala: sacar el de la reversión no saca el del bloque que aplica.
-  write('twice.sql', '-- +goose Up', 'DROP TABLE t;', '-- +goose Down', 'DROP TABLE t;', '')
-  blocked('migrations', move('twice.sql', '020.sql', ' -- +goose Down', '-DROP TABLE t;', '+SELECT 1;'), /DROP TABLE/)
-  // Un origen con finales de línea de Windows se lee igual.
-  fs.writeFileSync(path.join(root, 'service', 'scratch', 'crlf.sql'), 'DROP TABLE old;\r\nCREATE TABLE t (id int);\r\n')
-  assert.doesNotThrow(() => execute('migrations', move('crlf.sql', '004_c.sql', '-DROP TABLE old;',
-    '+CREATE TABLE n (id int);')))
-  // Un marcador de reversión agregado antes de un DROP que ya estaba lo deja en la reversión: dónde cae decide.
-  write('reversion.sql', '-- +goose Up', 'CREATE TABLE t (id int);', 'DROP TABLE t;', '')
-  blocked('migrations', move('reversion.sql', '040.sql', ' -- +goose Up', '+-- nota'), /DROP TABLE/)
-  assert.doesNotThrow(() => execute('migrations', move('reversion.sql', '041.sql', ' CREATE TABLE t (id int);',
-    '+-- +goose Down')))
-  // Un hunk que sólo agrega y no dice dónde no tapa lo que el archivo ya traía: no se supone que cae arriba.
-  write('puro.sql', 'DROP TABLE x;', '')
-  blocked('migrations', move('puro.sql', '052.sql', '+-- +goose Down'), /DROP TABLE/)
-  // El ancla de un hunk —el texto que va después de `@@`— dice desde dónde se busca.
-  const anchored = (name, to, anchor, ...hunk) => asCodex(root, patchOf(`*** Update File: service/scratch/${name}`,
-    `*** Move to: service/migrations/${to}`, `@@ ${anchor}`, ...hunk))
-  blocked('migrations', anchored('twice.sql', '050.sql', '-- +goose Down', '-DROP TABLE t;', '+SELECT 1;'),
-    /DROP TABLE/)
-  // Un ancla que no está en el archivo no se saltea: el hunk no se puede ubicar, y el archivo se juzga como está.
-  blocked('migrations', anchored('puro.sql', '053.sql', 'no-existe', '-DROP TABLE x;', '+SELECT 1;'), /DROP TABLE/)
-  // Y el ancla también se busca desde donde terminó el hunk anterior, no desde arriba.
-  write('ancla.sql', '-- +goose Up', '-- bloque', 'DROP TABLE t;', '-- +goose Down', '-- bloque', 'DROP TABLE t;', '')
-  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/ancla.sql',
-    '*** Move to: service/migrations/054.sql', '@@', ' -- +goose Down', '+-- nota',
-    '@@ -- bloque', '-DROP TABLE t;', '+SELECT 1;')), /DROP TABLE/)
-  // Y cada hunk se busca desde donde terminó el anterior: el segundo no vuelve a la primera línea parecida.
-  write('dos.sql', '-- +goose Up', 'DROP TABLE t;', 'CREATE TABLE u (id int);', '-- +goose Down', 'DROP TABLE t;', '')
-  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/dos.sql',
-    '*** Move to: service/migrations/051.sql', '@@', '-CREATE TABLE u (id int);', '+CREATE TABLE u (id bigint);',
-    '@@', '-DROP TABLE t;', '+SELECT 1;')), /DROP TABLE/)
-  // `*** End of File` manda el hunk al final: lo que quita es lo último que coincide, no lo primero.
-  blocked('migrations', move('twice.sql', '060.sql', '-DROP TABLE t;', '+SELECT 1;', '*** End of File'), /DROP TABLE/)
-  // Dos anclas seguidas se siguen las dos, en orden.
-  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/ancla.sql',
-    '*** Move to: service/migrations/062.sql', '@@ -- +goose Down', '@@ -- bloque', '-DROP TABLE t;', '+SELECT 1;')),
-  /DROP TABLE/)
-  // El salto del final no cuenta como línea: lo último del archivo es su última línea con texto.
-  write('final.sql', '-- +goose Up', 'SELECT 1;', 'DROP TABLE t;', '')
-  assert.doesNotThrow(() => execute('migrations', move('final.sql', '064.sql', '-DROP TABLE t;', '+SELECT 2;',
-    '*** End of File')))
-  // Y «al final» no vuelve atrás de donde terminó el hunk anterior: ahí el parche no se aplica, y el archivo
-  // queda como está.
-  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/final.sql',
-    '*** Move to: service/migrations/066.sql', '@@', '-SELECT 1;', '+SELECT 2;', '@@', ' SELECT 2;',
-    '-DROP TABLE t;', '+SELECT 3;', '*** End of File')), /DROP TABLE/)
-  // Un hunk que sólo agrega va al final y no mueve desde dónde se busca el siguiente.
-  write('antes.sql', 'DROP TABLE x;', 'CREATE TABLE t (id int);', '')
-  assert.doesNotThrow(() => execute('migrations', asCodex(root, patchOf('*** Update File: service/scratch/antes.sql',
-    '*** Move to: service/migrations/065.sql', '@@', '+-- nota', '@@', '-DROP TABLE x;', '+SELECT 1;'))))
-  // Una línea que difiere sólo en los espacios del final es la misma línea.
-  write('espacios.sql', 'DROP TABLE x;  ', 'CREATE TABLE t (id int);', '')
-  assert.doesNotThrow(() => execute('migrations', move('espacios.sql', '063.sql', '-DROP TABLE x;', '+SELECT 1;')))
-  // Si el parche no se puede ubicar en el archivo, se juzga el archivo como está: no se supone que quitó nada.
-  write('lejos.sql', 'DROP TABLE x;', '')
-  blocked('migrations', move('lejos.sql', '030.sql', ' esto no está', '-ni esto', '+SELECT 1;'), /DROP TABLE/)
 })
 
 test('un sobre con finales de línea de Windows se lee igual', () => {
@@ -202,6 +144,13 @@ test('una prueba que cambia de extensión o de herramienta sigue siendo una prue
     ['service/src/__tests__/a.js', 'service/src/__tests__/a.js.off']]) {
     blocked('test-evidence', move(from, to), /borra una prueba/)
   }
-  // Y una prueba de un lenguaje que este guard no lista sigue siéndolo si conserva su extensión.
-  assert.doesNotThrow(() => execute('test-evidence', move('service/tests/FooTest.java', 'service/tests/BarTest.java')))
+  // Lo que es una prueba por la carpeta en la que vive sigue siéndolo mientras se quede en una: pasar de JS a
+  // TS, o renombrar un ayudante o un dato, no saca nada de la suite.
+  for (const [from, to] of [['service/tests/FooTest.java', 'service/tests/BarTest.java'],
+    ['service/src/__tests__/Button.js', 'service/src/__tests__/Button.tsx'],
+    ['service/tests/helpers.js', 'service/tests/helpers.ts'], ['service/tests/login.js', 'service/tests/login.ts'],
+    ['service/tests/fixtures/data.json', 'service/tests/fixtures/data.yaml'],
+    ['service/tests/README.txt', 'service/tests/README.md']]) {
+    assert.doesNotThrow(() => execute('test-evidence', move(from, to)), `${from} → ${to}`)
+  }
 })

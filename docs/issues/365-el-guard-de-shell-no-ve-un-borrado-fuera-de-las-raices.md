@@ -367,6 +367,12 @@ acotado:
   sí. Es lo mismo que ya pasaba con un `cd` a una variable sin resolver.
 - Lo que se llama se juzga siempre por lo que nombra, sea o no una función.
 
+La revisión de esa versión encontró tres cosas más, y se arreglaron sin agregar lectura: los paréntesis de
+`nombre()` se contaban como un subshell, y en una función de una línea su `cd` se deshacía al terminar la
+cabecera; la llave que cierra un grupo `{ …; }` dentro del cuerpo se tomaba por la que cierra la función; y
+calcular qué funciones mueven crecía con el cuadrado del texto —tres segundos para un cuerpo de 25.000
+líneas—. Ahora cada llave que cierra es de la última que abrió, y el cálculo se hace en una pasada.
+
 Lo que se pierde, y se dice: `ir() { cd afuera; }; ir; rm -rf sub` no frena. El borrado relativo detrás de
 un `cd` hecho por una función queda entre lo que este guard no ve, junto con el `bash -c` y el script
 propio. La cadena de treinta funciones se lee en milisegundos y tiene su prueba, con tope de tiempo.

@@ -96,6 +96,25 @@ juzga su ruta, no su contenido.
 
 **Resuelto en 0.106.1.**
 
+### Cómo quedó, al final
+
+Este cierre cuenta cinco vueltas, y las del medio describen algo que ya no está. Lo que hay hoy:
+
+- **Migraciones.** De un archivo que un parche renombra hacia una ruta de migración se juzgan dos cosas por
+  separado: **lo que el archivo trae en disco**, entero y como una migración —con sus marcadores, así que un
+  `DROP` en su reversión no cuenta—, y **lo que el parche le agrega**, como en cualquier parche. Si una de
+  las dos es destructiva, frena.
+- **No se calcula cómo va a quedar el archivo después del parche.** Se intentó, imitando a quien lo aplica, y
+  cuatro revisiones seguidas encontraron otra regla que faltaba: dónde cae cada hunk, sus anclas, el fin de
+  archivo, cuán laxa es la coincidencia, qué parches rechaza. Cada diferencia con la herramienta real era un
+  veredicto sobre un texto que no iba a existir, y la última se colgaba con un parche grande. Se sacó entera.
+- **El costo, que se elige**: si el archivo trae algo destructivo y el mismo parche se lo quita, frena igual.
+  La salida es la aprobación que ese guard ya ofrece. Es lo que «Qué podría salir mal 1» temía, y se acepta:
+  es raro, tiene salida, y la alternativa era adivinar.
+- **Pruebas.** Una prueba que lo es por su nombre tiene que seguir siéndolo por su nombre, con una extensión
+  que corra. Una que lo es sólo por la carpeta en la que vive sigue siéndolo mientras se quede en una, salvo
+  que el nombre nuevo sea el viejo con algo pegado atrás.
+
 ### El recorrido de lo que este caso enumeró
 
 - **Fix 1, juzgar lo que va a quedar en la migración — se hizo, y más ancho que lo propuesto.** El caso
@@ -118,7 +137,8 @@ juzga su ruta, no su contenido.
   Deciden por la ruta, y las dos rutas ya estaban a la vista: la de origen por su `*** Update File:` y la
   de destino desde el 366. Los dos de este caso son los que miran otra cosa: el contenido, y que un nombre
   desaparezca.
-- **Qué podría salir mal 1, la migración con un `DROP` que el parche quita — no se frena**, y está probado.
+- **Qué podría salir mal 1, la migración con un `DROP` que el parche quita — se frena, y se eligió así.**
+  Durante tres vueltas no se frenó, calculando qué quitaba el parche; por qué se dejó de calcular está arriba.
 - **2, mudar una prueba a otra carpeta — no se frena** si sigue siendo una prueba, y está probado.
 - **3, el archivo que el mismo parche crea más arriba — queda como estaba.** Sin archivo en disco que leer
   se juzga lo que el parche trae para esa sección, igual que antes de este caso. El orden dentro del sobre
@@ -210,6 +230,17 @@ igual, o sin sus espacios del final, o sin los de los dos lados. Lo que cambió 
 
 Veinte mutaciones en rojo sobre esta versión. Tres sobrevivieron la primera vez y las tres se llevaron su
 caso de prueba.
+
+### La cuarta revisión, y el fin de la imitación (2026-10-10)
+
+Ocho hallazgos más, cuatro de ellos de este caso: el parche que Codex aplica reintentando sin su línea vacía
+final quedaba sin ubicar; un hunk de 150.000 líneas agregadas hacía explotar el guard; con un archivo
+sangrado y miles de anclas tardaba dos segundos; y el comentario atribuía a la fuente de Codex una regla
+—varias anclas seguidas— que esa fuente rechaza. Y uno de la regla de las pruebas: pasar
+`__tests__/Button.js` a `.tsx` se frenaba como borrarla.
+
+Ninguno se arregló en su lugar. Se sacó lo que los producía, que es lo que dice «Cómo quedó, al final».
+Dieciséis mutaciones en rojo sobre esa versión; la única que sobrevivió se llevó su caso de prueba.
 
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo

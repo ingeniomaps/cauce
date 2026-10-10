@@ -76,11 +76,17 @@ function migrations(input) {
     const scopes = [section ? M.judgedPatch(normalized, section)
       : M.judged(normalized, contentOf(input), editOf(input, file))]
     // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
-    // juzga además lo que va a quedar (caso 367). Si el parche no se puede ubicar en el archivo, el archivo
-    // como está; y sin archivo de origen que leer —lo crea el mismo parche, o no está— sólo lo de arriba.
+    // juzga además ese contenido, como está en disco (caso 367). Sin archivo de origen que leer —lo crea el
+    // mismo parche, o no está— queda sólo lo de arriba.
+    //
+    // No se calcula cómo va a quedar después del parche. Se intentó, imitando a quien lo aplica —dónde cae
+    // cada hunk, sus anclas, el fin de archivo, cuán laxa es la coincidencia—, y cuatro revisiones seguidas
+    // encontraron otra regla que faltaba; cada diferencia con la herramienta real era un veredicto sobre un
+    // texto que no iba a existir. El costo de no hacerlo es uno y se elige: si el archivo trae algo
+    // destructivo y el mismo parche se lo quita, frena igual, y la salida es la aprobación de abajo.
     const moved = section && section.movedFrom !== undefined
     const before = moved ? onDisk(path.resolve(cwdOf(input), section.movedFrom)) : null
-    if (before !== null) scopes.push(M.judged(normalized, M.movedText(before, section) ?? before))
+    if (before !== null) scopes.push(M.judged(normalized, before))
     const scope = scopes.find((one) => M.destructive(one.text)) || scopes[0]
     const found = M.destructive(scope.text)
     if (found) {
