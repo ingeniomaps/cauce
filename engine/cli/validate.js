@@ -26,6 +26,7 @@ const AP = require('../hooks/approval')
 const I = require('../integrations/registry')
 const O = require('../core/ownership')
 const TR = require('../core/trails')
+const MB = require('../automation/machine-bound')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const DC = require('../planning/done-commits')
@@ -191,6 +192,7 @@ function check(dir, cli) {
   warnings.push(...HA.unrecorded(root, humanActions))
   warnings.push(...AP.warnings(path.resolve(root, '..')))
   warnings.push(...TR.warnings(path.resolve(root, '..')))
+  warnings.push(...MB.warnings(path.resolve(root, '..')))
   warnings.push(...CT.warnings(path.resolve(root, '..')))
 
   // Lo que `upgrade` conserva por estar editado deja de recibir mejoras, y eso es una deuda que no

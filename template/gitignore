@@ -35,5 +35,11 @@ integrations/*/staging/
 # En `ops.config.json` viajarían a todo el que clona; acá se suman sólo donde existen.
 ops.config.local.json
 
+# Lo que el runner instala con la ruta de esta carpeta escrita: los recorridos de Claude y el puente de
+# Antigravity. Son de la máquina que los instaló —en git, cada clon y cada línea de trabajo los ve
+# modificados— y `automation install` los rehace. Lo demás del runner no lleva ruta y sí viaja.
+.claude/workflows/
+.agents/plugins/cauce/hook.js
+
 *.tgz
 .DS_Store

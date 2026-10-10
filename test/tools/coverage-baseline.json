@@ -518,5 +518,10 @@
     "lines": 100,
     "branches": 100,
     "functions": 100
+  },
+  "engine/automation/machine-bound.js": {
+    "lines": 100,
+    "branches": 80,
+    "functions": 100
   }
 }

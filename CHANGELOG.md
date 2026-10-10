@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.106.1] - 2026-10-10
+
+### Corregido
+
+- **Lo que el runner instala con la ruta de tu carpeta escrita ya no entra a git.** Los recorridos de Claude y
+  el puente de Antigravity llevan la ruta de la instancia. En una instancia embebida vivían en el
+  repositorio, y cada clon y cada línea de trabajo los veía modificados para siempre. Una instancia nueva los
+  ignora. **Si la tuya es anterior**, `check` te dice qué líneas agregar a tu `.gitignore` y, si ya los
+  commiteaste, con qué comando sacarlos de git sin borrarlos. Después de eso, cada persona corre
+  `automation install` en su clon, que es lo que ya hacía falta (caso 364).
+
 ## [0.106.0] - 2026-10-10
 
 ### Cambiado

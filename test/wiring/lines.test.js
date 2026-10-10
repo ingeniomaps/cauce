@@ -235,7 +235,7 @@ test('armar una línea dice si alguna raíz quedó vacía por ser un enlace de g
 
 // Caso 363. En una instancia embebida la configuración del runner vive en el repositorio. Si está en git, la
 // línea nace con los recorridos de la carpeta original, que llevan su ruta escrita.
-function embedded(name, runner = 'claude') {
+function embedded(name, runner = 'claude', { committed = false } = {}) {
   const repo = path.join(tempRoot(name), 'prod')
   fs.mkdirSync(path.join(repo, 'src'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'src', 'a.js'), 'module.exports = 1\n')
@@ -245,14 +245,17 @@ function embedded(name, runner = 'claude') {
   assert.equal(run(['init', repo, '--name', 'Embebida', '--mode', 'embedded', '--force']).status, 0)
   linkEngine(repo)
   assert.equal(run(['automation', 'install', repo, runner]).status, 0)
-  git('add', '.'); git('commit', '-qm', 'instancia embebida con su runner')
+  git('add', '.')
+  // La instancia anterior al 364, que tiene en git lo que el runner instaló con su ruta.
+  if (committed) git('add', '-f', '.claude/workflows')
+  git('commit', '-qm', 'instancia embebida con su runner')
   const rootOf = (dir) => (fs.readFileSync(path.join(dir, '.claude', 'workflows', 'autobuild.js'), 'utf8')
     .match(/^const ROOT = '([^']*)'/m) || [])[1]
   return { repo, git, rootOf }
 }
 
 test('la línea de una instancia embebida recibe sus recorridos apuntando a ella', () => {
-  const { repo, rootOf } = embedded('cauce-line-embebida-')
+  const { repo, rootOf } = embedded('cauce-line-embebida-', 'claude', { committed: true })
   assert.equal(rootOf(repo), fs.realpathSync(repo), 'la precondición: el original apunta a sí mismo')
   const made = run(['line', repo, 'b', '--json'])
   assert.equal(made.status, 0, made.stderr)
@@ -263,7 +266,7 @@ test('la línea de una instancia embebida recibe sus recorridos apuntando a ella
 
 // Lo que una persona editó de verdad no se pisa, y la línea no se da por armada: se dice.
 test('si el runner no se puede instalar en la línea, ops line lo dice y no contesta que quedó', () => {
-  const { repo, git, rootOf } = embedded('cauce-line-embebida-editada-')
+  const { repo, git, rootOf } = embedded('cauce-line-embebida-editada-', 'claude', { committed: true })
   const file = path.join(repo, '.claude', 'workflows', 'autobuild.js')
   fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8')}\n// un cambio a mano\n`)
   git('add', '.'); git('commit', '-qm', 'recorrido editado a mano')
@@ -278,7 +281,7 @@ test('si el runner no se puede instalar en la línea, ops line lo dice y no cont
 // Lo mismo que le pasa a la línea le pasa al clon de un compañero: trae por git lo que se instaló en la
 // carpeta de otro. La raíz escrita se lee del archivo, así que no hace falta saber de dónde vino.
 test('un clon en otra ruta instala su runner sin que lo de la otra carpeta cuente como editado', () => {
-  const { repo, rootOf } = embedded('cauce-line-embebida-clon-')
+  const { repo, rootOf } = embedded('cauce-line-embebida-clon-', 'claude', { committed: true })
   const clone = path.join(path.dirname(repo), 'clon')
   assert.equal(spawnSync('git', ['clone', '-q', repo, clone], { encoding: 'utf8' }).status, 0)
   linkEngine(clone)
@@ -307,4 +310,40 @@ test('la línea de una instancia embebida con Codex también se arma, con sus gu
   assert.ok(hooksOf(line).includes(`${line}/`), 'los guards de la línea apuntan a la línea')
   assert.ok(!hooksOf(line).includes(`${fs.realpathSync(repo)}/`), 'y ninguno quedó apuntando al original')
   assert.ok(!hooksOf(repo).includes(`${line}/`), 'ni los del original se movieron')
+})
+
+// Caso 364. Lo que un runner instala con la ruta de la carpeta escrita es de esa carpeta: en git, cada clon
+// y cada línea lo ven modificado. El molde lo ignora, y `check` se lo dice a la instancia que nació antes.
+test('lo que el runner instala con la ruta escrita no entra a git, y check avisa donde sí entra', () => {
+  const { repo, git, rootOf } = embedded('cauce-line-embebida-ignorado-')
+  const tracked = () => git('ls-files', '.claude/workflows').stdout.trim().split('\n').filter(Boolean)
+  const status = (dir) => spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' }).stdout
+  const about = () => JSON.parse(run(['check', path.join(repo, 'planning'), '--json']).stdout).warnings
+    .filter((one) => /ruta de esta carpeta/.test(one))
+  assert.deepEqual(tracked(), [], 'el `git add .` de una instancia nueva no los lleva')
+  assert.ok(git('ls-files', '.claude/settings.json').stdout.trim(), 'lo que no lleva ruta sí viaja')
+  assert.deepEqual(about(), [])
+
+  // La línea y el clon instalan los suyos y quedan limpios.
+  const line = JSON.parse(run(['line', repo, 'b', '--json']).stdout).tree
+  assert.equal(rootOf(line), line)
+  assert.equal(status(line), '', 'la línea nace sin nada modificado')
+
+  // Una instancia anterior no tiene la línea en su .gitignore: check dice cuál agregar.
+  const ignore = path.join(repo, '.gitignore')
+  fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').split('\n')
+    .filter((one) => !one.startsWith('.claude/workflows') && !one.startsWith('.agents/')).join('\n'))
+  const [missing, ...rest] = about()
+  assert.deepEqual(rest, [])
+  assert.match(missing, /9 archivo\(s\).*\.claude\/workflows\/.*agregá esa/s)
+  assert.doesNotMatch(missing, /git rm/)
+  // Y si ya los commiteó, cómo sacarlos.
+  git('add', '.claude/workflows'); git('commit', '-qm', 'recorridos en git')
+  assert.match(about()[0], /ya están en git.*git rm -r --cached \.claude\/workflows\//s)
+  // Agregar la línea no alcanza si ya están adentro: git sigue lo que ya tiene, lo ignore o no.
+  fs.appendFileSync(ignore, '\n.claude/workflows/\n')
+  assert.match(about()[0], /ya están en git/)
+  git('rm', '-r', '-q', '--cached', '.claude/workflows/')
+  assert.deepEqual(about(), [], 'sacados del índice y con la línea puesta, no queda nada que avisar')
+  assert.ok(fs.existsSync(path.join(repo, '.claude', 'workflows', 'autobuild.js')), 'y siguen en disco')
 })
