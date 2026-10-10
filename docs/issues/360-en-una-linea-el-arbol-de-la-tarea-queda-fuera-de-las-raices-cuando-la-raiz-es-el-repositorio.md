@@ -270,6 +270,26 @@ repositorio.
 **Sexta corrida real**, con esta forma: de Triage al checkpoint sobre un banco nuevo, sin eximir nada. Seis
 mutaciones en rojo; una sobrevivió la primera vez por falta de caso, y se agregó.
 
+### Corrida real en una instancia embebida (2026-10-09)
+
+La disposición donde el guard tiene más caminos y que hasta acá sólo tenía pruebas unitarias: una instancia
+embebida, con la raíz en el repositorio entero y el servicio en una carpeta suya, en una línea de trabajo.
+
+```
+… > Worktree > Ready > Plan > WIP > Build > Review > Verify > QA > Commit > Done > … > checkpoint-held
+Worktree         path: …/prod-auth-restar-dos · work: …/prod-auth-restar-dos/src
+Build            completed: true
+checkpoint-held  blocked: awaiting-review · checkpoints: ["checkpoints/auth-uno.md"]
+```
+
+El árbol de la tarea es un árbol del mismo repositorio que la línea, al lado de ella, y el guard lo abrió.
+Sin exención a mano, sin acciones humanas, y al terminar sin reclamos. El árbol principal no queda frenado.
+
+Al mirar qué dejó la corrida aparecieron dos defectos que no son de este caso, los dos anteriores a esta
+rama: el [362](./362-en-una-instancia-embebida-el-commit-de-una-tarea-no-se-encuentra-si-su-servicio-es-una-carpeta.md)
+y el [363](./363-en-una-linea-embebida-los-recorridos-commiteados-siguen-apuntando-a-la-carpeta-original.md).
+Por el segundo, la corrida necesitó reinstalar el runner en la línea con `--force` antes de lanzarse.
+
 ## Contexto de descubrimiento
 
 Corrida real de `/autobuild` para comprobar de punta a punta el checkpoint de un hito en una línea, sobre el

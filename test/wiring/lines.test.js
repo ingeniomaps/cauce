@@ -232,3 +232,79 @@ test('armar una línea dice si alguna raíz quedó vacía por ser un enlace de g
   const text = run(['line', target, 'b'])
   assert.match(text.stdout, /^= .*\n(?:.*\n)*⚠ workspaceRoots: app /, 'y en la salida de texto también')
 })
+
+// Caso 363. En una instancia embebida la configuración del runner vive en el repositorio. Si está en git, la
+// línea nace con los recorridos de la carpeta original, que llevan su ruta escrita.
+function embedded(name, runner = 'claude') {
+  const repo = path.join(tempRoot(name), 'prod')
+  fs.mkdirSync(path.join(repo, 'src'), { recursive: true })
+  fs.writeFileSync(path.join(repo, 'src', 'a.js'), 'module.exports = 1\n')
+  const git = (...args) => spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args],
+    { cwd: repo, encoding: 'utf8' })
+  git('init', '-q', '-b', 'main')
+  assert.equal(run(['init', repo, '--name', 'Embebida', '--mode', 'embedded', '--force']).status, 0)
+  linkEngine(repo)
+  assert.equal(run(['automation', 'install', repo, runner]).status, 0)
+  git('add', '.'); git('commit', '-qm', 'instancia embebida con su runner')
+  const rootOf = (dir) => (fs.readFileSync(path.join(dir, '.claude', 'workflows', 'autobuild.js'), 'utf8')
+    .match(/^const ROOT = '([^']*)'/m) || [])[1]
+  return { repo, git, rootOf }
+}
+
+test('la línea de una instancia embebida recibe sus recorridos apuntando a ella', () => {
+  const { repo, rootOf } = embedded('cauce-line-embebida-')
+  assert.equal(rootOf(repo), fs.realpathSync(repo), 'la precondición: el original apunta a sí mismo')
+  const made = run(['line', repo, 'b', '--json'])
+  assert.equal(made.status, 0, made.stderr)
+  const line = JSON.parse(made.stdout).tree
+  assert.equal(rootOf(line), line, 'la línea quedó con los recorridos de la carpeta original')
+  assert.equal(rootOf(repo), fs.realpathSync(repo), 'y armarla no tocó los del original')
+})
+
+// Lo que una persona editó de verdad no se pisa, y la línea no se da por armada: se dice.
+test('si el runner no se puede instalar en la línea, ops line lo dice y no contesta que quedó', () => {
+  const { repo, git, rootOf } = embedded('cauce-line-embebida-editada-')
+  const file = path.join(repo, '.claude', 'workflows', 'autobuild.js')
+  fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8')}\n// un cambio a mano\n`)
+  git('add', '.'); git('commit', '-qm', 'recorrido editado a mano')
+  const made = run(['line', repo, 'b'])
+  assert.notEqual(made.status, 0)
+  assert.match(made.stderr, /fueron editados y se perderían/, 'la razón de siempre')
+  assert.match(made.stderr, /la línea .* quedó sin su runner/s, 'y qué significa para la línea')
+  assert.doesNotMatch(made.stdout, /^✓/m)
+  assert.equal(rootOf(repo), fs.realpathSync(repo))
+})
+
+// Lo mismo que le pasa a la línea le pasa al clon de un compañero: trae por git lo que se instaló en la
+// carpeta de otro. La raíz escrita se lee del archivo, así que no hace falta saber de dónde vino.
+test('un clon en otra ruta instala su runner sin que lo de la otra carpeta cuente como editado', () => {
+  const { repo, rootOf } = embedded('cauce-line-embebida-clon-')
+  const clone = path.join(path.dirname(repo), 'clon')
+  assert.equal(spawnSync('git', ['clone', '-q', repo, clone], { encoding: 'utf8' }).status, 0)
+  linkEngine(clone)
+  assert.equal(rootOf(clone), fs.realpathSync(repo), 'la precondición: nace apuntando a la carpeta original')
+  const installed = run(['automation', 'install', clone, 'claude'])
+  assert.equal(installed.status, 0, installed.stderr)
+  assert.equal(rootOf(clone), fs.realpathSync(clone))
+
+  // Y lo editado de verdad sigue sin pisarse, venga de la carpeta que venga.
+  const file = path.join(clone, '.claude', 'workflows', 'flow.js')
+  fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8')}\n// un cambio a mano\n`)
+  const again = run(['automation', 'install', clone, 'claude'])
+  assert.notEqual(again.status, 0)
+  assert.match(again.stderr, /1 archivo\(s\) que mantiene Cauce fueron editados/)
+})
+
+// Con Codex lo que lleva la ruta escrita es su configuración de hooks, que también viaja por git. La línea
+// es una carpeta propia: mover ahí los guards no se los saca a ninguna otra sesión.
+test('la línea de una instancia embebida con Codex también se arma, con sus guards apuntando a ella', () => {
+  const { repo } = embedded('cauce-line-embebida-codex-', 'codex')
+  const hooksOf = (dir) => fs.readFileSync(path.join(dir, '.codex', 'hooks.json'), 'utf8')
+  assert.ok(hooksOf(repo).includes(fs.realpathSync(repo)), 'la precondición: la ruta va escrita')
+  const made = run(['line', repo, 'b', '--json'])
+  assert.equal(made.status, 0, made.stderr)
+  const line = JSON.parse(made.stdout).tree
+  assert.ok(hooksOf(line).includes(`${line}/`), 'los guards de la línea apuntan a la línea')
+  assert.ok(!hooksOf(line).includes(`${fs.realpathSync(repo)}/`), 'y ninguno quedó apuntando al original')
+  assert.ok(!hooksOf(repo).includes(`${line}/`), 'ni los del original se movieron')
+})

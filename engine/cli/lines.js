@@ -104,7 +104,19 @@ function line(dir, name, cli) {
     }
   })
   const quiet = { log: () => {}, error: () => {} }
-  for (const runner of runners) A.install(where.ops, runner, quiet)
+  // Si el runner no se puede instalar, la línea no está armada: quedó el árbol, con los recorridos y los
+  // guards de otra carpeta o sin ninguno. Se dice, en vez de contestar que quedó (caso 363).
+  //
+  // `ownFolder`: la configuración que una línea embebida trae por git puede llevar los guards apuntando a la
+  // carpeta original —la de Codex lleva la ruta escrita—. La instalación se niega a mover guards de una
+  // carpeta de sesión que otro árbol comparte; la de una línea es sólo suya, y moverlos acá es el punto.
+  for (const runner of runners) {
+    try { A.install(where.ops, runner, quiet, { ownFolder: true }) } catch (error) {
+      return fail(`${error.message}\n\nEl árbol se creó en ${where.tree}, pero la línea ${name} quedó sin su `
+        + `runner (${runner}): sus recorridos y sus guards no apuntan a ella. Resolvé lo de arriba en la `
+        + 'instancia y repetí este comando.', REFUSED)
+    }
+  }
 
   // Una raíz que es la carpeta que contiene a la instancia —`..`, con un repositorio por servicio adentro— no
   // se puede enlazar entera: su lugar en la línea es la propia carpeta de la línea, que ya existe. Se enlazan

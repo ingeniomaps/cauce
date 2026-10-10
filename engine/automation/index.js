@@ -211,8 +211,9 @@ function deliveryState(recorded, name, resolved, prefix = '') {
   const current = M.digest(resolved.target)
   const expectedItem = render(resolved.source, prefix, resolved.automationRoot, resolved.opsRoot)
   if (current === M.digestText(expectedItem)) return 'al día'
-  const delivered = recorded[deliveryKey(name, resolved.item.target)]
-  return [M.digestRelocatable(resolved, OPS_ROOT), current].includes(delivered || 0) ? 'desactualizado' : 'ajeno'
+  const template = render(resolved.source, prefix, resolved.automationRoot, OPS_ROOT)
+  const known = [...M.relocatedDigests(resolved, template, OPS_ROOT), current]
+  return known.includes(recorded[deliveryKey(name, resolved.item.target)] || 0) ? 'desactualizado' : 'ajeno'
 }
 
 // Saca el wiring de un runner dejando intacto lo que no escribimos nosotros.
@@ -347,7 +348,7 @@ function install(root, name, output = console, options = {}) {
   // No mueve en silencio los guards de una carpeta de sesión compartida a otro árbol; por qué, en el
   // encabezado de `engine/cli/lines.js` (caso 218).
   const foreign = foreignHooks(current, incoming, paths.install)
-  if (foreign && !options.force) {
+  if (foreign && !options.force && !options.ownFolder) {
     throw new Error(`${runner.config.target} tiene los guards de Cauce apuntando a ${foreign.theirs}; instalar `
       + `desde acá los movería a ${foreign.ours} para todas las sesiones que se abren en ${paths.install}.\n`
       + 'Si este árbol es una línea de trabajo, armala con "ops line <ops-root> <nombre>", que le da su '

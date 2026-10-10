@@ -14,7 +14,7 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
-## [0.106.0] - 2026-10-09
+## [0.106.0] - 2026-10-10
 
 ### Cambiado
 
@@ -64,6 +64,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **En una instancia embebida, el runner se instala bien en una línea de trabajo y en un clon en otra ruta.**
+  Los recorridos llevan escrita la ruta de la instancia. Con `.claude/` en git, una línea o el clon de un
+  compañero nacían con los de la carpeta original: la instalación tomaba esa diferencia por una edición a
+  mano y se negaba, y los recorridos seguían apuntando a la otra carpeta. Ahora reconoce que sólo cambió la
+  ruta y los reescribe. Y si el runner no se puede instalar en una línea, `ops line` lo dice y sale con
+  error, en vez de contestar que quedó. Si armaste una línea embebida con una versión anterior, repetí
+  `ops line` sobre ella (caso 363).
 - **En una instancia embebida, `check` y `ops evidence` encuentran el commit de una tarea cuyo servicio es
   una carpeta.** La entrada lo cita con el nombre del servicio, que ahí no es un repositorio: `check` avisaba
   que su repositorio no estaba en la máquina y `evidence` daba las pruebas por ausentes. También encuentra la
