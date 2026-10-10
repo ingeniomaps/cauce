@@ -132,6 +132,10 @@ test('renombrar una prueba a un nombre que ya no lo es cuenta como borrarla', ()
   const move = (from, to) => asCodex(root, patchOf(`*** Update File: ${from}`, `*** Move to: ${to}`, '@@', '-x', '+y'))
   blocked('test-evidence', move('service/src/a.test.js', 'service/attic/a.js.txt'),
     /service\/src\/a\.test\.js borra una prueba.*a\.js\.txt/s)
+  // Un `*** Move to:` suelto después de `*** End Patch` no es de ningún archivo: no se le atribuye al último.
+  assert.doesNotThrow(() => execute('test-evidence', asCodex(root, ['*** Begin Patch',
+    '*** Update File: service/src/a.test.js', '@@', '-x', '+y', '*** End Patch', '*** Move to: service/attic/a.txt']
+    .join('\n'))))
   // Mudarla y que siga siendo una prueba no pierde nada; y renombrar lo que no era una prueba, tampoco.
   assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.test.js', 'service/lib/a.test.js')))
   assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.js', 'service/src/b.js')))

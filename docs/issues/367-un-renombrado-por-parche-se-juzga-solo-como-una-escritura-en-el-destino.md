@@ -272,6 +272,11 @@ algo se busca una vez por parche: buscado por cada destino, uno con mil renombra
 Los renombrados se leen del texto del parche y no de sus secciones, que se guardan por destino: dos al mismo
 nombre dejaban sólo el último, y el archivo del primero no se miraba.
 
+La revisión de ese cambio no encontró nada en los parches bien formados: ocho mil generados, ninguno que
+frenara antes y ahora pase. Encontró catorce malformados —un `*** Move to:` suelto después de
+`*** End Patch`— que se le atribuían al último archivo, porque el corte al final del sobre se había quitado
+por no poder verlo caer. Se podía, y volvió con su prueba.
+
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo
 segundo. Acá no se demostró, se supuso, y las dos piezas quitadas hacían falta. Esta vez las tres

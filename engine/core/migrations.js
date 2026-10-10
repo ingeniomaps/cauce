@@ -206,7 +206,11 @@ function patchMoves(patch) {
   for (const line of String(patch).split(/\r?\n/)) {
     const header = line.match(/^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/)
     if (header) from = header[1].trim()
-    else if (/^\*\*\* Move to:/.test(line)) found.push({ from, to: line.replace(/^\*\*\* Move to:\s*/, '').trim() })
+    // Fuera del sobre no hay archivo al que atribuirle un renombrado: uno suelto después del final no cuenta.
+    else if (/^\*\*\* End Patch\s*$/.test(line)) from = ''
+    else if (from && /^\*\*\* Move to:/.test(line)) {
+      found.push({ from, to: line.replace(/^\*\*\* Move to:\s*/, '').trim() })
+    }
   }
   return found
 }

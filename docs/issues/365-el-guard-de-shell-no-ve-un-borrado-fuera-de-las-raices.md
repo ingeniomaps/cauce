@@ -400,6 +400,14 @@ seguida nacida de arreglar una lentitud que ninguna sesión real tiene —decena
 o de heredocs, en un solo comando—. Lo que queda de esa clase no se sigue tocando: el guard tarda como
 mucho el doble que antes de este caso, y sólo con entradas así.
 
+La revisión de ese último cambio fue la primera sin nada que arreglar en este caso: seis mil comandos
+generados, ninguna excepción, ningún comando legítimo que se frene de más. Dejó un solo hallazgo, de gravedad
+baja, que **se deja y se dice**: un `<<` que no abre nada —un desplazamiento, un here-string— se toma por un
+heredoc si más abajo hay una línea que es sólo esa palabra, y lo que hay entre los dos deja de leerse. Pide
+una línea suelta que diga, por ejemplo, `20`; aparecieron dos de esos seis mil, y con un solo `<<` en la
+línea el hueco ya estaba. Cerrarlo es saber cuándo un `<<` abre un heredoc, que es leer shell de verdad, y
+este caso ya mostró cinco veces lo que cuesta acercarse a eso.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.
