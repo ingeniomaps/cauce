@@ -92,7 +92,10 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
 // escribirse y el guard verá el comando de verdad cuando alguien corra el script; el borde filoso es
 // `$(cat <<EOF …)`, donde el cuerpo sí corre y ya no se mira. Es el mismo trato que con el mensaje de un
 // commit: se frena la forma habitual, no al que quiere pasar.
-const HEREDOC = /<<(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
+//
+// El delimitador admite lo que un shell admite escrito así —`END-1`, `E.O.F`, `\EOF`—: con sólo letras, el
+// cuerpo de los demás se leía como comandos de esta máquina.
+const HEREDOC = /<<(-?)\s*\\?(['"]?)([A-Za-z_][\w.-]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
 
 // El comando como llegó, con el cuerpo de sus heredocs. Casi ningún guard lo quiere así —ese cuerpo es dato
 // y no orden—, salvo el que juzga justamente el dato: el mensaje de un commit viaja ahí.
@@ -230,7 +233,7 @@ function assignedValues(command) {
   const parts = raw.split(/([;&\n]+)/)
   for (let at = 0; at < parts.length; at += 2) {
     const segment = parts[at]
-    const assigned = segment.match(/^\s*([A-Za-z_]\w*)=(.*?)\s*$/)
+    const assigned = segment.match(/^\s*(?:(?:export|readonly|local)\s+)?([A-Za-z_]\w*)=(.*?)\s*$/)
     if (!assigned) continue
     const [, name, right] = assigned
     if (known.has(name) || twice.has(name)) { known.delete(name); twice.add(name); continue }

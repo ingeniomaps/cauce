@@ -76,6 +76,29 @@ function pieces(text, careful) {
 
 const REDIRECT = /(?:^|\s)\d*&?[<>]{1,2}&?\d*\s*\S*/g
 
+// Las palabras de un tramo como las arma un shell: lo que va entre comillas es una sola, con sus espacios. Sin
+// esto el valor de `MSG="chore: rm /etc/foo"` se desarmaba y su segunda palabra pasaba por el verbo que corre; y
+// al revés, en `VAR="a b" rm -rf .` el verbo que se leía era `b`, y el borrado no se veía.
+function shellWords(text) {
+  const words = []
+  let word = null
+  let quote = ''
+  for (let at = 0; at < text.length; at += 1) {
+    const char = text[at]
+    if (quote) {
+      if (char === quote) quote = ''
+      else word += char === '\\' && quote === '"' ? text[at += 1] || '' : char
+    } else if (char === '"' || char === "'") {
+      quote = char
+      word = word || ''
+    } else if (/\s/.test(char)) {
+      if (word !== null) words.push(word)
+      word = null
+    } else word = (word || '') + (char === '\\' ? text[at += 1] || '' : char)
+  }
+  return word === null ? words : [...words, word]
+}
+
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
 // la carpeta al cerrarse: sin eso, `(cd /otra && ls); rm -rf build` juzgaba `build` dentro de `/otra`.
 function steps(command, cwd, careful) {
@@ -101,15 +124,23 @@ function steps(command, cwd, careful) {
     } else {
       // Lo que una sustitución lee no es lo que el comando toca: queda como una variable sin resolver. Y la
       // llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
-      const words = piece.replace(/\$\([^()]*\)|`[^`]*`/g, '$').trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, '')
-        .replace(/(["'])([^"'\n]*)\1/g, '$2').split(/\s+/)
+      const bare = piece.replace(/\$\([^()]*\)|`[^`]*`/g, '$').trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, '')
+      const words = shellWords(bare)
       let prefixed = false
       while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || PREFIXES.has(words[0])
         || (prefixed && words[0].startsWith('-')))) prefixed = PREFIXES.has(words.shift()) || prefixed
       const verb = path.basename(words[0] || '')
-      // Un `cd` que no se pudo leer —una ruta con espacios— no deja en la carpeta de antes: deja sin saber.
-      if (verb === 'cd') base = null
-      else found.push({ verb, rest: words.slice(1).filter(Boolean), base })
+      const rest = words.slice(1).filter(Boolean)
+      // Un `cd` que no ocupa su tramo limpio: detrás de un `if`, con una bandera, con `pushd`. El guard de
+      // límites lo sigue si nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
+      // `destructive` lo ignora, como siempre: para él sin base es frenar `./x`, y un `cd` que quizá no
+      // corre no puede sacar de la vista el `rm -rf` de una raíz.
+      if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
+        const to = rest.filter((word) => !word.startsWith('-'))
+        const named = to.length === 1 ? home(to[0]) : null
+        if (careful && named && path.isAbsolute(named)) base = named
+        else if (careful) base = named && base !== null ? cdTarget(named, base) : null
+      } else found.push({ verb, rest, base })
     }
     for (let level = 0; level < closes && outer.length; level += 1) base = outer.pop()
   }

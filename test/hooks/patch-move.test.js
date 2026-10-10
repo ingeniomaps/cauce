@@ -46,3 +46,13 @@ test('el destino de una mudanza lo miran también los guards que cuidan un nombr
   const input = { cwd: root, tool_name: 'apply_patch', tool_input: { command: moved('service/.env') } }
   blocked('secrets', input, /\.env/)
 })
+
+test('una migración renombrada se sigue juzgando por su sección, no por el sobre entero', () => {
+  const root = project('ops-hook-patch-move-migracion-')
+  const patch = (hunk) => ['*** Begin Patch', '*** Update File: service/migrations/003_x.sql',
+    '*** Move to: service/migrations/004_x.sql', '@@', ...hunk, '*** End Patch'].join('\n')
+  const input = (hunk) => ({ cwd: root, tool_name: 'apply_patch', tool_input: { command: patch(hunk) } })
+  // Lo que el parche quita no destruye nada, tampoco en el archivo con su nombre nuevo.
+  assert.doesNotThrow(() => execute('migrations', input(['-DROP TABLE old_users;', '+CREATE TABLE users (id int);'])))
+  blocked('migrations', input(['-CREATE TABLE users (id int);', '+DROP TABLE users;']), /DROP TABLE/)
+})

@@ -92,6 +92,15 @@ Cierra de una vez el mismo hueco en todos los guards de archivos.
 - No se pudo con una sesión real de Codex: la cuenta de esta máquina agotó su cupo hasta el 2026-11-04. Lo
   que se midió es el guard con el sobre que Codex manda.
 
+### Lo que encontró la revisión independiente (2026-10-10)
+
+Un hallazgo. **El guard de migraciones juzgaba el nombre nuevo contra el sobre entero.** Ese guard parte el
+parche por archivo para mirar sólo lo que cada uno agrega (caso 199), y el destino de un renombrado no era
+ninguna de sus secciones: un parche que renombraba una migración y le **quitaba** un `DROP TABLE` se
+frenaba por ese mismo `DROP TABLE`. El nombre nuevo es ahora la misma sección que el viejo. Rojo previo, y
+una mutación: sin eso, la prueba falla. Lo demás lo confirmó: el destino fuera de las raíces frena, y uno
+con nombre de archivo generado frena por su guard.
+
 ## Contexto de descubrimiento
 
 Al cerrar el 365 quedó la pregunta de si borrar por la herramienta de archivos tenía el mismo hueco que

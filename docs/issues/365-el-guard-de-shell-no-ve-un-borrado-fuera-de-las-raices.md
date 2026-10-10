@@ -224,8 +224,8 @@ Acotada a lo que la primera había hecho reescribir. Ocho hallazgos, y se atendi
   comentario, dejando la base de antes tras un `cd` ilegible, sin leer el `cd` con redirección y quitando
   sólo el `-r` suelto de `touch`, y sin las comillas invertidas —ésa la pidió el piso de cobertura, que bajó
   hasta que la rama tuvo su caso—. Seis sobrevivieron la primera vez y cada una se llevó su caso de prueba.
-- **Lo que no tuvo**: una pasada independiente sobre esta última versión. La sostienen las pruebas, las
-  mutaciones y la comparación sobre los comandos reales.
+- La tercera revisión sumó doce mutaciones más, de las que tres sobrevivieron la primera vez y se llevaron
+  su caso. Una mostró que una rama no hacía falta —leer las palabras de un modo para cada guard— y se quitó.
 - La medición de arriba.
 
 ### Tres comprobaciones después de cerrar (2026-10-10)
@@ -239,7 +239,7 @@ resultados—, para que ni un error de la propia medición pudiera tocar nada.
 
   ```
   comandos    con un verbo de éstos    frenos nuevos    perdidos
-    62.212                    5.959               43           0
+    62.356                    6.003               43           0
   ```
 
   Los 43 se agruparon por destino y se leyó el comando de cada grupo, veinticinco destinos en total; tres
@@ -254,6 +254,59 @@ resultados—, para que ni un error de la propia medición pudiera tocar nada.
 - **Borrar por la herramienta de archivos no tiene este hueco.** `*** Delete File:` de un parche ya se
   juzgaba. Probando el formato entero apareció otro, que salió como caso propio: el
   [366](./366-un-parche-que-renombra-un-archivo-lo-saca-de-las-raices-sin-que-lo-vea-ningun-guard.md).
+
+### Lo que encontró la tercera revisión (2026-10-10)
+
+Una pasada independiente sobre la versión final, comparando contra el motor de antes de este caso. Ocho
+hallazgos; siete se arreglaron y uno se decidió que no.
+
+- **Una regresión de `destructive`, mía otra vez.** Un `cd` que el resolvedor no sabía leer dejaba sin
+  base, y sin base ese guard ya no juzga una carpeta nombrada: `cd "$(git rev-parse --show-toplevel)" && rm
+  -rf <raíz>` pasaba donde antes frenaba. Y al revés, frenaba `rm -rf ./sub` después de un `cd` a una ruta
+  con espacios, con un mensaje que hablaba de una variable que no había. Para `destructive` un `cd` que no
+  se lee no mueve nada, como siempre: un `cd` que quizá no corre no puede sacar de la vista el borrado de
+  una raíz. El cierre de arriba decía «ninguno menos» y la comparación sobre comandos reales no lo
+  desmentía: esas formas no aparecen en las sesiones, y por eso las encontró quien las buscó.
+- **El valor de una asignación se desarmaba**: en `MSG="chore: rm /etc/foo" …` la segunda palabra del valor
+  se leía como el verbo que corre. Las palabras de un tramo se arman ahora como las arma un shell, con lo
+  que va entre comillas en una sola. Eso arregló de paso el caso inverso, que nadie había pedido: en
+  `VAR="a b" rm -rf .` el verbo que se leía era `b` y el borrado no se veía.
+- **El cuerpo de un heredoc con un delimitador como `END-1`, `E.O.F` o `\EOF`** se leía como comandos.
+- **`export D=…; rm -rf $D/x`** quedaba sin resolver; ahora `export`, `readonly` y `local` se leen.
+- **`pushd afuera && rm -rf sub`** y **`if cd afuera; then rm -rf sub; fi`** no se seguían. El guard de
+  límites sigue ahora un `cd` que nombra una sola ruta aunque no ocupe su tramo; si no la puede leer,
+  queda sin saber dónde está y no juzga.
+- **Sacar algo de afuera con `mv afuera/a adentro/` — se decidió que no.** Lo borra de afuera, que es el
+  efecto que este caso frena, y es también la forma corriente de traer al proyecto un archivo que alguien
+  dejó en otra carpeta. Frenarlo es otra decisión, con más fricción que ésta, y no se toma de paso.
+
+La revisión dijo también lo que no encontró: de 46 formas de `cd` por 40 de `rm -r` sobre `destructive`,
+los cambios de «frena» a «pasa» que no son el primer hallazgo son correcciones —el motor de antes leía mal
+el `cd` y frenaba una carpeta que no era la raíz—, y unos 110 comandos corrientes dentro de las raíces no
+cambiaron de veredicto.
+
+### Sesiones reales (2026-10-10)
+
+Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.
+Un banco desechable fuera del temporal, con el motor de este commit, una línea, una tarea reclamada y su
+árbol; todo lo que los comandos nombran vive dentro del banco. La misma tanda de cinco comandos con **Claude
+Code** (`claude -p`, sólo con permiso de shell) y con **Gemini CLI 0.55.1**, y las dos dieron lo mismo:
+
+```
+1  rm -f <banco>/otra/x.txt                       rechazado: «el comando borra …/otra/x.txt, fuera de las raíces»
+2  rm -rf <servicio original>/src                 rechazado: «el comando borra …/app/src, fuera de las raíces»
+3  mkdir -p <tarea>/tmp-prueba && echo hola > …   corrió
+4  rm -rf <tarea>/tmp-prueba                      corrió
+5  mkdir <banco>/otra/nueva                       rechazado: «el comando escribe en …/otra/nueva»
+```
+
+Y en disco, después de cada sesión: `x.txt` sigue ahí, `src` del servicio original también, la carpeta de
+prueba se creó y se borró, y `nueva` no existe.
+
+**Con Antigravity no se corrió.** Ejecuta la copia registrada por usuario y para probar hay que reemplazarla
+un rato. Al ir a hacerlo había dos sesiones suyas abiertas en la máquina y la copia registrada había sido
+editada minutos antes: reemplazarla les habría cambiado los guards a esas sesiones. **Con Codex tampoco**,
+por el cupo. Para los dos vale lo medido con Gemini —el mismo guard, con su propio hook— y no más que eso.
 
 ## Contexto de descubrimiento
 

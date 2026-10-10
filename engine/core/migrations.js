@@ -177,6 +177,10 @@ function patchSections(patch) {
     if (header) {
       current = { kind: header[1].toLowerCase(), lines: [] }
       sections.set(header[2].trim(), current)
+    } else if (current && /^\*\*\* Move to:/.test(line)) {
+      // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba
+      // contra el sobre entero, que es lo que partir por secciones vino a quitar.
+      sections.set(line.replace(/^\*\*\* Move to:\s*/, '').trim(), current)
     } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
     else if (current && !line.startsWith('@@') && !line.startsWith('*** ')) {
       current.lines.push({ op: line[0] || ' ', text: line.slice(1) })

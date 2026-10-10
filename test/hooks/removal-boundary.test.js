@@ -51,6 +51,9 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     'cd && rm -rf fuera-de-las-raices', `rm -rf {${OUT}/a,${OUT}/b}`, `find -L ${OUT} -name x -delete`,
     `(cd ${OUT} && n=$(ls | wc -l); rm -rf old)`, `cd ${OUT} 2>/dev/null && rm -rf old`,
     `if ! rm -rf ${OUT}/x; then echo no; fi`, `while rm ${OUT}/x; do :; done`,
+    `export D=${OUT}; rm -rf $D/sub`, `pushd ${OUT} && rm -rf sub`, `if cd ${OUT}; then rm -rf sub; fi`,
+    `rm -rf "${OUT}/con espacio/sub"`, `cd "${OUT}/con espacio" && rm -rf old`, `cd -P ${OUT} && rm -rf old`,
+    `cd "$X"; if cd ${OUT}; then rm -rf sub; fi`, 'if cd ../../../../../../../..; then rm -rf no-es-de-nadie; fi',
   ]
   for (const command of commands) refuses(command, command.includes('no-es-de-nadie') ? /el comando borra/ : REMOVES)
 })
@@ -77,7 +80,12 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     // Un apóstrofo en un comentario no abre una cadena.
     "# don't stop here\ngit commit -m 'cleanup; rm -rf /var/old'",
     // Un `cd` que no se puede leer deja sin base, no en la carpeta de antes.
-    'cd "/var/con espacio" && rm -rf old', 'cd "/var/con espacio" && rm -rf ../../../../../../../../no-se-sabe',
+    'cd uno dos && rm -rf ../../../../../../../../no-se-sabe', 'popd && rm -rf ../../../../../../../../no-se-sabe',
+    // El valor de una asignación es un dato, tenga las palabras que tenga.
+    'MSG="chore: rm /etc/foo from image"; git commit -m "$MSG"', 'PROMPT="Please mkdir /data/out and run" node a.js',
+    'env NOTE="x touch /etc/hosts" node a.js',
+    // Y el cuerpo de un heredoc también, se llame como se llame su delimitador.
+    'cat > service/x.sh <<\\EOF\nrm -rf /var/www/old\nEOF', "cat > service/x.sh <<'END-1'\nmkdir /opt/x\nEND-1",
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]
@@ -106,12 +114,19 @@ test('lo que destructive cuida sigue siendo el rm recursivo: una limpieza con fi
   for (const command of ['cd && rm -rf .', 'cd; rm -rf *', 'cd $HOME && rm -rf .', 'cd "$HOME" && rm -rf ./*']) {
     blocked('destructive', { cwd: root, tool_input: { command } }, /se lleva la carpeta personal/)
   }
+  // Un `cd` que este guard no sabe leer no mueve nada: el borrado que sigue se juzga donde estaba, como antes.
+  for (const command of ['cd "$(git rev-parse --show-toplevel)" && rm -rf service', 'cd -P . && rm -rf service',
+    'if [ -d sub ]; then cd sub; fi; rm -rf service', 'cd -- . && rm -rf service']) {
+    blocked('destructive', { cwd: root, tool_input: { command } }, /se lleva la raíz/)
+  }
+  for (const command of ['cd "/ruta/con espacio" && rm -rf ./sub', 'if cd service; then rm -rf ./dist; fi',
+    'cd "$(git rev-parse --show-toplevel)" && rm -rf ./dist']) assert.doesNotThrow(() => destructive(command), command)
   // Sin `-r` no se lleva carpetas: `rm -f *` borra los archivos sueltos y deja el árbol.
   assert.doesNotThrow(() => destructive('rm -f *'))
   blocked('destructive', { cwd: root, tool_input: { command: 'rm -rf .' } }, /se lleva el directorio actual/)
   // Y lo ve detrás de lo que un shell admite delante, que antes lo tapaba.
   const hidden = ['if true; then rm -rf .; fi', 'for d in a; do rm -rf .; done', 'sudo -n rm -rf .', 'rm -rf \\\n  .',
-    'if rm -rf .; then echo; fi']
+    'if rm -rf .; then echo; fi', 'VAR="a b" rm -rf .']
   for (const command of hidden) {
     blocked('destructive', { cwd: root, tool_input: { command } }, /se lleva el directorio actual/)
   }
