@@ -374,3 +374,45 @@ test('evidence dice que los gates son los de la instancia, y avisa si son anteri
   fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA.replace(/^ {2}fecha:.*\n/m, ''))
   assert.equal(STALE.test(withRun('2026-09-01T10:00:00Z')), false)
 })
+
+// Caso 354. Lo que una traza cita entre comillas se buscaba con sus tramos de código arrancados —quedaba un
+// hueco donde iba `blocked`— y sin el reemplazo que sufre toda traza al escribirse, donde un `;` no cabe. Las
+// dos frases son las de una corrida real: estaban en el archivo y salían «cita y no aparece».
+test('una frase citada se busca entera, con su código adentro y como la traza la pudo escribir', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('cauce-evidence-citada-')
+  const write = (file, text) => {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+    fs.writeFileSync(path.join(root, file), text)
+  }
+  write('app/docs/RIESGOS.md', '| bloqueo por marca | aceptado | El handler rechaza por la marca `blocked` sin '
+    + 'registrar quién la puso. |\n')
+  write('app/src/handler.js', '// El pedido marcado `blocked` se rechaza con 403 y sin cuerpo; el resto devuelve '
+    + 'el suyo.\n')
+  const one = (artifact) => EV.contrast(`A → ${artifact}`, [root])[0]
+
+  const doc = one('n/a — Se cumple en docs/RIESGOS.md línea 5: la Nota dice «El handler rechaza por la marca '
+    + '`blocked` sin registrar quién la puso.» y no nombra a nadie')
+  assert.deepEqual(doc.cited, ['El handler rechaza por la marca `blocked` sin registrar quién la puso.'])
+  assert.deepEqual([doc.verdict, doc.absent], ['encontrado', []])
+
+  // En el fuente hay un `;` y en la traza una coma: el `;` separa trazas, así que quien la escribe lo cambia.
+  const comment = one('n/a — Se cumple en un comentario, src/handler.js línea 3: «El pedido marcado `blocked` '
+    + 'se rechaza con 403 y sin cuerpo, el resto devuelve el suyo.»')
+  assert.deepEqual([comment.verdict, comment.absent], ['encontrado', []])
+
+  // Sin archivo en la traza lo citado decide el veredicto, y se compara igual.
+  const loose = one('n/a — Se cumple en un comentario: «El pedido marcado `blocked` se rechaza con 403 y sin '
+    + 'cuerpo, el resto devuelve el suyo.»')
+  assert.equal(loose.verdict, 'encontrado')
+  assert.equal(one('n/a — Se cumple en un comentario: «El pedido marcado `blocked` se audita, siempre.»').verdict,
+    'ausente')
+
+  // Lo que no está sigue diciéndose, con o sin código adentro.
+  const invented = one('n/a — Se cumple en docs/RIESGOS.md: «El handler audita la marca `blocked` siempre»')
+  assert.deepEqual(invented.absent, ['El handler audita la marca `blocked` siempre'])
+  // Y una comilla adentro de un tramo de código sigue sin ser una cita.
+  const output = one('n/a — docs/RIESGOS.md, la corrida dio `Expected: "ochenta" / Received: null`')
+  assert.deepEqual(output.cited, [])
+  assert.deepEqual(output.code, ['Expected: "ochenta" / Received: null'])
+})

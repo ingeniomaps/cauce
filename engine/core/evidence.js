@@ -222,7 +222,11 @@ function parts(given, tree) {
   const remaining = [...kept, ...shown].reduce((text, name) => text.split(name).join(' '), artifact)
   const other = (found) => [...found].map(picked).filter((one) => one.length > 2 && !isFile(one))
   const code = other(remaining.matchAll(/`([^`]+)`/g))
-  const cited = [...shown, ...other(remaining.replace(/`[^`]*`/g, ' ').matchAll(new RegExp(QUOTE, 'g')))]
+  // Una comilla adentro de un tramo de código no es una cita —`Expected: "80"`—, y una cita puede traer
+  // código adentro: se leen de izquierda a derecha y gana lo que abre primero. Sacando antes todo el código,
+  // la cita que lo traía quedaba con un hueco y no aparecía nunca en el archivo (caso 354).
+  const spans = [...remaining.matchAll(new RegExp(String.raw`\x60[^\x60]*\x60|${QUOTE}`, 'g'))]
+  const cited = [...shown, ...other(spans.filter((found) => !found[0].startsWith('`')))]
   return { files, names: kept, cited, code, prose }
 }
 
@@ -237,17 +241,22 @@ function parts(given, tree) {
 // Hasta dónde llega: el nombre se busca como texto, así que lo da por bueno si es parte de otro más largo
 // o si está en un comentario; y de un tramo sin comillas se busca hasta donde empieza la aclaración, que
 // puede ser menos que el nombre.
-function contrastParts({ files, names, cited, code, prose, built }, tree, read, scan = tree) {
+function contrastParts({ files, names, cited, code, prose, built }, tree, read, scan, flat) {
   const within = files.map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
   if (within.some((matching) => !matching.length)) return { verdict: 'ausente' }
   const where = files.length ? within.flat() : scan
-  const text = (file) => (built ? carried(read(file)) : read(file))
+  const text = (file) => (built ? flat(file) : read(file))
   const lacks = (name) => !where.some((file) => text(file).includes(name))
+  // Lo citado pasó por lo mismo que el nombre de una traza armada: un `;` no cabe en `tests:`, así que quien
+  // la escribe lo cambia. Se compara también así, o una frase que está en el archivo se informa como ausente.
+  const lacksCited = (name) => lacks(name) && !where.some((file) => flat(file).includes(carried(name)))
   const all = [...names, ...cited, ...code]
-  if (!files.length) return { verdict: all.some(lacks) ? 'ausente' : 'encontrado' }
+  if (!files.length) {
+    return { verdict: names.some(lacks) || [...cited, ...code].some(lacksCited) ? 'ausente' : 'encontrado' }
+  }
   const missing = names.filter(lacks)
   if (missing.length) return { verdict: 'parcial', missing }
-  const absent = [...cited, ...code].filter(lacks)
+  const absent = [...cited, ...code].filter(lacksCited)
   const nothing = !names.length && !prose && absent.length && absent.length === all.length
   if (nothing) return { verdict: 'parcial', missing: absent }
   return { verdict: 'encontrado', absent }
@@ -262,6 +271,11 @@ function contrastParts({ files, names, cited, code, prose, built }, tree, read, 
 // `tree` y `read` son de dónde se mira: el disco, o el árbol de un commit. `scan` es en qué archivos se busca
 // cuando la traza no nombra ninguno; en disco son todos.
 function contrastWith(tests, { tree, read, scan = tree }, searchablePlace = true) {
+  const flats = new Map()
+  const flat = (file) => {
+    if (!flats.has(file)) flats.set(file, carried(read(file)))
+    return flats.get(file)
+  }
   return traces(tests).map((trace) => {
     if (!searchablePlace) return { ...trace, verdict: 'inbuscable' }
     if (searchable(trace.artifact)) {
@@ -272,7 +286,7 @@ function contrastWith(tests, { tree, read, scan = tree }, searchablePlace = true
     const found = parts(trace.artifact, tree)
     const empty = ![found.files, found.names, found.cited, found.code].some((one) => one.length)
     if (empty) return { ...trace, verdict: 'inbuscable' }
-    return { ...trace, ...found, ...contrastParts(found, tree, read, scan) }
+    return { ...trace, ...found, ...contrastParts(found, tree, read, scan, flat) }
   })
 }
 
