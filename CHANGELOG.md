@@ -24,6 +24,10 @@ diseño — eso vive en el commit y en el código.
   en `done/` como `CN → n/a — razón`, y los criterios de conducta siguen obligados a su prueba. Si tu
   proyecto quiere una prueba que asercie el texto de un documento, la condición tiene que pedirla: ya no
   llega sola. Rige al reinstalar el runner (caso 345).
+- **Un caso descubierto cita a su rojo por un id.** `edge-unproven` comparaba dos nombres escritos por
+  separado y frenó tres veces una entrega probada por cómo estaban escritos. Build le pone un id corto a
+  cada rojo y el borde lo cita; quien no lo cite sigue pasando por el nombre, con las reglas de siempre.
+  Rige al reinstalar el runner (caso 350).
 
 
 ### Corregido

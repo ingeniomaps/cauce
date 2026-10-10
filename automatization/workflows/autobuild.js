@@ -307,7 +307,7 @@ const BUILD = {
     completed: { type: 'boolean' }, summary: { type: 'string' }, closedTask: { type: 'boolean' },
     redFirst: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['test', 'failure'],
-      properties: { test: { type: 'string' }, failure: { type: 'string' } },
+      properties: { id: { type: 'string' }, test: { type: 'string' }, failure: { type: 'string' } },
     } },
     blockers: { type: 'array', items: { type: 'string' } },
     // Estricto en el cómo, flexible en el qué: un `kind` por cada uno de los dos destinos que R6 le da a
@@ -317,7 +317,7 @@ const BUILD = {
       required: ['kind', 'detail'],
       properties: {
         kind: { type: 'string', enum: ['edge', 'open', 'note', 'debt', 'mutation'] },
-        detail: { type: 'string' }, test: { type: 'string' },
+        detail: { type: 'string' }, test: { type: 'string' }, red: { type: 'string' },
       },
     } },
   },
@@ -1363,13 +1363,15 @@ while (rounds++ < MAX_TASKS) {
   const build = resumed ? reusedBuild(planning.wip) : await run(
     `${asRole(cast.build)}Implementá sólo ${task.id} dentro de ${task.service}. Retomá en el primer paso ` +
     `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
-    `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test y el fallo literal que ` +
-    `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
-    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que necesites para ver ese ` +
+    `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test, el fallo literal que dio ` +
+    `y un id corto —r1, r2…—; recién después implementá. Un test que pasa antes de que exista el código no ` +
+    `asercia lo que dice aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que ` +
+    `necesites para ver ese ` +
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
     `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
-    `nombrás en test y anotás en redFirst—. Lo que notaste y no impide entregar la aceptación es una de ` +
+    `anotás en redFirst y nombrás en test, y citás en red el id de ese rojo—. Lo que notaste y no impide ` +
+    `entregar la aceptación es una de ` +
     `tres cosas, y el recorrido sigue con las tres. kind=open sólo si es una decisión que le toca a una ` +
     `persona: elegir entre opciones que cambian el rumbo del producto, el gasto, una obligación externa o ` +
     `el riesgo; ésa va a una fila que alguien tiene que contestar, así que no la uses para lo demás. ` +
@@ -1478,15 +1480,24 @@ while (rounds++ < MAX_TASKS) {
   }
   const namesTest = (red, item) => Boolean(core(item.test))
     && (core(red.test).includes(core(item.test)) || core(item.test).includes(core(red.test)) || sameCase(red, item))
+  // Y tampoco la tercera vez (caso 350): el borde nombró además el archivo de salida de su prueba y el rojo
+  // traía el paréntesis en el medio. Dos textos libres siempre tienen una forma más de no coincidir, así
+  // que el borde cita a su rojo por el id que Build le puso. El nombre queda como respaldo para quien no
+  // lo cite, con las mismas reglas de arriba: no se aflojaron para dejar pasar esa forma. Y citar no
+  // exime de nombrar la prueba del borde: sin ella no hay nada que el rojo citado esté fijando.
+  const cites = (red, item) => Boolean(String(red.id || '').trim()) && Boolean(core(item.test))
+    && String(red.id).trim() === String(item.red || '').trim()
   const loose = build.discovered.find((entry) => entry.kind === 'edge'
-    && !build.redFirst.some((red) => namesTest(red, entry)))
+    && !build.redFirst.some((red) => cites(red, entry) || namesTest(red, entry)))
   // El motivo dice qué comprobó la puerta y no una conclusión sobre el trabajo: pegarle al detalle del
   // build un «entró sin la prueba que lo fija» producía una parada que se contradecía sola cuando el
   // detalle contaba que la prueba sí estaba —la frase del agente y la de la puerta hablaban de cosas
   // distintas y se leían como una—.
   if (loose) {
-    return halt('edge-unproven', `${loose.detail} — su campo "test" (${loose.test || 'vacío'}) no nombra `
-      + `ninguno de los rojos declarados: ${build.redFirst.map((red) => red.test).join(' | ') || '(ninguno)'}`)
+    const reds = build.redFirst.map((red) => `${String(red.id || '').trim() ? `${red.id}: ` : ''}${red.test}`)
+    return halt('edge-unproven', `${loose.detail} — su campo "red" (${loose.red || 'vacío'}) no es el id de `
+      + `ningún rojo declarado y su campo "test" (${loose.test || 'vacío'}) no nombra ninguno: `
+      + `${reds.join(' | ') || '(ninguno)'}`)
   }
 
   // Qué revisión hubo, para que el cierre no pueda inventar una. Nace diciendo que no hubo porque

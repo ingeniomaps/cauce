@@ -52,6 +52,39 @@ test('un caso descubierto se reconoce por sus tramos, llegue como llegue la ruta
   }
 })
 
+// Caso 350. Las dos cadenas son las de la corrida real: el borde nombró además el archivo de salida de la
+// prueba, y el rojo llevaba una aclaración entre paréntesis en el medio.
+test('un caso descubierto cita a su rojo por el id, se llamen como se llamen', async () => {
+  const red = 'raw/compare.js (antes vs después, 16 pares por el gateway) — alto del logo bajo el preflight'
+  const edge = 'raw/compare.js — raw/CA4-mut-sin-restaurar-el-logo.txt'
+  const flow = (reds, found) => runFlow({ [KEY.build]: { completed: true, summary: 'x', redFirst: reds,
+    discovered: [{ kind: 'edge', detail: 'el preflight descartaba el alto del logo', ...found }] } })
+  const reds = [{ id: 'r1', test: 'raw/base.js — carga', failure: 'want 200' },
+    { id: 'r2', test: red, failure: '48 != 0' }]
+
+  ranToEnd((await flow(reds, { test: edge, red: 'r2' })).result)
+  // Por el nombre solo, esas dos cadenas siguen sin coincidir: el respaldo no se aflojó para dejarlas pasar.
+  const byName = await flow(reds, { test: edge })
+  assert.equal(byName.result.reason, 'edge-unproven')
+  assert.match(byName.result.detail, /su campo "red" \(vacío\) no es el id de ningún rojo declarado/)
+  assert.match(byName.result.detail, /r2: raw\/compare\.js/, 'y la parada muestra los ids que había')
+
+  const stops = [
+    ['un id que ningún rojo tiene', reds, { test: edge, red: 'r9' }],
+    ['un rojo sin id y un borde sin cita', [{ test: red, failure: '48 != 0' }], { test: edge }],
+    ['dos vacíos no son el mismo id', [{ id: ' ', test: red, failure: '48 != 0' }], { test: edge, red: '' }],
+    ['el id de un rojo sin fallo no llega acá', [{ id: 'r1', test: red, failure: ' ' }], { test: edge, red: 'r1' }],
+    ['una cita sin la prueba del borde', reds, { red: 'r2' }],
+  ]
+  for (const [why, declared, found] of stops) {
+    assert.match((await flow(declared, found)).result.reason, /^(edge|build)-unproven$/, why)
+  }
+
+  const ask = (await runFlow({})).prompts.find((one) => one.key === KEY.build).prompt
+  assert.match(ask, /anotá en redFirst el test, el fallo literal que dio y un id corto/)
+  assert.match(ask, /citás en red el id de ese rojo/)
+})
+
 test('un rojo declarado sin el fallo que lo muestra no cuenta como rojo', async () => {
   const { result } = await runFlow({
     [KEY.build]: {
