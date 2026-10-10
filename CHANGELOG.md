@@ -63,6 +63,11 @@ diseño — eso vive en el commit y en el código.
   cuyo árbol se retira, así que todas las trazas salían `[ausente]`, igual que una prueba inventada. Ahora
   recorre el producto enlazado y, lo que el disco no tiene, lo busca en el commit que la entrada nombra; la
   salida dice cuándo la respuesta salió de un commit y no de un archivo en disco (caso 353).
+- **`automation doctor` ya no deja un proceso colgado por cada copia registrada que no contesta.** Al agotar
+  el tope terminaba al intérprete que la lanzó y no a la copia, que quedaba corriendo para siempre. Si
+  corriste `doctor` o `install` sobre un runner con una copia registrada que se cuelga, puede haber procesos
+  `node hook.js` viejos: `pgrep -af "node hook.js"` los lista, y los que cuelgan de `systemd` o de `init` se
+  pueden terminar (caso 355).
 - **`ops evidence` deja de avisar «cita y no aparece» de una frase que está.** Pasaba cuando la frase citada
   traía una palabra entre comillas invertidas, o cuando el archivo tenía un `;` que la traza escribió como
   coma. No cambia ningún veredicto (caso 354).

@@ -86,9 +86,22 @@ test('una copia registrada que no contesta no cuelga a doctor', () => {
   const project = antigravityProject('cauce-registro-colgado-')
   assert.equal(project.runCli(['automation', 'install', project.target, 'antigravity']).status, 0)
   project.register()
-  fs.writeFileSync(path.join(project.registered, 'hook.js'), 'setInterval(() => {}, 1000)\n')
+  // La copia deja dicho quién es, para poder preguntar después si sigue viva.
+  const pidFile = path.join(project.home, 'colgado.pid')
+  fs.writeFileSync(path.join(project.registered, 'hook.js'),
+    `require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid))\nsetInterval(() => {}, 1000)\n`)
   const started = Date.now()
   const hung = doctorWithHome(project.home, project.target)
   assert.ok(Date.now() - started < 25000, 'terminó con un solo tope y no esperando a la copia')
   assert.ok(hung.errors.some((error) => /no respondió en \d+ s/.test(error)), hung.errors.join('\n'))
+
+  // Y no la deja corriendo. El tope mataba al intérprete que la lanzó y no a ella: quedaba huérfana para
+  // siempre, una por cada `doctor`. En la máquina donde se vio eran 328, con 5 GB entre todas (caso 355).
+  const pid = Number(fs.readFileSync(pidFile, 'utf8'))
+  const alive = () => { try { process.kill(pid, 0); return true } catch { return false } }
+  const pause = new Int32Array(new SharedArrayBuffer(4))
+  for (let waited = 0; alive() && waited < 2000; waited += 50) Atomics.wait(pause, 0, 0, 50)
+  const left = alive()
+  if (left) process.kill(pid, 'SIGKILL')
+  assert.equal(left, false, 'la copia que no contestó quedó corriendo después de que doctor terminó')
 })
