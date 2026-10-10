@@ -58,6 +58,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`check` y `ops evidence` buscan también en el repositorio de la propia instancia.** En una instancia
+  sidecar, el commit de una tarea de planning o de documentos vive ahí y no en una raíz de código: `check`
+  avisaba que «no está en su repositorio» o que no se había comprobado, sin forma de apagarlo, y `evidence`
+  daba por ausente la prueba. Ahora se encuentran, citados sin repositorio o con el nombre de la carpeta de
+  la instancia; y el repositorio de una cita se lee aunque el texto siga después del paréntesis. No hay que
+  hacer nada (caso 356).
 - **`ops evidence` encuentra la prueba de una tarea cerrada en una línea de trabajo.** Buscaba sólo en lo que
   estaba en disco. En una línea el producto es un enlace que no recorría, y la tarea se commitea en una rama
   cuyo árbol se retira, así que todas las trazas salían `[ausente]`, igual que una prueba inventada. Ahora

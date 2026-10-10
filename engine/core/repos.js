@@ -258,16 +258,39 @@ function commitsAmong(repo, shas) {
   const found = new Set()
   for (let start = 0; start < shas.length; start += SHAS_PER_CALL) {
     const batch = shas.slice(start, start + SHAS_PER_CALL)
-    const all = spawnSync('git', ['-C', repo, 'rev-list', '--no-walk', '--quiet',
+    // `--ignore-missing` saltea el que no existe en vez de fallar la tanda entera, y lo que no es un commit
+    // no sale. Sin eso, un solo sha ausente mandaba a preguntar de a uno: con una carpeta de repositorios
+    // por raíz casi todos faltan en casi todos, y eran un proceso por sha y por repositorio.
+    const all = spawnSync('git', ['-C', repo, 'rev-list', '--no-walk', '--ignore-missing',
       ...batch.map((sha) => `${sha}^{commit}`)], { encoding: 'utf8' })
-    for (const sha of batch) if (all.status === 0 || isCommit(repo, sha)) found.add(sha)
+    const listed = (all.stdout || '').split('\n').filter(Boolean)
+    for (const sha of batch) {
+      if (all.status === 0 ? listed.some((full) => full.startsWith(sha)) : isCommit(repo, sha)) found.add(sha)
+    }
   }
   return found
 }
 
 // En qué repositorios buscar cada commit citado: el que la traza nombra, o las raíces que ya son uno.
+// El repositorio de la propia instancia y los nombres por los que se lo cita. En sidecar vive al lado de las
+// raíces de código y no es una de ellas, así que el commit de una tarea de planning o de documentos —que es
+// ahí donde se commitea— no se encontraba en ningún lado, y el aviso no tenía cómo apagarse (caso 356). No
+// entra en `declaredRoots` a propósito: de ahí cuelgan la puerta y el límite de escritura. El segundo nombre
+// es el del árbol principal, porque en una línea de trabajo la carpeta se llama distinto.
+function instanceRepo(opsRoot) {
+  const top = git(opsRoot, 'rev-parse', '--show-toplevel')
+  if (top.status !== 0) return null
+  const common = git(opsRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir').stdout.trim()
+  const dir = top.stdout.trim()
+  return { dir, names: [path.basename(dir), path.basename(path.dirname(common))] }
+}
+
+// Cuántos repositorios se miran dentro de una raíz contenedora: una carpeta con más no es de servicios.
+const HELD = 60
+
 function commitPlaces(opsRoot, items) {
   const roots = declaredRoots(opsRoot)
+  const own = instanceRepo(opsRoot)
   const named = new Map()
   // El nombre es una carpeta dentro de una raíz o el de una raíz que ya es el repositorio: las dos formas
   // de `holds`, y por lo mismo (caso 254).
@@ -279,12 +302,29 @@ function commitPlaces(opsRoot, items) {
         // contesta con la ruta de verdad. Comparando contra el enlace, el commit quedaba «sin comprobar» con
         // el repositorio a la vista (caso 273).
         .find((dir) => fs.existsSync(dir)
-          && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir)) || '')
+          && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir))
+        || (own && own.names.includes(name) ? own.dir : ''))
     }
     return named.get(name)
   }
-  const plain = reposFor(opsRoot, '.')
-  return items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+  // Una raíz que es la carpeta que contiene a los repositorios no es ninguno, y antes una cita sin nombre no
+  // tenía ahí dónde buscarse. Se miran los que cuelgan directo de ella, que es la forma que esa disposición
+  // tiene. Los de más adentro no, y por eso con una carpeta de por medio no encontrar el commit no dice que
+  // no exista: queda «sin comprobar», no «inexistente».
+  const loose = roots.filter((root) => fs.existsSync(root.dir)
+    && git(root.dir, 'rev-parse', '--show-toplevel').status !== 0)
+  const held = loose.flatMap((root) => {
+    try {
+      return fs.readdirSync(root.dir, { withFileTypes: true })
+        .filter((one) => one.isDirectory() || one.isSymbolicLink())
+        .map((one) => path.join(root.dir, one.name)).filter((dir) => fs.existsSync(path.join(dir, '.git')))
+        .slice(0, HELD)
+    } catch { return [] }
+  })
+  const plain = [...new Set([...reposFor(opsRoot, '.'), ...held, ...(own ? [own.dir] : [])])]
+  const places = items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+  places.partial = loose.length > 0
+  return places
 }
 
 function commitStatus(opsRoot, items) {
@@ -296,7 +336,8 @@ function commitStatus(opsRoot, items) {
   }
   return items.map((item, index) => {
     if (!where[index].length) return 'unchecked'
-    return where[index].some((repo) => known.has(`${repo}\0${item.sha}`)) ? 'found' : 'missing'
+    if (where[index].some((repo) => known.has(`${repo}\0${item.sha}`))) return 'found'
+    return !item.repo && where.partial ? 'unchecked' : 'missing'
   })
 }
 
