@@ -29,7 +29,9 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   // Gemini CLI ganó hooks y skills nativas; el adaptador dejó de tratarlo como si no los tuviera.
   assert.equal(gemini.capabilities.nativeHooks, true)
   assert.equal(gemini.capabilities.checkpointing, true)
-  assert.equal(gemini.roleSkills, '.gemini/skills')
+  // La carpeta de Codex, que Gemini CLI lee como alias de la suya con precedencia (caso 371).
+  assert.equal(gemini.roleSkills, '.agents/skills')
+  assert.deepEqual(gemini.retiredRoleSkills, ['.gemini/skills'])
   assert.equal(antigravity.command, 'agy')
   assert.equal(antigravity.capabilities.nativeHooks, true)
   assert.equal(antigravity.capabilities.nativeWorkflows, true)

@@ -41,7 +41,8 @@
     "checkpointing": true,
     "nativeSkills": true
   },
-  "roleSkills": ".gemini/skills",
+  "roleSkills": ".agents/skills",
+  "retiredRoleSkills": [".gemini/skills"],
   "commands": {
     "invocation": "/cauce:{name}",
     "names": [
