@@ -353,6 +353,11 @@ los dos runners, y tres comandos más por las formas que esa revisión tocó:
 
 Los cinco de antes dieron lo mismo, y el disco quedó igual: nada de afuera se tocó.
 
+Y una tercera vez, con el motor del commit que separó los dos resolvedores, más un noveno comando por lo
+que arregló la revisión del conjunto: `echo "$(echo "uno && rm -f <banco>/otra/x.txt")" > /dev/null`, que
+sólo cita el borrado. Los ocho anteriores, igual en los dos runners. El noveno corrió con Claude Code;
+Gemini lo rechazó por su cuenta, «Command injection detected», antes de que el guard lo viera.
+
 **Con Antigravity no se corrió.** Ejecuta la copia registrada por usuario y para probar hay que reemplazarla
 un rato. Al ir a hacerlo había dos sesiones suyas abiertas en la máquina y la copia registrada había sido
 editada minutos antes: reemplazarla les habría cambiado los guards a esas sesiones. **Con Codex tampoco**,
