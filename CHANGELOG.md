@@ -27,6 +27,18 @@ diseño — eso vive en el commit y en el código.
   chat nombrando la ruta no alcanza, hay que contestar el bloqueo. Lo que `destructive` frena sigue sin
   salida. Y si un comando cae afuera en varias rutas, el bloqueo las muestra todas y una sola respuesta las
   cubre (caso 370).
+- **Ensanchar el límite de raíces desde su configuración también lo confirma una persona.** El agente podía
+  agregar una ruta a `writableOutsideRoots` —o una raíz a `workspaceRoots`, o cualquiera de las dos en
+  `ops.config.local.json`, que ningún guard miraba— y lo que el límite frenaba pasaba, por prefijo y para
+  siempre, sin que nadie lo confirmara en el momento; en sesiones reales lo hacía. Ahora la escritura que
+  **agrega** una ruta o una raíz se frena con la entrada resuelta a la vista —`declara /ruta`— y pasa con la
+  misma confirmación angosta de arriba; lo que angosta, reordena o reescribe igual no se pregunta, y el resto
+  de los dos archivos tampoco. Un fragmento o un comando sobre `ops.config.local.json` se frena como ya
+  pasaba con `ops.config.json`: no hay con qué comparar —también un fragmento que sea JSON válido—. Y por
+  shell, nombrar `ops.config.json` en el chat ya no deja pasar la escritura: un comando no dice con qué queda
+  el archivo; el mismo pedido con la herramienta de edición pasa como antes, y por comando pasa si la persona
+  confirma el bloqueo, sabiendo que no va a ver con qué queda —es la vía de Codex, que escribe sólo por parche—. **Si tus sesiones declaraban
+  rutas solas**, van a preguntar una vez por cada ruta nueva; lo ya declarado no cambia (caso 373).
 
 ### Corregido
 
