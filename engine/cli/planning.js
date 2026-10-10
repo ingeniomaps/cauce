@@ -59,10 +59,11 @@ function evidence(dir, cli) {
     .filter((workspace) => workspace && workspace.path)
     .map((workspace) => path.resolve(opsDir, workspace.path))
     .filter((one) => fs.existsSync(one))
-  const traces = EV.contrastCommits(entry.tests, EV.contrast(entry.tests, roots, [path.resolve(root)]),
-    R.commitSources(opsDir, citedCommits(entry.commit), [fs.realpathSync(path.resolve(root))]))
+  const stats = {}
+  const traces = EV.contrastCommits(entry.tests, EV.contrast(entry.tests, roots, [path.resolve(root)], stats),
+    R.commitSources(opsDir, citedCommits(entry.commit), [fs.realpathSync(path.resolve(root))], stats))
   const runs = EV.runs(opsDir)
-  const report = { task: entry.slug, epic: entry.epic, traces, runs }
+  const report = { task: entry.slug, epic: entry.epic, traces, runs, skipped: stats.skipped }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
 
   console.log(`TAREA  ${entry.slug}${entry.epic ? ` (epic: ${entry.epic})` : ''}`)
@@ -84,6 +85,11 @@ function evidence(dir, cli) {
   if (last) {
     console.log(`GATES  todas son anteriores al cierre de esta tarea: la más reciente es del ${last} y la `
       + `tarea se cerró el ${entry.fecha}. Si la puerta de su commit no fue \`verify\`, acá no figura.`)
+  }
+  const { binary, large } = stats.skipped
+  if (binary + large) {
+    console.log(`LEÍDO  ${binary + large} archivo(s) no se leyeron: ${binary} binario(s) y ${large} de más de 5 MB. `
+      + 'Lo que una traza cite sólo ahí no se encuentra.')
   }
   // Un contraste que no dice qué no puede ver se lee como si lo hubiera visto todo.
   console.log('Este contraste dice si el artefacto existe y qué corrió `verify` en esta instancia: el registro '

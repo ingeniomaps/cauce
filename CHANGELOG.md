@@ -71,6 +71,10 @@ diseño — eso vive en el commit y en el código.
   donde `ops worktree` lo arma, con el mismo alcance que el checkout principal, y se cierra solo cuando la
   tarea se suelta. `ops worktree` se niega a entregar un árbol de esa rama que esté en otro lado. Si agregaste
   rutas de árboles de tarea a `writableOutsideRoots` para salir del paso, ya no hacen falta (caso 360).
+- **`ops evidence` ya no aborta por memoria cuando el producto trae binarios.** Leía como texto cada archivo
+  de las raíces: con modelos, imágenes o bibliotecas compiladas, buscar una prueba que no estaba agotaba la
+  memoria y el proceso moría sin decir de qué. Ahora no lee lo binario ni lo que pasa de 5 MB, y dice cuántos
+  archivos dejó sin leer (caso 361).
 - **`check` y `ops evidence` buscan también en el repositorio de la propia instancia.** En una instancia
   sidecar, el commit de una tarea de planning o de documentos vive ahí y no en una raíz de código: `check`
   avisaba que «no está en su repositorio» o que no se había comprobado, sin forma de apagarlo, y `evidence`

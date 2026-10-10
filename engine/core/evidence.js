@@ -21,6 +21,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const LOG = require('./trails').VERIFY
+const { textOf, tooLarge } = require('./readable')
 // Rodante: interesa el trabajo en curso, no la historia. Sin tope, el archivo crece con cada commit y
 // nadie lo mira; con tope, lo que queda es lo que todavía se puede cruzar contra una entrada abierta.
 const MAX_RUNS = 20
@@ -290,18 +291,25 @@ function contrastWith(tests, { tree, read, scan = tree }, searchablePlace = true
   })
 }
 
-function contrast(tests, roots, skip = []) {
-  const skipped = skip.map(real).filter(Boolean)
-  const tree = roots.flatMap((root) => sourceFiles(root, skipped)).map((file) => `/${file.replace(/\\/g, '/')}`)
+// Lo que no puede ser una prueba no se lee; qué es y por qué lo dice `readable.js`. `stats.skipped` cuenta lo
+// que se dejó sin leer **de lo que se llegó a mirar**, para que un `ausente` no se lea como «busqué en todo».
+function contrast(tests, roots, skip = [], stats = {}) {
+  const out = skip.map(real).filter(Boolean)
+  const tree = roots.flatMap((root) => sourceFiles(root, out)).map((file) => `/${file.replace(/\\/g, '/')}`)
   const texts = new Map()
+  const skipped = stats.skipped || { binary: 0, large: 0 }
   const read = (file) => {
     if (texts.has(file)) return texts.get(file)
     let text = ''
-    try { text = fs.readFileSync(file.slice(1), 'utf8') } catch { /* ilegible: no dice nada */ }
+    try {
+      if (!tooLarge(fs.statSync(file.slice(1)).size, skipped)) text = textOf(fs.readFileSync(file.slice(1)), skipped)
+    } catch { /* ilegible: no dice nada */ }
     texts.set(file, text)
     return text
   }
-  return contrastWith(tests, { tree, read }, roots.length > 0)
+  const traces = contrastWith(tests, { tree, read }, roots.length > 0)
+  stats.skipped = skipped
+  return traces
 }
 
 // Lo que el disco no alcanzó, buscado en los commits que la entrada nombra. En una línea de trabajo la tarea

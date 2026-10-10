@@ -8,6 +8,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { textOf, TOO_LARGE } = require('./readable')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
@@ -356,8 +357,9 @@ function commitStatus(opsRoot, items) {
 const BIG = { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }
 const SCANNED = 500
 const hidden = (file) => file.split('/').some((part) => part === 'node_modules' || part.startsWith('.'))
-function commitSources(opsRoot, items, skip = []) {
+function commitSources(opsRoot, items, skip = [], stats = {}) {
   const where = commitPlaces(opsRoot, items)
+  stats.skipped = stats.skipped || { binary: 0, large: 0 }
   return items.flatMap((item, index) => {
     const repo = where[index].find((one) => isCommit(one, `${item.sha}^{commit}`))
     if (!repo) return []
@@ -370,11 +372,18 @@ function commitSources(opsRoot, items, skip = []) {
     const merge = (git(repo, 'rev-list', '--parents', '-n', '1', item.sha).stdout || '').trim().split(/\s+/).length > 2
     const touched = merge ? list('diff', '--name-only', '-z', `${item.sha}^1`, item.sha)
       : list('diff-tree', '--no-commit-id', '--name-only', '-r', '--root', '-z', item.sha)
+    // Un solo pedido por archivo, con el tope de lo que se lee puesto en lo que se acepta recibir: lo que lo
+    // pasa se corta ahí y cuenta como enorme. Preguntar antes el tamaño eran dos procesos por archivo, y
+    // pedirlos todos con el listado —`ls-tree -l`— hace resolver cada blob del commit: 0,30 s contra 0,01 s
+    // en un repositorio de 3.126 archivos, por cada commit citado.
     const texts = new Map()
     const read = (file) => {
       if (!texts.has(file)) {
-        const shown = spawnSync('git', ['-C', repo, 'show', `${item.sha}:${file.slice(prefix.length)}`], BIG)
-        texts.set(file, shown.status === 0 ? shown.stdout : '')
+        const shown = spawnSync('git', ['-C', repo, 'show', `${item.sha}:${file.slice(prefix.length)}`],
+          { maxBuffer: TOO_LARGE })
+        const cut = shown.error && shown.error.code === 'ENOBUFS'
+        if (cut) stats.skipped.large += 1
+        texts.set(file, !cut && shown.status === 0 ? textOf(shown.stdout, stats.skipped) : '')
       }
       return texts.get(file)
     }
