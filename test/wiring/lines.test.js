@@ -196,3 +196,32 @@ test('el enlace al motor no ensucia la línea de una instancia con el .gitignore
   const dirty = spawnSync('git', ['-C', report.tree, 'status', '--porcelain'], { encoding: 'utf8' }).stdout
   assert.equal(dirty, '', dirty)
 })
+
+// Caso 358. Con el producto anidado y registrado como enlace de git, la carpeta nace vacía en la línea.
+// `check` ya lo avisaba; armar la línea contestaba `✓` y nada más.
+test('armar una línea dice si alguna raíz quedó vacía por ser un enlace de git', () => {
+  const { target, git } = instance('cauce-line-nested-')
+  const clean = JSON.parse(run(['line', target, 'a', '--json']).stdout)
+  assert.deepEqual(clean.warnings, [], 'sin nada anidado no hay qué avisar')
+
+  const product = path.join(target, 'app')
+  fs.mkdirSync(path.join(product, 'src'), { recursive: true })
+  fs.writeFileSync(path.join(product, 'src', 'a.js'), 'module.exports = 1\n')
+  const inner = (...args) => spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args],
+    { cwd: product, encoding: 'utf8' })
+  inner('init', '-q', '-b', 'main'); inner('add', 'src/a.js'); inner('commit', '-qm', 'producto')
+  const file = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.workspaceRoots = [{ name: 'app', path: 'app' }]
+  fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`)
+  git('add', 'ops.config.json', 'app'); git('commit', '-qm', 'producto anidado')
+
+  const made = run(['line', target, 'b', '--json'])
+  assert.equal(made.status, 0, 'avisa, no se niega')
+  const report = JSON.parse(made.stdout)
+  assert.deepEqual(fs.readdirSync(path.join(report.tree, 'app')), [], 'la precondición: la carpeta quedó vacía')
+  assert.equal(report.warnings.length, 1)
+  assert.match(report.warnings[0], /workspaceRoots: app .*esa carpeta queda vacía.*git rm --cached "app"/s)
+  const text = run(['line', target, 'b'])
+  assert.match(text.stdout, /^= .*\n(?:.*\n)*⚠ workspaceRoots: app /, 'y en la salida de texto también')
+})

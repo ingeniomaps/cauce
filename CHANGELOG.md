@@ -64,6 +64,9 @@ diseño — eso vive en el commit y en el código.
   daba por ausente la prueba. Ahora se encuentran, citados sin repositorio o con el nombre de la carpeta de
   la instancia; y el repositorio de una cita se lee aunque el texto siga después del paréntesis. No hay que
   hacer nada (caso 356).
+- **`ops line` avisa si el producto quedó vacío en la línea.** Con el repositorio del producto adentro de la
+  instancia y registrado como enlace de git, la línea se armaba con esa carpeta vacía y contestaba `✓`. Ahora
+  imprime, después del `✓`, el mismo aviso que `check`, con qué hacer. No se niega (caso 358).
 - **`ops evidence` encuentra la prueba de una tarea cerrada en una línea de trabajo.** Buscaba sólo en lo que
   estaba en disco. En una línea el producto es un enlace que no recorría, y la tarea se commitea en una rama
   cuyo árbol se retira, así que todas las trazas salían `[ausente]`, igual que una prueba inventada. Ahora

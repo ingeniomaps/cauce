@@ -19,6 +19,7 @@ const A = require('../automation')
 const { installRoot } = require('../automation/runners')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
 const { BRANCH, NAME } = require('../planning/lines')
+const R = require('../core/repos')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 const inside = (base, target) => !path.relative(base, target).startsWith('..')
@@ -129,14 +130,20 @@ function line(dir, name, cli) {
     }
   }
 
+  // La raíz que el repositorio registra como enlace de git nace vacía en la línea, y `check` lo dice; acá se
+  // repite porque éste es el momento en que todavía se puede corregir antes de abrir la sesión (caso 358).
+  // Avisa y no se niega: no se conoce una instancia con esa disposición, y a quien la tenga le frenaría lo
+  // que hoy le anda a medias.
+  const warnings = R.nestedRootWarnings(root)
   const report = {
-    home: installRoot(where.ops), tree: where.tree, branch: where.branch, reused, engine, linked, runners,
+    home: installRoot(where.ops), tree: where.tree, branch: where.branch, reused, engine, linked, runners, warnings,
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   console.log(`${reused ? '=' : '✓'} ${where.tree}  (${where.branch})`)
   if (linked.length) console.log(`  enlazados al original: ${linked.join(', ')}`)
   console.log(`  runners: ${runners.join(', ') || '(ninguno instalado en la instancia)'}`)
   console.log(`Abrí la sesión de esta línea en ${report.home}: ahí está su configuración, apuntando a su árbol.`)
+  for (const warning of warnings) console.log(`⚠ ${warning}`)
 }
 
 module.exports = { line, layout }
