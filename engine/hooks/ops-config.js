@@ -5,19 +5,29 @@
 // decide una persona» se levantaba escribiendo el archivo que lo levanta, por `Write` o por `sed -i`, y el
 // mensaje del bloqueo nombra el campo exacto que hay que agregar (caso 114).
 //
-// **Protege esos dos campos y no el archivo.** Protegerlo entero repondría el candado que el 090 sacó: el
+// **Protege esos campos y no el archivo.** Protegerlo entero repondría el candado que el 090 sacó: el
 // límite de raíces manda a declarar la ruta en `writableOutsideRoots`, de este mismo archivo, así que
 // frenar esa edición dejaría al agente sin la salida que el otro guard le acaba de indicar. Todo lo demás
-// —raíces, migraciones, lo que sea— sigue pasando como trabajo normal.
+// —migraciones, lo que sea— sigue pasando como trabajo normal.
 //
-// Son dos guards y un solo archivo, como `secrets` y `secrets-shell`: corren en eventos distintos y cada
-// grupo cubre a cada guard una vez, mientras que lo que deciden —cuál es el archivo, qué llave cambió y
-// cómo se dice— es uno solo y copiarlo dejaría dos mitades que dejan de coincidir.
+// Lo que el límite lee es la otra mitad, y hasta 0.106.1 era la misma puerta con otra forma: el agente
+// agregaba una ruta a `writableOutsideRoots` —o una raíz a `workspaceRoots`, o cualquiera de las dos en
+// `ops.config.local.json`, que no miraba nadie— y lo que estaba frenado pasaba, por prefijo y para siempre,
+// sin que nadie lo confirmara en el momento (caso 373). Por eso lo que una escritura **ensancha** lo confirma
+// una persona, por la misma salida angosta del 370 y con la entrada resuelta a la vista; lo que angosta,
+// reordena o reescribe igual no se pregunta, y así el archivo sigue siendo la salida del límite.
+//
+// Son dos guards y dos archivos, como `secrets` y `secrets-shell`: corren en eventos distintos y cada grupo
+// cubre a cada guard una vez, mientras que lo que deciden —cuáles son los archivos, qué cambió y cómo se
+// dice— es uno solo y copiarlo dejaría dos mitades que dejan de coincidir.
 
 const path = require('node:path')
 const { block, commandOf, configOf, contentOf, cwdOf, filesOf, opsRoot } = require('./input')
 const CHAT = require('./chat')
+const AP = require('./approval')
 const { writesWithBase } = require('./shell')
+const { confirmedOnly, real } = require('./boundary')
+const { writableOutsideRoots, resolvePath, LOCAL_CONFIG } = require('../config/paths')
 
 const INSTANCE_CONFIG = 'ops.config.json'
 const PROTECTED = ['allowPush', 'pushToLiveBranches']
@@ -34,7 +44,8 @@ function keysOf(config) {
 // El mensaje le habla a la persona y deja el permiso como cosa suya; el porqué de esa redacción está en
 // `HOW`, en `approval.js`.
 const HANDS_OFF = 'Lo decide una persona (R10): decile qué se frenó y esperá. Lo pone ella editando el '
-  + `archivo, o pidiéndotelo en el chat nombrando ${INSTANCE_CONFIG}.`
+  + `archivo, o pidiéndotelo en el chat nombrando ${INSTANCE_CONFIG}, y entonces lo escribís con la `
+  + 'herramienta de edición.'
 
 function changeMessage(file) {
   return `${file} lleva las dos llaves que deciden qué push se publica, ${NAMES}, y este cambio las toca. `
@@ -42,69 +53,150 @@ function changeMessage(file) {
     + 'cualquier otro campo, mandá el mismo cambio sin mover esas dos llaves.'
 }
 
+// Qué cuida cada archivo, para decirlo en el bloqueo: el compartido lleva el permiso de push y las raíces;
+// el de la máquina, sólo rutas escribibles.
+const guards = (root, file) => (file === path.join(root, INSTANCE_CONFIG)
+  ? `${NAMES}, las dos llaves que deciden qué push se publica, o las raíces que el límite de escritura lee`
+  : 'las rutas que el límite de escritura deja escribir fuera de las raíces')
+
 // **Un contenido que no se puede leer como JSON se frena.** Un `Edit` manda el fragmento que reemplaza y no
 // el archivo, así que no hay con qué comparar: dejarlo pasar apagaría este guard con la herramienta más
 // común de todas, y frenarlo deja una salida más cara pero escrita —mandar el archivo entero, que sí se
 // compara—. Es el mismo criterio con el que el motor decide cuando no puede leer el índice de git.
-function unreadableMessage(file) {
+function unreadableMessage(root, file) {
   return `${file} no llega como un JSON completo que se pueda leer, así que no hay cómo saber si el cambio `
-    + `toca ${NAMES}, las dos llaves que deciden qué push se publica. Un guard que no puede verificar no `
-    + 'autoriza: mandá el archivo entero en una sola escritura y el guard compara lo que cambia.'
+    + `toca ${guards(root, file)}. Un guard que no puede verificar no autoriza: mandá el archivo entero en una `
+    + 'sola escritura y el guard compara lo que cambia.'
 }
 
-// **Por shell se frena toda escritura, y no sólo la de las dos llaves.** La mitad de archivos compara dos
+// **Por shell se frena toda escritura, y no sólo la que ensancha.** La mitad de archivos compara dos
 // contenidos porque tiene los dos: el entrante viene en la llamada y el otro está en disco. Un comando no
 // trae ninguno —`sed -i 's/false/true/'` dice qué reemplaza, no con qué va a quedar el archivo—, y
 // averiguarlo sería ejecutarlo, que es justo lo que este guard corre antes de que ocurra. Sin contenido que
 // comparar quedan dos conductas posibles y ninguna intermedia, y se elige la que cierra la vía que el 114
 // midió.
-function commandMessage(file) {
-  return `el comando escribe en ${file}, donde viven las dos llaves que deciden qué push se publica, `
-    + `${NAMES}. Un comando no dice con qué va a quedar el archivo, así que acá se frena toda escritura y `
-    + `no sólo la de esas dos llaves. ${HANDS_OFF}\nSi el cambio es de cualquier otro campo, escribí el `
-    + 'archivo entero con la herramienta de edición, que el guard sí puede comparar.'
+//
+// Lo que sí se ofrece es que la persona lo confirme a ciegas, por la salida angosta del 370: Codex escribe
+// sólo por `apply_patch`, que llega como parche y no como archivo, así que sin esto no le quedaba ninguna vía
+// para el cambio que ella pidió (revisión del 373). Quien confirma no ve con qué queda el archivo, y el
+// bloqueo se lo dice; la herramienta de edición, donde la hay, sigue siendo la que muestra la entrada.
+function commandMessage(root, file) {
+  return `el comando escribe en ${file}, donde viven ${guards(root, file)}. Un comando no dice con qué va a `
+    + 'quedar el archivo, así que acá se frena toda escritura. Si el cambio es de cualquier otro campo, '
+    + 'escribí el archivo entero con la herramienta de edición, que el guard sí puede comparar; si es el '
+    + `permiso de push, ${HANDS_OFF.replace(/^Lo/, 'lo')}\nSi la persona quiere que pase igual por comando, `
+    + 'puede confirmarlo sabiendo que no va a ver con qué queda el archivo:\n'
 }
 
-// Lo que la persona pidió nombrando el archivo pasa: ahí quien decide es ella, que es lo que este guard
-// cuida. Se pregunta cada vez —sin conceder y sin heredar—, igual que `self-approval`: las dos llaves que
-// viven acá son el permiso de push, y nombrar el archivo una vez no lo deja abierto toda la sesión. El
-// comentario decía «lo mismo» mientras el código concedía (caso 119).
+// Las rutas que un archivo abre: las raíces de producto —sólo el compartido las declara— y las escribibles de
+// afuera. Cada lista se resuelve como la resuelve el límite —`writableRoots`, en `input.js`—: la raíz con
+// `path.resolve`, que no expande `~`, y la escribible con `resolvePath`, que sí. Resolverlas igual es lo que
+// hace que la entrada que la persona confirma sea la que después rige.
+//
+// Y se devuelve **dónde cae** cada una, no cómo está escrita: el límite compara por ahí (`beyond`), así que una
+// entrada que textualmente cuelga de una raíz y es un enlace hacia afuera abre lo de afuera. Comparada por
+// texto quedaba cubierta y pasaba sin confirmar (revisión del 373).
+function opened(root, config, file) {
+  const shared = file === path.join(root, INSTANCE_CONFIG)
+  const roots = shared && config && Array.isArray(config.workspaceRoots)
+    ? config.workspaceRoots.filter((one) => one && typeof one.path === 'string')
+      .map((one) => path.resolve(root, one.path))
+    : []
+  const outside = config && Array.isArray(config.writableOutsideRoots)
+    ? config.writableOutsideRoots.filter((one) => typeof one === 'string' && one.trim())
+      .map((one) => resolvePath(root, one))
+    : []
+  return [...roots, ...outside].map(real)
+}
+
+// Lo que la escritura entrante abre y nada de lo declarado hoy cubre. Se compara contra los dos archivos en
+// disco, no contra el que se escribe: una ruta que el compartido ya declara no es nueva en el de la máquina.
+// Y por prefijo, que es como el límite lee: `~/a` donde había `~/a/b` ensancha, `~/a/b` donde había `~/a` no.
+function widened(root, incoming, file) {
+  const shared = configOf(root)
+  // Las raíces del compartido y las escribibles de los dos archivos, cada una resuelta una sola vez.
+  const declared = [
+    ...opened(root, { workspaceRoots: shared.workspaceRoots }, path.join(root, INSTANCE_CONFIG)),
+    ...writableOutsideRoots(root, shared).map((entry) => real(entry.path)),
+  ]
+  const covered = (one) => declared.some((base) => one === base || one.startsWith(`${base}${path.sep}`))
+  return [...new Set(opened(root, incoming, file).filter((one) => !covered(one)))]
+}
+
+// El archivo entero, como objeto, o nada. Un `Edit` manda un fragmento aunque ese fragmento sea JSON válido
+// —`["/"]` donde había `[]`—, y un fragmento no dice con qué queda el archivo; un JSON que no es un objeto
+// tampoco es una configuración (revisión del 373).
+function wholeFile(input) {
+  if (typeof (input.tool_input || {}).new_string === 'string') return null
+  let incoming = null
+  try { incoming = JSON.parse(contentOf(input)) } catch { return null }
+  return incoming && typeof incoming === 'object' && !Array.isArray(incoming) ? incoming : null
+}
+
+function widensMessage(file, held) {
+  return `${file} ensancha lo que el límite de raíces deja escribir: agrega ${held.map((one) => one.slice(8))
+    .join(', ')}. Lo decide una persona (R10), con la entrada a la vista; lo que el archivo ya declaraba y lo `
+    + 'que angosta no se pregunta.\n'
+}
+
+// Lo que la persona pidió nombrando el archivo pasa el juicio de las dos llaves: ahí quien decide es ella,
+// que es lo que este guard cuida. Se pregunta cada vez —sin conceder y sin heredar—, igual que
+// `self-approval`: las dos llaves que viven acá son el permiso de push, y nombrar el archivo una vez no lo
+// deja abierto toda la sesión. El comentario decía «lo mismo» mientras el código concedía (caso 119).
+//
+// Vale sólo por la herramienta de edición, que trae el contenido. Por shell nombrar el archivo no abre nada
+// —hasta 0.106.1 sí, y el 119 lo había decidido así—: un comando no dice con qué queda el archivo, así que
+// «abrí ops.config.json y fijate» dejaba pasar un `sed` que ensanchaba las raíces sin que nadie viera la
+// entrada (revisión del 373). El mismo pedido, con la herramienta de edición, pasa igual que antes.
+//
+// Ensanchar las raíces no pasa por nombrar el archivo: es la salida angosta del 370 —confirmar el bloqueo,
+// o la línea en el archivo de aprobación—, con el ítem `declara <ruta resuelta>`.
 const asked = (input, file) => !CHAT.unauthorizedNow(input, [file]).length
 
+// El archivo se reconoce por dónde cae y no por cómo está escrito —un enlace con otro nombre, la ruta real de
+// una raíz enlazada—, como hace el límite (caso 317): comparado por texto, escribirlo por otro nombre no se
+// juzgaba (tercera revisión del 373).
+const hits = (file, at) => real(at) === real(file)
+
 function judgeWrite(input, root, file) {
-  if (!filesOf(input).some((raw) => path.resolve(cwdOf(input), raw) === file)) return
-  if (asked(input, file)) return
-  let incoming = null
-  try { incoming = JSON.parse(contentOf(input)) } catch { block(unreadableMessage(file)) }
-  if (keysOf(configOf(root)) !== keysOf(incoming)) block(changeMessage(file))
+  if (!filesOf(input).some((raw) => hits(file, path.resolve(cwdOf(input), raw)))) return
+  const incoming = wholeFile(input)
+  if (!incoming) block(unreadableMessage(root, file))
+  if (file === path.join(root, INSTANCE_CONFIG) && !asked(input, file)
+    && keysOf(configOf(root)) !== keysOf(incoming)) block(changeMessage(file))
+  const held = confirmedOnly(input, widened(root, incoming, file).map((one) => `declara ${one}`))
+  if (held.length) block(widensMessage(file, held) + AP.HOW(null, held, input, held, { turn: true }))
 }
 
-function judgeCommand(input, file) {
+function judgeCommand(input, root, file) {
   for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
     // Una ruta relativa sin base contra la que resolverla no se puede juzgar, y esa pregunta es de
     // `shell-boundary`, que ya la contesta para todo destino.
     if (!path.isAbsolute(raw) && base === null) continue
-    if (path.resolve(base || '/', raw) !== file) continue
-    if (asked(input, file)) return
-    block(commandMessage(file))
+    if (!hits(file, path.resolve(base || '/', raw))) continue
+    // Sólo la confirmación de este turno, sin línea en el archivo de aprobación: pegada, dejaría abierta para
+    // siempre una escritura a ciegas sobre el archivo que lleva el permiso de push, y el agente podía pedir esa
+    // línea nombrando el archivo. Por eso no pasa por `confirmedOnly`, que sí lee el archivo, y `HOW` no
+    // ofrece nada que pegar (tercera revisión del 373).
+    const item = `escribe ${real(file)}`
+    const held = CHAT.unauthorizedNow(input, [item], () => false)
+    if (held.length) block(commandMessage(root, file) + AP.HOW(null, held, input, [], { turn: true }))
   }
 }
 
-// La configuración que decide, o nada. Sin raíz ops no hay ninguna: `push.js` lee el `runner` de esta
-// misma raíz, así que donde no la hay tampoco hay permiso que escribirse.
-function target(input) {
+// Los archivos que deciden, o nada. Sin raíz ops no hay ninguno: `push.js` lee el `runner` de esta misma
+// raíz y el límite lee sus raíces de ahí, así que donde no la hay tampoco hay permiso que escribirse.
+function targets(input) {
   const root = opsRoot(input)
-  return root ? { root, file: path.join(root, INSTANCE_CONFIG) } : null
+  return root ? [INSTANCE_CONFIG, LOCAL_CONFIG].map((name) => ({ root, file: path.join(root, name) })) : []
 }
 
 function opsConfig(input) {
-  const found = target(input)
-  if (found) judgeWrite(input, found.root, found.file)
+  for (const { root, file } of targets(input)) judgeWrite(input, root, file)
 }
 
 function opsConfigShell(input) {
-  const found = target(input)
-  if (found) judgeCommand(input, found.file)
+  for (const { root, file } of targets(input)) judgeCommand(input, root, file)
 }
 
 module.exports = { opsConfig, opsConfigShell }

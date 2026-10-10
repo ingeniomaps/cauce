@@ -13,7 +13,8 @@
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { landing } = require('../core/files')
-const { outsideRoots, opsRoot, configOf } = require('./input')
+const { outsideRoots, opsRoot, configOf, DECLARE_IT } = require('./input')
+const AP = require('./approval')
 
 const real = (file) => landing(path.sep, file)
 
@@ -51,4 +52,33 @@ function beyond(input, base, raw, allowed, lands = landing(base, raw)) {
 // El mismo aviso en los dos guards: dónde cae, y por dónde se llegó si no es donde está escrito.
 const reached = ({ file, lands }) => (lands === file ? file : `${lands} (a donde lleva ${file})`)
 
-module.exports = { beyond, reached, real, removed }
+// La salida por una vez, que hasta 0.106.1 no existía: los dos guards sólo mandaban a declarar la ruta, y lo
+// que una persona pide por única vez —liberar disco, limpiar una caché— se frenaba igual (caso 370). Es más
+// angosta que la de los otros guards, por tres cosas medidas antes de abrirla:
+//
+// - **El ítem lleva el verbo y la ruta resuelta** —`borra <ruta>`, `escribe <ruta>`—. La ruta sola es el mismo
+//   ítem que aprueban los otros guards, así que una credencial cuya lectura quedó aprobada para siempre
+//   habría quedado aprobada también para borrarla.
+// - **Sin orden del chat, ni con la ruta entera.** La lista de verbos dice que la frase pide algo, no qué pide:
+//   «mirá <ruta> y decime cuánto pesa» autorizaba borrarla. En los otros guards ese error cuesta un archivo
+//   que git devuelve; acá lo borrado no vuelve (R23). Queda la confirmación del bloqueo, que es el que muestra
+//   el verbo y la ruta resuelta, y la línea en el archivo cuando no hay chat.
+// - **Sin heredar**, como los gates de commit: lo que hay en una ruta cambia, y el borrado que se repite
+//   después no es el que la persona miró.
+//
+// Lo que `destructive` cuida no se abre por acá: son dos guards y corren los dos.
+const ONLY_CONFIRMED = () => false
+const confirmedOnly = (input, items) => AP.pendingNow(opsRoot(input), items, input, ONLY_CONFIRMED)
+const item = (verb, out) => `${verb} ${out.lands}`
+const unconfirmed = (input, found) => confirmedOnly(input, [...new Set(found.map(({ verb, out }) => item(verb, out)))])
+
+// El bloqueo de los dos guards, con todo lo que cae afuera junto: una sola respuesta lo cubre, y cortar en la
+// primera ruta hacía que la persona contestara dos veces por un comando.
+function refusal(input, found, where) {
+  const held = unconfirmed(input, found)
+  if (!held.length) return ''
+  return `${where(found)}, fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}\n`
+    + AP.HOW(null, held, input, held, { turn: true })
+}
+
+module.exports = { beyond, reached, real, removed, refusal, confirmedOnly }

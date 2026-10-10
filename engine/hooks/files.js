@@ -14,7 +14,7 @@ const {
 } = require('./input')
 const { landing } = require('../core/files')
 const { patchMoves } = require('../core/migrations')
-const { beyond, reached } = require('./boundary')
+const { beyond, reached, refusal } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { selfApproval } = require('./self-approval')
@@ -125,11 +125,15 @@ const TEST_OFF = [
   [/#\[ignore\]/, 'ignore'],
 ]
 
+// Qué cuenta como prueba por el nombre, medido sobre repositorios reales (caso 369): los infijos `.cy.` y
+// `.e2e.` y las extensiones de módulo no traían un solo archivo que no fuera una prueba. La forma con guion
+// —`load-test.js`, `*.fake-spec.ts`— sí, y queda afuera; el sufijo `Test` de Java o C# no se midió y no entra
+// hasta que una instancia con esos lenguajes lo pida.
 function isTestFile(raw) {
   const file = raw.replace(/\\/g, '/')
   const base = path.basename(file)
   return /(?:^|\/)(?:tests?|specs?|__tests__)\//i.test(file)
-    || /\.(?:test|spec)\.[jt]sx?$/i.test(base)
+    || /\.(?:test|spec|cy|e2e)\.(?:[cm][jt]s|[jt]sx?)$/i.test(base)
     || /_(?:test|spec)\.(?:go|py|rb|ts|js|jsx|tsx|rs|exs?)$/i.test(base)
     || /^test_.+\.py$/i.test(base)
 }
@@ -282,6 +286,8 @@ const runnerOwn = (file) => file.startsWith(RUNNER_PLANS) && file.endsWith('.md'
 
 function workspaceBoundary(input) {
   const allowed = writableRoots(input)
+  const deleted = new Set([...patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)].map((one) => one[1].trim()))
+  const found = []
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
     if (runnerOwn(file)) continue
@@ -289,8 +295,11 @@ function workspaceBoundary(input) {
     const own = selfApproval(input, file) || selfApproval(input, landing(cwdOf(input), raw))
     if (own) block(own)
     const out = allowed && beyond(input, cwdOf(input), raw, allowed)
-    if (out) block(`${reached(out)} está fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
+    if (out) found.push({ verb: deleted.has(raw) ? 'borra' : 'escribe', out })
   }
+  const why = refusal(input, found, (all) => `${all.map(({ out }) => reached(out)).join(' y ')} `
+    + (all.length > 1 ? 'están' : 'está'))
+  if (why) block(why)
 }
 
 // Hace falta un guard aparte porque `workspace-boundary` no lo cubre: `node_modules/` cae dentro de

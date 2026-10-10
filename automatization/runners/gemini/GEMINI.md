@@ -14,7 +14,7 @@ carpeta esté marcada como confiable**: si no lo está, Gemini los desactiva y a
 `Project hooks disabled because the folder is not trusted`, y entonces nada te detiene. Confía en la
 carpeta antes de trabajar.
 
-Los cargos llegan como skills en `.gemini/skills/`. Cada uno conserva nombre y descripción, y remite al
+Los cargos llegan como skills en `.agents/skills/`. Cada uno conserva nombre y descripción, y remite al
 contrato completo; leé ese `SKILL.md` antes de actuar en su terreno. Para la lista:
 
 ```bash

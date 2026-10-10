@@ -276,13 +276,18 @@ test('las dos llaves del push no se escriben desde una herramienta, y el resto d
     cwd: root, tool_input: { file_path: target, content: JSON.stringify(content, null, 2) },
   })
   // Lo que proteger sólo los dos campos conserva: el archivo sigue siendo la salida que el límite de
-  // raíces recomienda, y frenarlo entero repondría el candado que el 090 sacó.
+  // raíces recomienda, y frenarlo entero repondría el candado que el 090 sacó. Una raíz nueva no pasa sola
+  // desde el 373 —la confirma la persona, con la entrada a la vista— y eso no es el candado: el resto del
+  // archivo sigue pasando, y la entrada confirmada también.
   const roots = { ...config, workspaceRoots: [{ name: 'app', path: '../app' }] }
   const outsideRoots = { ...config, writableOutsideRoots: ['../notas'] }
   assert.doesNotThrow(() => execute('ops-config', write(config)))
-  assert.doesNotThrow(() => execute('ops-config', write(roots)))
-  assert.doesNotThrow(() => execute('ops-config', write(outsideRoots)))
+  assert.doesNotThrow(() => execute('ops-config', write({ ...config, runner: { ...config.runner, maxTaskHours: 2 } })))
   assert.doesNotThrow(() => execute('ops-config', write({ x: 1 }, path.join(root, 'package.json'))))
+  const widens = /ensancha lo que el límite de raíces deja escribir/
+  blocked('ops-config', write(roots), widens)
+  blocked('ops-config', write(outsideRoots), widens)
+  assert.doesNotMatch(messageOf('ops-config', write(roots)), KEYS, 'y no se confunde con las llaves del push')
 
   // Las tres formas de tocarlas: prender la llave, nombrar la rama viva, y sacar lo que estaba puesto.
   const withKey = { ...config, runner: { ...config.runner, allowPush: true } }
@@ -324,7 +329,9 @@ test('por shell se frena toda escritura sobre ops.config.json, que es lo único 
   assert.doesNotThrow(() => execute('ops-config-shell', sh('echo hola')))
 })
 
-test('lo que la persona pide nombrando ops.config.json pasa por las dos vías', () => {
+// Por la herramienta de edición, que trae el contenido. Por shell pasaba también hasta 0.106.1, y desde la
+// revisión del 373 no: un comando no dice con qué queda el archivo, así que nombrarlo no dice qué se pidió.
+test('lo que la persona pide nombrando ops.config.json pasa por la herramienta de edición, no por shell', () => {
   const { root, file, config } = configRoot('ops-hook-config-chat-')
   const withKey = JSON.stringify({ ...config, runner: { ...config.runner, allowPush: true } }, null, 2)
   const chat = chatSession()
@@ -332,8 +339,8 @@ test('lo que la persona pide nombrando ops.config.json pasa por las dos vías', 
     const asked = chat.says('cambiá ops.config.json para habilitar el push')
     assert.doesNotThrow(() => execute('ops-config',
       asked({ cwd: root, tool_input: { file_path: file, content: withKey } })))
-    assert.doesNotThrow(() => execute('ops-config-shell',
-      asked({ cwd: root, tool_input: { command: `sed -i s/false/true/ ${file}` } })))
+    blocked('ops-config-shell', asked({ cwd: root, tool_input: { command: `sed -i s/false/true/ ${file}` } }),
+      /no dice con qué/)
     // En el mensaje siguiente vuelve a preguntar: lo que se escribe acá es el permiso de push, así que
     // vale lo que ella pidió en el mensaje en curso y no lo que la sesión venía concediendo (caso 119).
     // Esta prueba afirmó lo contrario dos veces —primero porque el permiso moría con el mensaje, después

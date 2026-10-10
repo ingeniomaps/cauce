@@ -11,7 +11,9 @@ node tools/ops.js automation install . gemini
 
 Instala `.gemini/settings.json`, el contexto raíz `GEMINI.md` y los comandos `/cauce:onboard`,
 `/cauce:flow`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`, más el
-catálogo de cargos como skills en `.gemini/skills/`.
+catálogo de cargos como skills en `.agents/skills/`, la carpeta que Gemini CLI lee como alias de
+`.gemini/skills/` y que comparte con Codex: con los dos instalados hay un solo puntero por cargo. Una
+instalación anterior a 0.107.0 los tenía en `.gemini/skills/`; reinstalar quita los que generó Cauce.
 
 Antes vivían bajo `/ops:` y eran tres: el arranque y el recorrido de equipo le llegaban sólo como prosa,
 así que alguien que venía de otro runner los buscaba en la lista y no estaban. Si actualizás una

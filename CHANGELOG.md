@@ -14,6 +14,47 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.107.0] - 2026-10-10
+
+### Cambiado
+
+- **Lo que cae fuera de las raíces se puede dejar pasar por una vez, confirmando el bloqueo.** Los dos guards
+  de límites sólo ofrecían declarar la ruta en `writableOutsideRoots`, también para lo que una persona pide
+  una sola vez —liberar disco, limpiar una caché—. Ahora el bloqueo deja la ruta esperando y pasa con la
+  confirmación de la persona, o con la línea que muestra pegada en `planning/.ops-approval`; en Claude Code,
+  con el diálogo del runner. Es más angosto que en los otros guards, a propósito: la línea lleva el verbo y la
+  ruta resuelta —`borra /ruta`, `escribe /ruta`—, vale para ese turno y no para la sesión, y pedirlo en el
+  chat nombrando la ruta no alcanza, hay que contestar el bloqueo. Lo que `destructive` frena sigue sin
+  salida. Y si un comando cae afuera en varias rutas, el bloqueo las muestra todas y una sola respuesta las
+  cubre (caso 370).
+- **Ensanchar el límite de raíces desde su configuración también lo confirma una persona.** El agente podía
+  agregar una ruta a `writableOutsideRoots` —o una raíz a `workspaceRoots`, o cualquiera de las dos en
+  `ops.config.local.json`, que ningún guard miraba— y lo que el límite frenaba pasaba, por prefijo y para
+  siempre, sin que nadie lo confirmara en el momento; en sesiones reales lo hacía. Ahora la escritura que
+  **agrega** una ruta o una raíz se frena con la entrada resuelta a la vista —`declara /ruta`— y pasa con la
+  misma confirmación angosta de arriba; lo que angosta, reordena o reescribe igual no se pregunta, y el resto
+  de los dos archivos tampoco. Un fragmento o un comando sobre `ops.config.local.json` se frena como ya
+  pasaba con `ops.config.json`: no hay con qué comparar —también un fragmento que sea JSON válido—. Y por
+  shell, nombrar `ops.config.json` en el chat ya no deja pasar la escritura: un comando no dice con qué queda
+  el archivo; el mismo pedido con la herramienta de edición pasa como antes, y por comando pasa si la persona
+  confirma el bloqueo, sabiendo que no va a ver con qué queda —es la vía de Codex, que escribe sólo por parche—. **Si tus sesiones declaraban
+  rutas solas**, van a preguntar una vez por cada ruta nueva; lo ya declarado no cambia (caso 373).
+
+### Corregido
+
+- **Con Codex y Gemini instalados, Gemini ya no avisa un conflicto por cada cargo al abrir la sesión.** Gemini
+  CLI lee `.agents/skills/` —la carpeta de Codex— como alias de `.gemini/skills/`, con precedencia, así que
+  cada cargo estaba dos veces y lo decía uno por uno: 53 líneas antes de la primera respuesta. Ahora Gemini
+  instala sus punteros en `.agents/skills/`, los mismos que Codex, y hay uno solo por cargo. **Al reinstalar
+  el adaptador de Gemini** se quitan de `.gemini/skills/` los punteros que generó Cauce; uno que hayas editado
+  se queda, y la instalación lo nombra. Desinstalar uno de los dos runners conserva los punteros mientras el
+  otro siga instalado (caso 371).
+- **El guard de pruebas reconoce más nombres de prueba fuera de una carpeta de pruebas.** Un `a.test.mjs`, un
+  `a.spec.cts`, una prueba de Cypress (`a.cy.ts`) o de punta a punta (`a.e2e.ts`) no contaban como prueba
+  si no vivían bajo `test/`, así que borrarlas, apagarlas con un `skip` o renombrarlas pasaba. Ahora cuentan,
+  por parche y por shell. La forma con guion —`load-test.js`— sigue sin contar, a propósito, y un nombre como
+  `FooTest.java` tampoco: no se midió sobre proyectos con esos lenguajes (caso 369).
+
 ## [0.106.1] - 2026-10-10
 
 ### Corregido

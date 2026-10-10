@@ -13,7 +13,7 @@ const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, activated,
 } = require('./runners')
-const { roleCatalog, roleSkill, installRoleSkills } = require('./roles')
+const { roleCatalog, roleSkill, installRoleSkills, uninstallRoleSkills } = require('./roles')
 const {
   GUARD_NAMES, groupWrappers, supersededGuards,
   legacyGuardWiring, listHooks,
@@ -271,21 +271,9 @@ function uninstall(root, name, output = console) {
     removed += 1
   }
 
-  // Los punteros a cargos no se registran uno por uno —son todo el catálogo y se regeneran enteros—,
-  // así que se reconocen por contenido: sólo se va el que sigue siendo el que generamos.
-  if (runner.capabilities.nativeSkills && runner.roleSkills) {
-    const base = path.resolve(paths.install, runner.roleSkills)
-    for (const role of roleCatalog(root)) {
-      const file = path.join(base, role.slug, 'SKILL.md')
-      if (!fs.existsSync(file)) continue
-      if (M.digest(file) !== M.digestText(roleSkill(role))) {
-        kept.push(path.relative(paths.install, file))
-        continue
-      }
-      F.removeFile(file, paths.install)
-      removed += 1
-    }
-  }
+  const pointers = uninstallRoleSkills(root, name, runner, paths.install, recorded, output)
+  removed += pointers.removed
+  kept.push(...pointers.kept)
 
   if (hasConfig) {
     const clean = unmergeConfig(unmergeConfig(config, runnerConfig(paths, root)), runner.config.retired || {})

@@ -155,6 +155,27 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
   }
 })
 
+// Caso 369. Qué es una prueba lo decide el nombre, y la lista era corta: un módulo ESM, una prueba de
+// Cypress o de punta a punta fuera de `test/` no contaban, así que borrarlas o apagarlas pasaba. Entran
+// las que se midieron sobre repositorios reales sin un solo falso positivo; la forma con guion queda
+// afuera a propósito —`load-test.js` y los dobles `*.fake-spec.ts` no son pruebas— y un nombre como
+// `FooTest.java` sin decidir, por falta de datos.
+test('test-evidence reconoce los nombres de prueba corrientes fuera de una carpeta de pruebas', () => {
+  const remove = (name) => ({ tool_input: {
+    patch: `*** Begin Patch\n*** Delete File: ${name}\n*** End Patch`,
+  } })
+  for (const name of ['src/a.test.mjs', 'src/a.test.cjs', 'src/a.spec.mts', 'src/a.spec.cts',
+    'cypress/e2e/a.cy.ts', 'src/a.cy.js', 'src/alta.e2e.ts', 'src/alta.e2e.jsx']) {
+    assert.throws(() => execute('test-evidence', remove(name)), /borra una prueba/, name)
+  }
+  blocked('test-evidence', { tool_input: { file_path: '/project/src/a.cy.ts', content: "it.skip('alta')" } },
+    /apaga una prueba/)
+  for (const name of ['scripts/load-test.js', 'src/a.fake-spec.ts', 'src/a.double-spec.ts', 'src/cypress.ts',
+    'src/e2e.ts', 'src/a.test.md']) {
+    assert.doesNotThrow(() => execute('test-evidence', remove(name)), name)
+  }
+})
+
 // Codex manda el sobre de `apply_patch` entero como `tool_input.command`, no como `patch`. El matcher
 // engancha y el guard se ejecuta, pero sin reconocer ese campo no ve un solo archivo y deja pasar todo:
 // en una sesión real reescribió una migración existente sin decir una palabra. El encabezado es lo que

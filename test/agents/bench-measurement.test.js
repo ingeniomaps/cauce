@@ -9,7 +9,7 @@
 // aserciar lo que quedó escrito en disco dejaría pasar justo el defecto que hay que atrapar — por eso
 // cada caso le pregunta al motor —`check`, `context`— y no al archivo.
 
-const { tempRoot, run, linkEngine } = require('../support/environment')
+const { tempRoot, run, linkEngine, discard } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -33,7 +33,23 @@ const TOOLKIT = path.resolve(__dirname, '..', '..')
 // Siempre con `--force`: el banco se niega a rehacerse sobre trabajo sin recoger (caso 029), y una
 // suite que corre después de una medición a mano se toparía con eso. Acá no hay evidencia que
 // cuidar — la que cuida esa guarda es la de una corrida real, no la de una prueba.
-const armar = (escenario) => run(['bench', escenario, '--force'], TOOLKIT)
+//
+// Y lo que arma se retira al cierre, escenario por escenario y nada más —el porqué, en `bench.test.js`
+// (caso 372)—. La línea que una prueba arma al lado del banco se la lleva ella misma.
+const BENCHES = path.join(TOOLKIT, '.cauce-eval', '_medicion')
+const armados = new Set()
+const armar = (escenario) => { armados.add(escenario); return run(['bench', escenario, '--force'], TOOLKIT) }
+
+test.after(() => {
+  for (const escenario of armados) {
+    const dir = path.join(BENCHES, escenario)
+    if (fs.existsSync(dir)) discard(dir)
+  }
+  if (fs.existsSync(BENCHES) && !fs.readdirSync(BENCHES).length) fs.rmdirSync(BENCHES)
+  for (const escenario of armados) {
+    assert.equal(fs.existsSync(path.join(BENCHES, escenario)), false, `${escenario} quedó en el repositorio`)
+  }
+})
 
 test('bench suelto es una instancia de verdad, no un directorio vacío', () => {
   const hecho = armar('suelto')
