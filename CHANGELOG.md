@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.107.0] - 2026-10-10
+
+### Corregido
+
+- **El guard de pruebas reconoce más nombres de prueba fuera de una carpeta de pruebas.** Un `a.test.mjs`, un
+  `a.spec.cts`, una prueba de Cypress (`a.cy.ts`) o de punta a punta (`a.e2e.ts`) no contaban como prueba
+  si no vivían bajo `test/`, así que borrarlas, apagarlas con un `skip` o renombrarlas pasaba. Ahora cuentan,
+  por parche y por shell. La forma con guion —`load-test.js`— sigue sin contar, a propósito, y un nombre como
+  `FooTest.java` tampoco: no se midió sobre proyectos con esos lenguajes (caso 369).
+
 ## [0.106.1] - 2026-10-10
 
 ### Corregido

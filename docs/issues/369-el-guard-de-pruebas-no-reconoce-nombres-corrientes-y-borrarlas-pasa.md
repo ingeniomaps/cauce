@@ -1,14 +1,15 @@
 ---
 caso: 369
 titulo: el guard de pruebas no reconoce nombres corrientes y borrarlas pasa
-estado: abierto
+estado: resuelto
+resuelto-en: 0.107.0
 prioridad: media
 version-detectada: 0.106.1
 ---
 
 # 369 — `test-evidence` no cuenta como prueba un `a.test.mjs`, un `a.cy.ts` ni un `FooTest.java` fuera de una carpeta de pruebas: borrarlos, renombrarlos o apagarlos pasa
 
-**🔴 abierto** · detectado en 0.106.1 · prioridad **media**.
+**🟢 resuelto en 0.107.0** · detectado en 0.106.1 · prioridad **media**.
 
 **Prioridad media**: es un hueco de una defensa que ya existe, y no rompe nada que hoy ande. En un proyecto
 cuyas pruebas se llaman de una de estas formas —módulos ESM, Cypress, Java o C# con las pruebas junto al
@@ -106,6 +107,41 @@ Con eso el fix se acota:
 
 Lo que la medición no dice: cuántas de esas 44 son la misma prueba vista desde dos árboles de trabajo del
 mismo repositorio. Caen en dos repositorios.
+
+## Cierre
+
+`isTestFile` reconoce ahora `.test.`, `.spec.`, `.cy.` y `.e2e.` seguidos de `js`, `jsx`, `ts`, `tsx`,
+`mjs`, `cjs`, `mts` o `cts`. Como la función es una sola, cubre las cuatro formas —borrar, renombrar,
+apagar y borrar por shell— sin tocar ningún guard. Recorrido de lo que el caso enumeraba:
+
+- **Fix 1, ampliar la lista**: hecho distinto. Entran las extensiones de módulo y los dos infijos; el sufijo
+  `Test`/`Tests` **no** entra, porque la medición del punto 2 no encontró un solo archivo con esa forma y
+  sumarlo a ciegas es lo que el riesgo 1 describe. Queda dicho en el comentario de la función y en el
+  CHANGELOG.
+- **Fix 2, medir antes de construir**: hecho, en la revisión de arriba, y vuelto a medir con la función nueva
+  —abajo—.
+- **Fix 3, el `.bak` dentro de una carpeta de pruebas**: mirado, y se decidió que no. Distinguir `tests/a.bak`
+  de `tests/a.test.js` es distinguir qué corre de qué no, que es exactamente lo que el 367 intentó tres veces
+  para el renombrado y dejó: depende del patrón del runner de cada proyecto. Queda como límite, dicho acá: un
+  archivo bajo una carpeta de pruebas cuenta como prueba se llame como se llame.
+- **Riesgo 1, frenar lo que no es una prueba**: la forma con guion queda afuera, y la prueba asercia que
+  `load-test.js`, `a.fake-spec.ts` y `a.double-spec.ts` siguen pasando.
+- **Riesgo 2, que el punto 3 pida distinguir qué corre**: es lo que pasó, y por eso quedó como límite.
+
+**Prueba corrida.** `test/hooks/files.test.js`, caso nuevo: se vio en rojo antes del cambio —`Missing expected
+exception` sobre `src/a.test.mjs`— y en verde después, con las suites de `test-evidence-shell` y
+`patch-move` (19 pruebas). Y la medición repetida con la función nueva, en sólo lectura sobre 212
+repositorios y 53.679 archivos versionados: **44 ganados, 0 perdidos** — 40 `.cy.js`, 2 `.cy.ts`, 2
+`.test.mjs`, los 44 con marca de prueba adentro.
+
+**Mutaciones**, en una copia fuera del árbol, cuatro:
+
+- sin `cy|e2e` en el patrón → rojo, `cypress/e2e/a.cy.ts`;
+- sin las extensiones de módulo → rojo, `src/a.test.mjs`;
+- con el guion admitido antes del infijo → rojo, `Got unwanted exception: scripts/load-test.js`, que es la
+  aserción de ausencia del riesgo 1;
+- con un separador admitido **después** del infijo (`a.test-mjs`) sobrevive: no hay archivo con esa forma
+  y ninguna prueba la nombra. Se deja: es un nombre que no existe, no un hueco.
 
 ## Contexto de descubrimiento
 
