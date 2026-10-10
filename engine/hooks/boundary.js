@@ -68,11 +68,9 @@ const reached = ({ file, lands }) => (lands === file ? file : `${lands} (a donde
 //
 // Lo que `destructive` cuida no se abre por acá: son dos guards y corren los dos.
 const ONLY_CONFIRMED = () => false
+const confirmedOnly = (input, items) => AP.pendingNow(opsRoot(input), items, input, ONLY_CONFIRMED)
 const item = (verb, out) => `${verb} ${out.lands}`
-function unconfirmed(input, found) {
-  const items = [...new Set(found.map(({ verb, out }) => item(verb, out)))]
-  return AP.pendingNow(opsRoot(input), items, input, ONLY_CONFIRMED)
-}
+const unconfirmed = (input, found) => confirmedOnly(input, [...new Set(found.map(({ verb, out }) => item(verb, out)))])
 
 // El bloqueo de los dos guards, con todo lo que cae afuera junto: una sola respuesta lo cubre, y cortar en la
 // primera ruta hacía que la persona contestara dos veces por un comando.
@@ -83,4 +81,4 @@ function refusal(input, found, where) {
     + AP.HOW(null, held, input)
 }
 
-module.exports = { beyond, reached, real, removed, refusal }
+module.exports = { beyond, reached, real, removed, refusal, confirmedOnly }

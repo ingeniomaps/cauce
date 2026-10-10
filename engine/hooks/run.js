@@ -185,14 +185,16 @@ const hookMetadata = [
   {
     name: 'ops-config',
     event: 'PreToolUse · files',
-    purpose: 'No deja al agente escribirse el permiso de push: frena la escritura que cambia '
-      + 'runner.allowPush o runner.pushToLiveBranches en ops.config.json. El resto del archivo pasa.',
+    purpose: 'No deja al agente escribirse el permiso de push ni ensanchar solo el límite de raíces: frena '
+      + 'la escritura que cambia runner.allowPush o runner.pushToLiveBranches en ops.config.json, y la que '
+      + 'agrega una raíz o una ruta escribible en ops.config.json o en ops.config.local.json hasta que una '
+      + 'persona la confirme. El resto de los dos archivos pasa.',
   },
   {
     name: 'ops-config-shell',
     event: 'PreToolUse · shell',
-    purpose: 'Frena toda escritura por shell sobre ops.config.json: un comando no dice con qué va a '
-      + 'quedar el archivo, así que no hay contenido que comparar.',
+    purpose: 'Frena toda escritura por shell sobre ops.config.json y ops.config.local.json: un comando no '
+      + 'dice con qué va a quedar el archivo, así que no hay contenido que comparar.',
   },
   { name: 'generated', event: 'PreToolUse · files', purpose: 'Impide editar código generado manualmente.' },
   {
