@@ -106,7 +106,7 @@ const reviewed = (critical, concerns, second) => {
     return pass === 1 ? { ...base, verdict: 'con-condiciones', concerns } : { ...base, ...second }
   }
 }
-const ROW = { 'Review|human-row': { readOk: true, pending: true } }
+const ROW = { 'Review|human-row': { readOk: true, tasks: ['T-1'] } }
 
 test('una sospecha sin comprobar sobre una superficie crítica frena y queda para una persona', async () => {
   const flow = await runFlow({ ...withSurfaces({ critical: '' }), ...ROW,

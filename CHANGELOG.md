@@ -26,6 +26,13 @@ diseño — eso vive en el commit y en el código.
   llega sola. Rige al reinstalar el runner (caso 345).
 
 
+### Corregido
+
+- **La fila que deja una parada bloquea la tarea, o la parada dice que no.** La fila podía salir con la
+  tarea, la épica y la decisión juntas en la primera columna: no bloqueaba nada, `check` la rechazaba, y la
+  relectura contestaba que estaba pendiente. Ahora el pedido dice que ahí va el slug solo, la comparación la
+  hace el recorrido y no un modelo, y una celda mal formada se manda a corregir una vez antes de avisar.
+  Rige al reinstalar el runner (caso 349).
 
 ## [0.105.0] - 2026-10-08
 

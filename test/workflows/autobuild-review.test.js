@@ -306,11 +306,11 @@ test('la fila de una parada nace pendiente, y si no quedó así la parada lo dic
     assert.doesNotMatch(result.detail, /no quedó pendiente|no se pudo comprobar/, `${label}: nada que avisar`)
 
     // La fila quedó resuelta: el motivo de la parada no cambia, y el detalle lo dice.
-    const resuelta = await runFlow({ ...cambio, [relectura]: { readOk: true, pending: false } })
+    const resuelta = await runFlow({ ...cambio, [relectura]: { readOk: true, tasks: ['otra-tarea'] } })
     assert.equal(resuelta.result.reason, result.reason, `${label}: el motivo es el de la parada`)
     assert.match(resuelta.result.detail, /no quedó pendiente: la resuelve una persona/, label)
     // Y si no se pudo leer, no se afirma nada sobre la fila.
-    const ciega = await runFlow({ ...cambio, [relectura]: { readOk: false, pending: false } })
+    const ciega = await runFlow({ ...cambio, [relectura]: { readOk: false, tasks: [] } })
     assert.match(ciega.result.detail, /no se pudo comprobar la fila de T-1/, label)
   }
 })

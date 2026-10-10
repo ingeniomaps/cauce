@@ -49,11 +49,12 @@ const GATE = `${P}/AWAITING_REVIEW.md`
 // suelta no es un envoltorio. Por eso también la escapada en vez de alternar el estilo de comillas.
 const QUOTES = ['\'', '"']
 
-// Si la fila que registró una parada quedó pendiente. `context` sólo lista las pendientes, así que
-// preguntar por la presencia de la tarea alcanza, y no hace falta que un modelo lea el estado.
+// Las filas pendientes de HUMAN_ACTIONS, por su primera columna. `context` sólo lista las pendientes, así
+// que alcanza con saber cuáles hay. El agente las transcribe y la igualdad con el slug la hace el recorrido:
+// pedirle «decí si hay una fila de esta tarea» dio que sí ante una celda que sólo la mencionaba (caso 349).
 const HUMAN_ROW = {
-  type: 'object', additionalProperties: false, required: ['readOk', 'pending'],
-  properties: { readOk: { type: 'boolean' }, pending: { type: 'boolean' } },
+  type: 'object', additionalProperties: false, required: ['readOk', 'tasks'],
+  properties: { readOk: { type: 'boolean' }, tasks: { type: 'array', items: { type: 'string' } } },
 }
 
 const CONTEXT = {
@@ -715,20 +716,48 @@ const scribeCommit = (prompt, options = {}) => run(prompt, { ...options, agentTy
 // pendiente, y cuando la fila es de la propia tarea se relee en `context`, que sólo lista las pendientes.
 const HUMAN_ROW_STATE = 'La fila nace con estado `pendiente`, sin excepción: registrás el bloqueo, no lo '
   + 'resolvés —lo resuelve una persona—. No escribas una decisión ni se la atribuyas a nadie.'
+// La primera columna es la clave con la que el motor bloquea, y quien escribe la fila imita las que ya hay:
+// en una instancia con filas viejas de título largo, copia esa forma y la tarea se vuelve a ofrecer.
+const HUMAN_ROW_KEY = (slug) => `En la primera columna va ${slug} solo, sin formato ni nada más: es la clave `
+  + 'con la que el motor bloquea la tarea. El motivo, la épica y la decisión van en la acción.'
 const registerHuman = async (prompt, label, slug = '') => {
-  if (!(await write(`${HUMAN_ROW_STATE}\n\n${prompt}`, { label }))) {
+  if (!(await write(`${HUMAN_ROW_STATE}${slug ? ` ${HUMAN_ROW_KEY(slug)}` : ''}\n\n${prompt}`, { label }))) {
     return ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`
   }
   if (!slug) return ''
-  const row = await clerk(
-    `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Poné pending en true sólo si humanActions `
-    + `trae una fila cuya task sea ${slug}, y readOk en true sólo si el comando salió con código 0 y devolvió `
-    + 'JSON. El comando es la fuente de verdad: no abras archivos de planning.',
-    { schema: HUMAN_ROW, label: 'human-row' },
-  )
-  if (!row || !row.readOk) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN}: revisala a mano`
-  return row.pending ? ''
-    : ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
+  const pending = async () => {
+    const row = await clerk(
+      `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Copiá en tasks el campo task de cada `
+      + 'fila de humanActions, entero y tal cual, sin recortarlo ni corregirlo; si no hay ninguna, tasks va '
+      + 'vacío. Poné readOk en true sólo si el comando salió con código 0 y devolvió JSON. El comando es la '
+      + 'fuente de verdad: no abras archivos de planning.',
+      { schema: HUMAN_ROW, label: 'human-row' },
+    )
+    return row && row.readOk ? row.tasks || [] : null
+  }
+  let tasks = await pending()
+  if (!tasks) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN}: revisala a mano`
+  if (tasks.includes(slug)) return ''
+  // La celda que empieza por el slug sin ser el slug solo: envuelto en formato, o seguido del motivo. Sólo
+  // ésa se manda a corregir, porque corregir es reescribir una fila: la que nombra al slug más adelante, o
+  // la de `T-1.1` cuando la tarea es `T-1`, es de otro, y pisarla sería peor que no corregir ninguna.
+  const mentions = (cell) => {
+    const bare = cell.replace(/^[`*«\s]+/, '')
+    return bare.startsWith(slug) && /^(?:[`*»]|\s|:\s|$)/.test(bare.slice(slug.length))
+  }
+  const near = tasks.find(mentions)
+  if (!near) {
+    return ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
+  }
+  await write(`${HUMAN_ROW_STATE}\n\nLa fila de ${slug} en ${HUMAN} quedó con esta primera columna y así no `
+    + `bloquea nada, porque el motor bloquea por la primera columna exacta: ${near}. Dejá ${slug} solo en esa `
+    + 'columna y pasá el resto a la acción. No toques ninguna otra fila ni ningún otro campo.',
+  { label: `${label}-key` })
+  tasks = await pending()
+  if (!tasks) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN} después de corregirla: revisala a mano`
+  if (tasks.includes(slug)) return ''
+  return ` — la fila de ${slug} en ${HUMAN} no bloquea la tarea: su primera columna quedó como «${near}» y `
+    + `tiene que ser ${slug} solo. Corregila a mano`
 }
 
 // Una parada también escribe en planning —la fila, y antes el cargo que Classify anotó en la cola—, y sólo

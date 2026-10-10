@@ -85,9 +85,9 @@ function baseScript() {
     [KEY.commit]: { committed: true, hash: 'abc123' },
     [KEY.pick]: { expanded: false },
     [KEY.closing]: { ok: true, errors: [], warnings: [], lessons: [] },
-    [KEY.planRow]: { readOk: true, pending: true },
-    [KEY.readyRow]: { readOk: true, pending: true },
-    [KEY.verifyRow]: { readOk: true, pending: true },
+    [KEY.planRow]: { readOk: true, tasks: ['T-1'] },
+    [KEY.readyRow]: { readOk: true, tasks: ['T-1'] },
+    [KEY.verifyRow]: { readOk: true, tasks: ['T-1'] },
     [KEY.planningCommit]: { committed: true, hash: 'def456', branch: 'work/planning', live: false },
   }
 }
