@@ -71,12 +71,15 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     // Lo que va entre comillas como argumento de otro comando es un dato, no un borrado de acá.
     `git commit -m "fix: stop the guard; rm -rf ${OUT} is now refused"`, `echo "limpio; rm -rf ${OUT}"`,
     'docker exec app sh -c "cd /app && rm -rf /app/cache"', 'ssh host "systemctl stop x; rm -rf /var/www/old"',
+    // También cuando va dentro de una sustitución entre comillas, con sus propias comillas adentro.
+    'OUT="$(docker exec app sh -c "cd /app && rm -rf /app/cache")"',
     // Un subshell no deja parado al resto del comando donde hizo su `cd`, tenga adentro lo que tenga.
     '(cd /usr && ls); rm -rf service/src', '(cd service && n=$(ls | wc -l) && cd /var/x); rm -rf old',
     // Lo que una sustitución lee no es lo que el comando borra.
     'rm -f $(cat ~/a-borrar.txt)', 'rm -f $(grep -l foo /usr/share/dict/words service/src/*.js)',
     'rm -rf "service/$(basename /usr/lib/x)"', 'rm -f $(ls /usr/share | head -1)',
     'rm -f `ls /usr/share | head -1`',
+    'rm -f $(ls -t /var/backups/app | tail -n +$(cat keep))',
     // Un apóstrofo en un comentario no abre una cadena.
     "# don't stop here\ngit commit -m 'cleanup; rm -rf /var/old'",
     // Un `cd` que no se puede leer deja sin base, no en la carpeta de antes.
@@ -86,6 +89,7 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     'env NOTE="x touch /etc/hosts" node a.js',
     // Y el cuerpo de un heredoc también, se llame como se llame su delimitador.
     'cat > service/x.sh <<\\EOF\nrm -rf /var/www/old\nEOF', "cat > service/x.sh <<'END-1'\nmkdir /opt/x\nEND-1",
+    'cat > service/f.sh <<1\nmkdir /srv/x\n1',
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]
@@ -104,32 +108,25 @@ test('borrar un enlace quita el enlace, y borrar a través de él borra lo de af
   refuses('rm -rf service/enlace/*', REMOVES)
 })
 
-test('lo que destructive cuida sigue siendo el rm recursivo: una limpieza con find no es borrar el árbol', () => {
+// `destructive` contesta otra pregunta —si un `rm -r` se lleva el árbol— con su propio resolvedor, que este
+// caso no toca. Tres revisiones seguidas encontraron una regresión suya por compartirlo; estas formas son las
+// que cambiaron de veredicto en el camino, fijadas como estaban antes.
+test('lo que destructive frena y deja pasar no cambió con este caso', () => {
   const { root } = project('ops-hook-borra-arbol-')
   const destructive = (command) => execute('destructive', { cwd: root, tool_input: { command } })
-  assert.doesNotThrow(() => destructive("find . -name '*.tmp' -delete"))
-  assert.doesNotThrow(() => destructive('rm -f ./suelto.txt'))
-  // Un `cd` sin destino, o a `$HOME`, deja en la carpeta personal: el borrado que sigue se la lleva, esté
-  // o no el proyecto adentro de ella.
-  for (const command of ['cd && rm -rf .', 'cd; rm -rf *', 'cd $HOME && rm -rf .', 'cd "$HOME" && rm -rf ./*']) {
-    blocked('destructive', { cwd: root, tool_input: { command } }, /se lleva la carpeta personal/)
-  }
-  // Un `cd` que este guard no sabe leer no mueve nada: el borrado que sigue se juzga donde estaba, como antes.
+  for (const command of ["find . -name '*.tmp' -delete", 'rm -f ./suelto.txt', 'rm -f *',
+    'cd "/ruta/con espacio" && rm -rf ./sub', 'if cd service; then rm -rf ./dist; fi',
+    'cd "$(git rev-parse --show-toplevel)" && rm -rf ./dist']) assert.doesNotThrow(() => destructive(command), command)
+  blocked('destructive', { cwd: root, tool_input: { command: 'rm -rf .' } }, /se lleva el directorio actual/)
+  // Un `cd` que ese guard no sabe leer, o que quizá no corre, no saca de la vista el borrado de una raíz.
   for (const command of ['cd "$(git rev-parse --show-toplevel)" && rm -rf service', 'cd -P . && rm -rf service',
-    'if [ -d sub ]; then cd sub; fi; rm -rf service', 'cd -- . && rm -rf service']) {
+    'if [ -d sub ]; then cd sub; fi; rm -rf service', 'cd -- . && rm -rf service',
+    'cd /tmp/build 2>/dev/null; rm -rf service', 'cd /nonexistent 2>/dev/null || true; rm -rf service']) {
     blocked('destructive', { cwd: root, tool_input: { command } }, /se lleva la raíz/)
   }
-  for (const command of ['cd "/ruta/con espacio" && rm -rf ./sub', 'if cd service; then rm -rf ./dist; fi',
-    'cd "$(git rev-parse --show-toplevel)" && rm -rf ./dist']) assert.doesNotThrow(() => destructive(command), command)
-  // Sin `-r` no se lleva carpetas: `rm -f *` borra los archivos sueltos y deja el árbol.
-  assert.doesNotThrow(() => destructive('rm -f *'))
-  blocked('destructive', { cwd: root, tool_input: { command: 'rm -rf .' } }, /se lleva el directorio actual/)
-  // Y lo ve detrás de lo que un shell admite delante, que antes lo tapaba.
-  const hidden = ['if true; then rm -rf .; fi', 'for d in a; do rm -rf .; done', 'sudo -n rm -rf .', 'rm -rf \\\n  .',
-    'if rm -rf .; then echo; fi', 'VAR="a b" rm -rf .']
-  for (const command of hidden) {
-    blocked('destructive', { cwd: root, tool_input: { command } }, /se lleva el directorio actual/)
-  }
+  // `local` fuera de una función falla y deja la variable vacía: el `cd` no va a donde dice.
+  blocked('destructive', { cwd: root, tool_input: { command: 'local D=/tmp/copia; cd "$D" && rm -rf .' } },
+    /no se puede resolver/)
 })
 
 test('lo declarado como escribible fuera de las raíces también se puede borrar', () => {

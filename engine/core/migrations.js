@@ -171,6 +171,7 @@ function judged(file, text, edit = {}) {
 // lo que venía después, y pasaba lo que el guard viejo, que juzgaba el sobre entero, frenaba.
 function patchSections(patch) {
   const sections = new Map()
+  const moved = []
   let current = null
   for (const line of String(patch).split('\n')) {
     const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
@@ -178,13 +179,18 @@ function patchSections(patch) {
       current = { kind: header[1].toLowerCase(), lines: [] }
       sections.set(header[2].trim(), current)
     } else if (current && /^\*\*\* Move to:/.test(line)) {
-      // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba
-      // contra el sobre entero, que es lo que partir por secciones vino a quitar.
-      sections.set(line.replace(/^\*\*\* Move to:\s*/, '').trim(), current)
+      moved.push([line.replace(/^\*\*\* Move to:\s*/, '').trim(), current])
     } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
     else if (current && !line.startsWith('@@') && !line.startsWith('*** ')) {
       current.lines.push({ op: line[0] || ' ', text: line.slice(1) })
     }
+  }
+  // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba contra el
+  // sobre entero, que es lo que partir por secciones vino a quitar. Si el parche ya trae otra sección con ese
+  // nombre, se suman: pisarla dejaba sin juzgar lo que esa otra agrega.
+  for (const [name, section] of moved) {
+    const there = sections.get(name)
+    sections.set(name, there ? { kind: 'update', lines: [...there.lines, ...section.lines] } : section)
   }
   return sections
 }

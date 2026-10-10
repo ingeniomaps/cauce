@@ -101,6 +101,18 @@ frenaba por ese mismo `DROP TABLE`. El nombre nuevo es ahora la misma sección q
 una mutación: sin eso, la prueba falla. Lo demás lo confirmó: el destino fuera de las raíces frena, y uno
 con nombre de archivo generado frena por su guard.
 
+### Lo que encontró la revisión del conjunto (2026-10-10)
+
+Tres cosas. **Una se arregló**: el nombre nuevo de un renombrado pisaba la sección que el mismo parche ya
+tuviera con ese nombre, y lo que esa otra agregaba dejaba de juzgarse —una migración con un `DROP TABLE`
+propio pasaba si otro archivo se renombraba encima—. Ahora las dos se suman. Rojo previo y dos mutaciones.
+
+**Dos salieron como caso propio**, el
+[367](./367-un-renombrado-por-parche-se-juzga-solo-como-una-escritura-en-el-destino.md), porque no son de
+éste ni son regresiones: de un archivo renombrado se juzga su ruta nueva y no el contenido que ya traía, y
+no se cuenta que el nombre viejo desaparece. Este cierre decía que el destino «se juzga como una ruta
+más», y es exactamente eso: como ruta.
+
 ## Contexto de descubrimiento
 
 Al cerrar el 365 quedó la pregunta de si borrar por la herramienta de archivos tenía el mismo hueco que

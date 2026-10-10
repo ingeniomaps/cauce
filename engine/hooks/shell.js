@@ -17,7 +17,8 @@ const {
   commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
   withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned, assignedValues,
 } = require('./input')
-const { removesTheTree, steps, removals, creations, home } = require('./removal')
+const { removesTheTree } = require('./removal')
+const { steps, removals, creations, home, asRead } = require('./shell-changes')
 const { landing } = require('../core/files')
 const { beyond, reached, real, removed } = require('./boundary')
 const AP = require('./approval')
@@ -442,8 +443,8 @@ function shellBoundary(input) {
   // esa forma lo cuida `destructive`.
   if (!allowed) return
   const command = commandOf(input)
-  const assigned = assignedValues(command) || ((text) => text)
-  const ran = steps(command, cwdOf(input), true)
+  const assigned = assignedValues(asRead(command)) || ((text) => text)
+  const ran = steps(command, cwdOf(input))
   const changes = [
     ...removals(ran).map((one) => ({ ...one, verb: 'borra', lands: removed })),
     ...creations(ran).map((one) => ({ ...one, verb: 'escribe en', lands: landing })),

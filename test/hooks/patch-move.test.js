@@ -55,4 +55,9 @@ test('una migración renombrada se sigue juzgando por su sección, no por el sob
   // Lo que el parche quita no destruye nada, tampoco en el archivo con su nombre nuevo.
   assert.doesNotThrow(() => execute('migrations', input(['-DROP TABLE old_users;', '+CREATE TABLE users (id int);'])))
   blocked('migrations', input(['-CREATE TABLE users (id int);', '+DROP TABLE users;']), /DROP TABLE/)
+  // Un renombrado que cae sobre un archivo que el mismo parche ya edita no le tapa lo que agrega.
+  const onto = ['*** Begin Patch', '*** Update File: service/migrations/003_x.sql', '@@', '+DROP TABLE users;',
+    '*** Update File: service/notes.txt', '*** Move to: service/migrations/003_x.sql', '@@', '-a', '+b',
+    '*** End Patch'].join('\n')
+  blocked('migrations', { cwd: root, tool_name: 'apply_patch', tool_input: { command: onto } }, /DROP TABLE/)
 })

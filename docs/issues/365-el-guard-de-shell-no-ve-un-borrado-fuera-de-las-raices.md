@@ -119,11 +119,13 @@ servicio original queda al lado, fuera de las raíces de la línea, y es el trab
   tres de las cuatro instancias, cero. Y ninguno que antes frenara dejó de frenar. Los números son los de
   la versión final, con lo que corrigieron las dos revisiones. La misma comparación sobre `destructive`,
   que comparte el resolvedor: 16 comandos que ya frenaba y sigue frenando, ninguno nuevo y ninguno menos.
-- **2, dos resolvedores de qué borra un comando — no se sumó un tercero.** Se generalizó el de `destructive`,
-  que ya seguía el `cd` tramo a tramo, y el guard de límites lo usa. `destructive` sigue juzgando sólo el
-  `rm` recursivo, que es lo que cuidaba: un `find . -name '*.tmp' -delete` y un `rm -f *` no son borrar el
-  árbol, y están probados. El de `test-evidence-shell` no se tocó: resuelve comodines mirando la carpeta,
-  que es otra pregunta.
+- **2, dos resolvedores de qué borra un comando — se sumó un tercero, y fue la decisión correcta.** El
+  primer intento generalizó el de `destructive` para que lo usaran los dos guards. Costó tres regresiones de
+  `destructive` en cuatro revisiones: cada forma que el guard de límites aprendía a leer le cambiaba el
+  veredicto al otro. Las dos lecturas piden cosas opuestas —acá el error caro es frenar un comando
+  legítimo, allá es no ver un borrado—, así que el de límites tiene el suyo, en `engine/hooks/shell-changes.js`,
+  y **`engine/hooks/removal.js` quedó exactamente como estaba antes de este caso**. El de
+  `test-evidence-shell` tampoco se tocó.
 - **3, lo que no se puede resolver — no se juzga.** Una variable que el comando no asigna, o una ruta
   relativa después de un `cd` a un destino desconocido: `cd "$DIR" && rm -rf node_modules` es la limpieza
   de cualquier script. Lo catastrófico de esa forma lo sigue cuidando `destructive`. Las variables que el
@@ -163,10 +165,9 @@ adentro de un subshell `(cd afuera && rm -rf sub)`, `cd` sin destino, `{a,b}`, y
 Un subshell además devuelve la carpeta al cerrarse: `(cd /otra && ls); rm -rf build` juzga `build` donde
 estaba.
 
-Cuatro de esas siete valen también para `destructive`, que usa el mismo resolvedor, y ahí son un freno más
-y no uno menos: `if …; then rm -rf .; fi`, `sudo -n rm -rf .`, el `rm -rf` de varias líneas sobre `.` y
-`cd && rm -rf <algo>` frenan donde antes pasaban. La revisión probó antes del cambio que nada de lo que
-`destructive` frenaba dejó de frenar, y las pruebas de ese guard siguen en verde.
+En ese momento el resolvedor era compartido y cuatro de esas siete llegaban también a `destructive`. **Eso
+se deshizo**: está en «La revisión del conjunto», más abajo. Hoy esas formas las lee sólo el guard de
+límites.
 
 ### Lo que encontró la segunda revisión (2026-10-10)
 
@@ -174,8 +175,9 @@ Acotada a lo que la primera había hecho reescribir. Ocho hallazgos, y se atendi
 
 - **Una regresión de `destructive`, mía.** Al hacer que un `cd` sin destino deje en la carpeta personal,
   `cd && rm -rf .` pasó a resolverse ahí, y la carpeta personal no estaba entre lo que ese guard cuida
-  cuando el proyecto no vive adentro de ella. Antes se frenaba por casualidad —se leía como el directorio
-  actual—. Ahora la carpeta personal se cuida por nombre, y `cd $HOME && rm -rf .` también.
+  cuando el proyecto no vive adentro de ella. Se arregló cuidándola por nombre, y **eso también se
+  deshizo** al devolver ese guard a como estaba: hoy `cd && rm -rf .` frena como frenaba antes, porque se
+  lee como el directorio actual.
 - **Los paréntesis se contaban tramo por tramo.** El `)` de un `$(ls | wc -l)` queda en otro tramo que su
   `$(` y cerraba un subshell que seguía abierto: frenaba `(cd servicio && n=$(ls | wc -l) && cd /otra); rm
   -rf viejo`, y dejaba pasar el borrado de adentro. Se cuentan sobre el comando entero.
@@ -263,14 +265,12 @@ hallazgos; siete se arreglaron y uno se decidió que no.
 - **Una regresión de `destructive`, mía otra vez.** Un `cd` que el resolvedor no sabía leer dejaba sin
   base, y sin base ese guard ya no juzga una carpeta nombrada: `cd "$(git rev-parse --show-toplevel)" && rm
   -rf <raíz>` pasaba donde antes frenaba. Y al revés, frenaba `rm -rf ./sub` después de un `cd` a una ruta
-  con espacios, con un mensaje que hablaba de una variable que no había. Para `destructive` un `cd` que no
-  se lee no mueve nada, como siempre: un `cd` que quizá no corre no puede sacar de la vista el borrado de
-  una raíz. El cierre de arriba decía «ninguno menos» y la comparación sobre comandos reales no lo
+  con espacios, con un mensaje que hablaba de una variable que no había. Fue la segunda regresión del mismo
+  guard por la misma causa. El cierre de arriba decía «ninguno menos» y la comparación sobre comandos reales no lo
   desmentía: esas formas no aparecen en las sesiones, y por eso las encontró quien las buscó.
 - **El valor de una asignación se desarmaba**: en `MSG="chore: rm /etc/foo" …` la segunda palabra del valor
   se leía como el verbo que corre. Las palabras de un tramo se arman ahora como las arma un shell, con lo
-  que va entre comillas en una sola. Eso arregló de paso el caso inverso, que nadie había pedido: en
-  `VAR="a b" rm -rf .` el verbo que se leía era `b` y el borrado no se veía.
+  que va entre comillas en una sola.
 - **El cuerpo de un heredoc con un delimitador como `END-1`, `E.O.F` o `\EOF`** se leía como comandos.
 - **`export D=…; rm -rf $D/x`** quedaba sin resolver; ahora `export`, `readonly` y `local` se leen.
 - **`pushd afuera && rm -rf sub`** y **`if cd afuera; then rm -rf sub; fi`** no se seguían. El guard de
@@ -284,6 +284,45 @@ La revisión dijo también lo que no encontró: de 46 formas de `cd` por 40 de `
 los cambios de «frena» a «pasa» que no son el primer hallazgo son correcciones —el motor de antes leía mal
 el `cd` y frenaba una carpeta que no era la raíz—, y unos 110 comandos corrientes dentro de las raíces no
 cambiaron de veredicto.
+
+### La revisión del conjunto, y lo que cambió de fondo (2026-10-10)
+
+La revisión del diff entero de la rama, antes del PR. Ocho hallazgos, y dos eran otra vez regresiones de
+`destructive`: `local D=…; cd "$D" && rm -rf .` pasaba —`local` fuera de una función falla y deja la
+variable vacía—, y `cd /otra 2>/dev/null; rm -rf <raíz>` también, porque el `cd` con redirección ahora se
+leía y, si fallaba, el borrado corría donde estaba.
+
+Tres regresiones del mismo guard en cuatro revisiones no se arreglan una por una. **Se devolvió
+`destructive` a como estaba**: `engine/hooks/removal.js` no tiene ninguna diferencia con la versión
+anterior a este caso, y lo que comparten todos los guards —cómo se vacía un heredoc, cómo se resuelven las
+variables que el comando asigna— tampoco. Todo lo que este caso lee de nuevo vive en
+`engine/hooks/shell-changes.js` y lo usa sólo el guard de límites.
+
+Con eso se van, junto con las regresiones, las mejoras de `destructive` que este cierre contaba más
+arriba: no ve el `rm -rf .` detrás de un `then`, ni el de varias líneas, ni cuida la carpeta personal por
+nombre. Nada de eso lo pedía este caso. Y queda escrito un hueco suyo que apareció en el camino y que
+tampoco es de este caso: `cd ~ && rm -rf .` pasa ese guard, antes y ahora.
+
+Lo demás de esa revisión, sobre el guard de límites, se arregló: una sustitución entre comillas con sus
+propias comillas adentro —`"$(docker exec app sh -c "cd /app && rm -rf /app/cache")"`— se leía como
+comando; de una sustitución dentro de otra se quitaba sólo la de adentro; y el cuerpo de un heredoc con
+delimitador `1` se leía. Quedan sin leer, y es un límite: el delimitador entre comillas con espacios y dos
+heredocs en la misma línea.
+
+**Cómo se comprobó que `destructive` no cambió**, que es lo que tres veces se afirmó de más:
+
+- El archivo, contra la versión anterior: sin diferencias.
+- 1.880 combinaciones de 47 formas de `cd` y de lo que va delante por 40 formas de `rm`, con el motor
+  anterior y con éste: el mismo veredicto en las 1.880.
+- Los comandos de shell de las sesiones reales, esta vez **todos** y no sólo los que traen un verbo de
+  borrado: 60.933 comandos distintos, 1.080 que frenaba y frena, ninguno nuevo, ninguno menos.
+
+Y el guard de límites, contra el motor anterior, sobre los mismos 62.464 comandos: los 43 frenos nuevos de
+antes, ninguno perdido.
+
+Las mutaciones se corrieron de nuevo sobre el archivo nuevo: cuarenta y una en rojo. Dos sobrevivieron
+porque el código que tocaban sobraba —unir las líneas partidas con una barra y leer un `cd` detrás de un
+paréntesis ya lo hacían otras dos piezas—, y se quitó.
 
 ### Sesiones reales (2026-10-10)
 
@@ -302,6 +341,17 @@ Code** (`claude -p`, sólo con permiso de shell) y con **Gemini CLI 0.55.1**, y 
 
 Y en disco, después de cada sesión: `x.txt` sigue ahí, `src` del servicio original también, la carpeta de
 prueba se creó y se borró, y `nueva` no existe.
+
+Esas dos sesiones corrieron antes de lo que corrigió la tercera revisión. Se repitieron con el motor final,
+los dos runners, y tres comandos más por las formas que esa revisión tocó:
+
+```
+6  export D=<banco>/otra; rm -f $D/x.txt                    rechazado: «el comando borra …/otra/x.txt»
+7  MSG="nota: rm <banco>/otra/x.txt no se corre"; echo …    corrió
+8  if cd <banco>/otra; then rm -f x.txt; fi                 rechazado: «el comando borra …/otra/x.txt»
+```
+
+Los cinco de antes dieron lo mismo, y el disco quedó igual: nada de afuera se tocó.
 
 **Con Antigravity no se corrió.** Ejecuta la copia registrada por usuario y para probar hay que reemplazarla
 un rato. Al ir a hacerlo había dos sesiones suyas abiertas en la máquina y la copia registrada había sido
