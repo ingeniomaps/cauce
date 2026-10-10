@@ -18,6 +18,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Borrar fuera de las raíces por shell se frena igual que escribir ahí.** El guard de límites no dejaba
+  tocar una ruta de afuera con un `echo >` y dejaba borrarla con un `rm -rf`. Ahora `rm`, `unlink`,
+  `rmdir` y `find … -delete` se juzgan como una escritura, y `touch` y `mkdir` también. Vale lo mismo que
+  para escribir: el temporal del sistema y lo que declares en `writableOutsideRoots` siguen pasando, y lo
+  que no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga. **Si tus sesiones
+  borran algo fuera del proyecto**, por ejemplo una caché en tu carpeta personal, declarala ahí (caso 365).
+
 - **Lo que el runner instala con la ruta de tu carpeta escrita ya no entra a git.** Los recorridos de Claude y
   el puente de Antigravity llevan la ruta de la instancia. En una instancia embebida vivían en el
   repositorio, y cada clon y cada línea de trabajo los veía modificados para siempre. Una instancia nueva los

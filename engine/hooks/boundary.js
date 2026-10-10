@@ -35,11 +35,15 @@ function sourceRoots(input) {
   return [source, ...declared].map(real)
 }
 
+// Dónde cae lo que se borra. Borrar un enlace quita el enlace y no lo que hay detrás, así que el último
+// tramo no se sigue; con una barra al final sí, que es como se nombra lo de adentro.
+const removed = (base, raw) => (raw.endsWith('/') ? landing(base, raw)
+  : path.join(landing(base, path.dirname(raw)), path.basename(raw)))
+
 // Por qué una escritura a `raw` desde `base` queda afuera, o null si no queda. `lands` es dónde cae.
-function beyond(input, base, raw, allowed) {
+function beyond(input, base, raw, allowed, lands = landing(base, raw)) {
   const file = path.resolve(base, raw)
   if (outsideRoots(file, allowed)) return { file, lands: file }
-  const lands = landing(base, raw)
   if (lands === file || !outsideRoots(lands, allowed.map(real))) return null
   return outsideRoots(lands, sourceRoots(input)) ? { file, lands } : null
 }
@@ -47,4 +51,4 @@ function beyond(input, base, raw, allowed) {
 // El mismo aviso en los dos guards: dónde cae, y por dónde se llegó si no es donde está escrito.
 const reached = ({ file, lands }) => (lands === file ? file : `${lands} (a donde lleva ${file})`)
 
-module.exports = { beyond, reached, real }
+module.exports = { beyond, reached, real, removed }

@@ -349,7 +349,7 @@ commitear antes y después.
 
 De ahí salió un defecto que no es de este caso ni de esta versión, el
 [365](./365-el-guard-de-shell-no-ve-un-borrado-fuera-de-las-raices.md): el mismo guard deja pasar un `rm -rf`
-sobre esa ruta.
+sobre esa ruta. Se arregló en 0.106.1.
 
 ## Contexto de descubrimiento
 

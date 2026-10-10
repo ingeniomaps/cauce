@@ -15,11 +15,11 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
-  withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned,
+  withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned, assignedValues,
 } = require('./input')
-const { removesTheTree } = require('./removal')
+const { removesTheTree, steps, removals, creations, home } = require('./removal')
 const { landing } = require('../core/files')
-const { beyond, reached, real } = require('./boundary')
+const { beyond, reached, real, removed } = require('./boundary')
 const AP = require('./approval')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
@@ -435,6 +435,27 @@ function shellBoundary(input) {
     const out = beyond(input, base || '/', raw, allowed)
     const where = out && `${reached(out)}, fuera de las raíces declaradas en ops.config.json`
     if (out) block(`el comando escribe en ${where}. ${DECLARE_IT}`)
+  }
+  // Borrar afuera es cambiar lo de afuera, y crear una carpeta o un archivo vacío también (caso 365). Lo que
+  // no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga: `cd "$DIR" && rm -rf
+  // node_modules` es la limpieza de cualquier script, y frenarla enseña a apagar el guard. Lo catastrófico de
+  // esa forma lo cuida `destructive`.
+  if (!allowed) return
+  const command = commandOf(input)
+  const assigned = assignedValues(command) || ((text) => text)
+  const ran = steps(command, cwdOf(input), true)
+  const changes = [
+    ...removals(ran).map((one) => ({ ...one, verb: 'borra', lands: removed })),
+    ...creations(ran).map((one) => ({ ...one, verb: 'escribe en', lands: landing })),
+  ]
+  for (const { raw, base, verb, lands } of changes) {
+    const named = home(assigned(raw))
+    if (/[$`\u0000]/.test(named) || (base === null && !path.isAbsolute(named))) continue
+    const at = lands(base || '/', named)
+    if (TEMP.test(at)) continue
+    const out = beyond(input, base || '/', named, allowed, at)
+    const where = out && `${reached(out)}, fuera de las raíces declaradas en ops.config.json`
+    if (out) block(`el comando ${verb} ${where}. ${DECLARE_IT}`)
   }
 }
 
