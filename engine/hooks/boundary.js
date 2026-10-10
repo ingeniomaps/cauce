@@ -78,7 +78,7 @@ function refusal(input, found, where) {
   const held = unconfirmed(input, found)
   if (!held.length) return ''
   return `${where(found)}, fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}\n`
-    + AP.HOW(null, held, input)
+    + AP.HOW(null, held, input, held, { turn: true })
 }
 
 module.exports = { beyond, reached, real, removed, refusal, confirmedOnly }

@@ -165,7 +165,7 @@ function judgeWrite(input, root, file) {
   if (file === path.join(root, INSTANCE_CONFIG) && !asked(input, file)
     && keysOf(configOf(root)) !== keysOf(incoming)) block(changeMessage(file))
   const held = confirmedOnly(input, widened(root, incoming, file).map((one) => `declara ${one}`))
-  if (held.length) block(widensMessage(file, held) + AP.HOW(null, held, input))
+  if (held.length) block(widensMessage(file, held) + AP.HOW(null, held, input, held, { turn: true }))
 }
 
 function judgeCommand(input, root, file) {
@@ -180,7 +180,7 @@ function judgeCommand(input, root, file) {
     // ofrece nada que pegar (tercera revisión del 373).
     const item = `escribe ${real(file)}`
     const held = CHAT.unauthorizedNow(input, [item], () => false)
-    if (held.length) block(commandMessage(root, file) + AP.HOW(null, held, input, []))
+    if (held.length) block(commandMessage(root, file) + AP.HOW(null, held, input, [], { turn: true }))
   }
 }
 

@@ -43,6 +43,8 @@ test('la confirmación del bloqueo abre exactamente la ruta y el verbo que el bl
     const message = messageOf('shell-boundary', asked(shell(`rm -rf ${OUT}/cache`)))
     assert.match(message, /fuera de las raíces declaradas/)
     assert.match(message, CONFIRM)
+    assert.match(message, /vale para este turno/, 'y dice cuánto dura, que no es la sesión')
+    assert.doesNotMatch(message, /sigue valiendo en los mensajes siguientes/)
     assert.match(message, new RegExp(`\\n {2}borra ${OUT}/cache\\n`), 'la línea que se pega lleva el verbo')
     assert.doesNotMatch(message, /\n {2}escribe /, 'y no el otro verbo')
 

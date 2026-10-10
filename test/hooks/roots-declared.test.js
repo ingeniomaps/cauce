@@ -47,6 +47,7 @@ test('agregar una ruta escribible o una raíz la confirma una persona, con la en
     const message = messageOf('ops-config', asked(write(outside)))
     assert.match(message, WIDENS)
     assert.match(message, CONFIRM)
+    assert.match(message, /vale para este turno/)
     assert.match(message, new RegExp(`\\n {2}declara ${OUT}/cache\\n`), 'la línea lleva la ruta resuelta')
     // Una raíz de producto ensancha lo mismo, y el archivo de la máquina también.
     const asRoot = { ...BASE, workspaceRoots: [...BASE.workspaceRoots, { name: 'x', path: OUT }] }

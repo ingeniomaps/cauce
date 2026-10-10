@@ -105,7 +105,10 @@ function REFUSED(items, input = {}) {
 // `pasteable` es lo que se puede aprobar por archivo, y por defecto es todo: un guard lo angosta cuando lo
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
-function HOW(variable, lines, input, pasteable = lines, { durable = false, fixable = false } = {}) {
+// `turn` lo pasa el guard que no hereda —los de límites y el de la configuración—: decirle a la persona que su
+// confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación falsa en
+// el bloqueo, vista en una sesión real de Gemini (caso 370).
+function HOW(variable, lines, input, pasteable = lines, { durable = false, fixable = false, turn = false } = {}) {
   // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el
   // diálogo, y un pendiente que sobreviviera lo podría aprobar un mensaje sobre otra cosa (caso 221).
   // Sin nada que aprobar no hay diálogo: `plan-first` con un plan a la vista pide escribir el plan, no un sí.
@@ -144,8 +147,9 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false, fixab
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
       + 'respuesta que niega, frena o pregunta. '
   const ask = native ? CF.LEAD : chat
-    ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo '
-      + 'en los mensajes siguientes hasta que ella lo niegue. '
+    ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y '
+      + (turn ? 'vale para este turno: en el mensaje siguiente vuelve a preguntarse. '
+        : 'sigue valiendo en los mensajes siguientes hasta que ella lo niegue. ')
     : (fixable ? fix : '')
   const refused = dropped.length ? REFUSED(dropped, input) : ''
   const keep = chat && durable ? KEEP(input, pasteable.filter((one) => !dropped.includes(one))) : ''
