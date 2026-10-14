@@ -154,6 +154,11 @@
     "branches": 59,
     "functions": 78
   },
+  "engine/cli/promote.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/cli/upgrade-report.js": {
     "lines": 95,
     "branches": 78,
@@ -437,6 +442,11 @@
   "engine/planning/parser.js": {
     "lines": 100,
     "branches": 93,
+    "functions": 100
+  },
+  "engine/planning/promote.js": {
+    "lines": 100,
+    "branches": 70,
     "functions": 100
   },
   "engine/planning/recurring.js": {

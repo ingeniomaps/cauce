@@ -27,6 +27,7 @@ const FLAGS = {
   inbox: ['--json'],
   human: ['--json'],
   'split-backlog': [],
+  promote: [],
   'renumber-epic': [],
   line: ['--json'],
   lines: ['--json', '--apply'],

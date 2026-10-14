@@ -11,6 +11,7 @@ const IN = require('./instance')
 const PL = require('./planning')
 const LN = require('./lines')
 const LJ = require('./lines-join')
+const PR = require('./promote')
 const CT = require('./contract')
 const BN = require('./bench')
 const VA = require('./validate')
@@ -164,6 +165,7 @@ function usage() {
   ops inbox <planning-dir> [--json]
   ops human <planning-dir> [--json]
   ops split-backlog <planning-dir>
+  ops promote <planning-dir> <epic-NNN-slug>
   ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>
   ops line <ops-root> <nombre> [--json]
   ops lines <ops-root> [--json]
@@ -245,6 +247,7 @@ async function run(cli) {
   else if (command === 'inbox') PL.inbox(arg[1], cli)
   else if (command === 'human') PL.human(arg[1], cli)
   else if (command === 'split-backlog') PL.splitBacklog(arg[1])
+  else if (command === 'promote') PR.promote(arg[1], arg[2])
   else if (command === 'renumber-epic') PL.renumberEpic(arg[1], arg[2], arg[3])
   else if (command === 'line') LN.line(arg[1], arg[2], cli)
   else if (command === 'lines' && arg[1] === 'join') LJ.join(arg[2], arg[3], cli)
