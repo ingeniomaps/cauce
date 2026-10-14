@@ -37,16 +37,25 @@ test('clasificar mira el archivo del hito, y proteger la cola mira BACKLOG.md y 
 // `autobuild.js`; acá se fija que la consigna lo pida.
 test('partir una tarea reapunta a quien dependía de ella, a todas las partes', async () => {
   const base = baseScript()[KEY.context]
-  const otra = { ...base, slug: 'T-2', claimed: true }
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const other = { ...base, slug: 'T-2', claimed: true }
+  const empty = { ...base, hasTask: false, queued: 0 }
   const { prompts } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [{ ...base, claimed: true }, otra, vacio, vacio] },
+    { contexts: [{ ...base, claimed: true }, other, empty, empty] },
   )
   const split = prompts.find((one) => one.key === 'Decompose|split')
   assert.ok(split, 'no hubo partición')
   assert.match(split.prompt,
     /toda tarea de la cola .*que declare \(depende: …\) nombrando a T-1 pasa a depender de todas las subtareas/)
+
+  // Y si la relectura muestra a alguien esperando todavía a T-1, la consigna no se cumplió entera: la corrida
+  // para ahí, no en el check del final.
+  const dangling = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [{ ...base, claimed: true }, { ...other, waiting: [{ slug: 'T-2', dep: 'T-1', owner: '' }] }] },
+  )
+  assert.equal(dangling.result.reason, 'split-left-dependents', JSON.stringify(dangling.result))
+  assert.match(dangling.result.detail, /T-2.*T-1/)
 })
 
 // Lo mismo con la aceptación que Ready corrige: por qué se escribe en la línea y se relee está junto a ese
@@ -84,4 +93,17 @@ test('la aceptación que Ready corrige se escribe en la línea de la tarea y la 
   const stuck = await runFlow(ready, { contexts: [base, base] })
   assert.equal(stuck.result.reason, 'refine-not-applied', JSON.stringify(stuck.result))
   assert.match(stuck.result.detail, /T-1/)
+  // Y si la cola ya no ofrece la misma tarea, se dice eso y no «sigue con la anterior».
+  const mangled = await runFlow(ready, { contexts: [base, { ...base, slug: 'T-2', acceptance: refined }] })
+  assert.equal(mangled.result.reason, 'refine-not-applied')
+  assert.match(mangled.result.detail, /ofrece T-2/)
+  // Un texto que la línea no puede llevar —un `_` suelto cierra la aceptación— no se dicta: se para antes.
+  const unwritable = await runFlow(
+    { [KEY.ready]: { ready: true, needsHuman: false, refinedAcceptance: 'rechaza en `users_` y loguea' } },
+    { contexts: [base, base] },
+  )
+  assert.equal(unwritable.result.reason, 'refine-unwritable', JSON.stringify(unwritable.result))
+  assert.equal(unwritable.prompts.some((one) => one.key === 'Ready|refine'), false, 'no se escribió nada')
+  // La primera crítica también juzga contra la aceptación que rige, como ya hacía la segunda.
+  assert.match(run.prompts.find((one) => one.key === KEY.critique).prompt, new RegExp(`contra ${refined}`))
 })
