@@ -1,0 +1,45 @@
+--- a/pkg/middleware/auth_middleware.go
++++ b/pkg/middleware/auth_middleware.go
+@@ -44,9 +44,9 @@ type userCtxKey struct{}
+ type OAuthVerifier struct {
+ 	publicKey *rsa.PublicKey
+-	Issuer    string
++	issuers   issuerAllowlist
+ 	Audience  string
+ }
+
+-func NewOAuthVerifier(publicKey *rsa.PublicKey, issuer, audience string) (*OAuthVerifier, error) {
++func NewOAuthVerifier(publicKey *rsa.PublicKey, issuers []string, audience string) (*OAuthVerifier, error) {
+ 	if publicKey == nil {
+ 		return nil, ErrMissingPublicKey
+ 	}
+-	if strings.TrimSpace(issuer) == "" {
+-		return nil, ErrMissingIssuer
+-	}
+ 	if strings.TrimSpace(audience) == "" {
+ 		return nil, ErrMissingAudience
+ 	}
+-	return &OAuthVerifier{publicKey: publicKey, Issuer: issuer, Audience: audience}, nil
++	allowlist, err := newIssuerAllowlist(issuers)
++	if err != nil {
++		return nil, err
++	}
++	return &OAuthVerifier{publicKey: publicKey, issuers: allowlist, Audience: audience}, nil
+ }
+@@ -86,7 +88,7 @@ func (v *OAuthVerifier) validate(tokenStr string, claims *jwttools.OAuthClaims) error {
+ 		claims,
+ 		jwttools.NewRS256KeyFunc(v.publicKey),
+ 		jwt.WithAudience(v.Audience),
+-		jwt.WithIssuer(v.Issuer),
+ 		jwt.WithExpirationRequired(),
+ 	)
+ 	switch {
+ 	case err != nil:
+ 		return err
+ 	case parsed == nil || !parsed.Valid:
+ 		return errTokenInvalid
++	case !v.issuers.allows(claims.Issuer):
++		return errIssuerNotAllowed
+ 	case strings.TrimSpace(claims.Subject) == "":
+ 		return errEmptySubject
+ 	}

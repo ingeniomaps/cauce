@@ -1,0 +1,12 @@
+# config-map del ambiente production (extracto)
+jwt:
+  audience: mcp-server
+countries:
+  co:
+    issuer: https://api.acme.example/co
+  mx:
+    issuer: https://api.acme.example/mx
+  cl:
+    issuer: https://api.acme.example/cl
+  pe:
+    issuer: https://auth.acme.example   # PE todavía no tiene backend_url propio en auth-service
