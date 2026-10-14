@@ -174,7 +174,8 @@ function lines(dir, cli) {
   const none = '(ninguno)'
   console.log(`LÍNEAS  base: ${report.base || '(sin rama)'}`)
   for (const one of report.trees) {
-    const moved = one.ahead || one.behind ? `  +${one.ahead} / -${one.behind}` : ''
+    const moved = one.ahead === null ? '  sin base contra qué contar'
+      : (one.ahead || one.behind ? `  +${one.ahead} / -${one.behind}` : '')
     const dirty = one.dirty ? `  · ${one.dirty} sin commitear` : ''
     console.log(`\n${one.line || 'principal'}  ${one.tree}  (${one.branch || 'sin rama'})${moved}${dirty}`
       + `${one.current ? '  ← acá' : ''}`)

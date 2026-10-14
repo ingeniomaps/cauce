@@ -238,12 +238,15 @@ test('join --apply se niega sobre un árbol sucio, y sin conflictos mergea y cor
   const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
   assert.equal(claim(trees.line, 'r-line', 'admin-consulta').status, 0)
   commitIn(ops.line, 'claim', 'planning')
+  // Sucio es un cambio sobre lo trackeado. Un archivo suelto no frena: el merge no lo toca, y en un
+  // repositorio de trabajo casi siempre hay alguno.
+  fs.appendFileSync(path.join(trees.main, 'BACKLOG.md'), '\n')
   fs.writeFileSync(path.join(trees.main, 'suelto.md'), 'x\n')
   const dirty = run(['lines', 'join', ops.main, 'admin', '--apply'])
   assert.equal(dirty.status, 1)
   assert.match(dirty.stderr, /1 cambio\(s\) sin commitear/)
   assert.equal(fs.existsSync(path.join(trees.main, 'claims', 'admin-consulta.md')), false, 'no mergeó')
-  fs.rmSync(path.join(trees.main, 'suelto.md'))
+  git(ops.main, 'checkout', '--', 'planning/BACKLOG.md')
 
   const applied = run(['lines', 'join', ops.main, 'admin', '--apply'])
   assert.equal(applied.status, 0, applied.stderr + applied.stdout)
@@ -255,6 +258,27 @@ test('join --apply se niega sobre un árbol sucio, y sin conflictos mergea y cor
   const again = run(['lines', 'join', ops.main, 'admin', '--apply'])
   assert.equal(again.status, 0)
   assert.match(again.stdout, /nada que traer/)
+
+  // Un reclamo que ya está de los dos lados no viene con la línea: sólo cuenta lo que el merge trae.
+  checkpoint(trees.line, 'admin', 'admin')
+  commitIn(ops.line, 'checkpoint', 'planning')
+  const next = JSON.parse(run(['lines', 'join', ops.main, 'admin', '--json']).stdout)
+  assert.equal(next.commits, 1)
+  assert.deepEqual(next.claims, [], 'el reclamo ya llegó en el join anterior')
+})
+
+test('lines dice que no hay base cuando el árbol principal está suelto, en vez de contar cero', () => {
+  const trees = instance()
+  const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
+  fs.writeFileSync(path.join(ops.line, 'suelto.md'), 'x\n')
+  git(ops.line, 'add', 'suelto.md')
+  git(ops.line, 'commit', '-qm', 'adelante')
+  git(ops.main, 'checkout', '-q', '--detach')
+  const report = JSON.parse(run(['lines', ops.main, '--json']).stdout)
+  assert.equal(report.base, '')
+  const line = report.trees.find((one) => one.branch === 'line/admin')
+  assert.equal(line.ahead, null, 'sin base no hay número')
+  assert.match(run(['lines', ops.main]).stdout, /sin base contra qué contar/)
 })
 
 // La clasificación y las épicas repetidas son funciones puras: se prueban con listas, sin git de por medio.
@@ -289,9 +313,25 @@ test('join se niega sobre lo que no es una raíz, sobre la propia rama, y acepta
   commitIn(ops.main, 'claim', 'planning')
   const applied = run(['lines', 'join', ops.line, 'main', '--apply', '--json'])
   assert.equal(applied.status, 0, applied.stderr)
-  const report = JSON.parse(applied.stdout.split('\n')[0])
+  const report = JSON.parse(applied.stdout)
   assert.equal(report.source, 'main')
   assert.equal(report.target, 'line/admin')
   assert.equal(report.applied, true)
+  assert.equal(report.check.ok, true, 'lo que dijo check viaja dentro del mismo JSON')
   assert.ok(fs.existsSync(path.join(trees.line, 'claims', 'auth-token.md')))
+})
+
+// Cuando `check` no puede ni empezar sobre lo que quedó —la línea se llevó `BACKLOG.md`—, no imprime JSON: el
+// informe lo dice igual, dentro del mismo documento, y el comando sale en 1.
+test('join --apply --json cuenta un check que no pudo correr, sin romper el JSON', () => {
+  const trees = instance()
+  const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
+  git(ops.line, 'rm', '-q', 'planning/BACKLOG.md')
+  git(ops.line, 'commit', '-qm', 'sin cola')
+  const result = run(['lines', 'join', ops.main, 'admin', '--apply', '--json'])
+  assert.equal(result.status, 1)
+  const report = JSON.parse(result.stdout)
+  assert.equal(report.applied, true)
+  assert.equal(report.check.ok, false)
+  assert.match(report.check.output, /falta BACKLOG\.md/)
 })

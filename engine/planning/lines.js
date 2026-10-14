@@ -95,10 +95,13 @@ function status(root) {
       const planning = path.join(tree, where.relative)
       const line = branch.startsWith(BRANCH) ? branch.slice(BRANCH.length) : ''
       // `base...rama` con `--left-right`: lo que sólo está en la base es lo que falta traer, lo que sólo está
-      // en la rama es lo que falta llevar.
-      const counted = base && branch && branch !== base
-        ? git(root, 'rev-list', '--left-right', '--count', `${base}...${branch}`) : null
-      const [behind, ahead] = counted ? counted.stdout.trim().split(/\s+/).map((n) => Number(n) || 0) : [0, 0]
+      // en la rama es lo que falta llevar. Sin base —el principal suelto— no hay número, y cero no es «no sé».
+      let [behind, ahead] = [null, null]
+      if (base && branch === base) [behind, ahead] = [0, 0]
+      else if (base && branch) {
+        const counted = git(root, 'rev-list', '--left-right', '--count', `${base}...${branch}`)
+        ;[behind, ahead] = counted.stdout.trim().split(/\s+/).map((n) => Number(n) || 0)
+      }
       const dirty = (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length
       const entry = { tree, branch, line, current: fs.realpathSync(tree) === where.here, ahead, behind, dirty }
       if (!fs.existsSync(path.join(planning, 'BACKLOG.md'))) {

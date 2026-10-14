@@ -52,10 +52,13 @@ function join(dir, name, cli) {
   const claimsDir = `${where.relative ? `${where.relative}/` : ''}claims`
   const report = {
     source, target, commits, applied: false,
-    dirty: (git(root, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length,
+    // Sucio es lo trackeado con cambios: un archivo suelto no lo toca el merge, y casi siempre hay alguno.
+    dirty: (git(root, 'status', '--porcelain', '--untracked-files=no').stdout || '').split('\n').filter(Boolean).length,
     conflicts: LNP.classifyConflicts(where.relative, files),
     duplicates: LNP.duplicateEpics(listed(root, target, roadmap), listed(root, source, roadmap)),
-    claims: listed(root, source, claimsDir).map((one) => path.basename(one, '.md')).filter((one) => one !== 'README'),
+    // Sólo los reclamos que el merge trae: los que ya están de los dos lados llegaron en un join anterior.
+    claims: (git(root, 'diff', '--name-only', '--diff-filter=A', `${target}...${source}`, '--', claimsDir).stdout || '')
+      .split('\n').filter(Boolean).map((one) => path.basename(one, '.md')).filter((one) => one !== 'README'),
   }
   const apply = cli.has('--apply')
   if (apply && report.dirty) {
@@ -72,17 +75,28 @@ function join(dir, name, cli) {
       return fail(`git merge falló: ${(merged.stderr || '').trim()}`, REFUSED)
     }
   }
-  if (cli.has('--json')) console.log(JSON.stringify(report))
-  else print(report, name)
+  // Sobre lo que quedó, no sobre lo que se calculó: la fila revivida y la épica repetida las ve `check`. En
+  // JSON viaja adentro del informe, para que la salida siga siendo un solo documento.
+  const json = cli.has('--json')
+  let checked = null
+  if (report.applied) {
+    const args = [path.join(__dirname, 'ops.js'), 'check', planning, ...(json ? ['--json'] : [])]
+    checked = spawnSync(process.execPath, args, { encoding: 'utf8' })
+    if (json) {
+      try { report.check = JSON.parse(checked.stdout) } catch {
+        report.check = { ok: false, output: `${checked.stdout || ''}${checked.stderr || ''}` }
+      }
+    }
+    if (checked.status !== 0) process.exitCode = 1
+  }
+  if (json) console.log(JSON.stringify(report))
+  else {
+    print(report, name)
+    if (checked) process.stdout.write(`${checked.stdout || ''}${checked.stderr || ''}`)
+  }
   if (report.inProgress) {
     return fail('el merge quedó en curso: resolvé los conflictos y commiteá, o git merge --abort.', REFUSED)
   }
-  if (!report.applied) return
-  // Sobre lo que quedó, no sobre lo que se calculó: la fila revivida y la épica repetida las ve `check`.
-  const check = spawnSync(process.execPath, [path.join(__dirname, 'ops.js'), 'check', planning], { encoding: 'utf8' })
-  process.stdout.write(check.stdout || '')
-  process.stderr.write(check.stderr || '')
-  if (check.status !== 0) process.exitCode = 1
 }
 
 function print(report, name) {
