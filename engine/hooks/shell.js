@@ -302,7 +302,11 @@ function dependencies(input) {
     const manifests = sinAprobar(parent, state.manifests)
       .filter((name) => !lockUnaffected(dir, name, existingLocks))
     if (state.manifests.length && existingLocks.length && !state.locks.length && manifests.length) {
+      // Un lock que ya no está en disco pero sigue en el índice impide aflojar y no se ve: se nombra.
+      const stale = existingLocks.filter((name) => !onDisk.includes(name))
       block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
+        + (stale.length ? `Hay otro lockfile en el índice y no en disco —${stale.join(', ')}—: con dos, un `
+          + 'manifiesto que no toca dependencias tampoco afloja. Si ya no se usa, sacalo del índice.\n' : '')
         + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests, input))
     }
     const lockfiles = sinAprobar(parent, state.locks)

@@ -402,15 +402,25 @@ test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo 
   // Con pnpm, lo mismo que con npm: medido clave por clave con pnpm 10.30.2 (caso 375). Y lo que sí mueve su
   // lock —`pnpm.overrides`, `resolutions`— no está en la lista inerte, así que sigue frenando.
   assert.doesNotThrow(() => execute('dependencies', commit(repo('pnpm-lock.yaml', (p) => { p.scripts.cov = 'x' }))))
-  for (const [what, change] of [
+  for (const [, change] of [
     ['pnpm.overrides', (p) => { p.pnpm = { overrides: { example: '1.0.1' } } }],
     ['resolutions', (p) => { p.resolutions = { example: '1.0.1' } }],
   ]) {
-    blocked('dependencies', commit(repo('pnpm-lock.yaml', change)), /sin actualizar su lockfile/, what)
+    blocked('dependencies', commit(repo('pnpm-lock.yaml', change)), /sin actualizar su lockfile/)
   }
   // Un manifiesto que HEAD no tenía no se compara contra nada, aunque sólo traiga scripts.
   blocked('dependencies', commit(repo('package-lock.json', (p) => { p.scripts = { cov: 'x' } }, { tracked: false })),
     /sin actualizar su lockfile/)
+  // Migrado a pnpm con el lock de npm borrado del disco y no del índice: con dos locks no afloja, y como el
+  // segundo no se ve, el mensaje lo nombra.
+  const migrated = repo('pnpm-lock.yaml', () => {})
+  fs.writeFileSync(path.join(migrated, 'package-lock.json'), '{}\n')
+  git(['add', 'package-lock.json'], migrated)
+  git(['commit', '-q', '-m', 'old lock'], migrated)
+  fs.rmSync(path.join(migrated, 'package-lock.json'))
+  fs.writeFileSync(path.join(migrated, 'package.json'), JSON.stringify({ ...base, scripts: { cov: 'x' } }, null, 2))
+  git(['add', 'package.json'], migrated)
+  blocked('dependencies', commit(migrated), /en el índice y no en disco —package-lock\.json—/)
 })
 
 // La aprobación por operación existía y la usaba un guard solo; los otros cuatro que se pueden abrir
