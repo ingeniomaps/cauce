@@ -246,7 +246,7 @@ test('el parser lee los hitos de una épica con su línea y sus historias', () =
 
 - **alta-pedidos** — Alta de pedidos
   - validar-stock
-  - **crear-pedido**
+  - **crear-pedido** — Crear el pedido, con título y todo
 - **consola** (line: admin) — Consola de pedidos
   - ver-pedido
 `))

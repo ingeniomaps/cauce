@@ -11,8 +11,9 @@
 
 const HEADING = /Hitos/i
 const MILESTONE = /^[-*]\s+\*\*([^*]+)\*\*\s*(?:\(line:\s*([^)]*)\))?\s+[—-]\s+(.+)$/
-// La historia va anidada y por su slug, con o sin negrita: quien la escribe a mano la copia de `## Historias`.
-const STORY = /^\s+[-*]\s+(?:\*\*)?([^*\s]+)(?:\*\*)?\s*$/
+// La historia va anidada y por su slug, con o sin negrita y con o sin título detrás del guión: quien la
+// escribe a mano la copia de `## Historias`, y lo que sigue al slug no cambia cuál es.
+const STORY = /^\s+[-*]\s+(?:\*\*)?([^*\s]+)(?:\*\*)?(?:\s+[—-]\s.*)?\s*$/
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 function read(section) {
