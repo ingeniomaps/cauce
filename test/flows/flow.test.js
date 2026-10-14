@@ -312,11 +312,13 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   assert.match(etapa.prompt, /encuadre-analisis\.md/, 'el análisis se escribe, con el id de la etapa')
   assert.match(etapa.prompt, /devolvé esa ruta en analysis/, 'y lo que vuelve por el esquema es la ruta')
   assert.match(etapa.prompt, /cada campo tiene su tope/, 'el resto del esquema queda corto')
-  assert.match(etapa.prompt, /missing y humanAction 500/,
+  assert.match(etapa.prompt, /missing y humanAction hasta 400 \(admite 500\)/,
     'y el tope nombra a los campos de la etapa que frena, que es la que más escribe')
   // En caracteres y no en palabras: es lo que el esquema mide, y pedirlo en otra unidad deja al agente
-  // presupuestando contra algo que nadie comprueba.
-  assert.match(etapa.prompt, /summary 1000 caracteres/, 'y lo dice en la unidad que se rechaza')
+  // presupuestando contra algo que nadie comprueba. Y por debajo del techo, con el techo a la vista: por
+  // qué está junto al prompt (caso 379); acá se fija que pida menos de lo que el esquema admite.
+  assert.match(etapa.prompt, /summary hasta 800 caracteres \(el esquema admite 1000\)/,
+    'y lo dice en la unidad que se rechaza, por debajo del techo')
   assert.match(etapa.prompt, /\{"raw": \.\.\., "len": \.\.\.\}/, 'y el envoltorio se prohíbe por su nombre')
   // Pedirlo no alcanzó —el prompt ya lo pedía cuando una corrida real murió con los cinco reintentos
   // envueltos—, así que el tope pasó a ser del esquema. Que ningún campo quede sin él lo comprueba
