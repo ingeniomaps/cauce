@@ -212,16 +212,21 @@ function gitAdd(input) {
 //
 // La lista salió de correr `npm install --package-lock-only` con npm 11.16.0 cambiando una clave por vez:
 // las claves name, version, license, engines, bin, funding, workspaces, os y cpu, y los scripts preinstall,
-// install y postinstall, sí mueven el lock. Sólo se midió el lock de npm, así que con otro gestor no se
-// afloja nada.
+// install y postinstall, sí mueven el lock. Con pnpm 10.30.2 y `pnpm install --lockfile-only`, la misma
+// medición: todas éstas son inertes también —incluidos los scripts de instalación y las claves que npm sí
+// registra—, y lo que mueve su lock es `pnpm.overrides`, `resolutions` y `pnpm.patchedDependencies`, que no
+// están en la lista y por eso no aflojan (caso 375). Los scripts de instalación se siguen tratando como en
+// npm: es más estricto que lo medido y cuesta un rechazo raro, no un lock viejo. yarn y bun siguen sin medir.
 const INERT_KEYS = new Set([
   'scripts', 'description', 'keywords', 'author', 'repository', 'homepage', 'bugs', 'private', 'type',
   'main', 'files', 'exports', 'config', 'jest', 'eslintConfig', 'prettier',
 ])
 const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall']
+// Un solo lockfile, de un gestor medido. Dos a la vez no aflojan: cuál manda lo decide el gestor que corra.
+const MEASURED_LOCKS = new Set(['package-lock.json', 'pnpm-lock.yaml'])
 
 function lockUnaffected(dir, file, lockfiles) {
-  if (path.basename(file) !== 'package.json' || lockfiles.join() !== 'package-lock.json') return false
+  if (path.basename(file) !== 'package.json' || !MEASURED_LOCKS.has(lockfiles.join())) return false
   const read = (ref) => {
     const shown = run('git', ['-C', dir, 'show', `${ref}:${file}`], dir)
     if (!shown.ok) return null

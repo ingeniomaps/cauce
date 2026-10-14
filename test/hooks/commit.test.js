@@ -399,9 +399,16 @@ test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo 
     blocked('dependencies', commit(repo('package-lock.json', change)), /sin actualizar su lockfile/)
   }
 
-  // Sin medir el lock de otro gestor, un script tampoco pasa. Y un manifiesto que HEAD no tenía no se
-  // compara contra nada, aunque sólo traiga scripts.
-  blocked('dependencies', commit(repo('pnpm-lock.yaml', (p) => { p.scripts.cov = 'x' })), /sin actualizar su lockfile/)
+  // Con pnpm, lo mismo que con npm: medido clave por clave con pnpm 10.30.2 (caso 375). Y lo que sí mueve su
+  // lock —`pnpm.overrides`, `resolutions`— no está en la lista inerte, así que sigue frenando.
+  assert.doesNotThrow(() => execute('dependencies', commit(repo('pnpm-lock.yaml', (p) => { p.scripts.cov = 'x' }))))
+  for (const [what, change] of [
+    ['pnpm.overrides', (p) => { p.pnpm = { overrides: { example: '1.0.1' } } }],
+    ['resolutions', (p) => { p.resolutions = { example: '1.0.1' } }],
+  ]) {
+    blocked('dependencies', commit(repo('pnpm-lock.yaml', change)), /sin actualizar su lockfile/, what)
+  }
+  // Un manifiesto que HEAD no tenía no se compara contra nada, aunque sólo traiga scripts.
   blocked('dependencies', commit(repo('package-lock.json', (p) => { p.scripts = { cov: 'x' } }, { tracked: false })),
     /sin actualizar su lockfile/)
 })
