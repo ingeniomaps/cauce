@@ -84,8 +84,18 @@ function added(input, root) {
 // —confirmar el bloqueo— no aprobaba nada: el «dale» siguiente volvía a frenar igual, y la persona sólo
 // podía destrabarlo con la frase exacta que nombra el archivo con un verbo (caso 202). Se anota el archivo
 // con las líneas que trae, que es lo que la confirmación va a aprobar y lo que el mensaje le muestra.
+// Si la llamada trae con qué se escribe. Sin eso no hay nada que juzgar, y eso no es lo mismo que «no agrega
+// nada»: una escritura cuyo cuerpo no se ve se frena, que es el lado correcto para equivocarse.
+const carriesContent = (input) => Boolean(input.tool_input
+  && ['content', 'new_string', 'patch', 'input'].some((key) => key in input.tool_input))
+  || 'content' in input || 'patch' in input
+
 function unnamed(input, root, file) {
   const lines = added(input, root)
+  // Con cuerpo y sin ninguna línea nueva —comentarios, o quitar— no hay aprobación que darse: frenar acá
+  // dejaba el único bloqueo sin salida, con un mensaje que ofrecía confirmar un bloqueo que no existía (caso
+  // 374). La otra vía, con el archivo nombrado, ya lo dejaba pasar.
+  if (!lines.length && carriesContent(input)) return ''
   if (lines.length && CF.native(input)) return ASKED(input, file, lines)
   const held = lines.length ? CHAT.hold(input, [file, ...lines]) : false
   if (!held || held.dropped.length) return SELF(file)

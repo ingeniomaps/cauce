@@ -391,6 +391,27 @@ test('un sí al bloqueo de la aprobación aprueba las líneas que mostró', () =
   } finally { chat.close() }
 })
 
+// Una edición que no agrega ninguna línea que un guard lea —sólo comentarios— no es aprobarse nada, y frenarla
+// sin nada que confirmar dejaba a la persona editando a mano lo que le había pedido al agente (caso 374). La
+// otra vía, con el archivo nombrado, ya la dejaba pasar; ésta es la que no.
+test('editar sólo comentarios de la aprobación pasa sin nombrarla, y agregar una ruta sigue frenando', () => {
+  const root = planFirstRoot('ops-hook-aprobacion-comentario-', WIP_CON_PLAN)
+  const approval = path.join(root, 'planning', '.ops-approval')
+  fs.writeFileSync(approval, '# aprobado mientras dure el hito\nsrc/x.js\n')
+  const edit = (call, old_string, new_string) =>
+    call({ cwd: root, tool_name: 'Edit', tool_input: { file_path: approval, old_string, new_string } })
+  const chat = chatSession()
+  try {
+    const silent = chat.says('seguí con lo tuyo')
+    assert.doesNotThrow(() => execute('workspace-boundary',
+      edit(silent, '# aprobado mientras dure el hito', '# aprobado para siempre')))
+    // Quitar una línea tampoco se pregunta: una aprobación más corta autoriza menos.
+    assert.doesNotThrow(() => execute('workspace-boundary', edit(silent, 'src/x.js\n', '')))
+    blocked('workspace-boundary', edit(silent, '# aprobado mientras dure el hito', '# nota\nsrc/nuevo.js'),
+      /aprobarse solo[\s\S]*src\/nuevo\.js/)
+  } finally { chat.close() }
+})
+
 // Los bordes donde no se ofrece dejarlo permanente: lo que la persona negó antes del bloqueo, una ruta que
 // el shell no resolvió —no hay línea que escribir— y una sesión fuera de toda instancia, donde no hay
 // archivo de aprobación.
@@ -406,8 +427,8 @@ test('no se ofrece dejar permanente lo que no se puede o no se debe escribir', (
     blocked('workspace-boundary', writes(denied, `${root}/.env\n`), /^(?![\s\S]*Esta escritura agrega)/)
     const unresolved = chat.says('revisá el deploy')
     assert.doesNotMatch(messageOf('secrets-shell', runs(unresolved, 'cat $DIR/.env')), /para siempre/)
-    // Escribir sólo un comentario no agrega nada que aprobar: no hay qué mostrarle.
-    blocked('workspace-boundary', writes(unresolved, '# nota\n'), /^(?![\s\S]*Esta escritura agrega)/)
+    // Escribir sólo un comentario no agrega nada que aprobar: pasa sin preguntar (caso 374).
+    assert.doesNotThrow(() => execute('workspace-boundary', writes(unresolved, '# nota\n')))
   } finally { chat.close() }
 
   const loose = tempRoot('ops-hook-lectura-suelta-')
