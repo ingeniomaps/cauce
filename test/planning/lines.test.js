@@ -29,6 +29,10 @@ function instance() {
   fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), hito('auth', 'auth-token', ''))
   fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'admin'))
   git(ops, 'init', '-q', '-b', 'main')
+  // La identidad vive en el repositorio, como en una instancia real: el `git merge` de `join --apply` la
+  // necesita para su commit, y en CI no hay una global. Local tapaba el defecto (el CI del PR #817 lo vio).
+  git(ops, 'config', 'user.email', 't@t')
+  git(ops, 'config', 'user.name', 't')
   // Todo lo que `init` dejó, incluido el `.gitignore` del molde: `wip/` es local, y sin él contaría como cambio
   // sin commitear. Lo que no está en el primer commit cuenta como sucio después, y no es lo que se mide.
   git(ops, 'add', ...fs.readdirSync(ops).filter((name) => name !== 'node_modules'))
