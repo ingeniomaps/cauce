@@ -4,6 +4,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const EM = require('./epic-milestones')
 const { frontmatter: fields } = require('../core/frontmatter')
 const { PLACEHOLDERS } = require('../core/onboarding')
 
@@ -128,6 +129,8 @@ function readEpics(dir) {
         slug: match[1].trim(),
         criteria: criteriaRefs(match[2]),
         service: ((match[2].match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
+        // Entero y en un renglón: es lo que la promoción lleva a la cola como línea de tarea.
+        text: match[2].trim().replace(/\s*\n\s*/g, ' '),
       }))
     return {
       file: name,
@@ -149,6 +152,7 @@ function readEpics(dir) {
       // otra decisión y no ésta.
       context: section(text, /Contexto relevante/i).split('\n').slice(1).join('\n').trim(),
       noSplit: noSplitReason(text),
+      milestones: EM.read(section(text, EM.HEADING)),
       // Las líneas que todavía no decidieron nada. Se guardan enteras y no como un booleano porque el
       // error tiene que decir cuál es: «tiene un marcador» manda a releer la épica entera.
       placeholders: text.split('\n').map((line) => line.trim())

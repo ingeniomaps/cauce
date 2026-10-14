@@ -414,6 +414,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/planning/epic-milestones.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
   "engine/planning/human-actions.js": {
     "lines": 100,
     "branches": 100,
