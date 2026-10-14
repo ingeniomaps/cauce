@@ -120,3 +120,7 @@ banco en `/var/tmp` sin declararlo pasa todo con 0 y parece que funciona. La pru
   gestor.
 - **«Dos locks a la vez siguen sin aflojar» — se conserva**: `MEASURED_LOCKS` compara el conjunto entero, y la
   prueba de dos locks sigue frenando.
+
+**Revisión del PR 819.** Un lock que sigue en el índice y ya no en disco —la migración de npm a pnpm a medias— impide
+aflojar sin que el mensaje dijera por qué. Ahora lo nombra: «hay otro lockfile en el índice y no en disco». Prueba
+en `commit.test.js`; mutación en copia, sin nombrarlo, en rojo.

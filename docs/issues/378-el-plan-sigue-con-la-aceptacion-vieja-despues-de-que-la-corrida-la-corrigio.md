@@ -113,3 +113,10 @@ en rojo la prueba que lleva el punto. Es lo que el arnés no puede ver y una cor
   recibe el criterio corregido textual, porque no recibía ninguno.
 - **Tradeoff, escribir la cola a mitad de corrida — aceptado.** Es la línea de la tarea que este runner tiene
   reclamada, en un archivo por hito desde el caso 212; la alternativa era perder la corrección.
+
+**Revisión del PR 819.** Tres huecos en la guarda de relectura: no comprobaba que la cola siguiera ofreciendo la
+misma tarea —una línea rota se leía como «sigue con la anterior»—, un `_` suelto en el texto corregido cierra la
+aceptación en la línea y la relectura volvía cortada, y la primera crítica no recibía la aceptación que rige,
+sólo el replan. Ahora la relectura exige la misma tarea y dice qué ofrece si no; un texto con `_` suelto para
+antes de dictarse en `refine-unwritable`; y la primera crítica juzga «contra» la aceptación. Pruebas en el arnés;
+tres mutaciones, una por guarda, en rojo.

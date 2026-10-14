@@ -106,3 +106,8 @@ declaraba.
 - **Alternativa mínima, `check` al final de Decompose — se decidió que no**: habría frenado la corrida con la
   cola ya rota, que es lo que se quería evitar, no detectarlo antes de terminar. La partición ya relee la cola
   y se niega si la tarea sigue ofrecida; lo que faltaba era la consigna, no una puerta más.
+
+**Revisión del PR 819.** La consigna sola no era observable: si el agente reemplazaba la tarea y no reapuntaba a
+nadie, la corrida seguía. `context` ahora viaja con `waiting`, y después de partir, si alguien sigue dependiendo
+de la tarea partida, la corrida para en `split-left-dependents` nombrando a quién. Prueba en el arnés; mutación
+sin la guarda, en rojo.

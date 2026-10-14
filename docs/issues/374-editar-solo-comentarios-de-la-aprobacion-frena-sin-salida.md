@@ -115,3 +115,9 @@ nadie lo vea— ya existía por la otra vía, así que el fix no lo abre.
   no pregunta, y no hay línea que una confirmación pueda aprobar.
 - **«`added` compara contra el disco: repetir una ruta existente cuenta como sin rutas nuevas» — se conserva**,
   es lo que ya pasaba y es correcto: lo que ya está no se agrega.
+
+**Revisión del PR 819.** La revisión independiente encontró que el primer fix juzgaba el fragmento que entra y no
+el archivo que queda: un `Edit` que borra el `#` de `#push origin main` no agrega ninguna línea y activaba la
+aprobación. `added()` ahora simula el reemplazo sobre lo que hay en disco y compara las líneas resultantes, y
+`carriesContent` vive en `input.js` junto a `contentOf`, con la misma lista de campos. Prueba: borrar el `#`
+frena nombrando `push origin main`; mutación en copia, juzgar por el fragmento, en rojo.

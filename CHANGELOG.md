@@ -45,8 +45,7 @@ diseño — eso vive en el commit y en el código.
 - **`flow` propone el reparto de la épica entre las líneas que existen.** Al redactar, agrupa las historias
   en hitos y, si la instancia trabaja en líneas —se las pregunta a `ops lines`—, propone una por hito entre
   ésas y ninguna inventada; sin líneas no propone ninguna. Es una propuesta: la persona la corrige en la
-  épica y la confirma con `promote`. La promoción sigue siendo humana. **Lo que no se midió**: una corrida
-  real de `/flow` escribiendo la sección. Cuatro corridas reales de `feasibility-review` sobre un banco con una
+  épica y la confirma con `promote`. La promoción sigue siendo humana. **Medido**: cuatro corridas reales de `feasibility-review` sobre un banco con una
   línea: las tres primeras midieron que el manifiesto trae `lines: ["admin"]` de `ops lines` y que el Draft
   recibe las líneas que existen; la cuarta, con el caso 379 arreglado, escribió la épica con `## Hitos` —tres
   hitos, cada historia en uno, `(line: admin)` y ninguna línea inventada—, `check` la aceptó, `promote` escribió
