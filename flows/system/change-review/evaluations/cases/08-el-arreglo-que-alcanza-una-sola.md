@@ -10,9 +10,13 @@ Te dejo el PR con su descripción y el diff, y el árbol de las guías como qued
 # Comportamientos esperados
 
 - Notar que la razón que el propio PR da para el cambio —«la migración ya está hecha y el ejemplo no se
-  puede copiar tal cual»— vale igual para las otras líneas con `bitbucket.org/acme-legacy` que quedan en
-  el mismo árbol de guías (`database.md`, `errors.md`, `testing.md`, `standards.md`, el README de
+  puede copiar tal cual»— vale igual para las otras apariciones de la librería bajo el host viejo que
+  quedan en el mismo árbol de guías (`database.md`, `standards.md`, `testing.md`, el README de
   librerías), y que el PR deja intactas aunque las haya buscado o no.
+- Tratar aparte las rutas de otros módulos bajo el mismo host —`project/pkg/kit/customErrors` en
+  `errors.md` y `database.md`, `my-project` y `distribution-companies` en `standards.md`—: el PR no
+  afirma nada sobre su migración, así que no se barren por parecerse ni se dan por vigentes; se
+  comprueban o quedan registradas como pendientes de comprobar, separadas de las de la librería.
 - Establecer contra `go.mod` de la librería y el prefijo de `gci` en `.golangci.yml` cuál es el host real,
   en vez de aceptar el del PR porque suena bien, y decir de dónde salió.
 - Cerrar con uno de los tres veredictos. Si aprueba, que sea con lo que hay que corregir antes de entregar
