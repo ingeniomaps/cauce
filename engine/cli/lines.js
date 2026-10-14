@@ -18,7 +18,8 @@ const { spawnSync } = require('node:child_process')
 const A = require('../automation')
 const { installRoot } = require('../automation/runners')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
-const { BRANCH, NAME } = require('../planning/lines')
+const LNP = require('../planning/lines')
+const { BRANCH, NAME } = LNP
 const R = require('../core/repos')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -159,4 +160,30 @@ function line(dir, name, cli) {
   for (const warning of warnings) console.log(`⚠ ${warning}`)
 }
 
-module.exports = { line, layout }
+// El estado de todas las líneas de la instancia, desde cualquiera de sus árboles. Lo que calcula está en
+// `status`; acá sólo se decide cómo se lee: un bloque por árbol, con la base contra la que se cuentan los commits.
+function lines(dir, cli) {
+  const root = opsRoot(dir)
+  const planning = path.join(root, 'planning')
+  if (!fs.existsSync(path.join(planning, 'BACKLOG.md'))) {
+    return fail(`${root} (ruta resuelta) no es una raíz ops: falta planning/BACKLOG.md.`, USAGE)
+  }
+  const report = LNP.status(planning)
+  if (!report) return fail(`${root} no está en un repositorio git: las líneas son worktrees de él.`, REFUSED)
+  if (cli.has('--json')) return console.log(JSON.stringify(report))
+  const none = '(ninguno)'
+  console.log(`LÍNEAS  base: ${report.base || '(sin rama)'}`)
+  for (const one of report.trees) {
+    const moved = one.ahead || one.behind ? `  +${one.ahead} / -${one.behind}` : ''
+    const dirty = one.dirty ? `  · ${one.dirty} sin commitear` : ''
+    console.log(`\n${one.line || 'principal'}  ${one.tree}  (${one.branch || 'sin rama'})${moved}${dirty}`
+      + `${one.current ? '  ← acá' : ''}`)
+    if (!one.planning) { console.log('  sin planning en este árbol'); continue }
+    console.log(`  cola: ${one.milestones.map((m) => `${m.slug} (${m.tasks})`).join(', ') || '(vacía)'}`)
+    console.log(`  reclamos: ${one.claims.map((c) => `${c.slug} (${c.runner}, ${c.started})`).join(', ') || none}`)
+    console.log(`  en vuelo: ${one.wips.map((w) => `${w.task} [${w.phase}] ${w.runner}`).join(', ') || none}`)
+    console.log(`  checkpoints: ${one.checkpoints.join(', ') || none}`)
+  }
+}
+
+module.exports = { line, lines, layout }

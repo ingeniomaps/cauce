@@ -29,7 +29,8 @@ function instance() {
   fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), hito('auth', 'auth-token', ''))
   fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'admin'))
   git(ops, 'init', '-q', '-b', 'main')
-  git(ops, 'add', 'planning', 'ops.config.json')
+  // El `.gitignore` del molde va en la base: `wip/` es local, y sin él contaría como cambio sin commitear.
+  git(ops, 'add', 'planning', 'ops.config.json', '.gitignore')
   git(ops, 'commit', '-qm', 'base')
   const line = path.join(base, 'demo-ops-admin')
   git(ops, 'worktree', 'add', '-q', '-b', 'line/admin', line)
@@ -91,5 +92,83 @@ test('check rechaza una línea mal escrita, y la unidad no toca lo que no declar
   assert.match(result.stderr, /backlog\/admin\.md: line «Admin Nueva» no es un nombre de línea/)
   const milestones = [{ slug: 'a', line: '', tasks: [] }, { slug: 'b', line: 'x', tasks: [] }]
   assert.deepEqual(LN.scope(milestones, '').milestones.map((one) => one.slug), ['a'])
-  assert.equal(LN.currentLine(tempRoot('cauce-sin-git-')), '', 'fuera de git no hay línea')
+  const loose = tempRoot('cauce-sin-git-')
+  assert.equal(LN.currentLine(loose), '', 'fuera de git no hay línea')
+  assert.deepEqual(LN.worktrees(loose), [], 'ni árboles')
+})
+
+// `ops lines`: el estado de todas las líneas desde cualquier árbol. Lo que se mide: que aparezcan todos los
+// worktrees de la instancia y no sólo el propio; que cada uno muestre la cola de su línea y no la ajena; que
+// un reclamo y un checkpoint hechos en una línea se vean en su bloque y en ningún otro; y que los commits
+// adelante y lo que falta commitear salgan de cada árbol.
+const checkpoint = (planning, hito, line) => {
+  fs.mkdirSync(path.join(planning, 'checkpoints'), { recursive: true })
+  fs.writeFileSync(path.join(planning, 'checkpoints', `${hito}.md`),
+    `---\nstatus: pendiente\nhito: ${hito}\nline: ${line}\n---\n\n# Checkpoint: hito ${hito}\n`)
+}
+
+test('lines muestra cada árbol con la cola, los reclamos y el checkpoint de su línea', () => {
+  const trees = instance()
+  const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
+  assert.equal(claim(trees.line, 'r-line', 'admin-consulta').status, 0)
+  checkpoint(trees.line, 'admin', 'admin')
+  // El mismo checkpoint en el principal, como queda después de juntar: ahí es donde se ve que frena sólo a su línea.
+  checkpoint(trees.main, 'admin', 'admin')
+  git(ops.line, 'add', 'planning')
+  git(ops.line, 'commit', '-qm', 'claim')
+  fs.writeFileSync(path.join(trees.line, 'suelto.md'), 'sin commitear\n')
+  fs.mkdirSync(path.join(trees.line, 'wip'), { recursive: true })
+  fs.writeFileSync(path.join(trees.line, 'wip', 'r-line.md'),
+    '---\ntask: admin-consulta\nphase: Build\nservice: app\n---\n\n## Plan aprobado\n\n1. [ ] escribir\n')
+  // Un árbol en una rama que nunca trajo el planning: se lista igual, y dice que ahí no hay nada que leer.
+  const bare = path.join(path.dirname(ops.main), 'demo-ops-vacia')
+  git(ops.main, 'worktree', 'add', '-q', '-b', 'feat/vacia', bare)
+  git(bare, 'rm', '-rq', 'planning')
+  git(bare, 'commit', '-qm', 'sin planning')
+
+  const result = run(['lines', ops.main, '--json'])
+  assert.equal(result.status, 0, result.stderr)
+  const report = JSON.parse(result.stdout)
+  assert.equal(report.base, 'main')
+  const by = Object.fromEntries(report.trees.map((one) => [one.branch, one]))
+  assert.deepEqual(Object.keys(by).sort(), ['feat/otra', 'feat/vacia', 'line/admin', 'main'],
+    'todos los árboles, no sólo el propio')
+  assert.equal(by['feat/vacia'].planning, false)
+  assert.deepEqual(by['feat/vacia'].milestones, [])
+
+  assert.equal(by.main.line, '')
+  assert.deepEqual(by.main.milestones.map((one) => one.slug), ['auth'], 'el principal ve sólo lo que no es de nadie')
+  assert.deepEqual(by.main.claims, [], 'el reclamo de la línea no es del principal')
+  assert.deepEqual(by.main.checkpoints, [], 'y el checkpoint de admin no lo frena aunque esté en su disco')
+  assert.equal(by.main.current, true)
+
+  assert.equal(by['line/admin'].line, 'admin')
+  assert.deepEqual(by['line/admin'].milestones.map((one) => one.slug), ['admin'])
+  assert.deepEqual(by['line/admin'].claims.map((one) => one.slug), ['admin-consulta'])
+  assert.deepEqual(by['line/admin'].checkpoints, ['checkpoints/admin.md'])
+  assert.equal(by['line/admin'].ahead, 1)
+  assert.equal(by['line/admin'].behind, 0)
+  assert.equal(by['line/admin'].dirty, 1, 'lo que falta commitear se cuenta en su árbol')
+  assert.equal(by['line/admin'].current, false)
+
+  assert.equal(by['feat/otra'].line, '', 'una rama que no es line/ cuenta como principal')
+  assert.deepEqual(by['feat/otra'].milestones.map((one) => one.slug), ['auth'])
+
+  const text = run(['lines', ops.line])
+  assert.equal(text.status, 0, text.stderr)
+  assert.match(text.stdout, /base: main/)
+  assert.match(text.stdout, /admin .*line\/admin.*\+1/)
+  assert.match(text.stdout, /sin commitear/)
+  assert.match(text.stdout, /en vuelo: admin-consulta \[Build\] r-line/)
+  assert.match(text.stdout, /sin planning en este árbol/)
+})
+
+test('lines se niega fuera de git y sobre lo que no es una raíz ops', () => {
+  const loose = tempRoot('cauce-lines-sin-git-')
+  assert.notEqual(run(['lines', loose]).status, 0)
+  const ops = path.join(loose, 'demo-ops')
+  assert.equal(run(['init', ops, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const result = run(['lines', ops])
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /no está en un repositorio git/)
 })
