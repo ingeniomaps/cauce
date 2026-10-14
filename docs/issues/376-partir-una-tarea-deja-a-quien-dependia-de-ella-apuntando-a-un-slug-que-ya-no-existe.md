@@ -1,14 +1,16 @@
 ---
 caso: 376
 titulo: partir una tarea deja a quien dependía de ella apuntando a un slug que ya no existe
-estado: abierto
+estado: resuelto
+resuelto-en: 0.108.0
 prioridad: media
 version-detectada: 0.106.1
 ---
 
 # 376 — Decompose parte una tarea y no reapunta los `(depende: …)` que la nombraban: la cola queda con una dependencia a un slug inexistente y `check` en rojo
 
-**🔴 abierto** · detectado en 0.106.1 · prioridad **media**.
+**🟢 resuelto en 0.108.0** · detectado en 0.106.1 · prioridad **media** — la partición reapunta a quien dependía de la
+tarea a **todas** las partes nuevas, y se vio hacerlo con un agente real.
 
 ## Resumen
 
@@ -67,3 +69,40 @@ agentes, cuatro tareas cerradas).
 
 - [377](./377-el-escriba-commitea-el-estado-de-planning-sin-el-scope-del-proyecto.md) y
   [378](./378-el-plan-sigue-con-la-aceptacion-vieja-despues-de-que-la-corrida-la-corrigio.md) — misma corrida.
+
+## Cierre
+
+**Resuelto en 0.108.0.** La causa raíz, que el caso dejaba «no localizada en el motor», está en la consigna de la
+partición (`automatization/workflows/autobuild.js`, fase Decompose, `label: 'split'`): reemplazaba la tarea y
+actualizaba la historia de la épica, y de `(depende: …)` no decía nada. Ahora dice que toda tarea de la cola
+que nombre a la partida pasa a depender de todas las subtareas nuevas, conservando los demás slugs que ya
+declaraba.
+
+**Lo que se corrió para saber que funciona.**
+
+- Arnés: `test/workflows/autobuild-queue.test.js`, «partir una tarea reapunta a quien dependía de ella, a todas
+  las partes». En rojo antes del cambio y en verde después. Mutación en copia: la consigna diciendo «ninguna
+  tarea» en vez de «toda tarea» la pone en rojo.
+- El paso real, solo: el prompt exacto de `split` que arma el recorrido —volcado desde el arnés, con dos
+  subtareas con aceptación y service— corrido con `claude -p` el 2026-10-14 sobre un banco `suelto` cuya cola
+  tenía `T-1` y `T-2 … (depende: T-1)`. Lo que quedó escrito:
+
+  ```
+  - [ ] **T-1a** [lite] — Hacer uno (primera mitad). _Aceptación: la primera mitad de uno es visible._ (service: app)
+  - [ ] **T-1b** [lite] — Hacer uno (segunda mitad). _Aceptación: la segunda mitad de uno es visible._ (service: app)
+  - [ ] **T-2** [lite] — Hacer dos. _Aceptación: dos visible._ (service: app) (depende: T-1a, T-1b)
+  ```
+
+  `ops check planning` → `✓ planning válido: 0 épica(s), 3 tarea(s) en cola`; `ops context planning --json`
+  ofrece `T-1a` y deja a `T-2` esperando. Antes del cambio, el mismo paso dejaba `(depende: T-1)` y `check` en
+  rojo, que es lo que el caso reproduce.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **Reapuntar al partir — se hizo distinto**: a todas las partes, no a la última. Era el riesgo que el propio
+  caso nombraba: partes paralelas y un dependiente que arranca antes. Esperar a todas espera de más y nunca
+  de menos, y si las partes van en cadena el resultado es el mismo.
+- **«Si no se puede decidir cuál, acción humana» — no aplica**: con «todas» no hay cuál decidir.
+- **Alternativa mínima, `check` al final de Decompose — se decidió que no**: habría frenado la corrida con la
+  cola ya rota, que es lo que se quería evitar, no detectarlo antes de terminar. La partición ya relee la cola
+  y se niega si la tarea sigue ofrecida; lo que faltaba era la consigna, no una puerta más.

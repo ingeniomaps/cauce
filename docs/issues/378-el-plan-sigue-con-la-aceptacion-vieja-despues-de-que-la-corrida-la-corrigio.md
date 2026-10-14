@@ -1,16 +1,17 @@
 ---
 caso: 378
 titulo: el plan sigue con la aceptación vieja después de que la corrida la corrigió
-estado: abierto
+estado: resuelto
+resuelto-en: 0.108.0
 prioridad: media
 version-detectada: 0.106.1
 ---
 
 # 378 — Una corrida corrige un criterio de aceptación, el plan siguiente sigue escrito contra el criterio viejo, y la línea del backlog nunca recibe la corrección
 
-**🔴 abierto** · detectado en 0.106.1 · prioridad **media** · **sin confirmar**: lo de abajo sale del texto del
-rechazo que dejó la corrida, no de leer su salida completa. Puede ser un defecto del recorrido o un plan que
-ignoró lo que recibió; distinguirlo pide leer la corrida.
+**🟢 resuelto en 0.108.0** · detectado en 0.106.1 · prioridad **media** — era del recorrido: la corrección vivía sólo
+en memoria y la línea de la tarea seguía diciendo lo viejo. Ahora se escribe ahí, se relee, y el replan recibe
+la aceptación que rige.
 
 ## Resumen
 
@@ -73,3 +74,42 @@ corregido en la parte que retira el módulo.
 - [177](./177-la-descripcion-de-la-tarea-no-viaja-a-ninguna-fase-y-el-plan-vuelve-a-decidir.md)
 - [376](./376-partir-una-tarea-deja-a-quien-dependia-de-ella-apuntando-a-un-slug-que-ya-no-existe.md) y
   [377](./377-el-escriba-commitea-el-estado-de-planning-sin-el-scope-del-proyecto.md) — misma corrida.
+
+## Cierre
+
+**Resuelto en 0.108.0.** Las dos lecturas que el caso dejaba abiertas se resolvieron leyendo el recorrido, y la
+que vale es la primera. `Ready` guardaba la aceptación corregida sólo en memoria (`task.acceptance =
+ready.refinedAcceptance`), y `DECIDED()` le inyectaba al planificador la descripción de la línea de la tarea con la
+orden de no re-decidirla: el planificador recibía las dos versiones y la que decía «no se re-decide» era la vieja.
+Al parar la corrida, la corrección no quedaba en ningún lado. Y el replan ni siquiera recibía la aceptación:
+sólo los motivos de la crítica y el plan.
+
+**Lo que cambió.** Cuando `Ready` corrige, el recorrido escribe la corrección en la línea de la tarea, en el
+archivo que `context` dice, y relee la cola; si la relectura sigue con la anterior, para con
+`refine-not-applied`, igual que la partición con `split-not-applied`. La tarea sigue con lo releído, aceptación y
+descripción. Y el replan recibe «La aceptación que rige es: …».
+
+**Lo que se corrió para saber que funciona.**
+
+- Arnés: `test/workflows/autobuild-queue.test.js`, «la aceptación que Ready corrige se escribe en la línea de la
+  tarea y la corrida sigue con ella»: la escritura nombra la línea y el texto, el plan y el replan reciben la
+  corregida, y con una relectura que sigue trayendo la vieja la corrida para en `refine-not-applied`. Tres
+  mutaciones en copia, cada una en rojo: sin la escritura, sin la guarda de relectura, sin la aceptación en el
+  replan.
+- El paso real, solo: el prompt exacto de `refine` corrido con `claude -p` el 2026-10-14 sobre un banco con
+  `T-1 … _Aceptación: uno visible._`. Quedó
+  `_Aceptación: uno es visible y el registro dice quién lo vio._`, `check` en verde y `ops context --json`
+  devolviendo esa aceptación.
+
+**Lo que el caso no preveía.** El agente real escribió el texto pedido **y le agregó un punto final**. La guarda
+de relectura comparaba textual, así que una escritura correcta se habría leído como «no ocurrió» y la corrida
+habría parado. La comparación tolera puntuación final y espacios; una cuarta mutación, sin esa tolerancia, pone
+en rojo la prueba que lleva el punto. Es lo que el arnés no puede ver y una corrida de un solo paso sí.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **Lectura (1), el recorrido no reescribe la línea — confirmada y arreglada.**
+- **Lectura (2), el planificador ignoró lo que recibió — no era eso**, pero su fix también entró: el replan
+  recibe el criterio corregido textual, porque no recibía ninguno.
+- **Tradeoff, escribir la cola a mitad de corrida — aceptado.** Es la línea de la tarea que este runner tiene
+  reclamada, en un archivo por hito desde el caso 212; la alternativa era perder la corrección.

@@ -46,8 +46,23 @@ diseño — eso vive en el commit y en el código.
   en hitos y, si la instancia trabaja en líneas —se las pregunta a `ops lines`—, propone una por hito entre
   ésas y ninguna inventada; sin líneas no propone ninguna. Es una propuesta: la persona la corrige en la
   épica y la confirma con `promote`. La promoción sigue siendo humana. **Lo que no se midió**: una corrida
-  real de `/flow` escribiendo la sección; el arnés comprueba lo que recibe cada agente y `flow-eval` mide
-  las salidas en `04-epic-as-greenlight` y `04-recommendation-as-approval`, que tocan lo que cambió.
+  real de `/flow` escribiendo la sección. Tres corridas reales de `feasibility-review` sobre un banco con una
+  línea midieron la mitad: el manifiesto trae `lines: ["admin"]` de `ops lines` y el Draft recibe las líneas
+  que existen; ninguna llegó a escribir la épica, la última por el caso 379, que es lo que queda por medir.
+
+### Corregido
+
+- **Partir una tarea reapunta a quien dependía de ella.** La partición retiraba la línea de la tarea y escribía
+  las partes, y toda tarea con `(depende: <partida>)` quedaba esperando un slug que ya no iba a existir, con
+  `check` en rojo al terminar la corrida. Ahora pasa a depender de **todas** las partes nuevas: si son
+  paralelas, esperar a una sola la dejaría arrancar antes. Medido con un agente real sobre el paso exacto:
+  `(depende: T-1)` quedó `(depende: T-1a, T-1b)` y `check` en verde (caso 376).
+- **La aceptación que `Ready` corrige se escribe en la línea de la tarea.** Vivía sólo en memoria: el
+  planificador recibía la corregida y, por la descripción de la línea, la vieja con la orden de no re-decidirla;
+  al parar la corrida la corrección se perdía y la siguiente arrancaba con el mismo error. Ahora el recorrido
+  la escribe en el archivo de la tarea, relee la cola y para con `refine-not-applied` si no quedó escrita; y el
+  replan recibe la aceptación que rige, que antes no recibía. La guarda tolera el punto final que un agente
+  real le agregó al texto (caso 378).
 
 ## [0.107.0] - 2026-10-10
 
