@@ -429,3 +429,33 @@ test('la idea de lo que falta averiguar lleva la forma y los nombres de Ideas', 
   assert.match(idea, /- \*\*slug-del-item\*\* — /)
   assert.match(idea, /en Ideas ya están idea-previa/)
 })
+
+// El reparto que la épica propone. Lo que se mide: que quien redacta reciba la orden de agrupar las historias
+// en hitos; que sólo pueda proponer línea entre las que la instancia tiene —y que sin líneas no proponga
+// ninguna—; que los hitos lleguen a quien escribe la épica con la forma de `## Hitos`; y que el manifiesto
+// pida las líneas al CLI, que es el único que sabe cuáles existen.
+test('la épica propone hitos, y línea sólo entre las que existen', async () => {
+  const milestones = [
+    { slug: 'alta', title: 'Alta', line: 'admin', stories: ['rechazar-duplicado'] },
+  ]
+  const draftWith = { ...baseScript()['epic-draft'], milestones }
+  const contract = baseScript()['flow-contract']
+
+  const plain = await runFlow({ 'epic-draft': draftWith })
+  assert.equal(plain.result.stopped, undefined, `frenó en ${plain.result.reason || ''}`)
+  const manifest = plain.prompts.find((one) => one.key === 'flow-contract').prompt
+  assert.match(manifest, /node tools\/ops\.js lines .* --json/, 'las líneas se preguntan, no se suponen')
+  const draft = plain.prompts.find((one) => one.key === 'epic-draft').prompt
+  assert.match(draft, /agrupá las historias en hitos/i)
+  assert.match(draft, /no tiene líneas de trabajo/, 'sin líneas no se propone ninguna')
+  const write = plain.prompts.find((one) => one.key === 'epic-write').prompt
+  assert.match(write, /## Hitos/)
+  assert.match(write, /\(line: nombre\)/)
+  assert.ok(write.includes(JSON.stringify(milestones)), 'los hitos llegan a quien escribe tal como se decidieron')
+
+  const lined = await runFlow({ 'flow-contract': { ...contract, lines: ['admin', 'auth'] }, 'epic-draft': draftWith })
+  const draft2 = lined.prompts.find((one) => one.key === 'epic-draft').prompt
+  assert.match(draft2, /líneas de trabajo: admin, auth/)
+  assert.match(draft2, /propuesta que una persona confirma al promover/)
+  assert.equal(draft2.includes('no tiene líneas de trabajo'), false)
+})

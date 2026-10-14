@@ -14,6 +14,41 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.108.0] - 2026-10-14
+
+### Agregado
+
+- **`ops lines` dice qué está haciendo cada línea de trabajo, desde cualquier árbol.** Con dos líneas, saber
+  qué tenía cada una en vuelo era abrir una carpeta por línea y correr `context` en cada una. Ahora un bloque
+  por worktree de la instancia: la cola de su línea, sus reclamos, su WIP, los checkpoints que la frenan y
+  cuántos commits la separan de la base. Medido sobre un banco con dos líneas: el principal no lista el
+  checkpoint de `admin` aunque lo tenga en disco, y la línea muestra su reclamo y su fase.
+- **`ops lines join` trae una línea a la rama donde se corre, en seco o con `--apply`.** Juntar era un merge a
+  mano donde había que acordarse de qué archivos chocan a propósito. En seco calcula la fusión con
+  `git merge-tree` sin tocar el árbol y clasifica cada conflicto con lo que `delivery/teamwork.md` ya decía
+  —lecciones, las filas de las dos; cola e INBOX, dos decidieron sobre lo mismo; acciones humanas, falta la
+  unión—, lista las épicas que repiten número, que git no ve, y avisa de los reclamos en vuelo. Con `--apply`
+  se niega sobre un árbol sucio, mergea y corre `check` sobre lo que quedó; con conflictos deja el merge en
+  curso, como git, con la clasificación al lado. Nunca empuja.
+- **La épica puede declarar su reparto en `## Hitos`, y `ops promote` lo escribe en la cola.** El hito nacía al
+  promover, copiando historias a mano a `backlog/<hito>.md`, así que un reparto entre líneas no tenía dónde
+  caer y `line:` se retipeaba. Ahora la épica agrupa sus historias en hitos, cada uno con su `(line: nombre)`
+  si es de una línea; `check` exige que cada historia esté en exactamente un hito y que la línea tenga nombre
+  de línea; y `promote planning epic-NNN-slug` escribe un archivo por hito con el `order` siguiente y las
+  historias como tareas, y pasa la épica a `active`. Sin la sección, un solo hito con el slug de la épica.
+  Se niega sin escribir nada ante un marcador, un reparto que `check` rechaza —también por tamaño, R17— o un
+  hito que ya está en la cola, en su archivo o en `BACKLOG.md`. Y avisa cuando un hito va a una línea que
+  todavía no tiene rama: nadie lo ve hasta `ops line . <nombre>`, y `check` no lo dice.
+
+### Cambiado
+
+- **`flow` propone el reparto de la épica entre las líneas que existen.** Al redactar, agrupa las historias
+  en hitos y, si la instancia trabaja en líneas —se las pregunta a `ops lines`—, propone una por hito entre
+  ésas y ninguna inventada; sin líneas no propone ninguna. Es una propuesta: la persona la corrige en la
+  épica y la confirma con `promote`. La promoción sigue siendo humana. **Lo que no se midió**: una corrida
+  real de `/flow` escribiendo la sección; el arnés comprueba lo que recibe cada agente y `flow-eval` mide
+  las salidas en `04-epic-as-greenlight` y `04-recommendation-as-approval`, que tocan lo que cambió.
+
 ## [0.107.0] - 2026-10-10
 
 ### Cambiado

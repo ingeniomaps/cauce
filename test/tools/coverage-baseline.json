@@ -134,6 +134,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/cli/lines-join.js": {
+    "lines": 98,
+    "branches": 50,
+    "functions": 100
+  },
   "engine/cli/lines.js": {
     "lines": 97,
     "branches": 56,
@@ -148,6 +153,11 @@
     "lines": 90,
     "branches": 59,
     "functions": 78
+  },
+  "engine/cli/promote.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
   },
   "engine/cli/upgrade-report.js": {
     "lines": 95,
@@ -409,6 +419,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/planning/epic-milestones.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
   "engine/planning/human-actions.js": {
     "lines": 100,
     "branches": 100,
@@ -427,6 +442,11 @@
   "engine/planning/parser.js": {
     "lines": 100,
     "branches": 93,
+    "functions": 100
+  },
+  "engine/planning/promote.js": {
+    "lines": 100,
+    "branches": 70,
     "functions": 100
   },
   "engine/planning/recurring.js": {

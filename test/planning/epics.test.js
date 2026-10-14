@@ -210,3 +210,96 @@ service: api
   )
   assert.equal(epic.criteria[1].text, 'Un alta con email repetido devuelve 409.')
 })
+
+// `## Hitos`: el reparto que una épica propone para su promoción. Lo que se mide: que el parser lea cada hito
+// con su línea y sus historias; que `check` exija que cada historia esté en exactamente un hito, que las
+// historias existan y que la línea tenga nombre de línea; y que sin la sección nada de esto se exija.
+const EM = require('../../engine/planning/epic-milestones')
+const withMilestones = (hitos) => `---
+epic: 004
+title: Pedidos
+status: open
+service: app
+---
+
+## Criterios
+
+- **C1** — Se valida el stock.
+- **C2** — Se crea el pedido.
+
+## Contexto relevante
+
+- Contexto.
+
+## Historias
+
+- [ ] **validar-stock** (→ C1) — Rechazar sin stock. _Aceptación: 409._ (service: api)
+- [ ] **crear-pedido** (→ C2) — Crear. _Aceptación: 201._ (service: api)
+- [ ] **ver-pedido** (→ C2) — Ver. _Aceptación: 200._ (service: admin)
+${hitos}`
+
+test('el parser lee los hitos de una épica con su línea y sus historias', () => {
+  const root = tempRoot('ops-epic-hitos-')
+  fs.mkdirSync(path.join(root, 'roadmap'))
+  fs.writeFileSync(path.join(root, 'roadmap', 'epic-004-pedidos.md'), withMilestones(`
+## Hitos
+
+- **alta-pedidos** — Alta de pedidos
+  - validar-stock
+  - **crear-pedido** — Crear el pedido, con título y todo
+- **consola** (line: admin) — Consola de pedidos
+  - ver-pedido
+`))
+  const [epic] = P.readEpics(root)
+  assert.deepEqual(epic.milestones, [
+    { slug: 'alta-pedidos', line: '', title: 'Alta de pedidos', stories: ['validar-stock', 'crear-pedido'] },
+    { slug: 'consola', line: 'admin', title: 'Consola de pedidos', stories: ['ver-pedido'] },
+  ])
+  assert.equal(epic.stories[0].text, '(→ C1) — Rechazar sin stock. _Aceptación: 409._ (service: api)',
+    'la historia conserva su texto para que la promoción lo lleve a la cola')
+  assert.deepEqual(EM.errors(epic), [])
+  fs.writeFileSync(path.join(root, 'roadmap', 'epic-004-pedidos.md'), withMilestones(''))
+  const [plain] = P.readEpics(root)
+  assert.deepEqual(plain.milestones, [])
+  assert.deepEqual(EM.errors(plain), [], 'sin la sección no se exige nada')
+})
+
+test('check rechaza un reparto que deja historias sin hito, en dos hitos, inventadas o con línea mal escrita', () => {
+  const root = tempRoot('ops-epic-hitos-mal-')
+  fs.mkdirSync(path.join(root, 'roadmap'))
+  fs.writeFileSync(path.join(root, 'roadmap', 'epic-004-pedidos.md'), withMilestones(`
+## Hitos
+
+- **alta-pedidos** (line: Admin Nueva) — Alta
+  - validar-stock
+  - crear-pedido
+- **alta-pedidos** — Otra vez
+  - crear-pedido
+  - inventada
+- **Vacio** — Sin nada
+`))
+  const errors = EM.errors(P.readEpics(root)[0])
+  const at = 'roadmap/epic-004-pedidos.md'
+  for (const expected of [
+    `${at}: hito repetido alta-pedidos`,
+    `${at}: hito alta-pedidos: line «Admin Nueva» no es un nombre de línea (minúsculas y guiones)`,
+    `${at}: hito alta-pedidos agrupa inventada, que no es una historia de esta épica`,
+    `${at}: hito «Vacio» no es un slug (minúsculas y guiones)`,
+    `${at}: hito Vacio sin historias`,
+    `${at}: historia crear-pedido está en 2 hitos`,
+    `${at}: historia ver-pedido sin hito: con ## Hitos cada historia va en uno`,
+  ]) assert.ok(errors.includes(expected), `falta: ${expected}\n${errors.join('\n')}`)
+  // Y por la puerta: `check` lo nombra.
+  const { run } = require('../support/environment')
+  const ops = path.join(tempRoot('ops-epic-hitos-check-'), 'demo-ops')
+  assert.equal(run(['init', ops, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.writeFileSync(path.join(ops, 'planning', 'roadmap', 'epic-004-pedidos.md'), withMilestones(`
+## Hitos
+
+- **alta** — Alta
+  - validar-stock
+`))
+  const result = run(['check', path.join(ops, 'planning')])
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /historia crear-pedido sin hito/)
+})

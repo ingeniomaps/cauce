@@ -131,6 +131,17 @@ humana, queda en `checkpoints/<hito>.md` con su `line:`, y frena a esa línea y 
 en `admin` sigue mientras `auth` espera que la revisen, también después de traer su rama. Para detener todo a
 propósito está `AWAITING_REVIEW.md`, que frena a todas. `checkpoints/README.md` tiene el detalle.
 
+**Qué está haciendo cada línea** lo dice `node tools/ops.js lines .`: un bloque por árbol con la cola de su
+línea, sus reclamos, lo que tiene en vuelo, los checkpoints que la frenan y cuántos commits la separan de la
+base. Es lo que antes se veía abriendo una carpeta por línea. Y qué hito es de qué línea lo propone `flow` en
+la sección `## Hitos` de la épica, entre las líneas que ese mismo comando le muestra; quien promueve lo
+confirma o lo cambia, y `promote` lo escribe.
+
+**Juntar** es `node tools/ops.js lines join . <nombre>`, desde el árbol que recibe. En seco dice cuántos
+commits trae, qué archivos van a chocar y qué hacer con cada uno —lo que sigue abajo—, qué épicas repiten
+número y qué reclamos en vuelo vienen con la línea. Con `--apply` mergea y corre `check` sobre lo que quedó;
+con conflictos deja el merge en curso, como git, y la clasificación al lado. Nunca empuja.
+
 Al juntar dos líneas, casi nada de lo que cada una escribió choca: la cola, el INBOX, la evidencia, los
 reclamos, los checkpoints y las acciones humanas son un archivo por unidad. Quedan dos archivos que las dos
 pueden escribir. `LESSONS.md`: si las dos líneas anotaron una lección, su tabla choca al juntarse, y se

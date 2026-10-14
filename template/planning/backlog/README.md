@@ -24,3 +24,6 @@ order: 20
 
 `node tools/ops.js split-backlog planning` pasa los hitos que haya en `BACKLOG.md` a sus archivos, con el orden
 que tenían. No pisa nada: si un archivo de hito ya existe, no escribe ninguno.
+
+`node tools/ops.js promote planning epic-NNN-slug` escribe acá los hitos que una épica declara en su `## Hitos`,
+con el `line:` que cada uno trae y el `order` siguiente de a diez. Tampoco pisa nada.

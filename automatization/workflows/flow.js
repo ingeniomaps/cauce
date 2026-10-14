@@ -64,6 +64,9 @@ const MANIFEST = {
     inbox: INBOX_HEADS,
     // La fecha, del mismo comando que trae los nombres (caso 115).
     today: { type: 'string' },
+    // Las líneas de trabajo que la instancia tiene, para que la épica proponga un reparto entre ellas y no
+    // entre nombres inventados. Las sabe `ops lines`, que es quien mira los árboles.
+    lines: { type: 'array', maxItems: 20, items: { type: 'string', maxLength: 60 } },
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       domain: { type: 'string' }, agent: { type: 'string' },
     } } },
@@ -150,6 +153,14 @@ const EPIC = {
     reason: { type: 'string' },
     criteria: { type: 'array', items: { type: 'string' } },
     stories: { type: 'array', items: { type: 'string' } },
+    // El reparto: qué historias van juntas y, si la instancia trabaja en líneas, en cuál. Es lo que
+    // `## Hitos` escribe y `ops promote` convierte en un `backlog/<hito>.md` por hito (caso 239).
+    milestones: { type: 'array', maxItems: 20, items: { type: 'object', additionalProperties: false,
+      required: ['slug', 'title', 'stories'], properties: {
+        slug: { type: 'string', maxLength: 80 }, title: { type: 'string', maxLength: 160 },
+        line: { type: 'string', maxLength: 60 },
+        stories: { type: 'array', maxItems: 30, items: { type: 'string', maxLength: 80 } },
+      } } },
   },
 }
 
@@ -183,6 +194,8 @@ const contract = await agent(
   `3. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
   `4. "node tools/ops.js context planning --json" — copy its inbox field into inbox and its today field ` +
   `into today, both verbatim, and nothing else it printed.\n` +
+  `5. "node tools/ops.js lines ${WORKDIR} --json" — copy into lines every non-empty line field under ` +
+  `trees, verbatim. If it refuses —the instance is not in git—, lines is [].\n` +
   `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
   `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +
@@ -466,6 +479,12 @@ if (contract.outcome === 'report') {
   })
 }
 
+// Línea sólo entre las que existen, y como propuesta: la decide la persona al promover, no el recorrido.
+const LINES = contract.lines || []
+const LINES_HINT = LINES.length
+  ? `Esta instancia trabaja en líneas de trabajo: ${LINES.join(', ')}. Para cada hito proponé line con una ` +
+    'de ésas, o sin line si es del árbol principal; es una propuesta que una persona confirma al promover.'
+  : 'No propongas line en ningún hito: esta instancia no tiene líneas de trabajo.'
 const epic = await agent(
   `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDITIONS}\n\n` +
   `El campo analysis de cada handoff es una ruta: leé esos archivos antes de escribir. Ahí está ` +
@@ -474,7 +493,9 @@ const epic = await agent(
   `Como product-manager, decidí si la ` +
   `intención es viable con la evidencia reunida. Si lo es, redactá la épica: título, slug en ` +
   `kebab-case, criterios observables C1..CN —cada uno verificable sin ambigüedad— e historias que ` +
-  `rastreen a esos criterios. Si lo que hace falta antes es averiguar algo —hablar con usuarios, medir lo ` +
+  `rastreen a esos criterios. Agrupá las historias en hitos —cada uno un resultado que se pueda revisar ` +
+  `solo, de nueve tareas como mucho—, con slug, título y las historias que agrupa por su slug. ${LINES_HINT} ` +
+  `Si lo que hace falta antes es averiguar algo —hablar con usuarios, medir lo ` +
   `que no se mide, explorar el diseño—, outcome=investigar con qué hay que averiguar y quién puede: eso no ` +
   `es una épica más chica, es otra cosa. Si no vale el esfuerzo, outcome=no-hacer con el motivo concreto y ` +
   `qué lo cambiaría. No promuevas nada.`,
@@ -511,7 +532,10 @@ await agent(
   `libre y siguiendo el contrato de ${P}/PROTOCOL.md: frontmatter epic/title/status/service con ` +
   `status open, criterios **CN**, "## Contexto relevante" e historias con (→ CN) y (service: ruta). ` +
   `Título: ${epic.title}. Criterios: ${JSON.stringify(epic.criteria)}. ` +
-  `Historias: ${JSON.stringify(epic.stories)}. No toques BACKLOG.md: la promoción es humana.`,
+  `Historias: ${JSON.stringify(epic.stories)}. Después de las historias, una sección "## Hitos": una ` +
+  `viñeta por hito —**slug** (line: nombre) — Título, sin "(line: …)" cuando no tiene— y debajo, anidada ` +
+  `con dos espacios, una viñeta por historia con su slug. Hitos: ${JSON.stringify(epic.milestones || [])}. ` +
+  `No toques BACKLOG.md ni backlog/: la promoción es humana.`,
   { label: 'epic-write' },
 )
 
@@ -527,5 +551,6 @@ const closing = await agent(
 )
 if (!closing || !closing.passed) return stop('check-failed', closing ? closing.details : 'sin resultado')
 
-log(`Épica candidata lista en ${ROADMAP}. Promoverla al BACKLOG requiere una decisión humana.`)
+log(`Épica candidata lista en ${ROADMAP}. Promoverla requiere una decisión humana: revisá el reparto de ` +
+  '"## Hitos" y, si va, "node tools/ops.js promote planning epic-NNN-slug" la pasa a la cola.')
 return finish({ flow: FLOW, stages: handoffs.length, epic: epic.slug, promoted: false })

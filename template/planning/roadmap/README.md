@@ -24,7 +24,10 @@ el ciclo acordado, pero no inventan objetivos de producto. Las propuestas proven
 INBOX requieren promoción humana.
 
 Antes de promover una épica se verifican en el repositorio las rutas, capacidades y datos que sus criterios
-suponen. Los resultados, reglas y criterios describen el qué; el cómo ejecutable se decide al planificar cada
+suponen. Promover es `node tools/ops.js promote planning epic-NNN-slug`: escribe un `backlog/<hito>.md` por
+cada hito de `## Hitos` —o uno solo, con el slug de la épica, si no los declara— con sus historias como
+tareas, y pasa la épica a `active`. Se niega, sin escribir nada, con un marcador sin resolver, un reparto
+que `check` rechaza o un hito que ya existe. Los resultados, reglas y criterios describen el qué; el cómo ejecutable se decide al planificar cada
 historia y no se congela prematuramente en la especificación.
 
 ## Formas admitidas
@@ -71,6 +74,11 @@ de sus tareas y las rutas que la citan. Las tareas de la otra épica no se tocan
 - Contexto relevante: rutas existentes verificadas, patrones, y los ADR e invariantes de
   `../business-rules/` que rigen el resultado.
 - Historias: incrementos de hasta cuatro horas, con slug, servicio y referencias `(→ CN)`.
+- Hitos, optativa: cómo se reparten las historias al promover. Una viñeta por hito —`**slug** (line: nombre)
+  — Título`, sin `(line: …)` si es del árbol principal— y, anidada, una viñeta por historia con su slug.
+  Con la sección, `check` exige que cada historia esté en exactamente un hito y que la línea tenga nombre
+  de línea. `flow` la propone entre las líneas que la instancia tiene; quien promueve la corrige o la
+  deja.
 - Riesgos y decisiones humanas: lo que no se puede decidir acá — supuestos, dependencias y acciones que
   un runner no puede resolver. Lo que sí se decidió y queda afuera va en Fuera de alcance.
 
