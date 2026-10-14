@@ -46,9 +46,11 @@ diseño — eso vive en el commit y en el código.
   en hitos y, si la instancia trabaja en líneas —se las pregunta a `ops lines`—, propone una por hito entre
   ésas y ninguna inventada; sin líneas no propone ninguna. Es una propuesta: la persona la corrige en la
   épica y la confirma con `promote`. La promoción sigue siendo humana. **Lo que no se midió**: una corrida
-  real de `/flow` escribiendo la sección. Tres corridas reales de `feasibility-review` sobre un banco con una
-  línea midieron la mitad: el manifiesto trae `lines: ["admin"]` de `ops lines` y el Draft recibe las líneas
-  que existen; ninguna llegó a escribir la épica, la última por el caso 379, que es lo que queda por medir.
+  real de `/flow` escribiendo la sección. Cuatro corridas reales de `feasibility-review` sobre un banco con una
+  línea: las tres primeras midieron que el manifiesto trae `lines: ["admin"]` de `ops lines` y que el Draft
+  recibe las líneas que existen; la cuarta, con el caso 379 arreglado, escribió la épica con `## Hitos` —tres
+  hitos, cada historia en uno, `(line: admin)` y ninguna línea inventada—, `check` la aceptó, `promote` escribió
+  los tres `backlog/<hito>.md`, `join` los llevó a la línea y `context` desde `admin` ofreció su primera tarea.
 
 ### Corregido
 
@@ -69,6 +71,15 @@ diseño — eso vive en el commit y en el código.
   clave con pnpm 10.30.2: las claves inertes de npm lo son también en pnpm, y lo que mueve su lock
   —`pnpm.overrides`, `resolutions`, `pnpm.patchedDependencies`— sigue frenando. yarn y bun siguen sin medir, y
   con ellos no afloja nada (caso 375).
+- **Una etapa de `flow` pide menos caracteres de los que el esquema admite.** Con el pedido igual al techo, el
+  encuadre de `feasibility-review` devolvió 1001 y 1015 caracteres cinco veces seguidas ante una intención
+  completa, y el recorrido murió sin resultado: el modelo no cuenta con precisión. El prompt pide 800 de 1000,
+  400 de 500 y 160 de 200, con el techo a la vista; el esquema no cambia. La misma intención pasó las tres
+  etapas con 957, 834 y 750 caracteres (caso 379).
+- **Editar sólo comentarios de `.ops-approval` ya no frena sin salida.** Una escritura que no agrega ninguna
+  línea —cambiar un comentario, quitar una ruta— no es aprobarse nada, y el guard la frenaba con un mensaje que
+  ofrecía confirmar un bloqueo que no existía; la persona terminaba editando a mano. Pasa sin preguntar, como ya
+  pasaba cuando la persona nombraba el archivo; agregar una ruta sigue frenando (caso 374).
 
 ## [0.107.0] - 2026-10-10
 

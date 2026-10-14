@@ -1,14 +1,16 @@
 ---
 caso: 374
 titulo: editar sólo comentarios de la aprobación frena sin salida
-estado: abierto
+estado: resuelto
+resuelto-en: 0.108.0
 prioridad: media
 version-detectada: 0.106.1
 ---
 
 # 374 — Una edición de `.ops-approval` que sólo cambia comentarios se frena con el bloqueo seco: no se puede confirmar, y la persona que la pidió tiene que editar el archivo a mano
 
-**🔴 abierto** · detectado en 0.106.1, sigue en 0.107.0 · prioridad **media**.
+**🟢 resuelto en 0.108.0** · detectado en 0.106.1 · prioridad **media** — una escritura que no agrega ninguna línea
+pasa sin preguntar, como ya pasaba cuando la persona nombraba el archivo.
 
 ## Resumen
 
@@ -82,3 +84,34 @@ pasó; después pidió corregir el comentario de esa misma línea y el guard lo 
 - [202](./202-no-hay-forma-durable-de-autorizar-una-lectura-de-secreto-que-la-propia-regla-del-proyecto-exige.md)
   — el bloqueo sin anotar que dejaba la confirmación sin efecto; éste es el mismo hueco cuando no hay líneas.
 - [375](./375-el-guard-de-dependencias-no-reconoce-un-script-nuevo-con-pnpm.md) — encontrado en la misma sesión.
+
+## Cierre
+
+**Resuelto en 0.108.0.** En `unnamed`, si la escritura no agrega ninguna línea que un guard lea, devuelve vacío:
+no hay aprobación que darse. Es el fix directo del caso, y lo decidió un dato que el caso no tenía: la otra vía,
+`unasked` —cuando la persona sí nombra el archivo—, ya devolvía vacío en ese mismo caso. La asimetría era entre
+dos funciones del mismo archivo, así que la alternativa conservadora habría dejado una vía preguntando por lo
+que la otra ya deja pasar.
+
+**Lo que se corrió para saber que funciona.** `test/hooks/chat-effects.test.js`, «editar sólo comentarios de la
+aprobación pasa sin nombrarla, y agregar una ruta sigue frenando»: con un `Edit` que cambia un comentario y sin
+nombrar el archivo ni confirmar nada, el guard deja pasar; quitar una ruta también pasa; y agregar `src/nuevo.js`
+frena mostrando la ruta. En rojo antes del cambio y en verde después. La aserción que fijaba lo contrario —«no
+hay qué mostrarle», en la prueba de los bordes sin oferta— se invirtió a propósito. Mutación en copia: sin la
+salida temprana, dos aserciones en rojo.
+
+**Lo que el caso no preveía.** Que «no agrega líneas» y «no hay cuerpo que juzgar» se ven iguales desde
+`added()`: una escritura sin `content` ni `new_string` también da cero líneas, y el primer fix la dejaba pasar.
+Lo atrapó `test/hooks/boundary-links.test.js` en la puerta de verify del commit: la aprobación escrita por un
+enlace, sin cuerpo, tiene que seguir frenando. La salida temprana vale sólo cuando la llamada trae con qué
+escribe; sin cuerpo se frena, que es el lado correcto para equivocarse, y una mutación que borra esa
+distinción pone en rojo esa prueba. Y el riesgo que el caso anotaba —reescribir el «quién aprobó» sin que
+nadie lo vea— ya existía por la otra vía, así que el fix no lo abre.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **Fix directo, devolver vacío sin líneas — se hizo**, en `unnamed`; `unasked` ya lo hacía.
+- **Alternativa conservadora, diálogo o `hold` sin líneas — se decidió que no**: preguntaría por lo que la otra vía
+  no pregunta, y no hay línea que una confirmación pueda aprobar.
+- **«`added` compara contra el disco: repetir una ruta existente cuenta como sin rutas nuevas» — se conserva**,
+  es lo que ya pasaba y es correcto: lo que ya está no se agrega.
