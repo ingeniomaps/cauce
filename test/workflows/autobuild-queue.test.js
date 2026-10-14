@@ -31,3 +31,57 @@ test('clasificar mira el archivo del hito, y proteger la cola mira BACKLOG.md y 
   assert.doesNotMatch(prompt(KEY.classify), /los archivos de \.\/planning\/backlog\//)
   assert.match(prompt(KEY.build), /ni \.\/planning\/BACKLOG\.md y los archivos de \.\/planning\/backlog\//)
 })
+
+// Una fase que cambia la cola la reescribe, o lo que cambió no existe para nadie más (casos 376 y 378). Por
+// qué el dependiente espera a todas las partes y no a la última está junto a la consigna que parte, en
+// `autobuild.js`; acá se fija que la consigna lo pida.
+test('partir una tarea reapunta a quien dependía de ella, a todas las partes', async () => {
+  const base = baseScript()[KEY.context]
+  const otra = { ...base, slug: 'T-2', claimed: true }
+  const vacio = { ...base, hasTask: false, queued: 0 }
+  const { prompts } = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [{ ...base, claimed: true }, otra, vacio, vacio] },
+  )
+  const split = prompts.find((one) => one.key === 'Decompose|split')
+  assert.ok(split, 'no hubo partición')
+  assert.match(split.prompt,
+    /toda tarea de la cola .*que declare \(depende: …\) nombrando a T-1 pasa a depender de todas las subtareas/)
+})
+
+// Lo mismo con la aceptación que Ready corrige: por qué se escribe en la línea y se relee está junto a ese
+// paso. Acá se fija la escritura, la relectura que la confirma y que plan y replan reciban la corregida.
+test('la aceptación que Ready corrige se escribe en la línea de la tarea y la corrida sigue con ella', async () => {
+  const base = baseScript()[KEY.context]
+  const refined = 'el alta rechaza un email duplicado'
+  const ready = { [KEY.ready]: { ready: true, needsHuman: false, refinedAcceptance: refined } }
+  // Con el punto final que un agente real le agregó al escribirla: sigue siendo la corregida.
+  const run = await runFlow(ready, { contexts: [base, { ...base, acceptance: `${refined}.` }] })
+  ranToEnd(run.result)
+  const refine = run.prompts.find((one) => one.key === 'Ready|refine')
+  assert.ok(refine, `no se escribió la corrección: ${JSON.stringify(run.asked)}`)
+  assert.match(refine.prompt, /en la línea de T-1/)
+  assert.match(refine.prompt, /_Aceptación:/)
+  assert.ok(refine.prompt.includes(refined))
+  assert.ok(run.prompts.find((one) => one.key === KEY.plan).prompt.includes(refined), 'el plan recibe la corregida')
+
+  // Y el replan también: recibía sólo los motivos de la crítica y el plan, y corregía contra el criterio viejo.
+  let turn = 0
+  const replanned = await runFlow({
+    ...ready,
+    [KEY.critique]: () => (++turn === 1
+      ? { verdict: 'con-condiciones', consulted: ['api/alta.go'],
+        concerns: [{ detail: 'el plan sigue con el criterio viejo', blocking: true, replan: true }] }
+      : baseScript()[KEY.critique]),
+    [KEY.replan]: { approach: 'corregido', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit' },
+  }, { contexts: [base, { ...base, acceptance: refined }] })
+  ranToEnd(replanned.result)
+  const replan = replanned.prompts.find((one) => one.key === KEY.replan)
+  assert.ok(replan, 'no hubo replan')
+  assert.match(replan.prompt, new RegExp(`La aceptación que rige es: ${refined}`))
+
+  // Si la relectura sigue trayendo la vieja, la escritura no ocurrió y seguir sería planificar contra dos textos.
+  const stuck = await runFlow(ready, { contexts: [base, base] })
+  assert.equal(stuck.result.reason, 'refine-not-applied', JSON.stringify(stuck.result))
+  assert.match(stuck.result.detail, /T-1/)
+})

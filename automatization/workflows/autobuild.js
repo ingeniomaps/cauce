@@ -1192,7 +1192,27 @@ while (rounds++ < MAX_TASKS) {
         await releaseBlocked()
             return halt('not-ready', `${ready.reason}${note}`)
       }
-      if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
+      // La corrección vivía sólo en memoria: el planificador recibía la refinada y, por `DECIDED()`, la
+      // descripción de la línea con la vieja y la orden de no re-decidirla; y al parar la corrida la
+      // corrección se perdía (caso 378). Se escribe en la línea de la tarea y se relee de ahí, con la misma
+      // guarda que la partición: si la cola sigue con la anterior, la escritura no ocurrió.
+      // Igualdad tolerante: medido con un agente real, escribió el texto pedido y le agregó un punto final, y
+      // una comparación textual habría parado la corrida sobre una escritura correcta.
+      const flat = (text) => String(text || '').trim().replace(/\s+/g, ' ').replace(/[.\s]+$/, '')
+      const refined = String(ready.refinedAcceptance || '').trim()
+      if (refined && flat(refined) !== flat(task.acceptance)) {
+        await write(`En ${queueFile()}, en la línea de ${task.id}, reemplazá el texto entre "_Aceptación:" y el ` +
+          `"_" que lo cierra por: ${refined}. Si la descripción de esa misma línea repite lo que la corrección ` +
+          'cambió, actualizala; no toques ninguna otra línea ni otro archivo.', { label: 'refine' })
+        planning = await readContext()
+        if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
+        if (flat(planning.acceptance) !== flat(refined)) {
+          return halt('refine-not-applied', `se pidió escribir la aceptación corregida de ${task.id} en `
+            + `${queueFile()} y la cola sigue con la anterior: la escritura no ocurrió como se pidió.`)
+        }
+        task.acceptance = planning.acceptance
+        task.description = planning.description || ''
+      }
     }
 
     if (!mechanical && !lite) {
@@ -1218,8 +1238,13 @@ while (rounds++ < MAX_TASKS) {
           ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
             + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
           : ''
+        // Quien declaraba `(depende: <partida>)` quedaba esperando un slug que ya no iba a existir, y `check` lo
+        // decía recién al terminar la corrida (caso 376). Pasa a esperar a **todas** las partes: si son
+        // paralelas, esperar a una sola lo dejaría arrancar antes.
         await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
-          `independiente: ${JSON.stringify(estimate.subtasks)}.${historias}`, { label: 'split' })
+          `independiente: ${JSON.stringify(estimate.subtasks)}.${historias} Y toda tarea de la cola —en ` +
+          `${QUEUE}— que declare (depende: …) nombrando a ${task.id} pasa a depender de todas las subtareas ` +
+          'nuevas, con los demás slugs que ya declaraba.', { label: 'split' })
         planning = await readContext()
         if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
         // Misma forma que en Claim: si la cola sigue ofreciendo lo mismo, el estado no cambió y repetir
@@ -1287,8 +1312,11 @@ while (rounds++ < MAX_TASKS) {
         // una decisión que el plan había dejado abierta, sin bloquear; el replan no se enteró, repitió lo
         // mismo y la segunda crítica frenó por eso (caso 249). El límite va escrito porque lo anotado suele
         // traer más cosas que lo bloqueante, y sin él la corrección se vuelve una ampliación (R3).
+        // Con la aceptación que rige: el replan recibía sólo los motivos y el plan, y cuando la crítica
+        // rechazaba por divergir del criterio corregido, corregía contra el que tenía en la cabeza (caso 378).
         plan = await read(
-          `Corregí el plan una vez por: ${replans(critique).join('; ')}.`
+          `Corregí el plan una vez por: ${replans(critique).join('; ')}. La aceptación que rige es: `
+          + `${task.acceptance}.`
           + (first.noted.length
             ? ` La crítica anotó además esto sin bloquear: ${first.noted.join('; ')}. Aplicá lo que ahí ya `
               + 'venga decidido y no amplíes el plan por el resto.' : '')
