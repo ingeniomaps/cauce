@@ -145,6 +145,14 @@ function contentOf(input) {
     || input.content || input.patch || patchOf(input) || '')
 }
 
+// Si la llamada trae con qué escribe, por los mismos campos que `contentOf` lee: una escritura sin cuerpo no es
+// «no agrega nada», es «no hay nada que juzgar», y las dos se ven iguales desde el contenido vacío.
+function carriesContent(input) {
+  const fields = input.tool_input || {}
+  return ['content', 'new_string', 'patch', 'input'].some((key) => typeof fields[key] === 'string')
+    || typeof input.content === 'string' || typeof input.patch === 'string' || Boolean(patchOf(input))
+}
+
 function cwdOf(input) {
   const cwd = input.cwd || input.tool_input && input.tool_input.cwd
     || process.env.OPS_ROOT || process.cwd()
@@ -476,6 +484,7 @@ function opsRoot(input) {
 }
 
 module.exports = {
+  carriesContent,
   rawCommandOf,
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,

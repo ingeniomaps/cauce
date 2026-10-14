@@ -15,8 +15,9 @@
 // una persona podía escribirla—. Medido punta a punta (caso 119). Por eso lo que llega se compara línea por
 // línea contra lo que la persona pidió, y son dos entradas porque cada vía tiene con qué distinto.
 
+const fs = require('node:fs')
 const path = require('node:path')
-const { contentOf, opsRoot } = require('./input')
+const { contentOf, carriesContent, opsRoot } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const CF = require('./confirm')
@@ -75,26 +76,35 @@ const chatRecord = (file) => file === CHAT.DIR || file.startsWith(`${CHAT.DIR}${
 // Lo que esta escritura agrega al archivo. **Lo que ya estaba en disco no se vuelve a nombrar**: esta
 // escritura no lo agrega, y exigirlo obligaría a repetir el archivo entero para sumar una línea. Quitar
 // tampoco se pregunta: una aprobación más corta autoriza menos.
+//
+// Un `Edit` se juzga por el archivo que queda y no por el fragmento que entra: borrar un `#` activa la línea
+// que comentaba, y el fragmento nuevo —vacío— no la nombra. Se simula el reemplazo sobre lo que hay en disco
+// y se comparan las líneas resultantes; lo que `Write` o un parche traen entero se lee como siempre.
+function resulting(input, root) {
+  const fields = input.tool_input || {}
+  if (typeof fields.old_string !== 'string' || typeof fields.content === 'string') return contentOf(input)
+  let disk = ''
+  try { disk = fs.readFileSync(path.join(root, 'planning', AP.APPROVAL), 'utf8') } catch { disk = '' }
+  const next = String(fields.new_string || '')
+  if (!fields.old_string) return disk + next
+  return fields.replace_all === true ? disk.split(fields.old_string).join(next) : disk.replace(fields.old_string, next)
+}
+
 function added(input, root) {
   const filed = new Set(AP.read(root))
-  return AP.lines(contentOf(input)).filter((line) => !filed.has(line))
+  return AP.lines(resulting(input, root)).filter((line) => !filed.has(line))
 }
 
 // El archivo sin nombrar frenaba sin anotar nada, así que la salida que el propio mensaje ofrecía
 // —confirmar el bloqueo— no aprobaba nada: el «dale» siguiente volvía a frenar igual, y la persona sólo
 // podía destrabarlo con la frase exacta que nombra el archivo con un verbo (caso 202). Se anota el archivo
 // con las líneas que trae, que es lo que la confirmación va a aprobar y lo que el mensaje le muestra.
-// Si la llamada trae con qué se escribe. Sin eso no hay nada que juzgar, y eso no es lo mismo que «no agrega
-// nada»: una escritura cuyo cuerpo no se ve se frena, que es el lado correcto para equivocarse.
-const carriesContent = (input) => Boolean(input.tool_input
-  && ['content', 'new_string', 'patch', 'input'].some((key) => key in input.tool_input))
-  || 'content' in input || 'patch' in input
-
 function unnamed(input, root, file) {
   const lines = added(input, root)
   // Con cuerpo y sin ninguna línea nueva —comentarios, o quitar— no hay aprobación que darse: frenar acá
   // dejaba el único bloqueo sin salida, con un mensaje que ofrecía confirmar un bloqueo que no existía (caso
   // 374). La otra vía, con el archivo nombrado, ya lo dejaba pasar.
+  // Sin cuerpo no hay nada que juzgar, y se frena: es el lado correcto para equivocarse.
   if (!lines.length && carriesContent(input)) return ''
   if (lines.length && CF.native(input)) return ASKED(input, file, lines)
   const held = lines.length ? CHAT.hold(input, [file, ...lines]) : false
