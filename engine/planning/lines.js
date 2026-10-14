@@ -118,6 +118,43 @@ function status(root) {
   }
 }
 
+// Qué significa cada archivo en conflicto al juntar dos líneas, y qué hacer con él. Las reglas son las que
+// `delivery/teamwork.md` y el `.gitattributes` del molde ya dicen; acá sólo se aplican a una lista de rutas,
+// para que quien junta no tenga que acordarse de leerlas. `relative` es dónde está el planning dentro del
+// repositorio.
+const CONFLICT_KINDS = [
+  ['lecciones', ['LESSONS.md'], 'quedate con las filas de las dos tablas; el conflicto es correcto'],
+  ['decision', ['BACKLOG.md', 'INBOX.md', 'RECURRING.md'],
+    'dos líneas decidieron sobre lo mismo: leé los dos lados y elegí'],
+  ['union', ['HUMAN_ACTIONS.md', 'done/human-actions.md'],
+    'tendría que fusionar por unión: falta merge=union en el .gitattributes'],
+]
+const UNIT_DIRS = ['backlog/', 'done/', 'claims/', 'checkpoints/', 'inbox/', 'human/', 'roadmap/', 'wip/']
+function classifyConflicts(relative, files) {
+  const prefix = relative ? `${relative}/` : ''
+  return files.map((file) => {
+    const inside = file.startsWith(prefix) ? file.slice(prefix.length) : null
+    const named = inside && CONFLICT_KINDS.find(([, names]) => names.includes(inside))
+    if (named) return { file, kind: named[0], advice: named[2] }
+    if (inside && UNIT_DIRS.some((dir) => inside.startsWith(dir))) {
+      return { file, kind: 'unidad', advice: 'las dos líneas editaron la misma unidad: se resuelve leyendo las dos' }
+    }
+    return { file, kind: 'conflicto', advice: 'no es un archivo que el motor reparta: se resuelve a mano' }
+  })
+}
+
+// Dos épicas con el mismo número y distinto archivo no chocan en git y `check` las rechaza después de juntar
+// (caso 217). Se ven antes comparando los nombres de `roadmap/` de los dos lados.
+function duplicateEpics(targetFiles, sourceFiles) {
+  const numOf = (file) => (path.basename(file).match(/^epic-(\d{3})-/) || [])[1]
+  const byNum = new Map()
+  for (const file of [...new Set([...targetFiles, ...sourceFiles])]) {
+    const num = numOf(file)
+    if (num) byNum.set(num, [...(byNum.get(num) || []), file])
+  }
+  return [...byNum].filter(([, files]) => files.length > 1).map(([num, files]) => ({ num, files: files.sort() }))
+}
+
 // La tabla de acciones humanas es de todas las líneas: sin `merge=union`, dos que le agreguen una fila chocan
 // al juntarse. El molde entrega la regla, pero un `.gitattributes` propio en la raíz del repositorio —una
 // instancia embebida— la deja afuera sin que nada lo diga. Sólo se avisa donde hay líneas —sin ellas no hay
@@ -133,5 +170,6 @@ function mergeWarnings(root, milestones, tableRows) {
 }
 
 module.exports = {
-  BRANCH, NAME, currentLine, scope, whereToTake, lineErrors, worktrees, claimsElsewhere, status, mergeWarnings,
+  BRANCH, NAME, currentLine, scope, whereToTake, lineErrors, worktrees, placement, claimsElsewhere, status,
+  classifyConflicts, duplicateEpics, mergeWarnings,
 }

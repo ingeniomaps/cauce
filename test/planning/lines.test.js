@@ -29,8 +29,9 @@ function instance() {
   fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), hito('auth', 'auth-token', ''))
   fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'admin'))
   git(ops, 'init', '-q', '-b', 'main')
-  // El `.gitignore` del molde va en la base: `wip/` es local, y sin él contaría como cambio sin commitear.
-  git(ops, 'add', 'planning', 'ops.config.json', '.gitignore')
+  // Todo lo que `init` dejó, incluido el `.gitignore` del molde: `wip/` es local, y sin él contaría como cambio
+  // sin commitear. Lo que no está en el primer commit cuenta como sucio después, y no es lo que se mide.
+  git(ops, 'add', ...fs.readdirSync(ops).filter((name) => name !== 'node_modules'))
   git(ops, 'commit', '-qm', 'base')
   const line = path.join(base, 'demo-ops-admin')
   git(ops, 'worktree', 'add', '-q', '-b', 'line/admin', line)
@@ -171,4 +172,126 @@ test('lines se niega fuera de git y sobre lo que no es una raíz ops', () => {
   const result = run(['lines', ops])
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /no está en un repositorio git/)
+})
+
+// `ops lines join`: traer una línea a la rama del árbol donde se corre. Lo que se mide: que en seco diga qué
+// conflictos habría, con su clase y qué hacer en cada uno, y los números de épica repetidos, que git no ve;
+// que avise si la línea trae reclamos en vuelo; que con `--apply` se niegue sobre un árbol sucio; y que al
+// aplicar sin conflictos quede el merge y corra `check`.
+const commitIn = (ops, message, ...files) => { git(ops, 'add', ...files); git(ops, 'commit', '-qm', message) }
+const lessons = (planning, row) => fs.appendFileSync(path.join(planning, 'LESSONS.md'),
+  `| ${row} | propuesta | t | 2026-10-14 |\n`)
+const epic = (planning, name) => {
+  fs.writeFileSync(path.join(planning, 'roadmap', `${name}.md`),
+    `---\nepic: ${name.slice(5, 8)}\ntitle: ${name}\nstatus: open\nservice: app\n---\n\n`
+    + '# Épica\n\n## Criterios\n\n## Historias\n')
+}
+
+test('join en seco clasifica cada conflicto, ve las épicas repetidas y avisa de los reclamos en vuelo', () => {
+  const trees = instance()
+  const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
+  lessons(trees.main, 'r-main'); epic(trees.main, 'epic-001-a')
+  const backlog = (hito, slug) => `# Backlog\n\n## Hito ${hito} — ${hito}\n\n`
+    + `- [ ] **${slug}** — X. _Aceptación: x._ (service: app)\n`
+  fs.writeFileSync(path.join(trees.main, 'BACKLOG.md'), backlog('base', 'x'))
+  commitIn(ops.main, 'main side', 'planning')
+  lessons(trees.line, 'r-line'); epic(trees.line, 'epic-001-b')
+  fs.writeFileSync(path.join(trees.line, 'BACKLOG.md'), backlog('otro', 'y'))
+  assert.equal(claim(trees.line, 'r-line', 'admin-consulta').status, 0)
+  commitIn(ops.line, 'line side', 'planning')
+
+  const result = run(['lines', 'join', ops.main, 'admin', '--json'])
+  assert.equal(result.status, 0, result.stderr)
+  const report = JSON.parse(result.stdout)
+  assert.equal(report.source, 'line/admin')
+  assert.equal(report.target, 'main')
+  assert.equal(report.commits, 1)
+  assert.equal(report.applied, false)
+  const kinds = Object.fromEntries(report.conflicts.map((one) => [one.file, one.kind]))
+  assert.deepEqual(kinds, { 'planning/BACKLOG.md': 'decision', 'planning/LESSONS.md': 'lecciones' })
+  assert.deepEqual(report.duplicates,
+    [{ num: '001', files: ['planning/roadmap/epic-001-a.md', 'planning/roadmap/epic-001-b.md'] }])
+  assert.deepEqual(report.claims, ['admin-consulta'], 'la línea trae un reclamo en vuelo')
+
+  const text = run(['lines', 'join', ops.main, 'admin'])
+  assert.equal(text.status, 0, text.stderr)
+  assert.match(text.stdout, /JUNTAR line\/admin → main/)
+  assert.match(text.stdout, /LESSONS\.md — lecciones: .*las filas de las dos/)
+  assert.match(text.stdout, /BACKLOG\.md — decision: .*dos líneas decidieron/)
+  assert.match(text.stdout, /001: .*renumber-epic/)
+  assert.match(text.stdout, /reclamos en vuelo: admin-consulta/)
+  assert.match(text.stdout, /--apply.*deja el merge en curso/)
+
+  const inProgress = run(['lines', 'join', ops.main, 'admin', '--apply'])
+  assert.equal(inProgress.status, 1)
+  assert.match(inProgress.stderr, /quedó en curso/)
+  assert.match(inProgress.stdout, /LESSONS\.md — lecciones/, 'la clasificación sale junto al merge que la necesita')
+  assert.equal(spawnSync('git', ['rev-parse', '--verify', '--quiet', 'MERGE_HEAD'], { cwd: ops.main }).status, 0)
+
+  const unknown = run(['lines', 'join', ops.main, 'nadie'])
+  assert.equal(unknown.status, 2)
+  assert.match(unknown.stderr, /no existe la línea nadie.*Hay: admin/)
+})
+
+test('join --apply se niega sobre un árbol sucio, y sin conflictos mergea y corre check', () => {
+  const trees = instance()
+  const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
+  assert.equal(claim(trees.line, 'r-line', 'admin-consulta').status, 0)
+  commitIn(ops.line, 'claim', 'planning')
+  fs.writeFileSync(path.join(trees.main, 'suelto.md'), 'x\n')
+  const dirty = run(['lines', 'join', ops.main, 'admin', '--apply'])
+  assert.equal(dirty.status, 1)
+  assert.match(dirty.stderr, /1 cambio\(s\) sin commitear/)
+  assert.equal(fs.existsSync(path.join(trees.main, 'claims', 'admin-consulta.md')), false, 'no mergeó')
+  fs.rmSync(path.join(trees.main, 'suelto.md'))
+
+  const applied = run(['lines', 'join', ops.main, 'admin', '--apply'])
+  assert.equal(applied.status, 0, applied.stderr + applied.stdout)
+  assert.match(applied.stdout, /planning válido/, 'check corrió sobre lo que quedó')
+  assert.ok(fs.existsSync(path.join(trees.main, 'claims', 'admin-consulta.md')), 'el reclamo de la línea llegó')
+  const log = spawnSync('git', ['log', '--merges', '--format=%s', '-1'], { cwd: ops.main, encoding: 'utf8' }).stdout
+  assert.match(log, /line\/admin/)
+
+  const again = run(['lines', 'join', ops.main, 'admin', '--apply'])
+  assert.equal(again.status, 0)
+  assert.match(again.stdout, /nada que traer/)
+})
+
+// La clasificación y las épicas repetidas son funciones puras: se prueban con listas, sin git de por medio.
+test('classifyConflicts conoce cada archivo del planning esté donde esté, y duplicateEpics lee los nombres', () => {
+  const kinds = (relative, files) => LN.classifyConflicts(relative, files).map((one) => `${one.file}:${one.kind}`)
+  assert.deepEqual(kinds('ops/planning', [
+    'ops/planning/LESSONS.md', 'ops/planning/INBOX.md', 'ops/planning/RECURRING.md', 'ops/planning/HUMAN_ACTIONS.md',
+    'ops/planning/done/human-actions.md', 'ops/planning/done/x.md', 'ops/planning/README.md', 'src/app.js',
+  ]), [
+    'ops/planning/LESSONS.md:lecciones', 'ops/planning/INBOX.md:decision', 'ops/planning/RECURRING.md:decision',
+    'ops/planning/HUMAN_ACTIONS.md:union', 'ops/planning/done/human-actions.md:union', 'ops/planning/done/x.md:unidad',
+    'ops/planning/README.md:conflicto', 'src/app.js:conflicto',
+  ])
+  assert.deepEqual(kinds('', ['LESSONS.md', 'claims/a.md']), ['LESSONS.md:lecciones', 'claims/a.md:unidad'],
+    'con el planning en la raíz del repositorio no hay prefijo')
+  assert.deepEqual(LN.duplicateEpics(['roadmap/epic-001-a.md', 'roadmap/README.md'], ['roadmap/epic-001-a.md']), [],
+    'el mismo archivo en los dos lados no es un duplicado')
+  assert.deepEqual(LN.duplicateEpics(['roadmap/epic-002-b.md'], ['roadmap/epic-002-c.md', 'roadmap/epic-003-d.md']),
+    [{ num: '002', files: ['roadmap/epic-002-b.md', 'roadmap/epic-002-c.md'] }])
+})
+
+test('join se niega sobre lo que no es una raíz, sobre la propia rama, y acepta --json al aplicar', () => {
+  const loose = tempRoot('cauce-join-sin-raiz-')
+  assert.equal(run(['lines', 'join', loose, 'admin']).status, 2)
+  const trees = instance()
+  const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
+  const same = run(['lines', 'join', ops.main, 'main'])
+  assert.equal(same.status, 2)
+  assert.match(same.stderr, /ya estás en main/)
+  // Desde la línea, lo que se trae es la rama principal por su nombre.
+  assert.equal(claim(trees.main, 'r-main', 'auth-token').status, 0)
+  commitIn(ops.main, 'claim', 'planning')
+  const applied = run(['lines', 'join', ops.line, 'main', '--apply', '--json'])
+  assert.equal(applied.status, 0, applied.stderr)
+  const report = JSON.parse(applied.stdout.split('\n')[0])
+  assert.equal(report.source, 'main')
+  assert.equal(report.target, 'line/admin')
+  assert.equal(report.applied, true)
+  assert.ok(fs.existsSync(path.join(trees.line, 'claims', 'auth-token.md')))
 })

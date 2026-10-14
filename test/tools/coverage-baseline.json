@@ -134,6 +134,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/cli/lines-join.js": {
+    "lines": 98,
+    "branches": 50,
+    "functions": 100
+  },
   "engine/cli/lines.js": {
     "lines": 97,
     "branches": 56,

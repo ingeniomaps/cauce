@@ -10,6 +10,7 @@ const { fail, useRoot, USAGE, REFUSED } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
 const LN = require('./lines')
+const LJ = require('./lines-join')
 const CT = require('./contract')
 const BN = require('./bench')
 const VA = require('./validate')
@@ -166,6 +167,7 @@ function usage() {
   ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>
   ops line <ops-root> <nombre> [--json]
   ops lines <ops-root> [--json]
+  ops lines join <ops-root> <nombre> [--apply] [--json]
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>
@@ -245,6 +247,7 @@ async function run(cli) {
   else if (command === 'split-backlog') PL.splitBacklog(arg[1])
   else if (command === 'renumber-epic') PL.renumberEpic(arg[1], arg[2], arg[3])
   else if (command === 'line') LN.line(arg[1], arg[2], cli)
+  else if (command === 'lines' && arg[1] === 'join') LJ.join(arg[2], arg[3], cli)
   else if (command === 'lines') LN.lines(arg[1], cli)
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)

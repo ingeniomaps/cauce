@@ -29,7 +29,7 @@ const FLAGS = {
   'split-backlog': [],
   'renumber-epic': [],
   line: ['--json'],
-  lines: ['--json'],
+  lines: ['--json', '--apply'],
   claim: ['--json'],
   runners: ['--json'],
   worktree: ['--json'],
