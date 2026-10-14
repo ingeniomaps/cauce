@@ -266,5 +266,9 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 64 desde el 2026-10-09: la parada por una cola que espera a una persona le dicta `tools/ops.js human`,
   // el comando que lista esas acciones (caso 351). Texto de un mensaje, como el del 308.
-  assert.equal(hits, 64, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 66 desde el 2026-10-14: `flow` pide las líneas de trabajo con `tools/ops.js lines`, anclado a `${WORKDIR}`
+  // como los otros cuatro comandos del manifiesto, y su cierre le dicta a la persona `tools/ops.js promote`,
+  // texto de un mensaje como el del 308.
+  assert.equal(hits, 66, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
