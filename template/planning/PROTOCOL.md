@@ -6,7 +6,8 @@ invariantes.
 ## Contratos
 
 - Épica: frontmatter `epic/title/status/service`; criterios `**CN**`; historias con slug, `(→ CN)` y
-  `(service: ruta)`.
+  `(service: ruta)`; y, optativa, `## Hitos` con el reparto de esas historias al promover, cada hito con
+  su `(line: nombre)` si es de una línea de trabajo.
 - Hito: `## Hito slug — Título`. Vive en `BACKLOG.md` o, mejor, en su propio archivo `backlog/<slug>.md`, con
   `order: N` en el frontmatter y ese único hito adentro: dos líneas de trabajo en paralelo que escriben el
   mismo `BACKLOG.md` chocan cada vez que una trae a la otra, y partido por hito cada una escribe el suyo.

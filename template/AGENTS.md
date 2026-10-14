@@ -201,6 +201,9 @@ muta nada.
   ahora, con su aceptación y sus criterios. Es la entrada correcta para empezar a trabajar. Con `--hito`
   la cola se acota a ese hito, que es como un equipo se reparte trabajo sin coordinarse.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
+- `node tools/ops.js lines .` — qué hace cada línea de trabajo: su cola, sus reclamos, su WIP, sus
+  checkpoints y cuánto la separa de la base. `lines join . <nombre>` trae una línea, en seco o con
+  `--apply`; `delivery/teamwork.md` cuenta qué choca al juntar.
 - `node tools/ops.js recurring planning [--promote <qué>]` — qué trabajo recurrente venció y con
   qué línea se promueve. Emite esa línea; escribirla en `BACKLOG.md` es de una persona.
 - `node tools/ops.js check planning` — validación de contratos y trazabilidad.
@@ -211,7 +214,7 @@ muta nada.
   nombrada haya corrido —eso depende del runner, y varios no la nombran al pasar— ni reemplaza a leer
   su fuente, que es lo que R9 pide.
 
-Los cinco aceptan `--json`. Leer `BACKLOG.md`, tu `wip/<runner>.md`, `HUMAN_ACTIONS.md` o `RECURRING.md`
+Los seis aceptan `--json`. Leer `BACKLOG.md`, tu `wip/<runner>.md`, `HUMAN_ACTIONS.md` o `RECURRING.md`
 completos sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
 
 ## Cómo tomar trabajo

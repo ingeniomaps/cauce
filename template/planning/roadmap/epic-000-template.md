@@ -40,6 +40,16 @@ es para quien la lea en tres meses, no para silenciar el mensaje.
 - [ ] **slug-de-historia** (→ C1) — Incremento ≤4h. _Aceptación: resultado observable._ (service: ruta)
 - [ ] **slug-del-borde** (→ C2) — Incremento ≤4h. _Aceptación: resultado observable._ (service: ruta)
 
+## Hitos
+
+Optativa. Cómo se reparten las historias al promover: cada hito es un resultado que se puede revisar
+solo, y `(line: nombre)` lo manda a una línea de trabajo. Sin la sección, `promote` escribe un solo hito.
+
+- **slug-del-hito** — Título del hito
+  - slug-de-historia
+- **otro-hito** (line: nombre) — Lo que hace la línea
+  - slug-del-borde
+
 ## Riesgos y decisiones humanas
 
 - Lo que no se puede decidir acá: supuestos, dependencias y acciones que necesitan una persona.
