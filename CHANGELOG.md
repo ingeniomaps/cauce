@@ -63,6 +63,12 @@ diseño — eso vive en el commit y en el código.
   la escribe en el archivo de la tarea, relee la cola y para con `refine-not-applied` si no quedó escrita; y el
   replan recibe la aceptación que rige, que antes no recibía. La guarda tolera el punto final que un agente
   real le agregó al texto (caso 378).
+- **El guard de dependencias afloja con pnpm igual que con npm.** Sumar un script, una descripción o cualquier
+  clave que el lock no registra frenaba el commit en un proyecto pnpm como si fuera un cambio de dependencias,
+  y el rodeo —aprobar `package.json` para siempre— dejaba pasar justo lo que el guard frena. Medido clave por
+  clave con pnpm 10.30.2: las claves inertes de npm lo son también en pnpm, y lo que mueve su lock
+  —`pnpm.overrides`, `resolutions`, `pnpm.patchedDependencies`— sigue frenando. yarn y bun siguen sin medir, y
+  con ellos no afloja nada (caso 375).
 
 ## [0.107.0] - 2026-10-10
 

@@ -1,14 +1,17 @@
 ---
 caso: 375
 titulo: el guard de dependencias no reconoce un script nuevo con pnpm
-estado: abierto
-prioridad: media
+estado: resuelto
+resuelto-en: 0.108.0
+prioridad: alta
 version-detectada: 0.106.1
 ---
 
 # 375 — `lockUnaffected` sólo afloja con `package-lock.json`: con pnpm, sumar un script a `package.json` frena el commit aunque el lockfile no cambie
 
-**🔴 abierto** · detectado en 0.106.1, sigue en 0.107.0 · prioridad **media**.
+**🟢 resuelto en 0.108.0** · detectado en 0.106.1 · prioridad **alta** — subida de media al cerrar: el rodeo que el
+guard provocaba, aprobar `package.json` para siempre, abría el agujero que el guard existe para cerrar. Medido
+clave por clave con pnpm 10.30.2, `pnpm-lock.yaml` afloja igual que el de npm.
 
 ## Resumen
 
@@ -76,3 +79,44 @@ Instancia sidecar `acme-ops`, proyecto `platform` (pnpm), 2026-10-13. Las tareas
 - [151](./151-la-mitigacion-de-pnpm-en-verify-es-un-no-op-y-ningun-commit-con-lockfile-pasa.md) — otro hueco
   de pnpm en el mismo camino.
 - [374](./374-editar-solo-comentarios-de-la-aprobacion-frena-sin-salida.md) — encontrado en la misma sesión.
+
+## Cierre
+
+**Resuelto en 0.108.0.** `lockUnaffected` acepta `pnpm-lock.yaml` además de `package-lock.json`, con la misma lista
+inerte. La medición que el caso pedía se hizo entera, no sólo `scripts`.
+
+**La medición.** `pnpm install --lockfile-only` con pnpm 10.30.2, el 2026-10-14, sobre un manifiesto con una
+dependencia (`ms@2.1.3`), cambiando una clave por vez y comparando el `pnpm-lock.yaml` con el de base:
+
+- **Inertes** las dieciséis de `INERT_KEYS` y además, a diferencia de npm, `name`, `version`, `license`, `engines`,
+  `bin`, `funding`, `workspaces`, `os`, `cpu`, los scripts `preinstall`, `install` y `postinstall`,
+  `packageManager`, `pnpm.onlyBuiltDependencies`, `peerDependenciesMeta` y `overrides`.
+- **Mueven el lock** `pnpm.overrides` y `resolutions`; `pnpm.patchedDependencies` falla la resolución sin el
+  parche, que para el guard es lo mismo que mover. Ninguna de las tres está en la lista inerte, así que el guard
+  ya las frenaba y sigue frenándolas: no hubo que agregar nada.
+
+Los scripts de instalación se siguen tratando como en npm, que es más estricto que lo medido para pnpm: cuesta
+un rechazo raro y no un lock viejo.
+
+**Lo que se corrió para saber que funciona.**
+
+- `test/hooks/commit.test.js`: la aserción que fijaba «con pnpm un script tampoco pasa» se invirtió a propósito y
+  se sumaron `pnpm.overrides` y `resolutions` sin lock, que frenan. En rojo antes del cambio en `shell.js`, en
+  verde después; mutación en copia, `MEASURED_LOCKS` sólo con npm, en rojo.
+- El guard real, `engine/hooks/run.js dependencies` con el payload del runner sobre un repositorio pnpm en
+  `/var/tmp` declarado como el de la sesión: una dependencia nueva sin lock sale 2 con «cambió package.json sin
+  actualizar su lockfile»; un script nuevo con `pnpm-lock.yaml` intacto sale 0; `pnpm.overrides` sin lock sale 2.
+  El mismo script nuevo contra el motor de antes sale 2, que es el defecto del caso.
+
+**Lo que el caso no preveía.** El guard sólo opina sobre un repositorio de la sesión (R26, caso 258): sobre un
+banco en `/var/tmp` sin declararlo pasa todo con 0 y parece que funciona. La prueba real se corre con
+`CLAUDE_PROJECT_DIR` y `OPS_ROOT` apuntando al banco, o no mide nada.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **Medir `INERT_KEYS` con pnpm, una clave por vez — se hizo**, y con las claves propias de pnpm que el caso
+  nombraba como riesgo.
+- **Aceptar `pnpm-lock.yaml` con la lista que salga — se hizo**, con la misma lista: no hubo que partirla por
+  gestor.
+- **«Dos locks a la vez siguen sin aflojar» — se conserva**: `MEASURED_LOCKS` compara el conjunto entero, y la
+  prueba de dos locks sigue frenando.
