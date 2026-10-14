@@ -414,6 +414,16 @@ test('editar sólo comentarios de la aprobación pasa sin nombrarla, y agregar u
     fs.writeFileSync(approval, '#push origin main\nsrc/x.js\n')
     blocked('workspace-boundary', edit(silent, '#', ''), /aprobarse solo[\s\S]*push origin main/)
     blocked('workspace-boundary', edit(silent, 'main', 'main\nsrc/otro.js'), /src\/otro\.js/)
+    // Las otras dos formas del Edit: reemplazar todas las apariciones, y un old_string vacío, que agrega al
+    // final. Y sin archivo en disco, el fragmento se juzga solo.
+    fs.writeFileSync(approval, '#push origin main\n#src/y.js\n')
+    const all = (call) => call({ cwd: root, tool_name: 'Edit',
+      tool_input: { file_path: approval, old_string: '#', new_string: '', replace_all: true } })
+    blocked('workspace-boundary', all(silent), /push origin main[\s\S]*src\/y\.js/)
+    blocked('workspace-boundary', edit(silent, '#', undefined), /push origin main/)
+    blocked('workspace-boundary', edit(silent, '', 'src/z.js'), /src\/z\.js/)
+    fs.rmSync(approval)
+    assert.doesNotThrow(() => execute('workspace-boundary', edit(silent, '# algo', '# otra cosa')))
   } finally { chat.close() }
 })
 

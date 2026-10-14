@@ -81,11 +81,13 @@ const chatRecord = (file) => file === CHAT.DIR || file.startsWith(`${CHAT.DIR}${
 // que comentaba, y el fragmento nuevo —vacío— no la nombra. Se simula el reemplazo sobre lo que hay en disco
 // y se comparan las líneas resultantes; lo que `Write` o un parche traen entero se lee como siempre.
 function resulting(input, root) {
-  const fields = input.tool_input || {}
-  if (typeof fields.old_string !== 'string' || typeof fields.content === 'string') return contentOf(input)
+  // Sin respaldo: acá se llega con un archivo que salió de `tool_input`, así que siempre está.
+  const fields = input.tool_input
+  if (typeof fields.old_string !== 'string') return contentOf(input)
   let disk = ''
   try { disk = fs.readFileSync(path.join(root, 'planning', AP.APPROVAL), 'utf8') } catch { disk = '' }
-  const next = String(fields.new_string || '')
+  // Sin `new_string` el reemplazo es un borrado, que es lo que esta función existe para ver.
+  const next = typeof fields.new_string === 'string' ? fields.new_string : ''
   if (!fields.old_string) return disk + next
   return fields.replace_all === true ? disk.split(fields.old_string).join(next) : disk.replace(fields.old_string, next)
 }
