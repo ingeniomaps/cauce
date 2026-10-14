@@ -15,6 +15,7 @@ function promote(dir, epicName) {
   for (const one of result.files) {
     console.log(`✓ ${one.file}${one.line ? `  (line: ${one.line})` : ''}  ${one.tasks} tarea(s)`)
   }
+  for (const warning of result.warnings) console.log(`⚠ ${warning}`)
   console.log(`roadmap/${result.epic.file} → active. Corré check y commiteá la promoción.`)
 }
 

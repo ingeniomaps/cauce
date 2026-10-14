@@ -36,7 +36,9 @@ diseño — eso vive en el commit y en el código.
   si es de una línea; `check` exige que cada historia esté en exactamente un hito y que la línea tenga nombre
   de línea; y `promote planning epic-NNN-slug` escribe un archivo por hito con el `order` siguiente y las
   historias como tareas, y pasa la épica a `active`. Sin la sección, un solo hito con el slug de la épica.
-  Se niega sin escribir nada ante un marcador, un reparto que `check` rechaza o un hito que ya existe.
+  Se niega sin escribir nada ante un marcador, un reparto que `check` rechaza —también por tamaño, R17— o un
+  hito que ya está en la cola, en su archivo o en `BACKLOG.md`. Y avisa cuando un hito va a una línea que
+  todavía no tiene rama: nadie lo ve hasta `ops line . <nombre>`, y `check` no lo dice.
 
 ### Cambiado
 

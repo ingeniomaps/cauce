@@ -11,6 +11,12 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
+
+const git = (cwd, ...args) => {
+  const result = spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr)
+}
 
 const epic = (hitos, extra = '') => `---
 epic: 004
@@ -68,8 +74,15 @@ function instance(name, text) {
 
 test('promote escribe un hito por cada uno propuesto, con su orden, su línea y sus historias', () => {
   const planning = instance('hitos', epic(HITOS))
+  // La línea existe como rama: no hay nada que avisar sobre ella.
+  const ops = path.dirname(planning)
+  git(ops, 'init', '-q', '-b', 'main')
+  git(ops, 'add', '.gitignore', 'planning')
+  git(ops, 'commit', '-qm', 'base')
+  git(ops, 'branch', 'line/admin')
   const result = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout.includes('no tiene árbol'), false, 'la línea admin existe')
   assert.match(result.stdout, /backlog\/alta-pedidos\.md.*2 tarea/)
   assert.match(result.stdout, /backlog\/consola\.md.*line: admin.*1 tarea/)
   const alta = fs.readFileSync(path.join(planning, 'backlog', 'alta-pedidos.md'), 'utf8')
@@ -126,10 +139,44 @@ test('promote se niega sin escribir nada: marcadores, reparto mal escrito, hito 
   fs.writeFileSync(path.join(planning, 'backlog', 'consola.md'), '---\norder: 15\n---\n\n## Hito consola — Ya\n')
   const taken = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(taken.status, 1)
-  assert.match(taken.stderr, /ya existe backlog\/consola\.md/)
+  assert.match(taken.stderr, /ya existe el hito consola en backlog\/consola\.md/)
   assert.equal(fs.existsSync(path.join(planning, 'backlog', 'alta-pedidos.md')), false, 'todo o nada')
   assert.match(fs.readFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), 'utf8'), /^status: open$/m)
 
   assert.equal(run(['promote', planning, 'epic-009-nada']).status, 1)
   assert.equal(run(['promote', planning]).status, 2)
+})
+
+test('promote avisa de una línea que todavía no tiene árbol ni rama, y promueve igual', () => {
+  const planning = instance('sin-linea', epic(HITOS.replace('(line: admin)', '(line: admn)')))
+  const result = run(['promote', planning, 'epic-004-pedidos'])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /line admn no tiene árbol todavía: nadie la ve hasta "ops line \. admn"/)
+  assert.match(fs.readFileSync(path.join(planning, 'backlog', 'consola.md'), 'utf8'), /^line: admn$/m)
+})
+
+test('promote se niega, sin escribir, ante un hito que ya está en BACKLOG.md y ante uno que pasa R17', () => {
+  const planning = instance('en-backlog', epic(''))
+  fs.appendFileSync(path.join(planning, 'BACKLOG.md'),
+    '\n## Hito pedidos — Ya en la cola\n\n- [ ] **z** — Z. _Aceptación: z._ (service: app)\n')
+  const taken = run(['promote', planning, 'epic-004-pedidos'])
+  assert.equal(taken.status, 1)
+  assert.match(taken.stderr, /ya existe el hito pedidos en BACKLOG\.md/)
+  assert.equal(fs.existsSync(path.join(planning, 'backlog', 'pedidos.md')), false)
+  assert.match(fs.readFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), 'utf8'), /^status: open$/m)
+
+  const many = [...Array(10)].map((_, i) => `- [ ] **h-${i}** (→ C${1 + (i % 2)}) — H. _Aceptación: h._ (service: app)`)
+    .join('\n')
+  const big = epic('').replace(/- \[ \] \*\*validar-stock[\s\S]*?\(service: app\)\n(?=\n## Riesgos)/, `${many}\n`)
+  const planning2 = instance('grande', big)
+  const oversized = run(['promote', planning2, 'epic-004-pedidos'])
+  assert.equal(oversized.status, 1)
+  assert.match(oversized.stderr, /hito pedidos: tareas: 10 \(umbral 9 de R17\)/)
+  assert.equal(fs.existsSync(path.join(planning2, 'backlog', 'pedidos.md')), false)
+})
+
+test('promote activa la épica aunque el estado venga entre comillas', () => {
+  const planning = instance('comillas', epic('').replace('status: open', 'status: "open"'))
+  assert.equal(run(['promote', planning, 'epic-004-pedidos']).status, 0)
+  assert.match(fs.readFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), 'utf8'), /^status: active$/m)
 })
