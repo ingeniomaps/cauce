@@ -29,7 +29,7 @@ nuevo dentro de un servicio conocido; `full` cuando cruza contratos, datos, aute
 la aceptación tiene un borde sin decidir.
 
 El carril reduce ceremonia y nunca seguridad, aceptación ni evidencia: WIP, Verify y el registro en DONE corren
-en los cuatro.
+en los cuatro carriles del recorrido.
 
 ## Alternativas consideradas
 
@@ -49,7 +49,24 @@ en los cuatro.
 
 - Un carril mal elegido baja ceremonia donde hacía falta. Se acota con el criterio escrito y con que la tarea
   sin clasificar sea un estado válido que dispara al clasificador, en vez de un default silencioso.
-- Cuatro carriles son cuatro contratos que mantener alineados entre la prosa, el motor y el workflow.
+- Cada carril es un contrato que mantener alineado entre la prosa, el motor y el workflow.
+
+## La salida que el recorrido no tenía (caso 380)
+
+Los cuatro carriles bajan ceremonia **dentro** del recorrido, y el piso no baja de seis o siete agentes ni en
+`express`. Medido en una instancia real: tres tareas de pantalla de una o dos horas costaron 47 agentes y 10,67 M
+tokens propios, y escribir el código fue el 17 %. Ningún carril decía «esto lo hace la sesión».
+
+Desde 0.108.0 hay un quinto valor, `manual`, y no es un carril del recorrido sino su salida: `context` no se lo
+ofrece a ningún runner, y si el clasificador lo elige la corrida suelta la reserva y sigue. Se eligió un valor
+nuevo y no redefinir `express` porque `express` sirve a una corrida que nadie mira y `manual` necesita una sesión
+que la retome, y porque las entradas de `done/` que dicen `express` pasarían a contar algo que no pasó.
+
+Es la única excepción a «la superficie y no el tamaño»: `manual` sí mira el tamaño —una hora—, porque lo que
+decide es quién la hace más barato y no cuánta revisión merece. Por eso hereda los dos pisos que el tamaño no
+ve: nunca sobre una superficie de «Qué no se puede romper» —el recorrido lo comprueba cuando el clasificador la
+devuelve; escrita a mano, lo cuida sólo quien escribe la línea—, y ante la duda no es `manual`. La evidencia no baja:
+la sesión la cierra con prueba en rojo, mutación, gate, commit y `done/`, sin revisor, como `express`.
 
 ## Estado de implementación
 

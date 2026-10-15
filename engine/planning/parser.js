@@ -28,7 +28,11 @@ const MILESTONE_HEADING = /^##\s+Hito\s+([^\s]+)\s+[—-]\s+(.+)$/
 // leído fuera de orden se elige por su nombre y no por su criterio. Que la prosa del PROTOCOL vaya en
 // este mismo orden lo ata la suite del toolkit —`planning-template.test.js`—, no `check`: un workflow
 // en sandbox no puede importar este módulo, así que la atadura es una prueba y no una validación.
-const LANES = ['express', 'directo', 'lite', 'full']
+//
+// `manual` va primero porque es el que menos agentes convoca —ninguno—, no porque pida menos evidencia (caso
+// 380). Vive en esta lista aunque no sea un carril del recorrido porque se escribe en el mismo lugar de la
+// línea y se registra igual en `done/`.
+const LANES = ['manual', 'express', 'directo', 'lite', 'full']
 const TASK_LINE = new RegExp(
   String.raw`^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*(?:\[(${LANES.join('|')})\])?\s+[—-]\s+(.+)$`,
 )

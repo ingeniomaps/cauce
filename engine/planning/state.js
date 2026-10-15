@@ -51,16 +51,24 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
   // El reclamo entero y no sólo su dueño: quién lo tomó alcanza para decir que la tarea está ocupada, y
   // no para decir cómo volver a ella. Eso lo dice el id desde el que se tomó, que vive en el mismo archivo.
   const others = new Map(claims.filter((one) => !mine.has(one.slug)).map((one) => [one.slug, one]))
+  // Lo que es de la sesión no se le ofrece a un runner: tomarla es lanzar el recorrido que `manual` existe
+  // para evitar (caso 380). Sale de la cola antes que nada, así que tampoco se cuenta como tomada ni en espera.
+  const open = queue.filter((task) => !done.set.has(task.slug))
+  const manual = open.filter((task) => task.tier === 'manual').map((task) => task.slug)
+  // Y la que este runner tiene reclamada igual —la sesión trabajándola, o una corrida que murió antes de
+  // soltarla— se nombra aparte: sin eso, el reclamo siguiente se niega con «este runner ya tiene» sobre una
+  // tarea que ninguna línea de `context` mostraba.
+  const manualHeld = manual.filter((slug) => mine.has(slug))
   if (wip) {
     const active = queue.find((task) => task.slug === wip.task)
       || {
         slug: wip.task, hito: '', tier: wip.lane || '', cast: { build: '', review: [] },
         service: wip.service, acceptance: '', epic: '', criteria: [],
       }
-    return { task: active, claimed: mine.has(wip.task), skipped: [], taken: [], waiting: [] }
+    return { task: active, claimed: mine.has(wip.task), skipped: [], taken: [], waiting: [], manual, manualHeld }
   }
   const blocked = new Set(blockers.map((action) => action.task))
-  const pending = queue.filter((task) => !done.set.has(task.slug) && !blocked.has(task.slug))
+  const pending = open.filter((task) => task.tier !== 'manual' && !blocked.has(task.slug))
   // Una tarea está lista cuando todo lo que declaró depender ya está en DONE. Mientras no lo esté no se
   // le ofrece a nadie, y en particular no a otro runner: lo que sigue a una tarea en vuelo es trabajo
   // del que la tiene, y dárselo a otro produce dos ramas que se van a pisar al integrar.
@@ -89,8 +97,11 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
     waiting: pending.filter((task) => !others.has(task.slug) && !ready(task)).map((task) => {
       const dep = task.depends.find((one) => !done.set.has(one))
       const other = others.get(dep)
-      return { slug: task.slug, dep, owner: other ? other.owner : (mine.has(dep) ? 'vos' : '') }
+      const owner = other ? other.owner : (mine.has(dep) ? 'vos' : '')
+      return { slug: task.slug, dep, owner: owner || (manual.includes(dep) ? 'la sesión, a mano' : '') }
     }),
+    manual,
+    manualHeld,
   }
 }
 

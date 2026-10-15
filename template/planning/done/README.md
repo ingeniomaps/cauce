@@ -50,7 +50,8 @@ El carril dice cuánta ceremonia **merecía** la tarea; `review:` dice cuánta *
 pregunta que OPS-006 dejó pendiente —«¿el carril elegido fue el correcto?»— se contesta desde el registro
 en vez de desde la memoria de la sesión.
 
-`express` es el único carril que no convoca revisor, así que ahí `n/a — razón` es lo correcto. En
+`express` y `manual` son los únicos que no convocan revisor —`manual` ni siquiera corre el recorrido: la
+cierra la sesión—, así que ahí `n/a — razón` es lo correcto. En
 `directo`, `lite` y `full` una revisión que no corrió es la ADR incumplida, y `check` lo avisa nombrando
 la tarea. Avisa y no falla: es un hecho del pasado que no se arregla editando la entrada, y el único
 camino al verde sería reescribir el registro.

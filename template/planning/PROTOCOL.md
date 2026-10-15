@@ -13,7 +13,7 @@ invariantes.
   mismo `BACKLOG.md` chocan cada vez que una trae a la otra, y partido por hito cada una escribe el suyo.
   `ops split-backlog planning` pasa los hitos de `BACKLOG.md` a sus archivos. La cola es la unión de los dos:
   primero `BACKLOG.md`, después `backlog/` por `order`.
-- Tarea: `- [ ] **slug** [express|directo|lite|full] — descripción. _Aceptación: observable._ (service: ruta) (cast: quien-entrega → quien-revisa, otro)`;
+- Tarea: `- [ ] **slug** [manual|express|directo|lite|full] — descripción. _Aceptación: observable._ (service: ruta) (cast: quien-entrega → quien-revisa, otro)`;
   puede heredar aceptación usando `(→ CN) (epic: NNN)` y declarar `(depende: slug, otro)`. Lane y cast son
   opcionales: sin ellos la tarea está sin clasificar, que es un estado y no un error. Una tarea con
   dependencias no se ofrece ni se toma hasta que todas estén en DONE.
@@ -25,7 +25,7 @@ invariantes.
   saca de lo que manda a Verify y a QA, y la lleva a Done para que quede cumplida en esos campos.
 - DONE: un archivo por tarea cerrada, `done/<slug>.md`, con su entrada `[x]` y los campos `acept:`,
   `fecha:` en AAAA-MM-DD, `done:`, `qa:`, `tests:`, `commit:` y `lane:`. `lane:` repite el carril con el
-  que la tarea corrió —`express`, `directo`, `lite`, `full`— o `sin clasificar` si su línea no lo
+  que la tarea corrió —`manual`, `express`, `directo`, `lite`, `full`— o `sin clasificar` si su línea no lo
   declaraba, y existe porque el carril decide qué fases corren y su línea del BACKLOG se borra al cerrar:
   sin él, si una tarea recibió la ceremonia que le tocaba sólo lo sabe quien estuvo en la sesión.
   `check` avisa cuántas entradas no lo traen y falla si trae un valor que no existe. `review:` dice qué
@@ -97,6 +97,15 @@ El lane dice cuánta ceremonia merece la tarea y el cast quiénes la miran. Son 
 clasificación—, se toma al escribir la tarea y viaja en su línea, así que se decide una vez y no una
 vez por corrida. La tarea que llega sin ella se clasifica antes de ejecutarse.
 
+- `manual`: la hace más barato la sesión que el recorrido —un solo servicio, la aceptación ya nombra el
+  cambio y la mutación que lo prueba, ningún borde ni decisión de diseño por tomar, ninguna dependencia
+  abierta, una hora de trabajo—. No es un carril del recorrido: `context` no se la ofrece a ningún runner y
+  la nombra aparte, y si el clasificador la devuelve, la corrida suelta la reserva y sigue con la próxima.
+  La sesión la cierra con la misma evidencia que cualquier otra —prueba en rojo, mutación, gate, commit y
+  `done/` con `lane: manual`—, sin revisor. Nunca sobre una superficie de «Qué no se puede romper»: a toda la
+  que el clasificador deje manual el recorrido se lo pregunta, y la que la toca pasa a `directo`; escrita a
+  mano, ese piso lo cuida quien escribe la línea. Una tarea manual que el runner tiene reclamada o en su WIP frena la corrida
+  con `manual-held`: la está haciendo la sesión, y la corrida no se la suelta.
 - `express`: la aceptación nombra un valor literal y el resultado no lo mira nadie —un typo, un umbral
   interno, un renombre—; WIP, Build, Verify, Commit y Done. **Nunca sobre una superficie que
   `organization/company.md` declara en «Qué no se puede romper»**: ahí el recorrido la sube a `directo`,
@@ -108,7 +117,7 @@ vez por corrida. La tarea que llega sin ella se clasifica antes de ejecutarse.
   tiene un borde sin decidir; todas las fases.
 
 El lane reduce ceremonia, nunca seguridad, aceptación ni evidencia: Verify y el WIP corren en los
-cuatro. Lo que decide el carril es la superficie del cambio y no su tamaño en líneas — un `if` en el
+cuatro carriles del recorrido, y la tarea `manual` trae la misma evidencia hecha a mano. Lo que decide el carril es la superficie del cambio y no su tamaño en líneas — un `if` en el
 chequeo de permisos es `full`, y un componente entero de presentación puede ser `directo`.
 
 Escribir la línea es también contrastarla. Declara cuatro cosas —qué hace, en qué carril, quién entrega y

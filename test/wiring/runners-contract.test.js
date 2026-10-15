@@ -270,5 +270,9 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   // 66 desde el 2026-10-14: `flow` pide las líneas de trabajo con `tools/ops.js lines`, anclado a `${WORKDIR}`
   // como los otros cuatro comandos del manifiesto, y su cierre le dicta a la persona `tools/ops.js promote`,
   // texto de un mensaje como el del 308.
-  assert.equal(hits, 66, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 68 desde el 2026-10-15: la tarea que el clasificador devuelve a la sesión suelta su reserva con
+  // `tools/ops.js release` (caso 380), la misma consigna y la misma raíz que la del 163; y la que no puede
+  // devolver por tocar una superficie crítica recibe su reparto de `tools/ops.js agents list`, como Classify.
+  assert.equal(hits, 68, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

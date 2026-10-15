@@ -90,10 +90,10 @@ function validateDoneEntry(entry, cited = []) {
 //
 // Los criterios que la historia declaró cubrir los cita el roadmap y no la entrada, así que el cruce
 // sólo existe si la entrada dice de qué épica viene.
-// El vocabulario del carril tal como se escribe en una entrada de DONE: los cuatro de la línea del
-// BACKLOG más el que dice que la línea no lo declaraba. `sin clasificar` no es un hueco disimulado — es
-// el estado que `PROTOCOL.md` ya llama estado y no error, y escribirlo distingue «corrió sin carril» de
-// «nadie escribió el campo», que es justo lo que este campo vino a poder contestar.
+// El vocabulario del carril tal como se escribe en una entrada de DONE: los de la línea del BACKLOG más el
+// que dice que la línea no lo declaraba. `sin clasificar` no es un hueco disimulado — es el estado que
+// `PROTOCOL.md` ya llama estado y no error, y escribirlo distingue «corrió sin carril» de «nadie escribió
+// el campo», que es justo lo que este campo vino a poder contestar.
 const LANE_VALUES = [...P.LANES, 'sin clasificar']
 
 function doneEntryErrors(entry, epics = []) {
@@ -119,8 +119,8 @@ function doneEntryErrors(entry, epics = []) {
 }
 
 // Un carril declara **cuánta ceremonia** merecía la tarea; `n/a` en `review:` dice que la revisión no
-// corrió. `express` es el único que no convoca revisor, así que en los otros tres esa combinación es la
-// ADR incumplida, escrita en el propio registro.
+// corrió. `express` y `manual` no convocan revisor, así que en los otros tres esa combinación es la ADR
+// incumplida, escrita en el propio registro.
 const REVIEWED_LANES = ['directo', 'lite', 'full']
 const NO_REVIEW = /^n\/a\b/i
 

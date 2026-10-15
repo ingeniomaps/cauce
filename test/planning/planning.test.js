@@ -141,7 +141,8 @@ test('un lane que no existe se nombra, no se descarta', () => {
   const result = JSON.parse(run(['check', planning, '--json']).stdout)
   assert.equal(result.ok, false)
   assert.ok(
-    result.errors.some((error) => /lane "urgente" no existe; usá express \| directo \| lite \| full/.test(error)),
+    result.errors.some((error) =>
+      /lane "urgente" no existe; usá manual \| express \| directo \| lite \| full/.test(error)),
     `el error nombra el lane y el vocabulario: ${JSON.stringify(result.errors)}`,
   )
 })
