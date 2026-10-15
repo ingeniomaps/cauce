@@ -115,11 +115,13 @@ test('las dos pasadas de Review reciben la aceptación que rige', async () => {
   assert.equal(passes.length, 2, 'la primera revisión y la re-revisión')
   for (const { prompt: text } of passes) assert.ok(text.includes('el alta rechaza un duplicado'), text.slice(-300))
 
+  // La corrección se escribe en la cola y se relee de ahí (caso 378): la segunda lectura ya la trae.
+  const ruled = { ...baseScript()[KEY.context], rules: RULES }
   const refined = await runFlow({
-    [KEY.context]: { ...baseScript()[KEY.context], rules: RULES },
+    [KEY.context]: ruled,
     [KEY.ready]: { ready: true, needsHuman: false, refinedAcceptance: 'el alta rechaza un email duplicado' },
     [KEY.review]: approved,
-  })
+  }, { contexts: [ruled, { ...ruled, acceptance: 'el alta rechaza un email duplicado' }] })
   ranToEnd(refined.result)
   assert.ok(prompt(refined, KEY.review).includes('el alta rechaza un email duplicado'), 'no recibió la refinada')
 })

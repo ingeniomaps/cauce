@@ -309,13 +309,18 @@ const runStage = (stage, index) => {
     `condiciona la decisión siguiente. ` +
     `Escribí primero tu análisis completo en ${REPORTS} como ${stage.id}-analisis.md —ahí no hay ` +
     `límite de extensión y es lo que lee quien sintetiza al final— y devolvé esa ruta en analysis.\n` +
+    // Se pide menos de lo que el esquema admite. Con el pedido igual al techo, un agente real devolvió 1001 y
+    // 1015 caracteres cinco veces seguidas y la etapa murió: el modelo no cuenta con precisión, y el margen
+    // tiene que caer adentro del techo y no afuera (caso 379). El esquema no baja: lo que baja es el pedido.
     `Lo que devolvés en el esquema es corto y cada campo tiene su tope, que el esquema rechaza si lo `
-    + `pasás: summary 1000 caracteres, missing y humanAction 500, cada evidencia 200. Si algo no entra, `
+    + `pasás. Escribí por debajo del tope, porque tu conteo de caracteres no es exacto: summary hasta 800 `
+    + `caracteres (el esquema admite 1000), missing y humanAction hasta 400 (admite 500), cada evidencia `
+    + `hasta 160 (admite 200). Si algo no entra, `
     + `va al archivo y en el campo queda lo esencial. El tope rige sobre todo cuando el gate no se `
     + `cumple, que es cuando más se escribe. ` +
     `Devolvé los campos directamente: nunca envuelvas la respuesta en {"raw": ..., "len": ...} ni ` +
     `mandes el JSON como string adentro de un campo, porque eso no valida. ` +
-    `En summary va, en los 1000 caracteres que el esquema admite, lo que la etapa siguiente necesita ` +
+    `En summary va, en esos 800 caracteres, lo que la etapa siguiente necesita ` +
     `para decidir —no un resumen de tu análisis, sino lo que le cambia el trabajo—, porque eso se le ` +
     `reenvía a cada etapa posterior. El límite va en caracteres y no en palabras porque es lo que el ` +
     `esquema mide.`,

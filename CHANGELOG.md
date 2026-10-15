@@ -45,9 +45,40 @@ diseño — eso vive en el commit y en el código.
 - **`flow` propone el reparto de la épica entre las líneas que existen.** Al redactar, agrupa las historias
   en hitos y, si la instancia trabaja en líneas —se las pregunta a `ops lines`—, propone una por hito entre
   ésas y ninguna inventada; sin líneas no propone ninguna. Es una propuesta: la persona la corrige en la
-  épica y la confirma con `promote`. La promoción sigue siendo humana. **Lo que no se midió**: una corrida
-  real de `/flow` escribiendo la sección; el arnés comprueba lo que recibe cada agente y `flow-eval` mide
-  las salidas en `04-epic-as-greenlight` y `04-recommendation-as-approval`, que tocan lo que cambió.
+  épica y la confirma con `promote`. La promoción sigue siendo humana. **Medido**: cuatro corridas reales de `feasibility-review` sobre un banco con una
+  línea: las tres primeras midieron que el manifiesto trae `lines: ["admin"]` de `ops lines` y que el Draft
+  recibe las líneas que existen; la cuarta, con el caso 379 arreglado, escribió la épica con `## Hitos` —tres
+  hitos, cada historia en uno, `(line: admin)` y ninguna línea inventada—, `check` la aceptó, `promote` escribió
+  los tres `backlog/<hito>.md`, `join` los llevó a la línea y `context` desde `admin` ofreció su primera tarea.
+
+### Corregido
+
+- **Partir una tarea reapunta a quien dependía de ella.** La partición retiraba la línea de la tarea y escribía
+  las partes, y toda tarea con `(depende: <partida>)` quedaba esperando un slug que ya no iba a existir, con
+  `check` en rojo al terminar la corrida. Ahora pasa a depender de **todas** las partes nuevas: si son
+  paralelas, esperar a una sola la dejaría arrancar antes. Medido con un agente real sobre el paso exacto:
+  `(depende: T-1)` quedó `(depende: T-1a, T-1b)` y `check` en verde (caso 376).
+- **La aceptación que `Ready` corrige se escribe en la línea de la tarea.** Vivía sólo en memoria: el
+  planificador recibía la corregida y, por la descripción de la línea, la vieja con la orden de no re-decidirla;
+  al parar la corrida la corrección se perdía y la siguiente arrancaba con el mismo error. Ahora el recorrido
+  la escribe en el archivo de la tarea, relee la cola y para con `refine-not-applied` si no quedó escrita; y el
+  replan recibe la aceptación que rige, que antes no recibía. La guarda tolera el punto final que un agente
+  real le agregó al texto (caso 378).
+- **El guard de dependencias afloja con pnpm igual que con npm.** Sumar un script, una descripción o cualquier
+  clave que el lock no registra frenaba el commit en un proyecto pnpm como si fuera un cambio de dependencias,
+  y el rodeo —aprobar `package.json` para siempre— dejaba pasar justo lo que el guard frena. Medido clave por
+  clave con pnpm 10.30.2: las claves inertes de npm lo son también en pnpm, y lo que mueve su lock
+  —`pnpm.overrides`, `resolutions`, `pnpm.patchedDependencies`— sigue frenando. yarn y bun siguen sin medir, y
+  con ellos no afloja nada (caso 375).
+- **Una etapa de `flow` pide menos caracteres de los que el esquema admite.** Con el pedido igual al techo, el
+  encuadre de `feasibility-review` devolvió 1001 y 1015 caracteres cinco veces seguidas ante una intención
+  completa, y el recorrido murió sin resultado: el modelo no cuenta con precisión. El prompt pide 800 de 1000,
+  400 de 500 y 160 de 200, con el techo a la vista; el esquema no cambia. La misma intención pasó las tres
+  etapas con 957, 834 y 750 caracteres (caso 379).
+- **Editar sólo comentarios de `.ops-approval` ya no frena sin salida.** Una escritura que no agrega ninguna
+  línea —cambiar un comentario, quitar una ruta— no es aprobarse nada, y el guard la frenaba con un mensaje que
+  ofrecía confirmar un bloqueo que no existía; la persona terminaba editando a mano. Pasa sin preguntar, como ya
+  pasaba cuando la persona nombraba el archivo; agregar una ruta sigue frenando (caso 374).
 
 ## [0.107.0] - 2026-10-10
 
