@@ -70,11 +70,12 @@ diseño — eso vive en el commit y en el código.
   clave con pnpm 10.30.2: las claves inertes de npm lo son también en pnpm, y lo que mueve su lock
   —`pnpm.overrides`, `resolutions`, `pnpm.patchedDependencies`— sigue frenando. yarn y bun siguen sin medir, y
   con ellos no afloja nada (caso 375).
-- **Una etapa de `flow` pide menos caracteres de los que el esquema admite.** Con el pedido igual al techo, el
-  encuadre de `feasibility-review` devolvió 1001 y 1015 caracteres cinco veces seguidas ante una intención
-  completa, y el recorrido murió sin resultado: el modelo no cuenta con precisión. El prompt pide 800 de 1000,
-  400 de 500 y 160 de 200, con el techo a la vista; el esquema no cambia. La misma intención pasó las tres
-  etapas con 957, 834 y 750 caracteres (caso 379).
+- **Una etapa de `flow` ya no muere por pasarse unos caracteres del tope de su resumen.** Con el pedido igual al
+  techo, el encuadre de `feasibility-review` devolvió 1001 y 1015 caracteres cinco veces seguidas y el recorrido
+  murió sin resultado: el modelo no cuenta con precisión. Pedir 800 con el techo a la vista no alcanzó, porque el
+  agente escribe hacia el número más alto que ve. El prompt pide 800, 400 y 160 sin nombrar ningún techo, y
+  `summary` admite 1500. El caso de `change-review` que murió con el primer arreglo llegó al final sin un solo
+  resumen rechazado (casos 379 y 386).
 - **Editar sólo comentarios de `.ops-approval` ya no frena sin salida.** Una escritura que no agrega ninguna
   línea —cambiar un comentario, quitar una ruta— no es aprobarse nada, y el guard la frenaba con un mensaje que
   ofrecía confirmar un bloqueo que no existía; la persona terminaba editando a mano. Pasa sin preguntar, como ya

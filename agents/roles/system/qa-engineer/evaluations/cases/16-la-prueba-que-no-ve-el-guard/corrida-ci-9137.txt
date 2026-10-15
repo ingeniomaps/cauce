@@ -1,0 +1,8 @@
+$ go test ./datadog/v2/ -run 'TestNewMetricsFromEnv' -v -cover
+=== RUN   TestNewMetricsFromEnv_DogstatsdURL
+--- PASS: TestNewMetricsFromEnv_DogstatsdURL (0.01s)
+=== RUN   TestNewMetricsFromEnv_UnsupportedURLFallsBackToDefaults
+--- PASS: TestNewMetricsFromEnv_UnsupportedURLFallsBackToDefaults (0.01s)
+PASS
+coverage: 84.6% of statements
+ok  	github.com/acme-org/toolkit/datadog/v2	0.034s
