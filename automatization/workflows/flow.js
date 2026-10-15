@@ -130,7 +130,14 @@ const STAGE = {
     // Un techo por debajo de lo que el prompt pide no acota: contradice. Medido en una corrida real con
     // `summary` en 400, el agente achicó en cada reintento —2766, 2078, 2064, 1934, 1854— y murió
     // convergiendo hacia un número siete veces menor que el que la misma instrucción le pedía escribir.
-    summary: { type: 'string', maxLength: 1000 },
+    //
+    // Y el techo va por encima de lo que el prompt pide, con margen, y el prompt no lo nombra. El agente
+    // escribe al número que ve: con «hasta 800 (el esquema admite 1000)» cinco de seis etapas devolvieron
+    // entre 1003 y 1273 al primer intento y terminaron entre 952 y 994, y una murió a dos caracteres del
+    // techo con los reintentos agotados (caso 386). Con 800 a la vista y 1500 de techo, el mismo caso
+    // terminó entre 749 y 1445 sin un rechazo; la síntesis es la que más se acerca. Y 1500 sigue lejos de
+    // los 6000 en que el modelo envuelve la respuesta.
+    summary: { type: 'string', maxLength: 1500 },
     evidence: { type: 'array', maxItems: 5, items: { type: 'string', maxLength: 200 } },
     assumptions: { type: 'array', maxItems: 4, items: { type: 'string', maxLength: 160 } },
     openQuestions: { type: 'array', maxItems: 4, items: { type: 'object', additionalProperties: false,
@@ -312,10 +319,11 @@ const runStage = (stage, index) => {
     // Se pide menos de lo que el esquema admite. Con el pedido igual al techo, un agente real devolvió 1001 y
     // 1015 caracteres cinco veces seguidas y la etapa murió: el modelo no cuenta con precisión, y el margen
     // tiene que caer adentro del techo y no afuera (caso 379). El esquema no baja: lo que baja es el pedido.
+    // Y el techo no se le dice: el agente escribe al número más alto que ve, y con el techo a la vista el
+    // margen desaparecía —el porqué, con los números, está junto al esquema (caso 386)—.
     `Lo que devolvés en el esquema es corto y cada campo tiene su tope, que el esquema rechaza si lo `
     + `pasás. Escribí por debajo del tope, porque tu conteo de caracteres no es exacto: summary hasta 800 `
-    + `caracteres (el esquema admite 1000), missing y humanAction hasta 400 (admite 500), cada evidencia `
-    + `hasta 160 (admite 200). Si algo no entra, `
+    + `caracteres, missing y humanAction hasta 400, cada evidencia hasta 160. Si algo no entra, `
     + `va al archivo y en el campo queda lo esencial. El tope rige sobre todo cuando el gate no se `
     + `cumple, que es cuando más se escribe. ` +
     `Devolvé los campos directamente: nunca envuelvas la respuesta en {"raw": ..., "len": ...} ni ` +
