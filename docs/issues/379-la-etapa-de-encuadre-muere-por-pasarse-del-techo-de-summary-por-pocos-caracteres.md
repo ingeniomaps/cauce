@@ -84,3 +84,7 @@ primera tarea de su primer hito mientras el principal siguió viendo sólo el su
 - **No subir el techo — se conserva**: 1000 sigue siendo el techo y el comentario del esquema sigue vigente.
 - **Tradeoff, viaja menos entre etapas — aceptado**: lo que no entra queda en el archivo de análisis.
 - **Tradeoff, un pedido distinto del esquema pide explicarse — se hizo**: el porqué está junto al prompt.
+
+**Revisado por el 386, en la misma versión.** Con el techo a la vista los agentes escribían hacia el techo y no
+hacia el pedido, y una etapa de `change-review` murió igual. El prompt dejó de nombrar el techo y `summary` subió
+a 1500: lo de «no subir el techo» de arriba se hizo distinto, con la razón en el 386.
