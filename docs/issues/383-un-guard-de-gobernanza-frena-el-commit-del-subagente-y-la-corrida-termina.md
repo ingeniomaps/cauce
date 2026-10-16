@@ -137,7 +137,8 @@ Build.
   mitad**: para con `commit-needs-approval`, sin commit de planning y sin fila, y deja el WIP y el reclamo puestos.
   Es la única parada sin commit de planning, y a propósito: el índice tiene el trabajo de la tarea, así que ese commit
   se lo llevaba puesto o lo frenaba el mismo guard. Reanudar todavía repite Review, Verify y QA. Saltar directo al Commit era la opción que no se eligió: pide guardar en el WIP que esas
-  fases pasaron y comprobar que el árbol no cambió.
+  fases pasaron y comprobar que el árbol no cambió. Quedó registrado con su costo medido como
+  [391](./391-reanudar-tras-una-aprobacion-repite-las-fases-ya-pagadas.md).
 - **«Los guards que no tengan ese modo siguen frenando al final» — no aplica**: la pregunta no depende de los guards
   sino del motor. Lo que sigue frenando al final es un archivo que el plan no nombró, y ahí aplica la parada del
   Commit.
