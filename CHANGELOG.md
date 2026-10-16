@@ -16,7 +16,19 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.108.1] - 2026-10-16
 
+### Agregado
+
+- **`ops governed <planning> <archivo>...` dice qué archivos va a frenar el guard de gobernanza.** Usa la misma regla que
+  el guard y descuenta lo aprobado en `planning/.ops-approval`. Con `--service <dir>` resuelve también las rutas
+  escritas desde el servicio de la tarea.
+
 ### Corregido
+
+- **`autobuild` para antes de construir si el plan toca gobernanza sin aprobar.** El commit de un subagente no puede
+  esperar a una persona, así que la corrida se enteraba al final, con Build, Review, Verify y QA ya pagados. Ahora
+  pregunta con `ops governed` después del plan y para con `governance-approval-needed`, nombrando qué escribir en
+  `planning/.ops-approval`. Si el Commit igual se frena por una aprobación, por un archivo que el plan no nombró, para
+  con `commit-needs-approval` sin el commit de planning que la rotulaba bloqueada (caso 383).
 
 - **Partir una tarea pide slugs nuevos para las partes.** Si una subtarea se quedaba con el slug de la partida,
   la corrida paraba con `split-not-applied` y decía que la escritura no había ocurrido, con el partido ya escrito
