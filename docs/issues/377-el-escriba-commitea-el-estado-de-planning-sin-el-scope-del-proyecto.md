@@ -107,6 +107,13 @@ que ningún pedido de commit nombre el idioma, porque eso es de la regla, y la f
   agente real la cumple aplicando a la vez la regla de la empresa. Que baje la varianza que se vio en la instancia no
   está probado: lo mide una corrida real larga, como el propio caso decía en «Qué podría salir mal».
 
+- **Y en `/autobuild` real** (ver el cierre del 383, que lo corrió con una regla equivalente de la empresa). Los tres
+  commits de planning de esas corridas conservaron el scope aplicando la regla:
+  - `docs(planning): await governance approval for prueba-de-humo`, de una parada;
+  - `docs(planning): close prueba-de-humo`, del cierre;
+  - `docs(planning): await review of humo`, del checkpoint.
+  Son tres caminos distintos, y el último pasa por `committing`, el segundo lugar donde va la línea.
+
 **Recorrido de lo que el caso enumeraba.**
 
 - **Una línea en los prompts que dictan `chore(planning)` — se hizo distinto**: en los dos lugares por los que pasan

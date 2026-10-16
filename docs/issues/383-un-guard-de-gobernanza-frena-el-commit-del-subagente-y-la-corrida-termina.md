@@ -96,9 +96,32 @@ Build.
 - **La consigna de la llamada nueva, con un agente real.** Se corrió con `claude -p` sobre una copia del banco fuera del
   repositorio y devolvió `{"readOk": true, "pending": ["automatization/tests/regresion.test.js"]}` sin escribir nada.
   Costó USD 0,24.
-- **Lo que no se corrió de verdad:** que el agente de Commit, frenado por el guard dentro de un recorrido real, reporte
-  `needsApproval`. Con `claude -p` no se puede reproducir, porque el prompt cuenta como chat y el guard exime al chat
-  (caso 126). Eso queda medido sólo en el arnés: que se le pide, y qué hace el recorrido cuando lo contesta.
+- **`/autobuild` real de punta a punta, con el código final de la rama.** Se corrió el 2026-10-16 sobre una instancia
+  `ops bench suelto` copiada fuera del repositorio, con el motor congelado en el HEAD de la rama, el runner de Claude
+  instalado y una regla de la empresa que cambia el tipo de los commits de planning a `docs`. Se lanzó headless con
+  `claude -p "/autobuild"`. En la sesión principal hay chat, pero los subagentes del recorrido no lo tienen, así que
+  el guard los frena como en producción. Esto es lo que `claude -p` sobre un solo prompt no podía reproducir.
+  - **Un plan que toca gobernanza** (tarea `lite`: una prueba nueva en `automatization/tests/`). Las fases fueron
+    Triage → Claim → Classify → Ready → Plan, y paró ahí, sin WIP ni Build. El plan nombró el archivo con ruta
+    absoluta, una forma que ninguna prueba cubría, y `governed` devolvió
+    `{"readOk": true, "pending": ["automatization/tests/humo.test.js"]}`. En el disco quedaron:
+    - la fila `planning/human/prueba-de-humo.md` en estado `pendiente`;
+    - la reserva suelta;
+    - nada construido;
+    - un solo commit, `docs(planning): await governance approval for prueba-de-humo`.
+    Ese commit aplicó la regla de la empresa y conservó el scope, que es el caso 377 en una corrida real.
+  - **Una tarea mecánica cuya construcción toca gobernanza** (tarea `express`, sin plan con archivos). Las fases
+    fueron Triage → Claim → Classify → WIP → Build → Verify → Commit, sin pasar por `governed`. El agente de Commit
+    real, frenado por el guard, devolvió `{"committed": false, "needsApproval": ["automatization/tests/humo.test.js"]}`.
+    La corrida paró con `commit-needs-approval`, con la prueba stageada, sin commit de planning y sin fila.
+  - **La salida que indica esa parada.** Se escribió la ruta en `planning/.ops-approval` y se reanudó. El skill
+    pregunta si retomar el runner abierto. Contestando que sí, el recorrido siguió desde Verify y commiteó el trabajo
+    (`test: add smoke test asserting the backlog exists`, sólo ese archivo). Cerró la tarea en `done/` con
+    `docs(planning): close prueba-de-humo` y escribió el checkpoint del hito. `ops check planning` dio
+    `✓ planning válido: … 1 terminada(s)`.
+  - Las tres se corrieron dos veces. En la primera tanda, la regla de prueba se llamaba `commits.md` y reemplazaba a
+    la del sistema, así que en el banco no regían R8, R9 y R10. Se repitieron con la regla bajo otro nombre y dieron
+    lo mismo. Costo de las seis corridas: unos USD 18.
 
 **Recorrido de lo que el caso enumeraba.**
 
