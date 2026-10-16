@@ -196,6 +196,15 @@ test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada
   )
   assert.match(left.result.detail, /T-1 quedó en ella: sacala/)
   assert.doesNotMatch(left.result.detail, /reus[oó]/)
+
+  // Una cola que creció a medias no es «no ocurrió», y una estimación sin subtareas no revienta la corrida.
+  const partial = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b', 'T-1c'] } },
+    { contexts: [grande, { ...grande, queued: grande.queued + 1 }] },
+  )
+  assert.match(partial.result.detail, /creció en 1 de 3/)
+  const none = await runFlow({ [KEY.decompose]: { hours: 12, needsSplit: true } }, { contexts: [grande, grande] })
+  assert.equal(none.result.reason, 'split-not-applied', JSON.stringify(none.result).slice(0, 160))
 })
 // Qué distingue una cola ocupada de una terminada, y por qué importa, está junto a la guarda que las
 // separa (`automatization/workflows/autobuild.js`, la condición sobre `queued`).

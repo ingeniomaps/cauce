@@ -835,7 +835,7 @@ let holding = ''
 // La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
 let cut = false
 const halt = async (reason, detail = '', subject = '') => {
-  if (holding) await (subject ? commitBlocked(holding, subject) : commitBlocked(holding))
+  if (holding) await commitBlocked(holding, subject || undefined)
   return stop(reason, detail)
 }
 
@@ -1384,12 +1384,15 @@ while (rounds++ < MAX_TASKS) {
           // Si una parte se quedó con el slug, la cola crece en una menos que las partes; si la partida quedó entera
           // al lado de todas, crece en todas, y ahí lo que falta es borrarla, no renombrar nada.
           const added = planning.queued - before.queued
-          const parts = estimate.subtasks.length
-          const why = {
-            [parts - 1]: `y la cola creció, pero una de ellas reusó el slug de ${task.id}: renombrala con uno nuevo `
-              + 'antes de reanudar.',
-            [parts]: `y la cola creció con todas, pero ${task.id} quedó en ella: sacala antes de reanudar.`,
-          }[added] || 'y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.'
+          const parts = (estimate.subtasks || []).length
+          const why = added <= 0 ? 'y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.'
+            : parts > 1 && added === parts - 1
+              ? `y la cola creció, pero una de ellas reusó el slug de ${task.id}: renombrala con uno nuevo antes `
+                + 'de reanudar.'
+              : added === parts
+                ? `y la cola creció con todas, pero ${task.id} quedó en ella: sacala antes de reanudar.`
+                : `y la cola creció en ${added} de ${parts} y sigue ofreciendo ${task.id}: revisá qué quedó `
+                  + 'escrito.'
           return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus subtareas ${why}`)
         }
         // La otra mitad de la consigna se comprueba igual: quien siga esperando a la partida no fue reapuntado,
@@ -2096,17 +2099,14 @@ while (rounds++ < MAX_TASKS) {
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
   // Una aprobación pendiente no es un bloqueo: el trabajo está verificado y stageado, y lo único que falta es que
-  // una persona apruebe. El commit de planning lo rotulaba «block» y había que deshacerlo al cerrar (caso 383):
-  // ahora dice qué espera. La fila y el commit siguen, porque una parada que necesita a una persona la deja y
-  // toda parada con una tarea tomada commitea su estado (caso 289). El reclamo y el WIP quedan para reanudar.
+  // una persona apruebe. Es la única parada sin commit de planning, y a propósito: el índice tiene el trabajo de la
+  // tarea, así que ese commit se lo llevaba puesto o lo frenaba el mismo guard, y el «block» que dejaba había que
+  // deshacerlo al cerrar (caso 383). Tampoco deja fila: el WIP y el reclamo son el estado que se reanuda, y una fila
+  // que nadie resuelve al reanudar queda pendiente sobre una tarea ya cerrada.
   if (!commit.committed && (commit.needsApproval || []).length) {
-    const paths = commit.needsApproval.join(', ')
-    const note = await registerHuman(`Registrá ${task.id} en ${HUMAN}: el commit toca ${paths}, que pide la `
-      + `aprobación de una persona. La acción humana es aprobar esas rutas escribiéndolas en ${P}/.ops-approval, `
-      + 'una por línea, y resolver esta fila.', 'commit-human', task.id)
-    return halt('commit-needs-approval', `el commit de ${task.id} toca ${paths}, que pide la aprobación de una `
-      + `persona: aprobalas en ${P}/.ops-approval, una por línea, y reanudá. El trabajo quedó stageado.${note}`,
-    `await commit approval for ${task.id}`)
+    return stop('commit-needs-approval', `el commit de ${task.id} toca ${commit.needsApproval.join(', ')}, que pide `
+      + `la aprobación de una persona: aprobalas en ${P}/.ops-approval, una por línea, y reanudá. El trabajo quedó `
+      + 'stageado.')
   }
   if (!commit.committed) return halt('commit-failed', commit.reason)
   // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno

@@ -158,7 +158,7 @@ paró y lo primero que dice quién la destraba:
 - **Cola** — hay trabajo y no se pudo tomar: `queue-unavailable` · `claim-stuck` · `manual-held` ·
   `manual-critical` · `worktree-failed`
 - **Persona** — lo que sigue lo decide o lo aprueba alguien: `awaiting-review` · `blocked-on-human` ·
-  `governance-approval-needed`
+  `governance-approval-needed` · `commit-needs-approval`
 - **Preparación** — la tarea no está lista, o no se pudo reescribir o partir: `not-ready` · `refine-not-applied` ·
   `refine-unwritable` · `split-not-applied` · `split-left-dependents`
 - **Plan** — ningún plan sobrevivió a la crítica, o no quedó escrito: `plan-rejected` · `plan-blocked` ·
@@ -169,8 +169,8 @@ paró y lo primero que dice quién la destraba:
   `review-unbacked` · `review-unverified`
 - **Verificación** — un criterio sin prueba, una prueba que no corrió o un QA en rojo: `verify-failed` ·
   `verify-hollow` · `verify-untested` · `acceptance-ambiguous` · `qa-failed`
-- **Cierre** — el trabajo está y no se pudo commitear o cerrar: `commit-failed` · `commit-needs-approval` ·
-  `planning-check-failed` · `milestone-too-long`
+- **Cierre** — el trabajo está y no se pudo commitear o cerrar: `commit-failed` · `planning-check-failed` ·
+  `milestone-too-long`
 
 Deprecadas: `review-unresolved` (usá `review-failed`), `verify-regression` y `verify-inconsistent` (usá
 `verify-failed`) y `budget-low` (usá `milestone-too-long`). La lista las nombraba y ningún recorrido las emitía;
