@@ -180,6 +180,10 @@ const ESTIMATE = {
     } } },
   },
 }
+const GOVERNED = {
+  type: 'object', additionalProperties: false, required: ['readOk', 'pending'],
+  properties: { readOk: { type: 'boolean' }, pending: { type: 'array', items: { type: 'string' } } },
+}
 const PLAN = {
   type: 'object', additionalProperties: false, required: ['approach', 'steps', 'files', 'testStrategy'],
   properties: {
@@ -358,6 +362,7 @@ const COMMIT = {
     // siempre `main`, y el recorrido no corre git.
     branch: { type: 'string' }, live: { type: 'boolean' },
     leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
+    needsApproval: { type: 'array', items: { type: 'string' } },
   },
 }
 // Acompaña a todo prompt que commitea. El guard que revisa un commit lee el índice antes de que el comando
@@ -1469,6 +1474,23 @@ while (rounds++ < MAX_TASKS) {
       if (!critique.consulted.length) return halt('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
     }
+    // Lo que el guard de gobernanza va a frenar al commitear ya se sabe acá, con el plan aprobado. El commit de un
+    // subagente no puede esperar a una persona, y enterarse ahí tiraba Build, Review, Verify y QA ya pagados
+    // (caso 383). Si la pregunta no se pudo hacer se sigue: el guard frena igual al commitear, esto sólo adelanta
+    // el aviso. Y un archivo que el plan no nombró sigue frenando allá, que es lo que el Commit reporta aparte.
+    if ((plan.files || []).length) {
+      const governed = await clerk(
+        `Corré node tools/ops.js governed ${P} --service ${task.service} --json `
+        + `${plan.files.map((one) => `'${one}'`).join(' ')} desde ${ROOT} y reportá lo que imprimió: readOk en true `
+        + 'sólo si salió con código 0 y devolvió JSON, y pending tal cual. No escribas ningún archivo.',
+        { schema: GOVERNED, label: 'governed' },
+      )
+      if (governed && governed.readOk && governed.pending.length) {
+        return halt('governance-approval-needed', `el plan de ${task.id} toca gobernanza protegida: `
+          + `${governed.pending.join(', ')}. El commit de esta corrida no puede esperar a una persona, así que `
+          + `para antes de construir: aprobalas escribiéndolas en ${P}/.ops-approval, una por línea, y reanudá.`)
+      }
+    }
     testStrategy = plan.testStrategy || ''
     phase('WIP')
     // Esta llamada escribe un archivo y nada más, y hay que decirlo con todas las letras. En una corrida
@@ -2043,10 +2065,20 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR}`,
+    `y no era de la tarea. Si un guard frena el commit pidiendo la aprobación de una persona, no la pidas ni la ` +
+    `esquives: committed en false, y en needsApproval las rutas que nombra.` +
+    `${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
+  // Una aprobación pendiente no es un bloqueo: el trabajo está verificado y stageado, y lo único que falta es que
+  // una persona apruebe. El commit de planning de una parada lo rotulaba «block» y había que deshacerlo al
+  // cerrar (caso 383), así que esta parada no lo hace: el WIP y el reclamo quedan como están, para reanudar.
+  if (!commit.committed && (commit.needsApproval || []).length) {
+    return stop('commit-needs-approval', `el commit de ${task.id} toca ${commit.needsApproval.join(', ')}, que pide `
+      + `la aprobación de una persona: aprobalas escribiéndolas en ${P}/.ops-approval, una por línea, y reanudá. `
+      + 'El trabajo quedó stageado.')
+  }
   if (!commit.committed) return halt('commit-failed', commit.reason)
   // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno
   // y la corrida siguiente arranque sobre una rama viva adelantada del remoto.

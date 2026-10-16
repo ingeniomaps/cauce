@@ -184,6 +184,9 @@ async function runFlow(changes = {}, options = {}) {
     if (options.label === 'planning-block' && !(key in script)) {
       return silent.includes(options.label) ? null : { committed: true, hash: 'b10c', branch: 'work/planning' }
     }
+    // La pregunta a `ops governed` después del plan: en el camino feliz nada pide aprobación. Se contesta por
+    // etiqueta porque su fase es la última del plan —Plan o Critique según el carril—, y un guion la pisa con su clave.
+    if (options.label === 'governed' && !(key in script)) return { readOk: true, pending: [] }
     // La relectura del checkpoint recién escrito, que en el camino feliz dice que frena.
     if (options.label === 'checkpoint-held' && !(key in script)) {
       return { readOk: true, blocked: 'awaiting-review', checkpoints: ['checkpoints/H1.md'] }
