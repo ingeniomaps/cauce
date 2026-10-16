@@ -1288,7 +1288,12 @@ while (rounds++ < MAX_TASKS) {
         `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
         `ninguna decisión pendiente: ${task.acceptance}.${DECIDED()} Aclará la redacción y nada más; ` +
         `nunca amplíes el ` +
-        `alcance.`,
+        `alcance. ` +
+        // Las dos cláusulas que pararon corridas en Verify con el trabajo hecho las había agregado Ready al
+        // aclarar: una condición a futuro y dos notas de fuera de alcance (caso 382). Verify ya respeta la marca.
+        `Si al aclarar escribís algo que queda fuera de alcance o depende de algo que todavía no existe, eso no ` +
+        `es una condición que se pueda probar: va como tramo propio, separado por «;», con la marca ` +
+        `(fuera de verify: <razón>), o no va.`,
         { schema: READY, label: 'ready' },
       )
       if (!ready) return halt('agent-unavailable', 'Ready no devolvió resultado')
