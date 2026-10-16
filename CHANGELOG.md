@@ -34,6 +34,10 @@ diseño — eso vive en el commit y en el código.
 - **El commit de estado de planning conserva el scope `planning` cuando tus reglas cambian el asunto.** Si una
   regla tuya pedía otro tipo, el agente reescribía `chore(planning): …` y a veces se le perdía el scope. Ahora el
   pedido dice que el scope y el slug se conservan, salvo que tu regla fije otro scope (caso 377).
+- **Ready marca lo que agrega y no se puede probar.** Al aclarar una aceptación, Ready podía sumarle una condición a
+  futuro («cuando exista el selector») o una nota de fuera de alcance, y Verify paraba la corrida por esa cláusula
+  con el trabajo ya hecho. Ahora Ready escribe esas cláusulas como un tramo aparte, marcado
+  `(fuera de verify: <razón>)`, que Verify ya no exige probar (caso 382).
 
 - **Partir una tarea pide slugs nuevos para las partes.** Si una subtarea se quedaba con el slug de la partida,
   la corrida paraba con `split-not-applied` y decía que la escritura no había ocurrido, con el partido ya escrito
