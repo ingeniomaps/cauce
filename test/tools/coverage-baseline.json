@@ -65,8 +65,8 @@
     "functions": 100
   },
   "engine/automation/registration.js": {
-    "lines": 97,
-    "branches": 71,
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/automation/roles.js": {

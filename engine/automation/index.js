@@ -11,7 +11,7 @@ const M = require('../core/manifest')
 const RL = require('./rules')
 const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
-  runnerPaths, resolveItem, inline, render, runnerConfig, activated,
+  runnerPaths, resolveItem, inline, render, runnerConfig,
 } = require('./runners')
 const { roleCatalog, roleSkill, installRoleSkills, uninstallRoleSkills } = require('./roles')
 const {
@@ -177,10 +177,6 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
     ['-c', 'command -v "$1" >/dev/null 2>&1', 'runner-doctor', runner.command],
   )
   if (executable.status !== 0) warnings.push(`${runner.command}: CLI no encontrado en PATH`)
-  else if (activated(runner) === false) {
-    warnings.push(`el plugin está copiado pero no registrado, así que no se ejecuta. `
-      + `Corré desde ${paths.install}: ${runner.activation.hint}`)
-  }
   for (const warning of warnings) output.warn(`⚠ ${name}: ${warning}`)
   for (const error of errors) output.error(`✗ ${name}: ${error}`)
   return { runner, errors, warnings }
@@ -285,7 +281,9 @@ function uninstall(root, name, output = console) {
   M.write(root, undefined, deliveredPaths)
   output.log(`✓ ${name}: ${removed} archivo(s) del toolkit quitados de ${paths.install}`)
   for (const file of kept) output.log(`= ${name}: conservado ${file} (tiene cambios tuyos)`)
-  if (runner.activation) output.log(`  ${name}: si lo habías registrado a mano, quitalo también.`)
+  if (runner.strayCopy) {
+    output.log(`  ${name}: si lo habías registrado a mano, quitalo también: ${runner.strayCopy.remove}`)
+  }
   return { removed: removed, kept: kept }
 }
 
@@ -459,10 +457,6 @@ function install(root, name, output = console, options = {}) {
   if (invocation && (runner.commands.names || []).length) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
-  }
-  if (runner.activation && activated(runner) !== true) {
-    output.log(`  ${name}: falta registrarlo para que corra. Desde ${paths.install}:`)
-    output.log(`    ${runner.activation.hint}`)
   }
   M.write(root, undefined, deliveredPaths)
   return runner

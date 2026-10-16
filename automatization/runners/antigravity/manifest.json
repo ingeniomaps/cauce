@@ -50,14 +50,9 @@
     "nativeSkills": true
   },
   "roleSkills": ".agents/plugins/cauce/skills",
-  "activation": {
-    "hint": "agy plugin install .agents/plugins/cauce",
-    "registered": "~/.gemini/config/plugins/cauce",
-    "verify": [
-      "plugin",
-      "list"
-    ],
-    "expect": "cauce"
+  "strayCopy": {
+    "path": "~/.gemini/config/plugins/cauce",
+    "remove": "agy plugin uninstall cauce"
   },
   "commands": {
     "invocation": "/cauce:{name}",

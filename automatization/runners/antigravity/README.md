@@ -8,21 +8,22 @@ node tools/ops.js automation install . antigravity
 node tools/ops.js automation doctor . antigravity
 ```
 
-`automation install` deja los archivos y no autentica. El paso que los pone a correr es
-`agy plugin install .agents/plugins/cauce`, que el instalador imprime cuando falta. Ese paso **copia el
-plugin a `~/.gemini/config/plugins/cauce/` y es esa copia la que `agy` ejecuta**, con un registro por
-usuario y no por workspace. De ahí salen tres consecuencias que conviene tener presentes:
+`automation install` deja los archivos y no autentica. **No hace falta registrar nada**: `agy` 1.4.0 descubre el
+plugin en el `.agents/` del proyecto, buscando desde la carpeta donde se abre hasta la raíz del proyecto, y lo
+carga sólo ahí. Medido el 2026-10-16 (caso 392). Una sesión en otra carpeta no lo ve, y dos proyectos con Cauce
+usan cada uno el suyo.
 
-- Las rutas del `hooks.json` se resuelven contra la carpeta del plugin, no contra el workspace.
-- El payload no nombra el workspace —manda `workspacePaths` vacío y un `Cwd` que apunta al scratch del
-  CLI o al home—, así que el puente lleva la raíz ops escrita como ruta absoluta al instalar.
-- Registrar desde otro proyecto reemplaza el plugin del anterior.
+**No lo registres con `agy plugin install`.** Ese comando copia el plugin a `~/.gemini/config/plugins/cauce/`, una
+copia por usuario, y `agy` la corre en **toda** carpeta que no tenga plugin propio, con la raíz, las reglas y los
+cargos del proyecto que la registró. Hasta 0.108.0 Cauce pedía ese paso, porque un `agy` anterior sólo corría la
+copia registrada. Si quedó alguna, `automation doctor` lo dice, y se quita con `agy plugin uninstall cauce`.
 
-Volvé a registrar cada vez que `automation install` cambie el wiring o el proyecto se mueva de lugar;
-`agy plugin validate .agents/plugins/cauce` comprueba la copia del repo antes de registrarla. Si te
-olvidás, `automation doctor` lo dice: compara la copia registrada con la del workspace y la lanza como
-la lanza `agy`, desde su carpeta, así que una copia de otro proyecto o de otra versión es un error con el
-comando que lo corrige. Al instalar es una advertencia, porque registrar es justo el paso que sigue.
+El payload de `agy` 1.4.0 trae la carpeta de trabajo en `workspacePaths` y en el `Cwd` de cada llamada, y el puente
+la usa para encontrar la raíz. Si esa carpeta no es la de este proyecto, el puente se abstiene: es lo que pasaría
+con una copia global vieja, y una copia así no tiene por qué decidir sobre otra carpeta. Para un payload que no trae
+la carpeta, como el de un `agy` viejo, el puente sigue usando la raíz que `install` deja escrita como ruta absoluta.
+
+`agy plugin validate .agents/plugins/cauce` comprueba el plugin del proyecto.
 
 El plugin aporta hooks `PreToolUse` y `Stop`, reglas Cauce y los cinco recorridos —`/cauce:onboard`,
 `/cauce:flow`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`— más el
