@@ -17,6 +17,7 @@ const BN = require('./bench')
 const VA = require('./validate')
 const AR = require('./archive')
 const CLM = require('./claims')
+const GOV = require('./governed')
 const WT = require('./worktree')
 const CAT = require('./catalog')
 const W = require('./wiring')
@@ -173,6 +174,7 @@ function usage() {
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>
+  ops governed <planning-dir> <archivo>... [--service <dir>] [--json]
   ops worktree <planning-dir> <tarea> [--json]
   ops evidence <planning-dir> [--task <slug>] [--json]
   ops upgrade <ops-root> [--check] [--force]
@@ -255,6 +257,7 @@ async function run(cli) {
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2])
+  else if (command === 'governed') GOV.governed(arg[1], arg.slice(2), cli)
   else if (command === 'worktree') WT.worktree(arg[1], arg[2], cli)
   else if (command === 'evidence') PL.evidence(arg[1], cli)
   else if (command === 'upgrade') IN.upgrade(arg[1], cli)
