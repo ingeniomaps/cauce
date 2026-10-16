@@ -29,6 +29,8 @@ diseño — eso vive en el commit y en el código.
   pregunta con `ops governed` después del plan y para con `governance-approval-needed`, nombrando qué escribir en
   `planning/.ops-approval`. Si el Commit igual se frena por una aprobación, por un archivo que el plan no nombró, para
   con `commit-needs-approval` sin el commit de planning que la rotulaba bloqueada (caso 383).
+- **La descripción de una tarea ya no arrastra los asteriscos de un criterio en cursiva.** Una línea que cita su
+  criterio como `*(criterio C1)*` le pasaba a cada fase una descripción terminada en `**` (caso 384).
 
 - **Partir una tarea pide slugs nuevos para las partes.** Si una subtarea se quedaba con el slug de la partida,
   la corrida paraba con `split-not-applied` y decía que la escritura no había ocurrido, con el partido ya escrito
