@@ -89,7 +89,7 @@
         "delivery-plan",
         "ownership-and-capacity"
       ],
-      "exitGate": "Los recorridos dueños validaron estimaciones, capacidad, dependencias y criterios de integración."
+      "exitGate": "Los equipos dueños validaron estimaciones, capacidad, dependencias y criterios de integración."
     },
     {
       "id": "build",
