@@ -188,6 +188,14 @@ test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada
   assert.equal(result.reason, 'split-not-applied', JSON.stringify(result).slice(0, 160))
   assert.match(result.detail, /reus[oó] el slug de T-1/)
   assert.doesNotMatch(result.detail, /la escritura no ocurrió/, 'la escritura sí ocurrió: la cola creció')
+
+  // Y si la cola creció con todas las partes, el slug no lo reusó nadie: la partida quedó al lado de sus partes.
+  const left = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [grande, { ...grande, queued: grande.queued + 2 }] },
+  )
+  assert.match(left.result.detail, /T-1 quedó en ella: sacala/)
+  assert.doesNotMatch(left.result.detail, /reus[oó]/)
 })
 // Qué distingue una cola ocupada de una terminada, y por qué importa, está junto a la guarda que las
 // separa (`automatization/workflows/autobuild.js`, la condición sobre `queued`).

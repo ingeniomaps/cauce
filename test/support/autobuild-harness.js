@@ -88,6 +88,8 @@ function baseScript() {
     [KEY.planRow]: { readOk: true, tasks: ['T-1'] },
     [KEY.readyRow]: { readOk: true, tasks: ['T-1'] },
     [KEY.verifyRow]: { readOk: true, tasks: ['T-1'] },
+    // La parada del Commit por una aprobación de gobernanza (caso 383); la de antes de construir cae en `planRow`.
+    'Commit|human-row': { readOk: true, tasks: ['T-1'] },
     [KEY.planningCommit]: { committed: true, hash: 'def456', branch: 'work/planning', live: false },
   }
 }

@@ -19,7 +19,14 @@ test('un plan que toca gobernanza sin aprobar para antes de construir, y dice qu
 
   // Y lo que se pregunta son los archivos del plan, desde el servicio de la tarea.
   const asked = run.prompts.find((one) => one.key.endsWith('|governed'))
-  assert.match(asked.prompt, /ops\.js governed \S+ --service \.\/api --json 'api\/alta\.go'/)
+  assert.match(asked.prompt, /ops\.js governed '\S+' --service '\.\/api' --json 'api\/alta\.go'/)
+
+  // Y lo que deja escrito: la fila, la reserva suelta y el asunto del commit de planning.
+  assert.ok(run.asked.includes('Critique|governance-human') || run.asked.includes('Plan|governance-human'),
+    run.asked.join(', '))
+  assert.ok(run.asked.some((key) => key.startsWith('release:') || key.endsWith('|release:T-1')), run.asked.join(', '))
+  const block = run.prompts.find((one) => one.key.endsWith('|planning-block'))
+  assert.match(block.prompt, /chore\(planning\): await governance approval for T-1/)
 })
 
 // La pregunta adelanta un aviso que el guard da igual al commitear: si no se pudo hacer, no hay razón para parar.
@@ -32,8 +39,13 @@ test('un commit frenado por una aprobación pendiente para sin rotular la tarea 
   const run = await runFlow({ [KEY.commit]: { committed: false, needsApproval: ['planning/FLOW.md'] } })
   assert.equal(run.result.reason, 'commit-needs-approval', JSON.stringify(run.result).slice(0, 160))
   assert.match(run.result.detail, /planning\/FLOW\.md.*\.ops-approval/)
-  assert.ok(!run.asked.some((key) => key.endsWith('|planning-block')), `rotuló la parada: ${run.asked.join(', ')}`)
   assert.match(run.prompts.find((one) => one.key === KEY.commit).prompt, /needsApproval/)
+  // Y lo que deja escrito: la fila y el commit de planning, con su asunto.
+  assert.ok(run.asked.includes('Commit|commit-human'), run.asked.join(', '))
+  const block = run.prompts.find((one) => one.key === 'Commit|planning-block')
+  assert.ok(block, `no commiteó el estado de la parada: ${run.asked.join(', ')}`)
+  assert.match(block.prompt, /chore\(planning\): await commit approval for T-1/)
+  assert.doesNotMatch(block.prompt, /chore\(planning\): block T-1/)
 
   // Cualquier otro fallo del commit sigue siendo una parada que se commitea, como pide el caso 289.
   const other = await runFlow({ [KEY.commit]: { committed: false, reason: 'el hook de lint falló' } })

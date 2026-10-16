@@ -834,8 +834,8 @@ const commitBlocked = async (slug, subject = `block ${slug}`) => {
 let holding = ''
 // La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
 let cut = false
-const halt = async (reason, detail = '') => {
-  if (holding) await commitBlocked(holding)
+const halt = async (reason, detail = '', subject = '') => {
+  if (holding) await (subject ? commitBlocked(holding, subject) : commitBlocked(holding))
   return stop(reason, detail)
 }
 
@@ -1381,12 +1381,16 @@ while (rounds++ < MAX_TASKS) {
         // seguir con una tarea cuya aceptación ya no es la que tiene en memoria, y decir «no ocurrió» mandaba a
         // buscar una escritura que estaba hecha (caso 385).
         if (planning.hasTask && planning.slug === task.id) {
-          const grew = planning.queued > before.queued
-          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus subtareas `
-            + (grew
-              ? `y la cola creció, pero una de ellas reusó el slug de ${task.id}: renombrala con uno nuevo antes `
-                + 'de reanudar.'
-              : 'y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.'))
+          // Si una parte se quedó con el slug, la cola crece en una menos que las partes; si la partida quedó entera
+          // al lado de todas, crece en todas, y ahí lo que falta es borrarla, no renombrar nada.
+          const added = planning.queued - before.queued
+          const parts = estimate.subtasks.length
+          const why = {
+            [parts - 1]: `y la cola creció, pero una de ellas reusó el slug de ${task.id}: renombrala con uno nuevo `
+              + 'antes de reanudar.',
+            [parts]: `y la cola creció con todas, pero ${task.id} quedó en ella: sacala antes de reanudar.`,
+          }[added] || 'y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.'
+          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus subtareas ${why}`)
         }
         // La otra mitad de la consigna se comprueba igual: quien siga esperando a la partida no fue reapuntado,
         // y descubrirlo en el `check` del final es lo que el caso 376 describe.
@@ -1490,16 +1494,25 @@ while (rounds++ < MAX_TASKS) {
     // (caso 383). Si la pregunta no se pudo hacer se sigue: el guard frena igual al commitear, esto sólo adelanta
     // el aviso. Y un archivo que el plan no nombró sigue frenando allá, que es lo que el Commit reporta aparte.
     if ((plan.files || []).length) {
+      const quoted = (one) => `'${String(one).replace(/'/g, `'\\''`)}'`
       const governed = await clerk(
-        `Corré node tools/ops.js governed ${P} --service ${task.service} --json `
-        + `${plan.files.map((one) => `'${one}'`).join(' ')} desde ${ROOT} y reportá lo que imprimió: readOk en true `
+        `Corré node tools/ops.js governed ${quoted(P)}${task.service ? ` --service ${quoted(task.service)}` : ''} `
+        + `--json ${plan.files.map(quoted).join(' ')} desde ${ROOT} y reportá lo que imprimió: readOk en true `
         + 'sólo si salió con código 0 y devolvió JSON, y pending tal cual. No escribas ningún archivo.',
         { schema: GOVERNED, label: 'governed' },
       )
       if (governed && governed.readOk && governed.pending.length) {
-        return halt('governance-approval-needed', `el plan de ${task.id} toca gobernanza protegida: `
-          + `${governed.pending.join(', ')}. El commit de esta corrida no puede esperar a una persona, así que `
-          + `para antes de construir: aprobalas escribiéndolas en ${P}/.ops-approval, una por línea, y reanudá.`)
+        const paths = governed.pending.join(', ')
+        // Necesita a una persona, así que deja su fila como toda parada que la necesita (PROTOCOL), y suelta la
+        // reserva como las otras paradas de antes de construir. El commit de planning dice qué espera y no «block».
+        const note = await registerHuman(`Registrá ${task.id} en ${HUMAN}: su plan toca gobernanza protegida `
+          + `(${paths}) y el commit de un subagente no puede esperar la aprobación. La acción humana es aprobar `
+          + `esas rutas escribiéndolas en ${P}/.ops-approval, una por línea, y resolver esta fila.`,
+        'governance-human', task.id)
+        await releaseBlocked()
+        return halt('governance-approval-needed', `el plan de ${task.id} toca gobernanza protegida: ${paths}. `
+          + 'Para antes de construir porque el commit de esta corrida no puede esperar a una persona: aprobalas en '
+          + `${P}/.ops-approval, una por línea, y reanudá.${note}`, `await governance approval for ${task.id}`)
       }
     }
     testStrategy = plan.testStrategy || ''
@@ -2083,12 +2096,17 @@ while (rounds++ < MAX_TASKS) {
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
   // Una aprobación pendiente no es un bloqueo: el trabajo está verificado y stageado, y lo único que falta es que
-  // una persona apruebe. El commit de planning de una parada lo rotulaba «block» y había que deshacerlo al
-  // cerrar (caso 383), así que esta parada no lo hace: el WIP y el reclamo quedan como están, para reanudar.
+  // una persona apruebe. El commit de planning lo rotulaba «block» y había que deshacerlo al cerrar (caso 383):
+  // ahora dice qué espera. La fila y el commit siguen, porque una parada que necesita a una persona la deja y
+  // toda parada con una tarea tomada commitea su estado (caso 289). El reclamo y el WIP quedan para reanudar.
   if (!commit.committed && (commit.needsApproval || []).length) {
-    return stop('commit-needs-approval', `el commit de ${task.id} toca ${commit.needsApproval.join(', ')}, que pide `
-      + `la aprobación de una persona: aprobalas escribiéndolas en ${P}/.ops-approval, una por línea, y reanudá. `
-      + 'El trabajo quedó stageado.')
+    const paths = commit.needsApproval.join(', ')
+    const note = await registerHuman(`Registrá ${task.id} en ${HUMAN}: el commit toca ${paths}, que pide la `
+      + `aprobación de una persona. La acción humana es aprobar esas rutas escribiéndolas en ${P}/.ops-approval, `
+      + 'una por línea, y resolver esta fila.', 'commit-human', task.id)
+    return halt('commit-needs-approval', `el commit de ${task.id} toca ${paths}, que pide la aprobación de una `
+      + `persona: aprobalas en ${P}/.ops-approval, una por línea, y reanudá. El trabajo quedó stageado.${note}`,
+    `await commit approval for ${task.id}`)
   }
   if (!commit.committed) return halt('commit-failed', commit.reason)
   // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno
