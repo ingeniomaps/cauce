@@ -91,6 +91,10 @@ diseño — eso vive en el commit y en el código.
   hace». Se devolvió en las 59 líneas donde el sentido era ése, incluidos ocho contratos, el exit gate de
   `product-development` y `organization/company.md` y `domains.md`, que llegan con el próximo `upgrade`. Ninguna
   conducta cambia (caso 388).
+- **`flow-eval` le dice al recorrido qué archivos trae el caso.** El banco los copiaba, pero el recorrido
+  recibía sólo el pedido y frenaba pidiendo justo lo que tenía delante: «la épica, o dónde está», con la épica en
+  la raíz. Ahora la intención los nombra y el juez sabe que no son obra del recorrido. Los dos casos que se
+  volvieron a medir pasan, y uno de ellos ganó el informe que daba por hecho y no traía (caso 389).
 
 ## [0.107.0] - 2026-10-10
 
