@@ -60,6 +60,8 @@ test('governed resuelve desde el servicio un archivo nuevo en su primer nivel', 
   // Y una ruta escrita desde la raíz, que ya nombra al servicio, sigue resolviendo desde la raíz.
   assert.deepEqual(pending(root, ['--service', 'automatization', 'automatization/otra.test.js']),
     ['automatization/otra.test.js'])
+  // Y la que es gobernanza vista desde la raíz no se pierde porque el servicio sea otro.
+  assert.deepEqual(pending(root, ['--service', 'app', 'planning/rules/nueva.md']), ['planning/rules/nueva.md'])
 })
 
 // El repositorio sale real de git y la ruta llegaba con el enlace puesto, así que no era la que el índice nombra:

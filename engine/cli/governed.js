@@ -20,17 +20,16 @@ function existingDir(target) {
   return current
 }
 
-// Un plan escribe sus rutas desde la raíz o desde el servicio de la tarea, y el esquema no dice cuál. La que ya
-// nombra al servicio está escrita desde la raíz; cualquier otra, desde el servicio. Gana la que ya existe y, si
-// ninguna existe todavía, esa lectura: preguntar por la carpeta daba la raíz para un archivo nuevo del primer
-// nivel del servicio, porque esa carpeta siempre existe (revisión del caso 383).
-function resolve(file, service) {
+// Un plan escribe sus rutas desde la raíz o desde el servicio de la tarea, y el esquema no dice cuál. Se juzgan
+// las dos lecturas y vale cualquiera que sea gobernanza: elegir una perdía en silencio la otra —la raíz para un
+// archivo nuevo del primer nivel del servicio, el servicio para uno nuevo bajo `planning/`— y el guard la frenaba
+// igual al commitear. Lo que esto cuesta es alguna aprobación de más, y es la dirección segura (revisión del 383).
+// La única que se descarta es la que no puede ser: una ruta que ya nombra al servicio no está escrita desde él, y
+// leerla así daría `servicio/servicio/…`, una aprobación pedida para un archivo que nunca va a existir.
+function readings(file, service) {
   const fromRoot = path.resolve(file)
-  if (!service) return fromRoot
-  const fromService = path.resolve(service, file)
-  const named = fromRoot.startsWith(`${path.resolve(service)}${path.sep}`)
-  const candidates = named ? [fromRoot, fromService] : [fromService, fromRoot]
-  return candidates.find((one) => fs.existsSync(one)) || candidates[0]
+  if (!service || fromRoot.startsWith(`${path.resolve(service)}${path.sep}`)) return [fromRoot]
+  return [fromRoot, path.resolve(service, file)]
 }
 
 // La ruta real, también para un archivo que todavía no existe: el repositorio sale real de git, y relativizar una
@@ -47,11 +46,13 @@ function governed(dir, files, cli) {
   const approved = new Set(AP.read(ops))
   const found = []
   for (const file of files) {
-    const target = real(resolve(file, cli.value('--service', '')))
-    const repo = toplevel(existingDir(target))
-    // Se nombra como la nombra el índice, que es lo que el guard frena y lo que una persona escribe al aprobar.
-    const indexed = path.relative(repo, target)
-    if (governedOf(ops, repo, [indexed]).length && !found.includes(indexed)) found.push(indexed)
+    for (const reading of readings(file, cli.value('--service', ''))) {
+      const target = real(reading)
+      const repo = toplevel(existingDir(target))
+      // Se nombra como la nombra el índice, que es lo que el guard frena y lo que una persona escribe al aprobar.
+      const indexed = path.relative(repo, target)
+      if (governedOf(ops, repo, [indexed]).length && !found.includes(indexed)) found.push(indexed)
+    }
   }
   // El mismo escape que el guard: con la variable puesta no frena nada, así que acá tampoco hay nada pendiente.
   const pending = process.env.OPS_GOVERNANCE_OVERRIDE === '1' ? [] : found.filter((one) => !approved.has(one))
