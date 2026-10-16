@@ -10,10 +10,10 @@ const path = require('node:path')
 // no hallaba `ops.config.json` y, como falla cerrado, negaba cada llamada a herramienta.
 const OPS_DIR = '{{OPS_DIR}}'
 
-// Y la ruta absoluta, porque con Antigravity no hay de dónde deducirla. Su payload manda
-// `workspacePaths` vacío y un `Cwd` que apunta al scratch del CLI o al home; el hook lo ejecuta `agy`
-// desde la copia que registró en `~/.gemini/config/plugins/`, cuyo `__dirname` no lleva a ningún
-// proyecto. Nada de eso nombra el workspace, así que el ancla se escribe al instalar o no existe.
+// Y la ruta absoluta. Un `agy` viejo mandaba `workspacePaths` vacío y un `Cwd` que apuntaba al scratch del CLI
+// o al home, y ejecutaba la copia registrada en `~/.gemini/config/plugins/`, cuyo `__dirname` no lleva a ningún
+// proyecto: sin el ancla escrita al instalar no había raíz. `agy` 1.4.0 descubre el plugin en el `.agents/` del
+// proyecto y manda la carpeta de trabajo (caso 392), así que el ancla queda para el payload que no la trae.
 const OPS_ROOT = '{{OPS_ROOT}}'
 
 // Los dos marcadores y la carpeta desde la que corre el puente, juntos y pasables como argumento. El
@@ -189,7 +189,20 @@ function undescribed(event, input, normalized) {
     + 'Antigravity cambió el formato de sus llamadas, el puente tiene que aprenderlo en normalize().'
 }
 
+// Si el payload nombra la carpeta de trabajo y no es la de este proyecto, el puente no tiene nada que decir. Pasa
+// con una copia registrada a nivel global: `agy` la corre en toda carpeta sin plugin propio, con la raíz del
+// proyecto que la registró, y juzgar ahí es aplicarle a otra carpeta las reglas de uno (caso 392, R26). Sin la
+// carpeta en el payload no hay cómo saberlo, y se juzga como antes.
+function elsewhere(input, markers = MARKERS) {
+  const paths = (input.workspacePaths || []).filter(Boolean).map((one) => path.resolve(one))
+  const root = declaredRoot(markers)
+  if (!paths.length || !root) return false
+  const workspace = workspaceOf(root, markers)
+  return !paths.some((one) => within(one, workspace) || within(workspace, one))
+}
+
 function evaluate(event, input) {
+  if (elsewhere(input)) return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   try {
     const root = findRoot(input)
     process.env.OPS_ROOT = root

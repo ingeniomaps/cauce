@@ -139,10 +139,11 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
   assert.equal(answers('pre-shell', 'sin-raiz').decision, 'deny')
 })
 
-// Antigravity no deja de dónde deducir la raíz: su payload manda `workspacePaths` vacío y un `Cwd` que
-// apunta al scratch del CLI o al home, y `agy plugin install` registra una copia del plugin en
-// `~/.gemini/config/plugins/`, que es la que ejecuta. Desde ahí ni el cwd ni `__dirname` llevan al
-// proyecto, así que el puente no encontraba la raíz y, como falla cerrado, negaba cada herramienta.
+// Un `agy` viejo no dejaba de dónde deducir la raíz: su payload mandaba `workspacePaths` vacío y un `Cwd` que
+// apuntaba al scratch del CLI o al home, y corría la copia registrada en `~/.gemini/config/plugins/`. Desde ahí
+// ni el cwd ni `__dirname` llevan al proyecto, así que el puente no encontraba la raíz y, como falla cerrado,
+// negaba cada herramienta. `agy` 1.4.0 manda la carpeta y descubre el plugin del proyecto (caso 392), pero un
+// payload sin carpeta tiene que seguir resolviendo: es lo que mide esto.
 //
 // Y su `hooks.json` existe sólo porque Cauce lo creó: fusionarlo dejaba viva la entrada anterior cuando
 // la ruta del puente cambiaba, y esa entrada muerta rompía la sesión entera.
