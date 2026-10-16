@@ -403,6 +403,12 @@ test('la línea de una tarea entrega su descripción, sin la aceptación ni los 
 
   const bare = P.taskFromLine('- [ ] **sola** — Sin nada más. (epic: 002) (service: api)')
   assert.equal(bare.description, 'Sin nada más.', 'una línea sin aceptación igual tiene descripción')
+
+  // El criterio citado en cursiva es una forma que `criteriaRefs` lee a propósito, y recortar sólo el paréntesis
+  // dejaba sus asteriscos al final de la descripción, que viaja a cada fase (caso 384).
+  const italic = P.taskFromLine('- [ ] **x** [lite] — Hace algo. Rojo si: falla. *(criterio C1)* (epic: 001)')
+  assert.deepEqual(italic.criteria, ['C1'])
+  assert.equal(italic.description, 'Hace algo. Rojo si: falla.')
 })
 
 // Tres cosas que el protocolo dice que `check` valida y la campaña del 2026-10-08 vio pasar en verde (caso
