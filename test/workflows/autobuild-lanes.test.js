@@ -7,7 +7,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
-const { KEY, baseScript, ranToEnd, runFlow } = require('../support/autobuild-harness')
+const { KEY, NO_TASK, baseScript, ranToEnd, runFlow } = require('../support/autobuild-harness')
 
 // Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige,
 // y esa distinción no se ve leyendo el fuente —las dos cosas son el mismo `if`—.
@@ -91,6 +91,119 @@ test('una tarea sin clasificar se clasifica y la clasificación se escribe donde
   const orden = prompts.find((entry) => entry.key === KEY.classify).prompt
   assert.match(orden, /BACKLOG\.md/, 'la clasificación se escribe donde vive la tarea')
   assert.match(orden, /\(cast:/, 'con el reparto en la línea, no sólo el carril')
+})
+
+// Lo que es más barato hecho por la sesión no se construye con agentes (caso 380). El clasificador lo
+// devuelve después de que la tarea se reclamó, así que soltarla es parte de devolverla: si no, la tarea
+// queda reservada a nombre de una corrida que ya no la va a hacer.
+test('el clasificador puede devolver la tarea a la sesión, y la corrida no la construye', async () => {
+  const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const handedBack = { ...NO_TASK, queued: 1, manual: ['T-1'] }
+  const reason = 'un atributo en tres formularios, con la mutación ya declarada'
+  const { result, phases, asked, prompts } = await runFlow(
+    { [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'manual', build: '', review: [], reason }] } },
+    { contexts: [unclassified, { ...handedBack, manualHeld: ['T-1'] }, handedBack] },
+  )
+  ranToEnd(result)
+  for (const absent of ['Ready', 'Plan', 'WIP', 'Build', 'Verify', 'Commit', 'Done']) {
+    assert.ok(!phases.includes(absent), `una tarea devuelta no debería llegar a ${absent}`)
+  }
+  assert.ok(asked.includes('Classify|release:T-1'), 'la reserva se suelta')
+  assert.ok(asked.includes('Classify|planning-block'), 'y lo que el clasificador escribió se commitea')
+  assert.deepEqual(result.done, [])
+  assert.deepEqual(result.manual, [{ slug: 'T-1', reason }], 'quien lanzó la corrida sabe qué le toca y por qué')
+  const classify = prompts.find((one) => one.key === KEY.classify).prompt
+  assert.match(classify, /`manual`/)
+  // Una manual no lleva reparto, y «sin cast» era motivo para reclasificarla: deshacía lo que alguien devolvió.
+  assert.match(classify, /salvo las \[manual\], que no se tocan/)
+})
+
+// La cola con sólo tareas de la sesión no está trabada ni terminada: la corrida termina y las nombra.
+test('una cola con sólo tareas manuales termina sin construir y las nombra', async () => {
+  const { result, phases } = await runFlow({}, { contexts: [{ ...NO_TASK, queued: 1, manual: ['T-9'] }] })
+  ranToEnd(result)
+  assert.ok(!phases.includes('Claim'), 'no se reclama nada')
+  assert.deepEqual(result.manual.map((one) => one.slug), ['T-9'])
+})
+
+// Lo que se devuelve lo dice la cola y no el reporte del clasificador: con la línea sin escribir, la tarea es de la
+// corrida. Y la tarea manual que este runner tiene tomada la está haciendo la sesión: no se suelta ni se construye.
+test('devolver se lee en la cola, y una tarea manual tomada por este runner frena la corrida', async () => {
+  const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const said = { [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'manual', build: '', review: [] }] } }
+  const notWritten = await runFlow(said, { contexts: [unclassified, { ...baseScript()[KEY.context], claimed: true }] })
+  ranToEnd(notWritten.result)
+  assert.deepEqual(notWritten.result.done, ['T-1'], 'la línea no dice manual: se construye')
+  assert.equal(notWritten.result.manual, undefined, 'y no se anuncia como de la sesión')
+  assert.ok(!notWritten.asked.includes('Classify|release:T-1'), 'ni se suelta')
+
+  const held = await runFlow({}, { contexts: [{ ...NO_TASK, queued: 1, manual: ['T-9'], manualHeld: ['T-9'] }] })
+  assert.equal(held.result.reason, 'manual-held', JSON.stringify(held.result))
+  assert.match(held.result.detail, /T-9/)
+  const inWip = await runFlow({}, { contexts: [{ ...baseScript()[KEY.context], lane: 'manual', wipActive: true }] })
+  assert.equal(inWip.result.reason, 'manual-held', 'un WIP sobre una tarea manual no se construye con agentes')
+  assert.ok(!inWip.phases.includes('Build'))
+})
+
+// El piso de la superficie crítica lo aplica el recorrido, como con express (caso 205), y sobre todas las que la
+// pasada dejó manual: `context` no vuelve a ofrecer ninguna, así que es la única vez que se las mira.
+test('una tarea manual sobre una superficie crítica no vuelve a la sesión: corre por directo', async () => {
+  const surfaces = { surfaces: ['Alta de pedido (api/orders)'] }
+  const unclassified = { ...baseScript()[KEY.context], ...surfaces, lane: '', cast: { build: '', review: [] } }
+  const both = { [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'manual', build: '', review: [] },
+    { slug: 'T-3', lane: 'manual', build: '', review: [] }] } }
+  const marked = { ...NO_TASK, ...surfaces, queued: 2, manual: ['T-1', 'T-3'], manualHeld: ['T-1'] }
+  const rewritten = { ...baseScript()[KEY.context], ...surfaces, lane: 'directo', claimed: true, manual: [] }
+  const touched = { 'Surface|critical-manual': { touched: [{ slug: 'T-3', surface: 'Alta de pedido (api/orders)' },
+    { slug: 'T-1', surface: 'Alta de pedido (api/orders)' }] } }
+  const { result, asked, prompts } = await runFlow({ ...both, ...touched },
+    { contexts: [unclassified, marked, rewritten] })
+  ranToEnd(result)
+  const rewrite = prompts.find((one) => one.key === 'Surface|manual-critical').prompt
+  assert.match(rewrite, /T-3 .*T-1|T-1 .*T-3/, 'también la que no se está tomando')
+  assert.match(rewrite, /cambiá \[manual\] por \[directo\] y agregá al final el reparto/)
+  assert.ok(!asked.includes('Classify|release:T-1'), 'la reserva se queda')
+  assert.deepEqual(result.done, ['T-1'])
+  assert.equal(result.manual, undefined, 'ninguna queda para la sesión')
+
+  // Si la reescritura no ocurrió, la tarea no se le pasa a la sesión: se para nombrándola.
+  const stuck = await runFlow({ ...both, ...touched }, { contexts: [unclassified, marked, marked] })
+  assert.equal(stuck.result.reason, 'manual-critical', JSON.stringify(stuck.result))
+  assert.match(stuck.result.detail, /T-3, T-1|T-1, T-3/)
+  // Y lo que no se pudo determinar cuenta como tocada.
+  const unknown = await runFlow({ ...both, 'Surface|critical-manual': null },
+    { contexts: [unclassified, marked, rewritten] })
+  assert.match(unknown.prompts.find((one) => one.key === 'Surface|manual-critical').prompt, /no se pudo determinar/)
+})
+
+// La cola vale más que el reporte también al revés: escrita manual con otro carril en el reporte, el motivo que dio
+// es el que viaja, no «declarada en la cola», que suena a que la escribió una persona. Y quien espera a una tarea
+// de la sesión se nombra en la parada.
+test('el motivo de una devuelta viaja aunque el reporte diga otro carril, y la espera por ella se nombra', async () => {
+  const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const handedBack = { ...NO_TASK, queued: 1, manual: ['T-1'] }
+  const { result } = await runFlow(
+    { [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'directo', build: '', review: [], reason: 'css' }] } },
+    { contexts: [unclassified, { ...handedBack, manualHeld: ['T-1'] }, handedBack] },
+  )
+  assert.deepEqual(result.manual, [{ slug: 'T-1', reason: 'css' }])
+
+  const waiting = await runFlow({}, { contexts: [{ ...NO_TASK, queued: 2, manual: ['T-1'],
+    waiting: [{ slug: 'T-2', dep: 'T-1', owner: 'la sesión, a mano' }] }] })
+  assert.equal(waiting.result.reason, 'queue-unavailable')
+  assert.match(waiting.result.detail, /T-2 espera a T-1, que hace la sesión a mano/)
+})
+
+// Devuelta la primera, la corrida no queda atada a su hito: sigue con la próxima aunque sea de otro.
+test('una tarea devuelta no fija el hito de la corrida', async () => {
+  const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const next = { ...baseScript()[KEY.context], slug: 'T-2', hito: 'H2', manual: ['T-1'] }
+  const { result } = await runFlow({
+    [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'manual', build: '', review: [] }] },
+    'Claim|claim:T-2': { claimed: true },
+  }, { contexts: [unclassified, { ...next, manualHeld: ['T-1'] }, next] })
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-2'])
 })
 
 test('una tarea ya clasificada no vuelve a clasificarse', async () => {

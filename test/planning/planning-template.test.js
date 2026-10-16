@@ -176,7 +176,7 @@ test('R9 dice cuándo se puede quitar lo que está en uso', () => {
 
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
-  assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
+  assert.deepEqual(P.LANES, ['manual', 'express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
 
   const raiz = path.resolve(__dirname, '..', '..')
   const protocolo = fs.readFileSync(path.join(raiz, 'template', 'planning', 'PROTOCOL.md'), 'utf8')

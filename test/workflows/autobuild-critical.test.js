@@ -58,7 +58,7 @@ test('sin superficies declaradas, o fuera de express, no se pregunta', async () 
 test('el clasificador y el revisor reciben las superficies', async () => {
   const flow = await runFlow(withSurfaces({ critical: '' }), { lane: 'full', vouched: true })
   const prompt = (key) => (flow.prompts.find((one) => one.key === key) || {}).prompt || ''
-  assert.match(prompt(KEY.classify), /nunca va por express/)
+  assert.match(prompt(KEY.classify), /nunca va por manual ni por express/)
   assert.ok(prompt(KEY.classify).includes(SURFACE), 'el clasificador no recibió la tabla')
   assert.ok(prompt(KEY.review).includes(SURFACE), 'el revisor no recibió la tabla')
 })

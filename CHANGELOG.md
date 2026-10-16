@@ -40,6 +40,18 @@ diseño — eso vive en el commit y en el código.
   hito que ya está en la cola, en su archivo o en `BACKLOG.md`. Y avisa cuando un hito va a una línea que
   todavía no tiene rama: nadie lo ve hasta `ops line . <nombre>`, y `check` no lo dice.
 
+- **Una tarea puede ser `manual`: la hace la sesión, sin agentes.** Hasta acá toda tarea de la cola pasaba por
+  el recorrido, y el piso no bajaba de seis o siete agentes ni en `express`: tres tareas de pantalla de una o dos
+  horas costaron 47. Ahora `[manual]` es un carril válido en la línea y en `done/`; `context` no le ofrece esa
+  tarea a ningún runner y la lista aparte, y el clasificador puede elegirlo —un solo servicio, aceptación con su
+  mutación, nada por decidir, ninguna dependencia abierta, una hora; ante la duda no, y nunca sobre «Qué no se
+  puede romper»—: la corrida suelta la reserva, sigue con la próxima y devuelve en `manual` qué quedó para la
+  sesión y por qué; si la tarea toca una superficie crítica, no la devuelve y la corre por `directo`. Una manual
+  que el runner tiene reclamada o en su WIP —la sesión haciéndola— frena la corrida con `manual-held` en vez de
+  construirla. La sesión la cierra con la misma evidencia, sin revisor, como `express`. **Medido** sobre las
+  doce tareas de una épica real, tres veces: salió `manual` en dos tareas de CSS que estaban en el borde, y nunca
+  en las que tenían una decisión, un borde abierto o una dependencia (caso 380).
+
 ### Cambiado
 
 - **`flow` propone el reparto de la épica entre las líneas que existen.** Al redactar, agrupa las historias

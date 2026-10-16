@@ -97,7 +97,11 @@ const CONTEXT = {
     // épica a su número —dos líneas arriba— hace fácil creer que ya viene. La fase Plan lo pedía en su
     // prompt y planificaba contra el título; `readEpics` cuenta de dónde sale.
     epicContext: { type: 'string' },
-    lane: { type: 'string', enum: ['', 'express', 'directo', 'lite', 'full'] },
+    lane: { type: 'string', enum: ['', 'manual', 'express', 'directo', 'lite', 'full'] },
+    // Las tareas de la cola que hace la sesión y `context` no ofrece (caso 380).
+    manual: { type: 'array', items: { type: 'string' } },
+    // Las de ésas que este runner tiene reclamadas o en su WIP: las está haciendo la sesión (caso 380).
+    manualHeld: { type: 'array', items: { type: 'string' } },
     // Quién espera a quién: lo que la partición tiene que haber reapuntado se ve acá (caso 376).
     waiting: { type: 'array', items: { type: 'object', additionalProperties: false,
       properties: { slug: { type: 'string' }, dep: { type: 'string' }, owner: { type: 'string' } } } },
@@ -222,6 +226,13 @@ const CRITIQUED = { ...DECISION,
 const CRITICAL = {
   type: 'object', additionalProperties: false, required: ['critical'],
   properties: { critical: { type: 'string' } },
+}
+// Lo mismo para las que el clasificador dejó manual en una pasada: puede marcar varias, y `context` no vuelve a
+// ofrecer ninguna, así que es la única vez que el recorrido las ve (caso 380).
+const CRITICAL_MANY = {
+  type: 'object', additionalProperties: false, required: ['touched'],
+  properties: { touched: { type: 'array', items: { type: 'object', additionalProperties: false,
+    required: ['slug', 'surface'], properties: { slug: { type: 'string' }, surface: { type: 'string' } } } } },
 }
 // Review nombra contra qué reglas revisó (caso 105): recibir las rutas no garantiza abrirlas, y esto es lo único
 // que deja rastro de que se hizo. Critique no lo lleva porque no recibe la lista.
@@ -411,7 +422,12 @@ const OWNERS = {
 // justificar. Lo que decide es la superficie del cambio, no su tamaño en líneas: un `if` en el
 // chequeo de permisos es `full`, y un componente entero de presentación puede ser `directo`.
 const CLASSIFY_RULES = 'Clasificás quién trabaja y cuánta ceremonia merece la tarea; no decidís qué ' +
-  'se hace ni lo hacés. Lane: `express` si la aceptación nombra un valor literal y el resultado no ' +
+  'se hace ni lo hacés. Lane: `manual` si la hace más barato la sesión que lanzó la corrida que el ' +
+  'recorrido: toca un solo servicio, la aceptación ya nombra el cambio y cómo se comprueba —con la ' +
+  'mutación que tiene que ponerse en rojo—, no deja un borde ni una decisión de diseño por tomar, no ' +
+  'espera a otra tarea abierta y cabe en una hora de trabajo; esa tarea no corre, vuelve a la sesión ' +
+  'con tu motivo en reason, y ante la duda no es `manual`, porque devuelta pierde toda revisión. ' +
+  '`express` si la aceptación nombra un valor literal y el resultado no ' +
   'lo mira nadie —un typo, un umbral interno, un renombre—; `directo` si es igual de mecánico pero ' +
   'cambia una superficie que alguien ve; `lite` si es comportamiento nuevo ' +
   'dentro de un servicio con superficie conocida; `full` si cruza contratos entre servicios, datos, ' +
@@ -428,7 +444,8 @@ const CLASSIFICATION = {
     classified: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['slug', 'lane', 'build'],
       properties: {
-        slug: { type: 'string' }, lane: { type: 'string', enum: ['express', 'directo', 'lite', 'full'] },
+        slug: { type: 'string' },
+        lane: { type: 'string', enum: ['manual', 'express', 'directo', 'lite', 'full'] },
         build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } },
         reason: { type: 'string' },
       },
@@ -822,7 +839,7 @@ const readContext = () => clerk(
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic, cast, description y file de task, epicContext de epic.context —vacío si no hay épica—, waiting con `
-  + `slug, dep y owner de cada entrada, e inbox tal `
+  + `slug, dep y owner de cada entrada, manual, manualHeld e inbox tal `
   + `cual. surfaces sale de surfaces.declared, una entrada por fila con la forma "<surface> (<lives>)", y `
   + `surfacesPending de surfaces.pending. El comando es ` +
   `la fuente de ` +
@@ -890,9 +907,20 @@ const nextUp = (state) => (state.hasTask ? state.slug : '(nada más en cola)')
 // Tareas que ya pasaron por el clasificador en esta corrida. Sin esto, una que vuelve sin lane
 // —porque la escritura falló o el modelo la salteó— se reclasifica en cada vuelta del bucle.
 const classified = new Set()
+// Las que el clasificador devolvió a la sesión en esta corrida, con su motivo: van en el resultado (caso 380).
+const handedBack = new Map()
 
 while (rounds++ < MAX_TASKS) {
   phase('Pick')
+  // Una tarea manual reclamada por este runner, o en su WIP, la está haciendo la sesión: el reclamo siguiente
+  // se negaría con «este runner ya tiene …», y un WIP sobre ella la haría construir por agentes en el carril
+  // completo, sin reparto. No se suelta sola: soltarla le quitaría la tarea a quien la está haciendo.
+  const sessionHolds = [...new Set([...(planning.manualHeld || []),
+    ...(planning.hasTask && planning.lane === 'manual' ? [planning.slug] : [])])]
+  if (sessionHolds.length) {
+    return halt('manual-held', `${sessionHolds.join(', ')} es manual y este runner la tiene tomada: la hace la `
+      + 'sesión. Terminala y cerrala en done/, o soltala con "ops release", y volvé a lanzar la corrida.')
+  }
   // Sin tarea y con la cola vacía, la corrida termina. **No expande la próxima épica**, y eso no es una
   // limitación sino la regla: el roadmap llama `open` a «candidata editable que aún no fue promovida al
   // backlog», así que pegarla en la cola es promoverla — y BR-OPS-002 deja una propuesta fuera de la cola
@@ -911,10 +939,14 @@ while (rounds++ < MAX_TASKS) {
   // Se paga sobre todo después de una parada que espera a una persona: ahí el reclamo se queda puesto a
   // propósito —quien paró va a volver, y `claim` le es idempotente—, así que cuando la persona contesta es
   // un runner distinto el que pregunta y el que se va sin nada.
-  if (!planning.hasTask && planning.queued > 0) {
+  // Lo que la cola tiene para la sesión no cuenta (caso 380).
+  if (!planning.hasTask && planning.queued > (planning.manual || []).length) {
+    const onSession = (planning.waiting || []).filter((one) => (planning.manual || []).includes(one.dep))
     return halt('queue-unavailable', `la cola tiene ${planning.queued} tarea(s) y ninguna disponible para `
       + 'este runner. Mirá la línea TAKEN de "ops context": lo reclamado por otro se suelta con '
-      + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.')
+      + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.'
+      + (onSession.length ? ` ${onSession.map((one) => `${one.slug} espera a ${one.dep}`).join(', ')}, que hace `
+        + 'la sesión a mano.' : ''))
   }
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   if (LIMIT && completed.length >= LIMIT) {
@@ -986,6 +1018,8 @@ while (rounds++ < MAX_TASKS) {
       continue
     }
   }
+  // El hito de la corrida lo fija la primera tarea que se construye: una devuelta a la sesión no lo fija.
+  const milestoneBefore = currentMilestone
   currentMilestone = task.hito
   holding = task.id
 
@@ -1003,18 +1037,76 @@ while (rounds++ < MAX_TASKS) {
     classified.add(task.id)
     const classification = await write(
       `${CLASSIFY_RULES}${(planning.surfaces || []).length ? ` Una tarea que toca alguna de estas superficies, que la `
-        + `empresa declaró que no se pueden romper, nunca va por express: ${JSON.stringify(planning.surfaces)}.` : ''}`
+        + `empresa declaró que no se pueden romper, nunca va por manual ni por express: `
+        + `${JSON.stringify(planning.surfaces)}.` : ''}`
         + `\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
-      `it lists.\nClasificá en ${queueFile()} todas las tareas en cola que no declaren lane o no declaren cast, ` +
+      `it lists.\nClasificá en ${queueFile()} todas las tareas en cola que no declaren lane, o que no declaren ` +
+      `cast salvo las [manual], que no se tocan, ` +
       `empezando por ${task.id} en ${task.service} —aceptación: ${task.acceptance}—. El lane va entre ` +
       `corchetes después del slug y el reparto al final de la línea, con la forma ` +
-      `"(cast: quien-entrega → quien-revisa, otro)". No toques nada más de la línea, ni el orden del hito, ` +
+      `"(cast: quien-entrega → quien-revisa, otro)"; una tarea manual no lleva reparto, porque no la toma ` +
+      `ningún cargo. No toques nada más de la línea, ni el orden del hito, ` +
       `ni las tareas que ya declaran las dos cosas. Reportá lo que escribiste.`,
       { schema: CLASSIFICATION, label: 'classify' },
     )
     if (classification && classification.classified.length) {
       log(`Clasificadas: ${classification.classified
         .map((one) => `${one.slug} [${one.lane}] ${one.build}`).join(' · ')}`)
+      planning = await readContext()
+      if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
+      // Lo que decide es la cola, no el reporte: devuelta es la que quedó escrita `[manual]`, con el motivo que
+      // el clasificador haya dado aunque haya reportado otro carril. La que el reporte dice manual y la línea no
+      // corre como cualquier otra.
+      const fresh = classification.classified.filter((one) => (planning.manual || []).includes(one.slug))
+      for (const one of fresh) handedBack.set(one.slug, one.reason || '')
+      // El piso de la superficie crítica sobre todas las que esta pasada dejó manual. Lo que no se puede
+      // determinar cuenta como tocada, igual que en el piso de `express`: cuesta una revisión de más.
+      if (fresh.length && (planning.surfaces || []).length) {
+        phase('Surface')
+        const slugs = fresh.map((one) => one.slug)
+        const answer = await read(`¿Cuáles de estas tareas tocan alguna de las superficies que la empresa declaró `
+          + `que no se pueden romper? Tareas: ${slugs.join(', ')}; sus líneas están en ${queueFile()}. Superficies: `
+          + `${JSON.stringify(planning.surfaces)}. Contestá en touched una entrada por tarea que toque alguna, con `
+          + 'la superficie tal cual; las que no tocan ninguna no van.',
+        { schema: CRITICAL_MANY, label: 'critical-manual' })
+        const touched = answer ? answer.touched.filter((one) => slugs.includes(one.slug))
+          : slugs.map((slug) => ({ slug, surface: 'no se pudo determinar' }))
+        if (touched.length) {
+          await write(`En ${queueFile()}, estas tareas dicen [manual] y tocan una superficie que la empresa declaró `
+            + `que no se puede romper: ${touched.map((one) => `${one.slug} (${one.surface})`).join(', ')}. En la línea `
+            + 'de cada una cambiá [manual] por [directo] y agregá al final el reparto, con la forma "(cast: '
+            + `quien-entrega → quien-revisa)", eligiendo sólo entre los slugs de "node tools/ops.js agents list `
+            + `${ROOT} --json". No toques nada más.`, { label: 'manual-critical' })
+          planning = await readContext()
+          if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
+          const still = touched.filter((one) => (planning.manual || []).includes(one.slug))
+          if (still.length) {
+            return halt('manual-critical', `${still.map((one) => one.slug).join(', ')} quedó [manual] sobre una `
+              + 'superficie que no se puede romper: cambiala a [directo] a mano antes de volver a lanzar la corrida')
+          }
+          touched.forEach((one) => handedBack.delete(one.slug))
+          log(`no vuelven a la sesión, por tocar una superficie crítica: ${touched
+            .map((one) => `${one.slug} (${one.surface})`).join(', ')}`)
+        }
+        phase('Classify')
+      }
+      // Devolverla no deja nada reservado: la reserva es de esta corrida, que ya no la va a hacer, y lo que el
+      // clasificador escribió en la cola se commitea igual que en cualquier parada (caso 279). Si el release
+      // falla, la relectura la trae en `manualHeld` y la vuelta siguiente para nombrándola.
+      if ((planning.manual || []).includes(task.id)) {
+        await clerk(
+          `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: la clasificaste manual, así que la ` +
+          'hace la sesión y su reserva no reserva trabajo. No escribas ningún archivo vos: lo escribe el comando.',
+          { label: `release:${task.id}` },
+        )
+        await commitBlocked(task.id, `hand ${task.id} back to the session`)
+        holding = ''
+        currentMilestone = milestoneBefore
+        log(`${task.id} vuelve a la sesión, sin agentes: ${handedBack.get(task.id) || '(sin motivo)'}`)
+      } else {
+        handedBack.delete(task.id)
+        continue
+      }
       planning = await readContext()
       if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
       continue
@@ -2220,5 +2312,10 @@ if (completed.length && contract.humanCheckpoint && !cut) {
   if (held === null) checkpointNote = `no se pudo comprobar que ${file} frene a esta línea: revisalo a mano`
   else if (!held) checkpointNote = `${file} no quedó frenando a esta línea: revisá su frontmatter a mano`
 }
+// Lo que quedó para la sesión según la última lectura de la cola, con el motivo del clasificador si lo devolvió
+// esta corrida (caso 380). Es lo único que le dice a quien lanzó la corrida que la cola no terminó.
+const manual = ((planning && planning.manual) || []).filter((slug) => !completed.includes(slug))
+  .map((slug) => ({ slug, reason: handedBack.get(slug) || 'declarada [manual] en la cola' }))
+manual.forEach((one) => log(`${one.slug} la hace la sesión: ${one.reason}`))
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran,
-  ...(checkpointNote ? { checkpoint: checkpointNote } : {}) })
+  ...(manual.length ? { manual } : {}), ...(checkpointNote ? { checkpoint: checkpointNote } : {}) })

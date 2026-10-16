@@ -203,7 +203,7 @@ function context(dir, cli) {
   const [held] = holding
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)
-  const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, from)
+  const { task, skipped, claimed, taken, waiting, manual, manualHeld } = ST.currentTask(state, humanActions, from)
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
@@ -252,6 +252,10 @@ function context(dir, cli) {
     claimed,
     taken,
     waiting,
+    // Lo que la cola tiene y no ofrece porque lo hace la sesión (caso 380): sin nombrarlo, la cola con sólo
+    // eso se lee como terminada.
+    manual,
+    manualHeld,
     // Sólo las vencidas: la fila que todavía no vence no tiene nada que decirle a quien va a tomar una
     // tarea, y una recurrencia que hablara siempre sería ruido en el único comando que se corre en cada
     // vuelta. Que aparezca es la señal.
@@ -305,6 +309,12 @@ function context(dir, cli) {
       console.log(`WAIT   ${one.slug}: espera a ${one.dep}${one.owner ? ` (${one.owner})` : ''}`)
     }
   }
+  const aMano = () => {
+    for (const slug of report.manual) {
+      console.log(`MANUAL ${slug}: la hace la sesión, sin agentes${report.manualHeld.includes(slug)
+        ? ` — reclamada por este runner: terminala o soltala con \`ops release <planning> ${slug}\`` : ''}`)
+    }
+  }
   const due = () => {
     for (const one of report.recurring) {
       const when = one.overdueDays === 0 ? 'vence hoy' : `vencida hace ${one.overdueDays} día(s)`
@@ -325,6 +335,7 @@ function context(dir, cli) {
     // el equipo, y lo que corresponde es hablar con quien la tiene.
     tomadas()
     espera()
+    aMano()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
     return reglas()
@@ -354,6 +365,7 @@ function context(dir, cli) {
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
   tomadas()
   espera()
+  aMano()
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()
