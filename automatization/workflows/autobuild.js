@@ -743,7 +743,13 @@ const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, option
 // y lo que el agente de siempre hacía por tenerlas a la vista se fue sin que nadie lo notara (casos 301 y 302).
 // Lo que juzga —Ready, Plan, Build, Review, Verify, QA— sigue con el agente de siempre.
 const scribe = (prompt, options = {}) => write(prompt, { ...options, agentType: 'cauce-scribe' })
-const scribeCommit = (prompt, options = {}) => run(prompt, { ...options, agentType: 'cauce-scribe' })
+// Lo que el escriba cambia del asunto dictado sale de las reglas del proyecto, y al reescribirlo a veces se llevaba
+// puesto el scope: en una corrida, dos de cinco commits de estado salieron sin él (caso 377). Viaja con todo pedido
+// que dicta un `chore(planning)`, y no nombra qué puede cambiar la regla: eso es de la regla (caso 302).
+const KEEP_SUBJECT = ' Si las reglas del proyecto cambian el asunto que te dicto, el scope `planning` y el slug se '
+  + 'conservan tal cual, salvo que la regla fije otro scope.'
+const scribeCommit = (prompt, options = {}) => run(`${prompt}${KEEP_SUBJECT}`,
+  { ...options, agentType: 'cauce-scribe' })
 
 // Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
 // único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se
@@ -2321,7 +2327,8 @@ if (completed.length && contract.humanCheckpoint && !cut) {
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
   const committing = (message) => (contract.commitPerTask
-    ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "${message}".${TWO_COMMANDS}${PLANNING_BRANCH()}`
+    ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "${message}".${KEEP_SUBJECT}${TWO_COMMANDS}`
+      + PLANNING_BRANCH()
     : '')
   await scribe(
     `Creá ${file} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones ` +

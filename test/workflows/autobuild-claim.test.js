@@ -388,3 +388,21 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+" desde \S+: si marca esta entrada, corregí/)
   assert.match(done, /Si marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
 })
+
+// Las reglas de la empresa pueden reescribir el asunto que el recorrido dicta, y al reescribirlo el escriba a veces
+// se comía el scope: tres de cinco commits de una corrida lo conservaron y dos no (caso 377). Todo pedido que dicta
+// un `chore(planning)` dice qué parte del asunto no es de la regla.
+test('todo commit de planning conserva el scope y el slug aunque la regla cambie el asunto', async () => {
+  const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }
+  const gate = { [KEY.contract]: { ...baseScript()[KEY.contract], humanCheckpoint: true } }
+  const runs = [await runFlow(gate), await runFlow({ [KEY.critique]: blocked })]
+  const dictating = runs.flatMap(({ prompts }) => prompts).filter((one) => /chore\(planning\)/.test(one.prompt))
+  const labels = new Set(dictating.map((one) => one.key.split('|')[1]))
+  for (const label of ['planning-commit', 'planning-block', 'human-checkpoint']) {
+    assert.ok(labels.has(label), `la prueba no llegó a ver ${label}`)
+  }
+  for (const one of dictating) {
+    assert.match(one.prompt, /el scope `planning` y el slug se conservan tal cual/, one.key)
+  }
+})
