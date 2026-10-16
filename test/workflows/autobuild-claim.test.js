@@ -171,6 +171,24 @@ test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async (
   assert.deepEqual(prompts.filter((one) => /\brelease\b/.test(one.prompt)).map((one) => one.key), [],
     'soltó una reserva sobre una tarea que sigue en la cola')
 })
+
+// La partida no puede prestarle su slug a una parte: R25 dice que las partes son unidades nuevas, y la guarda de
+// arriba lee «la cola sigue ofreciéndola» como que la escritura no ocurrió. Un agente real lo hizo citando
+// justamente R25, y la corrida paró con el partido escrito y commiteado (caso 385).
+test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada lo dice', async () => {
+  const grande = { ...baseScript()[KEY.context], claimed: true }
+  const { result, prompts } = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [grande, { ...grande, queued: grande.queued + 1 }] },
+  )
+  const split = prompts.find((one) => one.key === 'Decompose|split')
+  assert.ok(split, 'no hubo partición')
+  assert.match(split.prompt, /slug nuevo, distinto de T-1/)
+
+  assert.equal(result.reason, 'split-not-applied', JSON.stringify(result).slice(0, 160))
+  assert.match(result.detail, /reus[oó] el slug de T-1/)
+  assert.doesNotMatch(result.detail, /la escritura no ocurrió/, 'la escritura sí ocurrió: la cola creció')
+})
 // Qué distingue una cola ocupada de una terminada, y por qué importa, está junto a la guarda que las
 // separa (`automatization/workflows/autobuild.js`, la condición sobre `queued`).
 //

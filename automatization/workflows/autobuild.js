@@ -1345,11 +1345,14 @@ while (rounds++ < MAX_TASKS) {
           ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
             + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
           : ''
+        const before = planning
         // Quien declaraba `(depende: <partida>)` quedaba esperando un slug que ya no iba a existir, y `check` lo
         // decía recién al terminar la corrida (caso 376). Pasa a esperar a **todas** las partes: si son
         // paralelas, esperar a una sola lo dejaría arrancar antes.
         await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
-          `independiente: ${JSON.stringify(estimate.subtasks)}.${historias} Y toda tarea de la cola —en ` +
+          `independiente: ${JSON.stringify(estimate.subtasks)}. Cada subtarea lleva un slug nuevo, distinto de ` +
+          `${task.id}: las partes son unidades nuevas y la partida deja de existir.${historias} ` +
+          'Y toda tarea de la cola —en ' +
           `${QUEUE}— que declare (depende: …) nombrando a ${task.id} pasa a depender de todas las subtareas ` +
           'nuevas, con los demás slugs que ya declaraba.', { label: 'split' })
         planning = await readContext()
@@ -1357,9 +1360,17 @@ while (rounds++ < MAX_TASKS) {
         // Misma forma que en Claim: si la cola sigue ofreciendo lo mismo, el estado no cambió y repetir
         // no lo va a cambiar. Acá lo que no cambió es una escritura que se le pidió a un agente, y darla
         // por hecha manda al bucle a partir la misma tarea otra vez.
+        //
+        // Con la cola más larga sí ocurrió, pero una parte se quedó con el slug de la partida: la corrida no puede
+        // seguir con una tarea cuya aceptación ya no es la que tiene en memoria, y decir «no ocurrió» mandaba a
+        // buscar una escritura que estaba hecha (caso 385).
         if (planning.hasTask && planning.slug === task.id) {
-          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus `
-            + 'subtareas y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.')
+          const grew = planning.queued > before.queued
+          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus subtareas `
+            + (grew
+              ? `y la cola creció, pero una de ellas reusó el slug de ${task.id}: renombrala con uno nuevo antes `
+                + 'de reanudar.'
+              : 'y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.'))
         }
         // La otra mitad de la consigna se comprueba igual: quien siga esperando a la partida no fue reapuntado,
         // y descubrirlo en el `check` del final es lo que el caso 376 describe.
