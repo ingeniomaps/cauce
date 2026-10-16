@@ -27,8 +27,9 @@ const FLOW = String(input.flow || '').trim()
 const ONLY = onlyCases(input)
 
 const CASES = {
-  type: 'object', additionalProperties: false, required: ['items'],
+  type: 'object', additionalProperties: false, required: ['items', 'subject'],
   properties: {
+    subject: { type: 'string' },
     items: { type: 'array', items: {
       type: 'object', additionalProperties: false, required: ['id', 'request', 'expected'],
       properties: {
@@ -81,13 +82,19 @@ const context = await agent(
   `From ${ROOT}, the CLI is "tools/ops.js" if that file exists and "engine/cli/ops.js" otherwise. ` +
   `Set cli to the one that exists and use it in every command below.\n` +
   `1. "node <cli> evaluate ${FLOW} --flow --cases --json" — it prints an object: copy its ` +
-  `"cases" array into items and its "forbidden" array into forbidden, both verbatim.\n` +
+  `"cases" array into items, its "forbidden" array into forbidden and its "subject" into ` +
+  `subject, all verbatim. Read that output from stdout: write no file.\n` +
   `2. Read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
 
   { schema: CASES, label: 'casos' },
 )
 if (!context || !context.items || !context.items.length) {
   return stop('sin-casos', `${FLOW} no tiene casos, o no se pudieron leer`)
+}
+// La misma comprobación que en `agent-eval`, y por lo mismo (caso 387).
+if (context.subject !== FLOW) {
+  return stop('casos-ajenos',
+    `la lista de casos que llegó es de ${context.subject || '(sin sujeto)'}, no de ${FLOW}: no se corre`)
 }
 if (ONLY.length) {
   const pick = pickCases(context.items, ONLY)

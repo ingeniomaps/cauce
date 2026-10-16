@@ -9,6 +9,8 @@ require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 const { compileWorkflow } = require('../support/workflow')
 
 const CASES = {
@@ -17,6 +19,7 @@ const CASES = {
     { id: '02-dos', request: 'segundo pedido', expected: ['se observa otra cosa'] },
   ],
   forbidden: [], skill: '/r/x/SKILL.md', cli: 'engine/cli/ops.js', mode: 'toolkit', system: false,
+  subject: 'x',
 }
 
 // El guion responde por label. Un valor `function` se invoca, que es como se simula el agente que
@@ -108,4 +111,29 @@ test('flow-eval no juzga el caso en el que el recorrido reventó', async () => {
   assert.equal(result.total, 1, 'y el que reventó no cuenta como caso medido')
   const record = written.find((one) => one.includes('# Casos adversariales'))
   assert.match(record, /Sin medir[^\n]*02-dos/)
+})
+
+// La lista de casos la trae un agente, y dos corridas de la misma sesión comparten el scratchpad: una
+// leyó la de otro cargo (caso 387). Con filtro se frenaba por accidente, porque el id no estaba; sin
+// filtro, o con un id que comparten 32 cargos, juzgaba los casos ajenos contra el SKILL.md propio.
+for (const [name, label, args] of [['agent-eval', 'cases', { agent: 'x' }], ['flow-eval', 'casos', { flow: 'x' }]]) {
+  test(`${name} no corre una lista de casos que es de otro sujeto`, async () => {
+    const { result, asked } = await run(name, {
+      ...AGENT_SCRIPT,
+      [label]: { ...CASES, subject: 'otro' },
+    }, { args })
+
+    assert.equal(result.reason, 'casos-ajenos', `frenó en ${result.reason}`)
+    assert.match(result.detail, /otro/, 'y dice de quién era la lista')
+    assert.equal(asked.includes('bancos'), false, 'antes de armar un solo banco')
+  })
+}
+
+test('evaluate --cases --json dice de quién son los casos', () => {
+  const ops = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
+  const read = (...extra) => JSON.parse(execFileSync(process.execPath, [ops, 'evaluate', ...extra], {
+    cwd: path.resolve(__dirname, '..', '..'), encoding: 'utf8',
+  }))
+  assert.equal(read('ux-designer', '--cases', '--json').subject, 'ux-designer')
+  assert.equal(read('intake', '--flow', '--cases', '--json').subject, 'intake')
 })
