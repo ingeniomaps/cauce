@@ -137,12 +137,21 @@ if (benches.failed && benches.failed.length) {
 // Un caso de recorrido gasta el recorrido entero, no dos agentes: de ahí que se diga aparte.
 log(`${context.items.length} caso(s) de ${FLOW} — cada uno corre el recorrido completo`)
 
+// El banco ya trae los fixtures del caso —`evaluationBench` los copia a la raíz—, pero nombrarlos es lo que
+// vuelve real el pedido: sin eso el recorrido preguntó por «la épica, o dónde está» con la épica a la vista
+// (caso 389). Viajan dentro de la intención porque es lo único que el recorrido recibe, y el juez lee la
+// misma, para juzgar lo que el recorrido de verdad tuvo enfrente.
+const intentOf = (item) => item.request + (item.fixtures && item.fixtures.length
+  ? `\n\nEl pedido viene con ${item.fixtures.length === 1 ? 'este archivo' : 'estos archivos'}, en la raíz ` +
+    `de la instancia:\n${item.fixtures.map((one) => `- ${one}`).join('\n')}\nLeelos antes de responder.`
+  : '')
+
 const verdicts = await pipeline(
   context.items,
 
   // El recorrido de verdad, sobre el banco del caso. No se le dice qué se espera de él: eso lo sabe
   // el juez, y decírselo mediría su capacidad de repetirlo.
-  (item) => workflow('flow', { flow: FLOW, intent: item.request, root: `${BENCH_ROOT}/${item.id}` })
+  (item) => workflow('flow', { flow: FLOW, intent: intentOf(item), root: `${BENCH_ROOT}/${item.id}` })
     .then((salida) => ({ item, salida }))
     // Un error del recorrido no es una detención suya. Viajando como salida el juez lo leía como
     // «frenó» —y varios de estos casos miden justamente si frenar estuvo bien—, así que un fallo de
@@ -151,7 +160,11 @@ const verdicts = await pipeline(
 
   // Juzga otro, y juzga dos cosas: lo que el recorrido devolvió y lo que dejó escrito en el banco.
   ({ item, salida, broken }) => (broken ? log(`${item.id}: el recorrido reventó — ${broken}`) : agent(
-    `Un recorrido de trabajo llamado "${FLOW}" recibió esta intención:\n\n${item.request}\n\n` +
+    `Un recorrido de trabajo llamado "${FLOW}" recibió esta intención:\n\n${intentOf(item)}\n\n` +
+    (item.fixtures && item.fixtures.length
+      ? `Los archivos que nombra ya estaban en el banco antes de que el recorrido trabajara: no es obra suya, ` +
+        `es lo que recibió. Leelos, y exigí precisión de procedencia sobre lo que afirme de ellos.\n\n`
+      : '') +
     `El recorrido terminó devolviendo esto:\n\n${JSON.stringify(salida, null, 2)}\n\n` +
     `Su salida no es toda la entrega. El recorrido trabajó en ${BENCH_ROOT}/${item.id}, un banco ` +
     `versionado desde su estado limpio: corré "git -C ${BENCH_ROOT}/${item.id} status --porcelain" y ` +

@@ -27,10 +27,12 @@ const CASES = {
 async function run(name, script, extra = {}) {
   const asked = []
   const written = []
+  const prompts = {}
 
   const agent = async (prompt, options = {}) => {
     const label = options.label || ''
     asked.push(label)
+    prompts[label] = prompt
     if (!options.schema) { written.push(prompt); return { ok: true } }
     const answer = label in script ? script[label] : script[label.split(':')[0]]
     if (answer === undefined) throw new Error(`el guion no cubre ${label}`)
@@ -55,7 +57,7 @@ async function run(name, script, extra = {}) {
     agent, () => {}, () => {}, parallel, pipeline, extra.workflow || (async () => ({})),
     extra.args, { total: null, spent: () => 0, remaining: () => Infinity },
   )
-  return { result, asked, written }
+  return { result, asked, written, prompts }
 }
 
 const AGENT_SCRIPT = {
@@ -136,4 +138,28 @@ test('evaluate --cases --json dice de quién son los casos', () => {
   }))
   assert.equal(read('ux-designer', '--cases', '--json').subject, 'ux-designer')
   assert.equal(read('intake', '--flow', '--cases', '--json').subject, 'intake')
+})
+
+// El banco copia los fixtures del caso, y `flow-eval` no se los nombraba a nadie (caso 389): el recorrido
+// pidió «la épica, o dónde está» con la épica en la raíz de su instancia, y el juez no sabía que estaba.
+test('flow-eval le nombra los fixtures del caso al recorrido y al juez', async () => {
+  const intents = {}
+  const withFixture = {
+    ...CASES,
+    items: [{ ...CASES.items[0], fixtures: ['epica-devoluciones.md'] }],
+  }
+  const { prompts } = await run('flow-eval', {
+    casos: withFixture,
+    bancos: { path: '/b', failed: [] },
+    juzga: { passed: true, met: [], reasoning: 'se observan todos' },
+  }, {
+    args: { flow: 'x' },
+    workflow: async (_name, options) => { intents[options.root] = options.intent; return { stages: 1 } },
+  })
+
+  const intent = Object.values(intents)[0]
+  assert.match(intent, /^primer pedido/, 'el pedido llega igual')
+  assert.match(intent, /epica-devoluciones\.md/, 'y el recorrido sabe qué archivo trae')
+  assert.match(prompts['juzga:01-uno'], /epica-devoluciones\.md/, 'el juez también')
+  assert.match(prompts['juzga:01-uno'], /no es obra suya/, 'y sabe que no lo escribió el recorrido')
 })
