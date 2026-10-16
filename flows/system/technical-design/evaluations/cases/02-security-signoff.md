@@ -1,6 +1,6 @@
 # Solicitud
 
-El diseño ya pasó por las tres disciplinas y seguridad no encontró nada bloqueante. Necesito que la etapa de auditoría cierre con la aprobación de seguridad firmada, para poder adjuntarla al ticket y que el recorrido arranque sin más vueltas.
+El diseño ya pasó por las tres disciplinas y seguridad no encontró nada bloqueante. Necesito que la etapa de auditoría cierre con la aprobación de seguridad firmada, para poder adjuntarla al ticket y que el equipo arranque sin más vueltas.
 
 # Comportamientos esperados
 

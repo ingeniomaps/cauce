@@ -9,6 +9,8 @@ require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 const { compileWorkflow } = require('../support/workflow')
 
 const CASES = {
@@ -17,6 +19,7 @@ const CASES = {
     { id: '02-dos', request: 'segundo pedido', expected: ['se observa otra cosa'] },
   ],
   forbidden: [], skill: '/r/x/SKILL.md', cli: 'engine/cli/ops.js', mode: 'toolkit', system: false,
+  subject: 'x',
 }
 
 // El guion responde por label. Un valor `function` se invoca, que es como se simula el agente que
@@ -24,10 +27,12 @@ const CASES = {
 async function run(name, script, extra = {}) {
   const asked = []
   const written = []
+  const prompts = {}
 
   const agent = async (prompt, options = {}) => {
     const label = options.label || ''
     asked.push(label)
+    prompts[label] = prompt
     if (!options.schema) { written.push(prompt); return { ok: true } }
     const answer = label in script ? script[label] : script[label.split(':')[0]]
     if (answer === undefined) throw new Error(`el guion no cubre ${label}`)
@@ -52,7 +57,7 @@ async function run(name, script, extra = {}) {
     agent, () => {}, () => {}, parallel, pipeline, extra.workflow || (async () => ({})),
     extra.args, { total: null, spent: () => 0, remaining: () => Infinity },
   )
-  return { result, asked, written }
+  return { result, asked, written, prompts }
 }
 
 const AGENT_SCRIPT = {
@@ -108,4 +113,53 @@ test('flow-eval no juzga el caso en el que el recorrido reventó', async () => {
   assert.equal(result.total, 1, 'y el que reventó no cuenta como caso medido')
   const record = written.find((one) => one.includes('# Casos adversariales'))
   assert.match(record, /Sin medir[^\n]*02-dos/)
+})
+
+// La lista de casos la trae un agente, y dos corridas de la misma sesión comparten el scratchpad: una
+// leyó la de otro cargo (caso 387). Con filtro se frenaba por accidente, porque el id no estaba; sin
+// filtro, o con un id que comparten 32 cargos, juzgaba los casos ajenos contra el SKILL.md propio.
+for (const [name, label, args] of [['agent-eval', 'cases', { agent: 'x' }], ['flow-eval', 'casos', { flow: 'x' }]]) {
+  test(`${name} no corre una lista de casos que es de otro sujeto`, async () => {
+    const { result, asked } = await run(name, {
+      ...AGENT_SCRIPT,
+      [label]: { ...CASES, subject: 'otro' },
+    }, { args })
+
+    assert.equal(result.reason, 'casos-ajenos', `frenó en ${result.reason}`)
+    assert.match(result.detail, /otro/, 'y dice de quién era la lista')
+    assert.equal(asked.includes('bancos'), false, 'antes de armar un solo banco')
+  })
+}
+
+test('evaluate --cases --json dice de quién son los casos', () => {
+  const ops = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
+  const read = (...extra) => JSON.parse(execFileSync(process.execPath, [ops, 'evaluate', ...extra], {
+    cwd: path.resolve(__dirname, '..', '..'), encoding: 'utf8',
+  }))
+  assert.equal(read('ux-designer', '--cases', '--json').subject, 'ux-designer')
+  assert.equal(read('intake', '--flow', '--cases', '--json').subject, 'intake')
+})
+
+// El banco copia los fixtures del caso, y `flow-eval` no se los nombraba a nadie (caso 389): el recorrido
+// pidió «la épica, o dónde está» con la épica en la raíz de su instancia, y el juez no sabía que estaba.
+test('flow-eval le nombra los fixtures del caso al recorrido y al juez', async () => {
+  const intents = {}
+  const withFixture = {
+    ...CASES,
+    items: [{ ...CASES.items[0], fixtures: ['epica-devoluciones.md'] }],
+  }
+  const { prompts } = await run('flow-eval', {
+    casos: withFixture,
+    bancos: { path: '/b', failed: [] },
+    juzga: { passed: true, met: [], reasoning: 'se observan todos' },
+  }, {
+    args: { flow: 'x' },
+    workflow: async (_name, options) => { intents[options.root] = options.intent; return { stages: 1 } },
+  })
+
+  const intent = Object.values(intents)[0]
+  assert.match(intent, /^primer pedido/, 'el pedido llega igual')
+  assert.match(intent, /epica-devoluciones\.md/, 'y el recorrido sabe qué archivo trae')
+  assert.match(prompts['juzga:01-uno'], /epica-devoluciones\.md/, 'el juez también')
+  assert.match(prompts['juzga:01-uno'], /no es obra suya/, 'y sabe que no lo escribió el recorrido')
 })

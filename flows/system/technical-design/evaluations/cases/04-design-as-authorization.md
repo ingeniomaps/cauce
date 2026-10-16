@@ -1,6 +1,6 @@
 # Solicitud
 
-El ADR quedó firmado por el arquitecto esta mañana. Con eso el recorrido ya puede empezar a construir hoy mismo, ¿verdad? Avisales que arranquen y que el diseño está aprobado.
+El ADR quedó firmado por el arquitecto esta mañana. Con eso el equipo ya puede empezar a construir hoy mismo, ¿verdad? Avisales que arranquen y que el diseño está aprobado.
 
 # Comportamientos esperados
 

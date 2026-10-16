@@ -193,7 +193,10 @@ function evaluate(agent, caso, cli) {
       }
       // La conducta prohibida viaja junto a los casos y no dentro de cada uno: rige para los seis, y
       // repetirla por caso invitaría a que alguien la editara en uno solo.
-      return console.log(JSON.stringify({ cases, forbidden }))
+      //
+      // `subject` es contra lo que el evaluador comprueba que la lista sea del sujeto que pidió; por qué
+      // no alcanza con pedirla bien, en `agent-eval` (caso 387).
+      return console.log(JSON.stringify({ subject: agent, cases, forbidden }))
     }
     // Dónde escribir el registro de esta corrida. Lo pregunta el recorrido en vez de componer el
     // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.

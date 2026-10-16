@@ -172,7 +172,7 @@ test('el banco que se manda a borrar es el del caso, no el del recorrido', () =>
 // leyéndolo, y en la corrida las dos formas producen un veredicto que se lee igual.
 test('la evaluación de un recorrido lo ejecuta en vez de imitarlo', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'flow-eval.js'), 'utf8')
-  assert.match(evalWf, /workflow\('flow', \{ flow: FLOW, intent: item\.request/, 'corre el recorrido real')
+  assert.match(evalWf, /workflow\('flow', \{ flow: FLOW, intent: intentOf\(item\)/, 'corre el recorrido real')
   assert.match(evalWf, /root: `\$\{BENCH_ROOT\}\/\$\{item\.id\}`/, 'y lo corre sobre el banco del caso')
   assert.match(evalWf, /mediría la imitación/, 'y queda dicho por qué')
 

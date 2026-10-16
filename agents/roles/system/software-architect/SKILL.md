@@ -58,7 +58,7 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Diseñar y validar con quienes implementan: Frontend, Mobile, Backend, Data y QA.
 - Revisar amenazas, privacidad, entrega, observabilidad y recuperación con Security, Privacy, DevOps y SRE.
 - Incluir costo, soporte, habilidades y ownership en la evaluación, no sólo elegancia técnica.
-- Delegar decisiones locales a los recorridos dentro de guardrails claros y verificables.
+- Delegar decisiones locales a los equipos dentro de guardrails claros y verificables.
 
 ## Aprender sin reescribirse
 

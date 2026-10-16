@@ -92,6 +92,21 @@ diseño — eso vive en el commit y en el código.
   línea —cambiar un comentario, quitar una ruta— no es aprobarse nada, y el guard la frenaba con un mensaje que
   ofrecía confirmar un bloqueo que no existía; la persona terminaba editando a mano. Pasa sin preguntar, como ya
   pasaba cuando la persona nombraba el archivo; agregar una ruta sigue frenando (caso 374).
+- **Dos evaluaciones lanzadas a la vez ya no pueden juzgar los casos de otro sujeto.** El agente que lee los
+  casos guardó la lista en un archivo del scratchpad, que comparten todas las corridas de la sesión, y una
+  corrida de un cargo leyó la de otro. Sin filtro de casos, o con un id que comparten 32 cargos, habría juzgado
+  casos ajenos sin avisar. `evaluate --cases --json` dice de quién es la lista, y `agent-eval` y `flow-eval` se
+  detienen con `casos-ajenos` si no es la del sujeto que se pidió (caso 387).
+- **Seis cargos, un recorrido y el molde de empresa vuelven a decir «equipo» donde hablan de gente.** El cambio
+  de *teams* a *flows* de 0.46.0 reemplazó «equipo» por «recorrido» también donde nombraba a personas: el
+  `SKILL.md` de tech-lead se describía como «la autoridad técnica sobre un cambio concreto y el recorrido que lo
+  hace». Se devolvió en las 59 líneas donde el sentido era ése, incluidos ocho contratos, el exit gate de
+  `product-development` y `organization/company.md` y `domains.md`, que llegan con el próximo `upgrade`. Ninguna
+  conducta cambia (caso 388).
+- **`flow-eval` le dice al recorrido qué archivos trae el caso.** El banco los copiaba, pero el recorrido
+  recibía sólo el pedido y frenaba pidiendo justo lo que tenía delante: «la épica, o dónde está», con la épica en
+  la raíz. Ahora la intención los nombra y el juez sabe que no son obra del recorrido. Los dos casos que se
+  volvieron a medir pasan, y uno de ellos ganó el informe que daba por hecho y no traía (caso 389).
 
 ## [0.107.0] - 2026-10-10
 

@@ -27,8 +27,9 @@ const AGENT = String(input.agent || '').trim()
 const ONLY = onlyCases(input)
 
 const CASES = {
-  type: 'object', additionalProperties: false, required: ['items'],
+  type: 'object', additionalProperties: false, required: ['items', 'subject'],
   properties: {
+    subject: { type: 'string' },
     items: { type: 'array', items: {
       type: 'object', additionalProperties: false, required: ['id', 'request', 'expected'],
       properties: {
@@ -91,7 +92,8 @@ const context = await agent(
   `Set cli to the one that exists, and use it in both commands below. Report only what they printed. ` +
   `Read no other file.\n` +
   `1. "node <cli> evaluate ${AGENT} --cases --json" — it prints an object: copy its "cases" ` +
-  `array into items and its "forbidden" array into forbidden, both verbatim.\n` +
+  `array into items, its "forbidden" array into forbidden and its "subject" into subject, all ` +
+  `verbatim. Read that output from stdout: write no file.\n` +
   `2. "node <cli> agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
   `printed for ${AGENT}. That command prints paths relative to ${ROOT} and the next agents run from ` +
   `elsewhere, so the prefix is not optional.\n` +
@@ -101,6 +103,13 @@ const context = await agent(
 )
 if (!context || !context.items || !context.items.length) {
   return stop('sin-casos', `${AGENT} no tiene casos, o no se pudieron leer`)
+}
+// La lista la trae un agente, y lo que devuelve se comprueba acá en vez de confiarse a la instrucción:
+// dos corridas de una sesión comparten scratchpad, y una leyó la lista de otro cargo (caso 387). El
+// filtro de casos la frenó por accidente; sin filtro habría juzgado casos ajenos sin decir nada.
+if (context.subject !== AGENT) {
+  return stop('casos-ajenos',
+    `la lista de casos que llegó es de ${context.subject || '(sin sujeto)'}, no de ${AGENT}: no se corre`)
 }
 if (ONLY.length) {
   const pick = pickCases(context.items, ONLY)
