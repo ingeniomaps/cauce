@@ -474,6 +474,11 @@
     "branches": 97,
     "functions": 100
   },
+  "engine/planning/stops.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/planning/structure.js": {
     "lines": 100,
     "branches": 88,

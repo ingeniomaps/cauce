@@ -257,7 +257,7 @@ test('tree no muta archivos de estado', () => {
 // vacía que con toda la cola trabada por una persona. El vocabulario es el que ya usan las instancias
 // que venían de antes, y vive en el motor para que la prosa del protocolo no se le despegue.
 test('una parada se nombra con el vocabulario del protocolo', () => {
-  const P = require('../../engine/planning/parser')
+  const P = require('../../engine/planning/stops')
   const protocolo = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'template', 'planning', 'PROTOCOL.md'), 'utf8',
   )
@@ -266,9 +266,11 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
   const documentadas = [...seccion.matchAll(/`([a-z]+(?:-[a-z]+)+)`/g)].map((match) => match[1])
   assert.deepEqual(
     [...new Set(documentadas)].sort(),
-    [...P.STOP_REASONS].sort(),
+    [...P.STOP_REASONS, ...Object.keys(P.DEPRECATED_STOP_REASONS)].sort(),
     'la prosa y el motor enumeran el mismo vocabulario',
   )
+  // Y las mismas familias: la familia es lo que dice en qué tramo paró, y una que la prosa no nombra no se lee.
+  for (const family of Object.keys(P.STOP_FAMILIES)) assert.match(seccion, new RegExp(`\\*\\*${family}\\*\\*`), family)
 
   const base = tempRoot('cauce-parada-')
   const planning = path.join(base, 'planning')
