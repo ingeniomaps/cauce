@@ -177,9 +177,9 @@ function readCast(rest) {
 const ACCEPTANCE = /_Aceptaci[oó]n:\s*(.*?\S)_(?![A-Za-z0-9])/i
 // Los paréntesis del contrato de una línea de tarea. Se enumeran por su clave y no como «cualquier
 // paréntesis» para no llevarse puesta una aclaración de la prosa: la descripción usa paréntesis igual
-// que cualquier texto, y el criterio `(→ C1)` va acá porque `criteria` ya lo extrae. Su forma en cursiva,
-// `*(criterio C1)*`, se lleva los asteriscos: sin ellos quedaban sueltos en la descripción (caso 384).
-const MARKERS = new RegExp(String.raw`\*\(\s*criterios?\s[^)]*\)\*`
+// que cualquier texto, y el criterio `(→ C1)` va acá porque `criteria` ya lo extrae. Sus formas en cursiva,
+// `*(criterio C1)*` y `*(→ C1)*`, se llevan los asteriscos: sin ellos quedaban sueltos en la descripción (caso 384).
+const MARKERS = new RegExp(String.raw`\*\(\s*(?:→|->|criterios?\s)[^)]*\)\*`
   + String.raw`|\((?:→|->|criterios?\s|epic:|service:|cast:|depende:|sin partir:)[^)]*\)`, 'gi')
 
 // Cuántas condiciones tiene una aceptación escrita en prosa. Estuvo mucho tiempo sin contarse con una
