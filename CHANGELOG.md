@@ -37,6 +37,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Antigravity corre Cauce sólo en su proyecto.** `automation install . antigravity` pedía registrar el plugin con
+  `agy plugin install`, y esa copia, una por usuario, corría en toda carpeta sin plugin propio, con la raíz y las
+  reglas del proyecto que la registró. `agy` 1.4.0 descubre el plugin del `.agents/` del proyecto sin registrarlo,
+  así que Cauce ya no pide ese paso, `doctor` avisa si queda una copia global, y el puente se abstiene fuera de su
+  proyecto. **Si alguna vez corriste `agy plugin install .agents/plugins/cauce`, quitala con
+  `agy plugin uninstall cauce`**, y reinstalá el adaptador con `automation install . antigravity` (caso 392).
 - **`autobuild` para antes de construir si el plan toca gobernanza sin aprobar.** El commit de un subagente no puede
   esperar a una persona, así que la corrida se enteraba al final, con Build, Review, Verify y QA ya pagados. Ahora
   pregunta con `ops governed` después del plan y para con `governance-approval-needed`, nombrando qué escribir en
