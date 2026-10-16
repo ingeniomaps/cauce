@@ -893,7 +893,7 @@ while (blocker.length > 1 && QUOTES.includes(blocker[0]) && blocker[blocker.leng
 }
 if (blocker === 'awaiting-review') {
   const held = String(planning.checkpoint || '').trim()
-  return halt('awaiting-human-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
+  return halt('awaiting-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
 }
 if (blocker === 'blocked-on-human') {
   return halt('blocked-on-human', `toda la cola espera una acción humana. "node tools/ops.js human ${P}" las lista`
