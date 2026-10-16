@@ -14,6 +14,15 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.108.1] - 2026-10-16
+
+### Corregido
+
+- **Partir una tarea pide slugs nuevos para las partes.** Si una subtarea se quedaba con el slug de la partida,
+  la corrida paraba con `split-not-applied` y decía que la escritura no había ocurrido, con el partido ya escrito
+  y commiteado. Ahora la consigna pide un slug nuevo por parte, como dice R25. Si igual pasa, la parada dice qué
+  subtarea hay que renombrar antes de reanudar (caso 385).
+
 ## [0.108.0] - 2026-10-14
 
 ### Agregado
