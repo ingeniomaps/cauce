@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **Las razones de parada van por familias, y son las que `autobuild` usa de verdad.** `PROTOCOL.md` decía que toda
+  parada se nombraba con una de diez razones, y el recorrido paraba con cuarenta. Ahora el protocolo las agrupa en
+  nueve familias, según el tramo donde paró, y una prueba compara la lista con el recorrido en los dos sentidos.
+  **Si leés la razón de una parada**, el checkpoint humano sin resolver ahora se llama `awaiting-review`, como en
+  `ops context`, y no `awaiting-human-review`. `review-unresolved`, `verify-regression`, `verify-inconsistent` y
+  `budget-low` quedan deprecadas, con su reemplazo escrito: ningún recorrido las emitía (caso 390).
 - **`aplica:` también sirve para un momento del trabajo, no sólo para una superficie.** Una regla de commits o de un
   tracker puede declarar `aplica: al commitear` o `aplica: al escribir en Jira`: queda nombrada en el bloque y deja de
   cargarse en cada agente. En tres sesiones con una regla de commits sólo nombrada, los tres agentes la abrieron y la
