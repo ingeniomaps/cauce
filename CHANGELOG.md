@@ -14,7 +14,14 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
-## [0.108.1] - 2026-10-16
+## [0.109.0] - 2026-10-16
+
+### Cambiado
+
+- **`aplica:` también sirve para un momento del trabajo, no sólo para una superficie.** Una regla de commits o de un
+  tracker puede declarar `aplica: al commitear` o `aplica: al escribir en Jira`: queda nombrada en el bloque y deja de
+  cargarse en cada agente. En tres sesiones con una regla de commits sólo nombrada, los tres agentes la abrieron y la
+  aplicaron. Si en tu instancia un paso la saltea, cargala. Lo explica `planning/rules/README.md` (caso 381).
 
 ### Agregado
 

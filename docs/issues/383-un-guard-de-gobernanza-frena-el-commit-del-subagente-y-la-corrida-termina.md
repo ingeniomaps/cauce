@@ -2,14 +2,14 @@
 caso: 383
 titulo: un guard que pide aprobación frena el commit del subagente y la corrida termina en commit-failed
 estado: resuelto
-resuelto-en: 0.108.1
+resuelto-en: 0.109.0
 prioridad: media
 version-detectada: 0.106.0
 ---
 
 # 383 — El commit de una tarea que toca un archivo protegido frena en el subagente, que no puede esperar la aprobación; la corrida termina y deja el trabajo stageado
 
-**🟢 resuelto en 0.108.1** · detectado en 0.106.0 · prioridad **media** — pasó dos veces en el mismo día, en el mismo hito, con
+**🟢 resuelto en 0.109.0** · detectado en 0.106.0 · prioridad **media** — pasó dos veces en el mismo día, en el mismo hito, con
 el trabajo revisado y verificado. La sesión que lanzó la corrida commiteó lo mismo sin que el guard la frenara.
 
 ## Resumen
@@ -65,7 +65,7 @@ de procesos, que la instancia protege como gobernanza.
 
 ## Cierre
 
-**Resuelto en 0.108.1, con la primera opción y la mitad de la segunda.** Al contrastar el caso apareció lo que cambiaba
+**Resuelto en 0.109.0, con la primera opción y la mitad de la segunda.** Al contrastar el caso apareció lo que cambiaba
 la elección: el guard no es de la instancia sino de Cauce (`engine/hooks/governance.js`), y su patrón de rutas es fijo.
 El motor sí puede saber antes de construir qué va a frenar, sin pedirle nada a los guards de la empresa. La elección
 entre las dos opciones se le preguntó a Manuel, porque cambia cómo se comporta el recorrido, y eligió avisar antes de

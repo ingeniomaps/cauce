@@ -2,14 +2,14 @@
 caso: 382
 titulo: Ready deja pasar una aceptación que depende de algo que todavía no existe, y la duda aparece al final
 estado: resuelto
-resuelto-en: 0.108.1
+resuelto-en: 0.109.0
 prioridad: media
 version-detectada: 0.106.0
 ---
 
 # 382 — Una aceptación con «cuando exista X» pasa Ready, se construye, se revisa y se verifica, y recién al cerrar se escala como ambigua
 
-**🟢 resuelto en 0.108.1** · detectado en 0.106.0 · prioridad **media** — la pregunta costó el recorrido entero de la tarea antes
+**🟢 resuelto en 0.109.0** · detectado en 0.106.0 · prioridad **media** — la pregunta costó el recorrido entero de la tarea antes
 de hacerse, y además no hacía falta: la respuesta estaba en la propia tarea.
 
 ## Resumen
@@ -80,7 +80,7 @@ que necesita aserción y mutación, cuando sólo marca la costura con otra tarea
 
 ## Cierre
 
-**Resuelto en 0.108.1, con una causa que ninguna de las dos lecturas del caso nombraba.** Se leyeron los diarios
+**Resuelto en 0.109.0, con una causa que ninguna de las dos lecturas del caso nombraba.** Se leyeron los diarios
 de las dos corridas (`journal.jsonl` de `wf_81ce8e36-77f` y de `wf_b32d7c2f-7fb`), siguiendo la aceptación de una fase a la siguiente:
 
 - **Primera ocurrencia.** La línea decía «el del celular cambia con el país». Ready devolvió `ready: true` con un

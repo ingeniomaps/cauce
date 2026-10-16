@@ -2,14 +2,14 @@
 caso: 384
 titulo: check no avisa una tarea de la cola sin «_Aceptación: …_», y autobuild la recibiría vacía
 estado: resuelto
-resuelto-en: 0.108.1
+resuelto-en: 0.109.0
 prioridad: baja
 version-detectada: 0.106.0
 ---
 
 # 384 — Una línea del backlog con la aceptación escrita en prosa, sin el rótulo, pasa `check` en verde y el parser la lee como aceptación vacía
 
-**🟢 resuelto en 0.108.1** · detectado en 0.106.0 · prioridad **baja** — se vio antes de lanzar y no costó una corrida, pero
+**🟢 resuelto en 0.109.0** · detectado en 0.106.0 · prioridad **baja** — se vio antes de lanzar y no costó una corrida, pero
 habría llegado a Ready una tarea sin aceptación con `check` en verde.
 
 ## Resumen
@@ -38,7 +38,7 @@ Al promover una épica a la cola, en la instancia `acme-ops`. Se notó leyendo e
 
 ## Cierre
 
-**Resuelto en 0.108.1 como «no es defecto»**, con un arreglo menor que apareció al reproducirlo. Las anclas del caso
+**Resuelto en 0.109.0 como «no es defecto»**, con un arreglo menor que apareció al reproducirlo. Las anclas del caso
 siguen en pie: `taskFromLine` está ahora en `engine/planning/parser.js:212` y el aviso de las recurrentes en
 `engine/planning/recurring.js:91`. Lo que no se sostiene es la conclusión: la regla que el caso pedía existe en
 `engine/planning/contracts.js:393` desde v0.2.0, así que en 0.106.0 ya estaba. Una tarea sin aceptación propia pasa

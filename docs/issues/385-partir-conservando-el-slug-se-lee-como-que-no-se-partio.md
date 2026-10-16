@@ -2,14 +2,14 @@
 caso: 385
 titulo: partir una tarea conservando su slug en la primera subtarea se lee como que el partido no ocurrió
 estado: resuelto
-resuelto-en: 0.108.1
+resuelto-en: 0.109.0
 prioridad: media
 version-detectada: 0.106.0
 ---
 
 # 385 — Decompose parte la tarea y deja el slug original en la primera subtarea, citando R25 —que pide lo contrario—; el recorrido ve el mismo slug en la cola y para con `split-not-applied`
 
-**🟢 resuelto en 0.108.1** · detectado en 0.106.0 · prioridad **media** — la corrida para sobre un partido bien hecho y
+**🟢 resuelto en 0.109.0** · detectado en 0.106.0 · prioridad **media** — la corrida para sobre un partido bien hecho y
 commiteado; relanzar puede repetirlo si la estimación vuelve a pedir partir.
 
 ## Resumen
@@ -68,7 +68,7 @@ Primera corrida después de aligerar las reglas de la instancia; se cortó a los
 
 ## Cierre
 
-**Resuelto en 0.108.1.** Al contrastar el caso contra el fuente apareció lo que su enunciado no veía: el dilema de
+**Resuelto en 0.109.0.** Al contrastar el caso contra el fuente apareció lo que su enunciado no veía: el dilema de
 «Tradeoffs» ya lo decide R25 —«las partes son unidades nuevas, con identificadores nuevos, y la original se cierra
 diciendo en qué se partió»—. El agente citó la regla al revés, y el caso heredó esa lectura en su encabezado. El
 arreglo del 376, que reapunta los `(depende: …)` a las partes, se apoya además en que el slug de la partida deja

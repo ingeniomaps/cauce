@@ -2,14 +2,14 @@
 caso: 377
 titulo: el escriba commitea el estado de planning sin el scope del proyecto
 estado: resuelto
-resuelto-en: 0.108.1
+resuelto-en: 0.109.0
 prioridad: baja
 version-detectada: 0.106.1
 ---
 
 # 377 — Dentro de una misma corrida, el escriba usa `docs(planning):` en unos commits de estado y `docs:` sin scope en otros, aunque la regla del proyecto fija el scope
 
-**🟢 resuelto en 0.108.1** · detectado en 0.106.1 · prioridad **baja**.
+**🟢 resuelto en 0.109.0** · detectado en 0.106.1 · prioridad **baja**.
 
 ## Resumen
 
@@ -80,7 +80,7 @@ Instancia sidecar `acme-ops`, 2026-10-14, revisando el historial de la corrida.
 
 ## Cierre
 
-**Resuelto en 0.108.1, con el arreglo que el caso proponía y sin nombrar el idioma.** Las plantillas siguen donde la
+**Resuelto en 0.109.0, con el arreglo que el caso proponía y sin nombrar el idioma.** Las plantillas siguen donde la
 causa raíz las ubicó: `chore(planning)` en el commit de una parada, en el del cierre, en la reparación del cierre y
 en los dos del checkpoint. Todas pasan por uno de dos lugares, `scribeCommit` o el `committing` del checkpoint, y la
 línea nueva va en esos dos y no en cada pedido: lo que se agregue después pasa por el mismo lugar y la lleva. Dice que
