@@ -39,3 +39,12 @@ test('cada razón vive en una sola familia', () => {
   const all = Object.values(P.STOP_FAMILIES).flat()
   assert.equal(new Set(all).size, all.length, 'una razón repetida entre familias')
 })
+
+// Una razón que llega por variable o por template no la ve el comparador de arriba, que lee literales. Las dos que hay
+// hoy se nombran acá: `halt`, que pasa a `stop` la que recibe, y `planRejected`, cuyos nombres sí se leen arriba.
+// Una tercera no se cuela en silencio, que es como la lista se había quedado atrás (revisión del caso 390).
+test('una parada que no nombra su razón con un literal está declarada', () => {
+  const loose = [...SOURCE.matchAll(/\b(?:halt|stop)\(\s*([^'\s)][^,)]*)/g)].map((match) => match[1].trim())
+  assert.deepEqual(loose.sort(), ['reason', 'reason'])
+})
+
