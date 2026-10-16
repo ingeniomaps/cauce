@@ -41,8 +41,8 @@ diseño — eso vive en el commit y en el código.
   esperar a una persona, así que la corrida se enteraba al final, con Build, Review, Verify y QA ya pagados. Ahora
   pregunta con `ops governed` después del plan y para con `governance-approval-needed`, nombrando qué escribir en
   `planning/.ops-approval` y dejando la fila en `human/`. Si el Commit igual se frena por una aprobación, por un archivo
-  que el plan no nombró, para con `commit-needs-approval`. Las dos paradas commitean su estado con un asunto que dice
-  qué esperan, y ya no lo rotulan como bloqueado (caso 383).
+  que el plan no nombró, para con `commit-needs-approval`, con el trabajo stageado y sin el commit de planning que la
+  rotulaba bloqueada (caso 383).
 - **La descripción de una tarea ya no arrastra los asteriscos de un criterio en cursiva.** Una línea que cita su
   criterio como `*(criterio C1)*` le pasaba a cada fase una descripción terminada en `**` (caso 384).
 - **El commit de estado de planning conserva el scope `planning` cuando tus reglas cambian el asunto.** Si una
