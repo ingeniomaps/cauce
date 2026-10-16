@@ -31,6 +31,9 @@ diseño — eso vive en el commit y en el código.
   con `commit-needs-approval` sin el commit de planning que la rotulaba bloqueada (caso 383).
 - **La descripción de una tarea ya no arrastra los asteriscos de un criterio en cursiva.** Una línea que cita su
   criterio como `*(criterio C1)*` le pasaba a cada fase una descripción terminada en `**` (caso 384).
+- **El commit de estado de planning conserva el scope `planning` cuando tus reglas cambian el asunto.** Si una
+  regla tuya pedía otro tipo, el agente reescribía `chore(planning): …` y a veces se le perdía el scope. Ahora el
+  pedido dice que el scope y el slug se conservan, salvo que tu regla fije otro scope (caso 377).
 
 - **Partir una tarea pide slugs nuevos para las partes.** Si una subtarea se quedaba con el slug de la partida,
   la corrida paraba con `split-not-applied` y decía que la escritura no había ocurrido, con el partido ya escrito
