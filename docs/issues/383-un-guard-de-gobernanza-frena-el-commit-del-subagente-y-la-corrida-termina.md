@@ -74,7 +74,7 @@ Build.
 **Lo que se corrió para saber que funciona.**
 
 - Arnés, `test/workflows/autobuild-governance.test.js`: tres pruebas. Con el `autobuild.js` de `main` fallan dos: la
-  parada antes de Build y la parada del Commit sin rótulo. La tercera, que sigue si la pregunta falló o no hay nada
+  parada antes de Build y la parada del Commit sin «block». La tercera, que sigue si la pregunta falló o no hay nada
   pendiente, mide que el aviso no pare de más.
 - CLI, `test/planning/governed.test.js`: tres pruebas. Las tres fallan antes de que el comando existiera
   (`Comando desconocido: governed`).
@@ -104,16 +104,35 @@ Build.
 
 - **Preguntarle a los guards antes de Build si los archivos del plan van a pedir aprobación — se hizo distinto**: no se
   le pregunta al guard, que no tiene un modo «sólo decir», sino a `ops governed`, que usa la misma función del guard
-  (`governedOf`) y descuenta el mismo `.ops-approval`. La corrida para antes de construir y nombra qué aprobar. Si la
-  pregunta no se puede hacer, sigue, porque el guard frena igual al commitear. Cuesta un agente de oficina por tarea con
-  plan.
+  (`governedOf`) y descuenta el mismo `.ops-approval`. La corrida para antes de construir y nombra qué aprobar. Deja su
+  fila en `human/`, como pide `PROTOCOL.md` para toda parada que necesita a una persona, y suelta la reserva como las
+  otras paradas de antes de construir. El commit de planning dice `await governance approval for <tarea>` y no
+  «block». Si la pregunta no se puede hacer, sigue, porque el guard frena igual al commitear. Cuesta un agente de
+  oficina por tarea con plan. Una tarea mecánica no pasa por esta pregunta, porque su plan no trae archivos: ahí el
+  aviso sigue llegando en el Commit.
 - **Que `commit-failed` por una aprobación pendiente deje la tarea reanudable, sin el commit de bloqueo — se hizo la
-  mitad**: para con `commit-needs-approval`, sin el commit «block», con el WIP y el reclamo puestos. Reanudar todavía
-  repite Review, Verify y QA. Saltar directo al Commit era la opción que no se eligió: pide guardar en el WIP que esas
+  mitad**: para con `commit-needs-approval`, con su fila en `human/` y un commit de planning que dice
+  `await commit approval for <tarea>` en vez de «block», y deja el WIP y el reclamo puestos. Reanudar todavía repite
+  Review, Verify y QA. Saltar directo al Commit era la opción que no se eligió: pide guardar en el WIP que esas
   fases pasaron y comprobar que el árbol no cambió.
 - **«Los guards que no tengan ese modo siguen frenando al final» — no aplica**: la pregunta no depende de los guards
-  sino del motor. Lo que sigue frenando al final es un archivo que el plan no nombró, y ahí aplica la parada sin
-  rótulo.
+  sino del motor. Lo que sigue frenando al final es un archivo que el plan no nombró, y ahí aplica la parada del
+  Commit.
+
+**Lo que encontró la revisión del conjunto** (`/code-review` sobre la rama entera, antes del PR):
+
+- La primera versión de las dos paradas no dejaba fila en `human/`, y la del Commit tampoco commiteaba su estado: la
+  instancia quedaba sucia, que es lo que el 289 había cerrado. Las dos dejan ahora su fila y su commit, con un asunto
+  que dice qué esperan.
+- `ops governed` elegía la raíz para un archivo nuevo del primer nivel del servicio, porque la carpeta de esa ruta
+  siempre existe. Lo dejaba fuera de la gobernanza que el guard sí le aplica. Ahora una ruta que no nombra al servicio
+  se lee desde el servicio.
+- Una ruta que llega por un enlace simbólico se nombraba con el enlace puesto, y no era la del índice. Ahora se
+  resuelve real.
+- El comando se armaba sin comillas, y un `--service` vacío se comía el `--json`. Ahora va citado, y sin servicio no
+  se pasa.
+
+Cada arreglo entró con su prueba. Siete mutaciones en una copia, las siete en rojo.
 
 **Lo que el caso no preveía.** `PROTOCOL.md` dice que «toda parada se nombra con una de éstas» y enumera diez razones;
 `autobuild` usa treinta y seis. Las dos nuevas siguen la forma del recorrido y no la lista. Salió como caso propio:

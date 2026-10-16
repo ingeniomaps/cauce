@@ -59,7 +59,9 @@ siguen en pie: `taskFromLine` está ahora en `engine/planning/parser.js:212` y e
 reconoce a propósito el criterio en cursiva, `*(criterio C1)*` (`parser.js:97`), pero al recortar los marcadores de
 la descripción sacaba el paréntesis y dejaba los asteriscos. Ahora se los lleva. La prueba está en
 `test/planning/backlog.test.js`, «la línea de una tarea entrega su descripción, sin la aceptación ni los
-marcadores»: falla antes del arreglo con `actual: 'Hace algo. Rojo si: falla. **'` y pasa después. El banco, vuelto a
+marcadores»: falla antes del arreglo con `actual: 'Hace algo. Rojo si: falla. **'` y pasa después. La revisión del conjunto, antes del PR,
+encontró la misma falla en la otra forma en cursiva que el parser lee, `*(→ C1)*`, y se arregló en el mismo
+lugar, con su aserción. El banco, vuelto a
 leer, da `"description": "Hace algo. Rojo si: falla."`.
 
 **Recorrido de lo que el caso enumeraba.**

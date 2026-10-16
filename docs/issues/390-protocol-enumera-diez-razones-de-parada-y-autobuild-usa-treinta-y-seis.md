@@ -98,6 +98,10 @@ Se le preguntó a Manuel qué es la lista, porque es `template/` y baja a toda e
   - una razón repetida entre dos familias;
   - la prosa sin una de las familias.
 - `test/workflows/autobuild.test.js` mide que el checkpoint humano sin resolver para con `awaiting-review`.
+- La revisión del conjunto, antes del PR, encontró que el comparador sólo leía razones escritas como literal entre
+  comillas simples. Una razón por variable o por template se le colaba. Ahora una cuarta prueba exige que toda parada
+  que no nombra su razón con un literal esté declarada: hoy son dos, `halt` y `planRejected`. Una mutación con una
+  razón escrita como template la pone en rojo.
 
 **Recorrido de lo que el caso enumeraba.**
 

@@ -102,6 +102,10 @@ de existir. Así que no hubo nada que decidir.
   aceptación que ya no es la de esa tarea. Lo que cambia es que la parada dice «una de ellas reusó el slug de
   <tarea>: renombrala con uno nuevo antes de reanudar», en vez de «la escritura no ocurrió». La señal es
   `queued`. La aceptación ofrecida descartaba menos casos, y `queued` ya venía en la lectura.
+  La revisión del conjunto, antes del PR, encontró que «la cola creció» no alcanzaba: si la partida queda entera al
+  lado de todas sus partes, la cola también crece, y la parada culpaba a un slug que nadie reusó. Ahora se cuenta
+  cuánto creció. Si fue una menos que las partes, una de ellas reusó el slug. Si fueron todas, la partida quedó en la
+  cola y lo que falta es sacarla. La prueba cubre los dos casos y una mutación que los confunde la pone en rojo.
 - **Pedirle al agente que no reuse el slug — se hizo** en la consigna de `split`, con la razón de R25 dicha por
   su contenido: un prompt instalado no cita reglas por número (caso 105), y la puerta lo frenó la primera vez.
 - **«Elegir siempre slugs nuevos contradice el consejo de conservar el identificador» — se decidió que no hay
