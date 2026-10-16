@@ -9,7 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const AP = require('../hooks/approval')
 const { governedOf } = require('../hooks/governance')
-const { toplevel } = require('../hooks/input')
+const { realPath, toplevel } = require('../hooks/input')
 const { fail, planningRoot, USAGE } = require('./io')
 
 // El directorio existente más cercano: un archivo que el plan va a crear todavía no está, y su repositorio
@@ -20,13 +20,24 @@ function existingDir(target) {
   return current
 }
 
-// Un plan escribe sus rutas desde la raíz o desde el servicio de la tarea, y el esquema no dice cuál. Gana la
-// que ya existe; si ninguna existe todavía, la que tiene su carpeta.
+// Un plan escribe sus rutas desde la raíz o desde el servicio de la tarea, y el esquema no dice cuál. La que ya
+// nombra al servicio está escrita desde la raíz; cualquier otra, desde el servicio. Gana la que ya existe y, si
+// ninguna existe todavía, esa lectura: preguntar por la carpeta daba la raíz para un archivo nuevo del primer
+// nivel del servicio, porque esa carpeta siempre existe (revisión del caso 383).
 function resolve(file, service) {
-  const candidates = [path.resolve(file), ...(service ? [path.resolve(service, file)] : [])]
-  return candidates.find((one) => fs.existsSync(one))
-    || candidates.find((one) => fs.existsSync(path.dirname(one)))
-    || candidates[0]
+  const fromRoot = path.resolve(file)
+  if (!service) return fromRoot
+  const fromService = path.resolve(service, file)
+  const named = fromRoot.startsWith(`${path.resolve(service)}${path.sep}`)
+  const candidates = named ? [fromRoot, fromService] : [fromService, fromRoot]
+  return candidates.find((one) => fs.existsSync(one)) || candidates[0]
+}
+
+// La ruta real, también para un archivo que todavía no existe: el repositorio sale real de git, y relativizar una
+// ruta con el enlace puesto contra él da una que el índice no nombra.
+function real(target) {
+  const dir = existingDir(target)
+  return path.join(realPath(dir), path.relative(dir, target))
 }
 
 function governed(dir, files, cli) {
@@ -36,7 +47,7 @@ function governed(dir, files, cli) {
   const approved = new Set(AP.read(ops))
   const found = []
   for (const file of files) {
-    const target = resolve(file, cli.value('--service', ''))
+    const target = real(resolve(file, cli.value('--service', '')))
     const repo = toplevel(existingDir(target))
     // Se nombra como la nombra el índice, que es lo que el guard frena y lo que una persona escribe al aprobar.
     const indexed = path.relative(repo, target)

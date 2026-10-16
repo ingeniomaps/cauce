@@ -51,3 +51,22 @@ test('governed resuelve una ruta escrita desde el servicio de la tarea', () => {
   assert.deepEqual(pending(root, ['--service', 'automatization', 'tests/nueva.test.js']),
     ['automatization/tests/nueva.test.js'])
 })
+
+// Un archivo nuevo en el primer nivel del servicio: su carpeta existe vista desde la raíz y desde el servicio, y
+// elegir la raíz lo dejaba fuera de la gobernanza que el guard sí le va a aplicar (revisión del caso 383).
+test('governed resuelve desde el servicio un archivo nuevo en su primer nivel', () => {
+  const root = instance('ops-governed-top-')
+  assert.deepEqual(pending(root, ['--service', 'automatization', 'nueva.test.js']), ['automatization/nueva.test.js'])
+  // Y una ruta escrita desde la raíz, que ya nombra al servicio, sigue resolviendo desde la raíz.
+  assert.deepEqual(pending(root, ['--service', 'automatization', 'automatization/otra.test.js']),
+    ['automatization/otra.test.js'])
+})
+
+// El repositorio sale real de git y la ruta llegaba con el enlace puesto, así que no era la que el índice nombra:
+// editar `planning-enlace/FLOW.md` stagea `planning/FLOW.md`, que el guard frena y que esto no veía.
+test('governed nombra la ruta del índice aunque el plan llegue por un enlace simbólico',
+  { skip: process.platform === 'win32' }, () => {
+  const root = instance('ops-governed-link-')
+  fs.symlinkSync(path.join(root, 'planning'), path.join(root, 'planning-enlace'))
+  assert.deepEqual(pending(root, ['planning-enlace/FLOW.md']), ['planning/FLOW.md'])
+})
