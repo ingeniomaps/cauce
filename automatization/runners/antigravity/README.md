@@ -9,9 +9,20 @@ node tools/ops.js automation doctor . antigravity
 ```
 
 `automation install` deja los archivos y no autentica. **No hace falta registrar nada**: `agy` 1.4.0 descubre el
-plugin en el `.agents/` del proyecto, buscando desde la carpeta donde se abre hasta la raíz del proyecto, y lo
-carga sólo ahí. Medido el 2026-10-16 (caso 392). Una sesión en otra carpeta no lo ve, y dos proyectos con Cauce
-usan cada uno el suyo.
+plugin en el `.agents/` del proyecto, y lo carga sólo ahí. Una sesión en otra carpeta no lo ve, y dos proyectos con
+Cauce usan cada uno el suyo. Medido el 2026-10-16 (caso 392).
+
+**La sesión se abre en la carpeta donde quedó `.agents/`.** `agy` busca desde la carpeta en que se abre hasta la raíz
+del repo git, y no más arriba. Sin git, mira sólo esa carpeta (caso 393, medido el 2026-10-17). Por eso no carga Cauce
+una sesión en una subcarpeta de un workspace sin git, ni una en un repo de producto con git propio, que es la forma
+normal de una instancia sidecar. Para trabajar desde ahí se suma la carpeta del workspace:
+
+```bash
+agy --add-dir <carpeta del workspace>
+```
+
+Con eso corren los guards y las reglas encuentran la instancia. `install` lo recuerda al terminar, con la ruta
+puesta.
 
 **No lo registres con `agy plugin install`.** Ese comando copia el plugin a `~/.gemini/config/plugins/cauce/`, una
 copia por usuario, y `agy` la corre en **toda** carpeta que no tenga plugin propio, con la raíz, las reglas y los

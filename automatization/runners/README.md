@@ -11,6 +11,7 @@ Cada adaptador traduce el mismo toolkit al espacio de nombres de su herramienta.
 | `artifacts` | los recorridos y cualquier archivo que el adaptador aporte |
 | `capabilities` | qué ejecuta de verdad —`nativeHooks`, `nativeWorkflows`, `nativeSkills`, `checkpointing`, `projectInstructions`— y qué queda como protocolo manual |
 | `roleSkills` | dónde se instala el catálogo de cargos, cuando la herramienta tiene skills |
+| `addDir` | el flag con el que una sesión abierta en otra carpeta suma la de instalación y carga lo instalado |
 | `strayCopy` | dónde quedaría una copia del plugin fuera del proyecto, que `doctor` señala, y cómo se quita |
 | `commands` | los nombres de los recorridos y con qué prefijo se los invoca acá |
 

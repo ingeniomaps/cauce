@@ -117,6 +117,12 @@ Los dos primeros son el mismo modo —`sidecar`— y difieren sólo en dónde qu
 repo o al lado. El tercero hay que pedirlo explícito porque es el único que despliega el molde en el
 primer nivel del repositorio.
 
+**La sesión del runner se abre donde quedó instalado**: en la raíz del repo, o en la carpeta que contiene los repos
+en el sidecar de al lado. Los runners cargan la configuración desde la carpeta en que se abren hasta la raíz de su
+repo git, y no más arriba. Una sesión abierta dentro de un repo de producto no ve los guards de la carpeta que lo
+contiene, y tampoco una abierta en una subcarpeta sin git. No falla: corre sin Cauce. `install` lo recuerda con la
+ruta puesta, y Antigravity tiene una salida para trabajar desde el repo: `agy --add-dir <carpeta>` (caso 393).
+
 El destino debe estar vacío o no existir. `--force` completa archivos faltantes en un directorio que ya
 tiene cosas, y nunca sobrescribe los que ya están.
 

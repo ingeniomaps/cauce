@@ -37,7 +37,8 @@ Nunca se convierten en una segunda fuente de verdad: se cambia primero `automati
 Cada `runners/<nombre>/` debe incluir `README.md` y `manifest.json`, y proporcionar archivos fuente válidos
 para todos sus destinos. El manifest declara el ejecutable, `config`, `instructions`, `artifacts`,
 `capabilities`, y —cuando apliquen— `roleSkills` (dónde van los cargos), `strayCopy` (una copia fuera del
-proyecto que sobra, y cómo se quita) y `commands` (los recorridos y con qué prefijo se los invoca).
+proyecto que sobra, y cómo se quita), `addDir` (el flag que suma la carpeta de instalación a una sesión abierta en
+otra) y `commands` (los recorridos y con qué prefijo se los invoca).
 
 Al añadir o cambiar un runner:
 
