@@ -100,16 +100,23 @@ quedado o el sistema. Es el sistema: la copia editada a mano es la parte que es 
 
 - Pruebas, las dos con `HOME` en un temporal:
   - `test/wiring/antigravity-scope.test.js`: el puente instalado, lanzado como una copia global, deja pasar un
-    `git push` en otra carpeta y lo frena en la suya. Si el payload no trae la carpeta, sigue juzgando con su raíz.
+    `git push` en otra carpeta y en una de más arriba, y lo frena en la suya, en una subcarpeta y nombrada por un
+    symlink. Si el payload no trae la carpeta, sigue juzgando con su raíz, y un `workspacePaths` con otra forma no lo
+    tumba.
   - `test/wiring/registration.test.js`, reescrita con el contrato nuevo: `install` no imprime `agy plugin install`,
     y con una copia global registrada `doctor` da error e `install` advierte, las dos veces con
-    `agy plugin uninstall cauce`.
+    `agy plugin uninstall cauce`. Un plugin ajeno que se llame `cauce` no es asunto de `doctor`.
   - Con el puente, el registro y el manifiesto de antes, las tres pruebas que cambian de contrato fallan.
-- Cuatro mutaciones en una copia del árbol, las cuatro en rojo:
+- Siete mutaciones en una copia del árbol, las siete en rojo:
   - sin la abstención;
   - abstenerse también sin carpeta en el payload;
   - abstenerse dentro del propio proyecto;
-  - sin el aviso de la copia global.
+  - sin el aviso de la copia global;
+  - comparar sin `realpath`;
+  - aceptar sólo la carpeta exacta, sin subcarpetas;
+  - aceptar también las carpetas de más arriba.
+
+  Con el puente y el registro de antes, las pruebas nuevas de la revisión también fallan.
 - **Sesiones reales de `agy` 1.4.0**, el 2026-10-16, con un `HOME` aislado, sin tocar la configuración del dueño.
   Había dos proyectos con Cauce instalado (`automation install . antigravity`, con el motor de la rama) y una
   carpeta sin Cauce. Se le pidió a `agy` correr `git add --all`, que el guard `git-add` frena.
@@ -142,6 +149,20 @@ quedado o el sistema. Es el sistema: la copia editada a mano es la parte que es 
   cubre con código.** Se midió en 1.4.0, que es la instalada. El README dice desde cuándo vale y qué hacer si no.
 - **«La copia global que ya está en una máquina no se arregla sola» — se dice en el CHANGELOG**, con el comando que
   la quita. `doctor` lo detecta desde 0.109.0.
+
+**La revisión del diff** encontró cuatro defectos en el primer arreglo, y los cuatro se corrigieron con su prueba:
+- El puente contaba como propia cualquier carpeta de más arriba, así que una copia global seguía juzgando si
+  `agy` se abría en la carpeta que agrupa proyectos.
+- Comparaba las rutas sin resolver symlinks. Como abstenerse es dejar pasar, un symlink de un solo lado lo callaba
+  dentro de su propio proyecto.
+- Un `workspacePaths` que no fuera una lista lo tumbaba sin respuesta.
+- `doctor` marcaba cualquier plugin llamado `cauce`, aunque no fuera de Cauce.
+
+También quedaban `activation` en el contrato de runners y comentarios que todavía describían la copia registrada
+como la que `agy` corre. Se actualizaron.
+
+Las tres primeras se probaron con el puente instalado, lanzado como copia global. No se repitieron con sesiones
+reales de `agy`, porque dependen de lo que ya se midió: `agy` manda en `workspacePaths` la carpeta donde se abre.
 
 **Lo que el caso no preveía.** La copia global le gana a todo menos a un plugin de proyecto con el mismo nombre. Por
 eso dos proyectos con Cauce nunca se pisaban entre sí: cada uno corría el suyo. El daño era sólo en las carpetas sin
