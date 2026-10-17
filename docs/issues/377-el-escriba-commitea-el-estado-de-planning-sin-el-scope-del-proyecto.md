@@ -1,14 +1,15 @@
 ---
 caso: 377
 titulo: el escriba commitea el estado de planning sin el scope del proyecto
-estado: abierto
+estado: resuelto
+resuelto-en: 0.109.0
 prioridad: baja
 version-detectada: 0.106.1
 ---
 
 # 377 — Dentro de una misma corrida, el escriba usa `docs(planning):` en unos commits de estado y `docs:` sin scope en otros, aunque la regla del proyecto fija el scope
 
-**🔴 abierto** · detectado en 0.106.1 · prioridad **baja**.
+**🟢 resuelto en 0.109.0** · detectado en 0.106.1 · prioridad **baja**.
 
 ## Resumen
 
@@ -76,3 +77,50 @@ Instancia sidecar `acme-ops`, 2026-10-14, revisando el historial de la corrida.
   sin fijar.
 - [376](./376-partir-una-tarea-deja-a-quien-dependia-de-ella-apuntando-a-un-slug-que-ya-no-existe.md) y
   [378](./378-el-plan-sigue-con-la-aceptacion-vieja-despues-de-que-la-corrida-la-corrigio.md) — misma corrida.
+
+## Cierre
+
+**Resuelto en 0.109.0, con el arreglo que el caso proponía y sin nombrar el idioma.** Las plantillas siguen donde la
+causa raíz las ubicó: `chore(planning)` en el commit de una parada, en el del cierre, en la reparación del cierre y
+en los dos del checkpoint. Todas pasan por uno de dos lugares, `scribeCommit` o el `committing` del checkpoint, y la
+línea nueva va en esos dos y no en cada pedido: lo que se agregue después pasa por el mismo lugar y la lleva. Dice que
+el scope `planning` y el slug se conservan tal cual si las reglas del proyecto cambian el asunto, salvo que la regla
+fije otro scope. No dice que «el tipo y el idioma los fija la regla», como proponía el caso: una prueba del 302 exige
+que ningún pedido de commit nombre el idioma, porque eso es de la regla, y la frase lo habría nombrado.
+
+**Lo que se corrió para saber que funciona.**
+
+- Arnés, `test/workflows/autobuild-claim.test.js`, «todo commit de planning conserva el scope y el slug aunque la
+  regla cambie el asunto»: recorre todo pedido que dicta un `chore(planning)` y exige la línea. Con el `autobuild.js`
+  de `main` falla en `Done|planning-commit`. Dos mutaciones en una copia del árbol, las dos en rojo: sin la línea en
+  `scribeCommit`, rojo en `Done|planning-commit`; sin la línea en el checkpoint, rojo en `Closing|human-checkpoint`.
+- **Corrida real del pedido de commit de una parada.** El prompt volcado desde el arnés se corrió con `claude -p` el
+  2026-10-16, seis veces, cada una sobre su copia de un banco `tarea` fuera del repositorio. Cada copia tenía un
+  `CLAUDE.md` con una regla como la P1 de la instancia, «todo commit que sólo toca `planning/` usa el tipo `docs`», y
+  un cambio de planning sin commitear.
+  - Las tres corridas con la consigna nueva commitearon `docs(planning): block tarea-medida`: aplicaron la regla y
+    conservaron el scope.
+  - Cada corrida costó entre USD 0,25 y 0,31.
+- **Lo que esa prueba no muestra:** las tres corridas de control, con la consigna de `main`, también commitearon
+  `docs(planning): block tarea-medida`. La instancia perdió el scope en dos de cinco commits con mucho más contexto, y
+  en el banco no se reprodujo. Lo que queda probado es que la consigna nueva llega a todo commit de planning y que un
+  agente real la cumple aplicando a la vez la regla de la empresa. Que baje la varianza que se vio en la instancia no
+  está probado: lo mide una corrida real larga, como el propio caso decía en «Qué podría salir mal».
+
+- **Y en `/autobuild` real** (ver el cierre del 383, que lo corrió con una regla equivalente de la empresa). Los tres
+  commits de planning de esas corridas conservaron el scope aplicando la regla:
+  - `docs(planning): await governance approval for prueba-de-humo`, de una parada;
+  - `docs(planning): close prueba-de-humo`, del cierre;
+  - `docs(planning): await review of humo`, del checkpoint.
+  Son tres caminos distintos, y el último pasa por `committing`, el segundo lugar donde va la línea.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **Una línea en los prompts que dictan `chore(planning)` — se hizo distinto**: en los dos lugares por los que pasan
+  todos, y sin nombrar el tipo ni el idioma.
+- **Una prueba de arnés que la asierte en cada uno — se hizo** como un recorrido de todos los pedidos que dictan el
+  asunto, no una lista de etiquetas. Un pedido nuevo que dicte `chore(planning)` sin la línea la pone en rojo.
+- **No un guard — se decidió que no**, por la razón del caso: el motor no declara cuál es el scope de planning de un
+  proyecto.
+- **«Una empresa cuya regla cambie también el scope» — se hizo**: la línea dice «salvo que la regla fije otro scope».
+

@@ -180,6 +180,10 @@ const ESTIMATE = {
     } } },
   },
 }
+const GOVERNED = {
+  type: 'object', additionalProperties: false, required: ['readOk', 'pending'],
+  properties: { readOk: { type: 'boolean' }, pending: { type: 'array', items: { type: 'string' } } },
+}
 const PLAN = {
   type: 'object', additionalProperties: false, required: ['approach', 'steps', 'files', 'testStrategy'],
   properties: {
@@ -358,6 +362,7 @@ const COMMIT = {
     // siempre `main`, y el recorrido no corre git.
     branch: { type: 'string' }, live: { type: 'boolean' },
     leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
+    needsApproval: { type: 'array', items: { type: 'string' } },
   },
 }
 // Acompaña a todo prompt que commitea. El guard que revisa un commit lee el índice antes de que el comando
@@ -738,7 +743,13 @@ const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, option
 // y lo que el agente de siempre hacía por tenerlas a la vista se fue sin que nadie lo notara (casos 301 y 302).
 // Lo que juzga —Ready, Plan, Build, Review, Verify, QA— sigue con el agente de siempre.
 const scribe = (prompt, options = {}) => write(prompt, { ...options, agentType: 'cauce-scribe' })
-const scribeCommit = (prompt, options = {}) => run(prompt, { ...options, agentType: 'cauce-scribe' })
+// Lo que el escriba cambia del asunto dictado sale de las reglas del proyecto, y al reescribirlo a veces se llevaba
+// puesto el scope: en una corrida, dos de cinco commits de estado salieron sin él (caso 377). Viaja con todo pedido
+// que dicta un `chore(planning)`, y no nombra qué puede cambiar la regla: eso es de la regla (caso 302).
+const KEEP_SUBJECT = ' Si las reglas del proyecto cambian el asunto que te dicto, el scope `planning` y el slug se '
+  + 'conservan tal cual, salvo que la regla fije otro scope.'
+const scribeCommit = (prompt, options = {}) => run(`${prompt}${KEEP_SUBJECT}`,
+  { ...options, agentType: 'cauce-scribe' })
 
 // Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
 // único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se
@@ -823,8 +834,8 @@ const commitBlocked = async (slug, subject = `block ${slug}`) => {
 let holding = ''
 // La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
 let cut = false
-const halt = async (reason, detail = '') => {
-  if (holding) await commitBlocked(holding)
+const halt = async (reason, detail = '', subject = '') => {
+  if (holding) await commitBlocked(holding, subject || undefined)
   return stop(reason, detail)
 }
 
@@ -882,7 +893,7 @@ while (blocker.length > 1 && QUOTES.includes(blocker[0]) && blocker[blocker.leng
 }
 if (blocker === 'awaiting-review') {
   const held = String(planning.checkpoint || '').trim()
-  return halt('awaiting-human-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
+  return halt('awaiting-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
 }
 if (blocker === 'blocked-on-human') {
   return halt('blocked-on-human', `toda la cola espera una acción humana. "node tools/ops.js human ${P}" las lista`
@@ -1277,7 +1288,12 @@ while (rounds++ < MAX_TASKS) {
         `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
         `ninguna decisión pendiente: ${task.acceptance}.${DECIDED()} Aclará la redacción y nada más; ` +
         `nunca amplíes el ` +
-        `alcance.`,
+        `alcance. ` +
+        // Las dos cláusulas que pararon corridas en Verify con el trabajo hecho las había agregado Ready al
+        // aclarar: una condición a futuro y dos notas de fuera de alcance (caso 382). Verify ya respeta la marca.
+        `Si al aclarar escribís algo que queda fuera de alcance o depende de algo que todavía no existe, eso no ` +
+        `es una condición que se pueda probar: va como tramo propio, separado por «;», con la marca ` +
+        `(fuera de verify: <razón>), o no va.`,
         { schema: READY, label: 'ready' },
       )
       if (!ready) return halt('agent-unavailable', 'Ready no devolvió resultado')
@@ -1345,11 +1361,14 @@ while (rounds++ < MAX_TASKS) {
           ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
             + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
           : ''
+        const before = planning
         // Quien declaraba `(depende: <partida>)` quedaba esperando un slug que ya no iba a existir, y `check` lo
         // decía recién al terminar la corrida (caso 376). Pasa a esperar a **todas** las partes: si son
         // paralelas, esperar a una sola lo dejaría arrancar antes.
         await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
-          `independiente: ${JSON.stringify(estimate.subtasks)}.${historias} Y toda tarea de la cola —en ` +
+          `independiente: ${JSON.stringify(estimate.subtasks)}. Cada subtarea lleva un slug nuevo, distinto de ` +
+          `${task.id}: las partes son unidades nuevas y la partida deja de existir.${historias} ` +
+          'Y toda tarea de la cola —en ' +
           `${QUEUE}— que declare (depende: …) nombrando a ${task.id} pasa a depender de todas las subtareas ` +
           'nuevas, con los demás slugs que ya declaraba.', { label: 'split' })
         planning = await readContext()
@@ -1357,9 +1376,24 @@ while (rounds++ < MAX_TASKS) {
         // Misma forma que en Claim: si la cola sigue ofreciendo lo mismo, el estado no cambió y repetir
         // no lo va a cambiar. Acá lo que no cambió es una escritura que se le pidió a un agente, y darla
         // por hecha manda al bucle a partir la misma tarea otra vez.
+        //
+        // Con la cola más larga sí ocurrió, pero una parte se quedó con el slug de la partida: la corrida no puede
+        // seguir con una tarea cuya aceptación ya no es la que tiene en memoria, y decir «no ocurrió» mandaba a
+        // buscar una escritura que estaba hecha (caso 385).
         if (planning.hasTask && planning.slug === task.id) {
-          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus `
-            + 'subtareas y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.')
+          // Si una parte se quedó con el slug, la cola crece en una menos que las partes; si la partida quedó entera
+          // al lado de todas, crece en todas, y ahí lo que falta es borrarla, no renombrar nada.
+          const added = planning.queued - before.queued
+          const parts = (estimate.subtasks || []).length
+          const why = added <= 0 ? 'y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.'
+            : parts > 1 && added === parts - 1
+              ? `y la cola creció, pero una de ellas reusó el slug de ${task.id}: renombrala con uno nuevo antes `
+                + 'de reanudar.'
+              : added === parts
+                ? `y la cola creció con todas, pero ${task.id} quedó en ella: sacala antes de reanudar.`
+                : `y la cola creció en ${added} de ${parts} y sigue ofreciendo ${task.id}: revisá qué quedó `
+                  + 'escrito.'
+          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus subtareas ${why}`)
         }
         // La otra mitad de la consigna se comprueba igual: quien siga esperando a la partida no fue reapuntado,
         // y descubrirlo en el `check` del final es lo que el caso 376 describe.
@@ -1457,6 +1491,32 @@ while (rounds++ < MAX_TASKS) {
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return halt('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
+    }
+    // Lo que el guard de gobernanza va a frenar al commitear ya se sabe acá, con el plan aprobado. El commit de un
+    // subagente no puede esperar a una persona, y enterarse ahí tiraba Build, Review, Verify y QA ya pagados
+    // (caso 383). Si la pregunta no se pudo hacer se sigue: el guard frena igual al commitear, esto sólo adelanta
+    // el aviso. Y un archivo que el plan no nombró sigue frenando allá, que es lo que el Commit reporta aparte.
+    if ((plan.files || []).length) {
+      const quoted = (one) => `'${String(one).replace(/'/g, `'\\''`)}'`
+      const governed = await clerk(
+        `Corré node tools/ops.js governed ${quoted(P)}${task.service ? ` --service ${quoted(task.service)}` : ''} `
+        + `--json ${plan.files.map(quoted).join(' ')} desde ${ROOT} y reportá lo que imprimió: readOk en true `
+        + 'sólo si salió con código 0 y devolvió JSON, y pending tal cual. No escribas ningún archivo.',
+        { schema: GOVERNED, label: 'governed' },
+      )
+      if (governed && governed.readOk && governed.pending.length) {
+        const paths = governed.pending.join(', ')
+        // Necesita a una persona, así que deja su fila como toda parada que la necesita (PROTOCOL), y suelta la
+        // reserva como las otras paradas de antes de construir. El commit de planning dice qué espera y no «block».
+        const note = await registerHuman(`Registrá ${task.id} en ${HUMAN}: su plan toca gobernanza protegida `
+          + `(${paths}) y el commit de un subagente no puede esperar la aprobación. La acción humana es aprobar `
+          + `esas rutas escribiéndolas en ${P}/.ops-approval, una por línea, y resolver esta fila.`,
+        'governance-human', task.id)
+        await releaseBlocked()
+        return halt('governance-approval-needed', `el plan de ${task.id} toca gobernanza protegida: ${paths}. `
+          + 'Para antes de construir porque el commit de esta corrida no puede esperar a una persona: aprobalas en '
+          + `${P}/.ops-approval, una por línea, y reanudá.${note}`, `await governance approval for ${task.id}`)
+      }
     }
     testStrategy = plan.testStrategy || ''
     phase('WIP')
@@ -2032,10 +2092,22 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR}`,
+    `y no era de la tarea. Si un guard frena el commit pidiendo la aprobación de una persona, no la pidas ni la ` +
+    `esquives: committed en false, y en needsApproval las rutas que nombra.` +
+    `${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
+  // Una aprobación pendiente no es un bloqueo: el trabajo está verificado y stageado, y lo único que falta es que
+  // una persona apruebe. Es la única parada sin commit de planning, y a propósito: el índice tiene el trabajo de la
+  // tarea, así que ese commit se lo llevaba puesto o lo frenaba el mismo guard, y el «block» que dejaba había que
+  // deshacerlo al cerrar (caso 383). Tampoco deja fila: el WIP y el reclamo son el estado que se reanuda, y una fila
+  // que nadie resuelve al reanudar queda pendiente sobre una tarea ya cerrada.
+  if (!commit.committed && (commit.needsApproval || []).length) {
+    return stop('commit-needs-approval', `el commit de ${task.id} toca ${commit.needsApproval.join(', ')}, que pide `
+      + `la aprobación de una persona: aprobalas en ${P}/.ops-approval, una por línea, y reanudá. El trabajo quedó `
+      + 'stageado.')
+  }
   if (!commit.committed) return halt('commit-failed', commit.reason)
   // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno
   // y la corrida siguiente arranque sobre una rama viva adelantada del remoto.
@@ -2278,7 +2350,8 @@ if (completed.length && contract.humanCheckpoint && !cut) {
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
   const committing = (message) => (contract.commitPerTask
-    ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "${message}".${TWO_COMMANDS}${PLANNING_BRANCH()}`
+    ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "${message}".${KEEP_SUBJECT}${TWO_COMMANDS}`
+      + PLANNING_BRANCH()
     : '')
   await scribe(
     `Creá ${file} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones ` +

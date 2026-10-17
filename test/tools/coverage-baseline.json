@@ -65,8 +65,8 @@
     "functions": 100
   },
   "engine/automation/registration.js": {
-    "lines": 97,
-    "branches": 71,
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/automation/roles.js": {
@@ -122,6 +122,11 @@
   "engine/cli/dependency.js": {
     "lines": 100,
     "branches": 100,
+    "functions": 100
+  },
+  "engine/cli/governed.js": {
+    "lines": 94,
+    "branches": 64,
     "functions": 100
   },
   "engine/cli/instance.js": {
@@ -467,6 +472,11 @@
   "engine/planning/state.js": {
     "lines": 100,
     "branches": 97,
+    "functions": 100
+  },
+  "engine/planning/stops.js": {
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/planning/structure.js": {

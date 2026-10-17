@@ -225,7 +225,7 @@ test('blocked se lee por su valor, y lo que no es del vocabulario no se adivina'
   }
 
   const gate = await conBlocked('awaiting-review')
-  assert.equal(gate.reason, 'awaiting-human-review')
+  assert.equal(gate.reason, 'awaiting-review')
   assert.match(gate.detail, /AWAITING_REVIEW\.md/, 'sin saber cuál, nombra el de siempre')
 
   const humanas = await conBlocked('blocked-on-human')
@@ -245,7 +245,7 @@ test('un checkpoint humano sin resolver corta antes de tocar nada', async () => 
   const { result, asked } = await runFlow({}, {
     contexts: [{ blocked: 'awaiting-review', hasTask: true, wipActive: false, queued: 1, readOk: true }],
   })
-  assert.equal(result.reason, 'awaiting-human-review')
+  assert.equal(result.reason, 'awaiting-review')
   assert.ok(!reached(asked, 'Plan'), 'ni se planifica')
 
   // Con dos líneas hay más de un checkpoint, y la parada nombra el que `context` dijo que la frena.

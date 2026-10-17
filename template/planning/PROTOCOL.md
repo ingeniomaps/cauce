@@ -150,10 +150,31 @@ saltar. Una tarea mal marcada `express` es justamente la que se salta la fase do
 
 ## Razones de parada
 
-Toda parada se nombra con una de éstas, en cualquier runner:
+Toda parada se nombra con una de éstas, en cualquier runner. Van agrupadas por familia, que es el tramo donde
+paró y lo primero que dice quién la destraba:
 
-`awaiting-review` · `blocked-on-human` · `not-ready` · `plan-rejected` · `review-unresolved` ·
-`verify-regression` · `verify-inconsistent` · `qa-failed` · `commit-failed` · `budget-low`
+- **Arranque** — no se pudo leer el contrato, el estado o el adaptador: `adapter-stale` · `agent-unavailable` ·
+  `contract-unavailable` · `context-unavailable` · `root-unreadable`
+- **Cola** — hay trabajo y no se pudo tomar: `queue-unavailable` · `claim-stuck` · `manual-held` ·
+  `manual-critical` · `worktree-failed`
+- **Persona** — lo que sigue lo decide o lo aprueba alguien: `awaiting-review` · `blocked-on-human` ·
+  `governance-approval-needed` · `commit-needs-approval`
+- **Preparación** — la tarea no está lista, o no se pudo reescribir o partir: `not-ready` · `refine-not-applied` ·
+  `refine-unwritable` · `split-not-applied` · `split-left-dependents`
+- **Plan** — ningún plan sobrevivió a la crítica, o no quedó escrito: `plan-rejected` · `plan-blocked` ·
+  `critique-unbacked` · `wip-malformed` · `wip-not-persisted`
+- **Construcción** — lo construido no se puede dar por bueno: `build-blocked` · `build-closed-task` ·
+  `build-unproven` · `edge-unproven`
+- **Revisión** — la revisión no aprobó, o aprobó sin respaldo: `review-blocked` · `review-failed` ·
+  `review-unbacked` · `review-unverified`
+- **Verificación** — un criterio sin prueba, una prueba que no corrió o un QA en rojo: `verify-failed` ·
+  `verify-hollow` · `verify-untested` · `acceptance-ambiguous` · `qa-failed`
+- **Cierre** — el trabajo está y no se pudo commitear o cerrar: `commit-failed` · `planning-check-failed` ·
+  `milestone-too-long`
+
+Deprecadas: `review-unresolved` (usá `review-failed`), `verify-regression` y `verify-inconsistent` (usá
+`verify-failed`) y `budget-low` (usá `milestone-too-long`). La lista las nombraba y ningún recorrido las emitía;
+se borran en 1.0.0.
 
 Y deja el estado consistente: la tarea sin marcar, el WIP activo si es resumible, y —si necesita a una
 persona— la acción en `human/` o el checkpoint del hito ya escritos.

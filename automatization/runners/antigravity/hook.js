@@ -10,10 +10,10 @@ const path = require('node:path')
 // no hallaba `ops.config.json` y, como falla cerrado, negaba cada llamada a herramienta.
 const OPS_DIR = '{{OPS_DIR}}'
 
-// Y la ruta absoluta, porque con Antigravity no hay de dónde deducirla. Su payload manda
-// `workspacePaths` vacío y un `Cwd` que apunta al scratch del CLI o al home; el hook lo ejecuta `agy`
-// desde la copia que registró en `~/.gemini/config/plugins/`, cuyo `__dirname` no lleva a ningún
-// proyecto. Nada de eso nombra el workspace, así que el ancla se escribe al instalar o no existe.
+// Y la ruta absoluta. Un `agy` viejo mandaba `workspacePaths` vacío y un `Cwd` que apuntaba al scratch del CLI
+// o al home, y ejecutaba la copia registrada en `~/.gemini/config/plugins/`, cuyo `__dirname` no lleva a ningún
+// proyecto: sin el ancla escrita al instalar no había raíz. La raíz sigue saliendo de acá. La carpeta que manda
+// `agy` 1.4.0 decide otra cosa: si esta llamada es del proyecto o el puente se abstiene (caso 392).
 const OPS_ROOT = '{{OPS_ROOT}}'
 
 // Los dos marcadores y la carpeta desde la que corre el puente, juntos y pasables como argumento. El
@@ -189,7 +189,26 @@ function undescribed(event, input, normalized) {
     + 'Antigravity cambió el formato de sus llamadas, el puente tiene que aprenderlo en normalize().'
 }
 
+// Si el payload nombra la carpeta de trabajo y no cae dentro de este proyecto, el puente se abstiene: es una copia
+// global corriendo en una carpeta ajena (caso 392, R26). Una carpeta de más arriba también es ajena —`agy` sólo
+// descubre el plugin desde el proyecto hacia adentro—, y sin carpeta en el payload no hay cómo saberlo: se juzga.
+// Las dos rutas se comparan reales, porque abstenerse es dejar pasar: un symlink de un solo lado callaba al puente
+// dentro de su propio proyecto.
+function real(dir) {
+  try { return fs.realpathSync(dir) } catch { return path.resolve(dir) }
+}
+
+function elsewhere(input, markers = MARKERS) {
+  const listed = Array.isArray(input.workspacePaths) ? input.workspacePaths : []
+  const paths = listed.filter((one) => typeof one === 'string' && one).map(real)
+  const root = declaredRoot(markers)
+  if (!paths.length || !root) return false
+  const workspace = real(workspaceOf(root, markers))
+  return !paths.some((one) => within(one, workspace))
+}
+
 function evaluate(event, input) {
+  if (elsewhere(input)) return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   try {
     const root = findRoot(input)
     process.env.OPS_ROOT = root

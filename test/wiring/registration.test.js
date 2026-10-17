@@ -1,8 +1,8 @@
 'use strict'
 
-// La copia que un runner ejecuta de verdad no siempre es la del workspace: `agy` corre la que registra
-// `agy plugin install`, una por usuario (caso 201). `doctor` tiene que mirar ésa. `HOME` va a un temporal:
-// la copia registrada vive bajo el home, y una prueba no lee ni escribe el de quien la corre (R23).
+// Qué dicen `install` y `doctor` de una copia del plugin registrada para todo el usuario. Por qué sobra está en
+// `engine/automation/registration.js` (caso 392). `HOME` va a un temporal: la copia vive bajo el home, y una prueba
+// no lee ni escribe el de quien la corre (R23).
 
 const { tempRoot, linkEngine } = require('../support/environment')
 
@@ -22,21 +22,16 @@ function antigravityProject(name) {
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(home)
   fs.mkdirSync(workspace)
-  // Doble de `agy`: contesta `plugin list` con un `cauce` registrado, que es lo que dice el `agy` de quien ya
-  // registró otro proyecto. Sin él, la prueba dependería del `agy` —o de su ausencia— en la máquina que corre.
-  const bin = path.join(base, 'bin')
-  fs.mkdirSync(bin)
-  fs.writeFileSync(path.join(bin, 'agy'), '#!/bin/sh\necho \'{"imports":[{"name":"cauce"}]}\'\n', { mode: 0o755 })
-  const env = { ...process.env, HOME: home, PATH: `${bin}${path.delimiter}${process.env.PATH}` }
+  const env = { ...process.env, HOME: home }
   for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[key]
   const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env })
   assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
   linkEngine(target)
   const plugin = path.join(workspace, '.agents', 'plugins', 'cauce')
   const registered = path.join(home, '.gemini', 'config', 'plugins', 'cauce')
-  // Lo que hace `agy plugin install .agents/plugins/cauce`: copiar el plugin a la carpeta del usuario.
+  // Lo que hacía `agy plugin install .agents/plugins/cauce`: copiar el plugin a la carpeta del usuario.
   const register = () => fs.cpSync(plugin, registered, { recursive: true })
-  return { home, workspace, target, plugin, registered, register, runCli }
+  return { home, target, register, runCli }
 }
 
 function doctorWithHome(home, target) {
@@ -46,62 +41,32 @@ function doctorWithHome(home, target) {
   try { return A.doctor(target, 'antigravity', quiet) } finally { process.env.HOME = before }
 }
 
-test('doctor mira la copia que el runner ejecuta, no sólo la del workspace', () => {
+test('install no pide registrar el plugin a nivel global', () => {
   const project = antigravityProject('cauce-registro-')
   const install = project.runCli(['automation', 'install', project.target, 'antigravity'])
   assert.equal(install.status, 0, install.stderr)
-
-  // Registrada igual que la del workspace: nada que decir.
-  project.register()
+  assert.doesNotMatch(install.stdout + install.stderr, /agy plugin install/)
   assert.deepEqual(doctorWithHome(project.home, project.target).errors, [])
-
-  // La copia registrada es la de otro proyecto, con el wiring viejo que resolvía contra el workspace: el
-  // runner la lanza desde su carpeta y no arranca. Es lo que se vio con `agy` real en el 201.
-  const hooks = path.join(project.registered, 'hooks.json')
-  const oldWiring = fs.readFileSync(hooks, 'utf8').replace(/"node hook\.js /g, '"node .agents/plugins/cauce/hook.js ')
-  fs.writeFileSync(hooks, oldWiring)
-  const stale = doctorWithHome(project.home, project.target)
-  const named = /ejecuta .*plugins\/cauce, que no es esta instalación.*hooks\.json/
-  assert.ok(stale.errors.some((error) => named.test(error)), 'nombra la copia que difiere y qué archivo')
-  const fix = /agy plugin install \.agents\/plugins\/cauce/
-  assert.ok(stale.errors.some((error) => fix.test(error)), 'y cómo se corrige')
-  assert.ok(stale.errors.some((error) => /registrada.*pre-shell.*Cannot find module/s.test(error)),
-    'y la lanza como el runner, desde su carpeta, que es donde se ve que no arranca')
 })
 
-test('al instalar, una copia registrada vieja es el paso siguiente y no un error', () => {
-  const project = antigravityProject('cauce-registro-install-')
+test('una copia registrada a nivel global sobra, y doctor dice cómo quitarla', () => {
+  const project = antigravityProject('cauce-registro-global-')
   assert.equal(project.runCli(['automation', 'install', project.target, 'antigravity']).status, 0)
   project.register()
-  fs.appendFileSync(path.join(project.registered, 'hook.js'), '\n// de otra instalación\n')
+  const stray = doctorWithHome(project.home, project.target).errors
+  assert.ok(stray.some((error) => /toda carpeta/.test(error) && /agy plugin uninstall cauce/.test(error)),
+    stray.join('\n'))
+  // Al instalar es una advertencia: el plugin del proyecto ya quedó bien, lo que sobra está afuera.
   const again = project.runCli(['automation', 'install', project.target, 'antigravity'])
   assert.equal(again.status, 0, again.stderr)
-  assert.match(again.stdout + again.stderr, /no es esta instalación/)
-  assert.match(again.stdout + again.stderr, /agy plugin install \.agents\/plugins\/cauce/)
+  assert.match(again.stdout + again.stderr, /agy plugin uninstall cauce/)
 })
 
-// Una copia registrada que no contesta —un puente viejo que lee stdin sin plazo, un guard colgado— no puede
-// colgar a `doctor`: lanzarla lleva tope, y agotarlo es el diagnóstico.
-test('una copia registrada que no contesta no cuelga a doctor', () => {
-  const project = antigravityProject('cauce-registro-colgado-')
+test('un plugin ajeno que se llama cauce no es asunto de doctor', () => {
+  const project = antigravityProject('cauce-registro-ajeno-')
   assert.equal(project.runCli(['automation', 'install', project.target, 'antigravity']).status, 0)
-  project.register()
-  // La copia deja dicho quién es, para poder preguntar después si sigue viva.
-  const pidFile = path.join(project.home, 'colgado.pid')
-  fs.writeFileSync(path.join(project.registered, 'hook.js'),
-    `require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid))\nsetInterval(() => {}, 1000)\n`)
-  const started = Date.now()
-  const hung = doctorWithHome(project.home, project.target)
-  assert.ok(Date.now() - started < 25000, 'terminó con un solo tope y no esperando a la copia')
-  assert.ok(hung.errors.some((error) => /no respondió en \d+ s/.test(error)), hung.errors.join('\n'))
-
-  // Y no la deja corriendo. El tope mataba al intérprete que la lanzó y no a ella: quedaba huérfana para
-  // siempre, una por cada `doctor`. En la máquina donde se vio eran 328, con 5 GB entre todas (caso 355).
-  const pid = Number(fs.readFileSync(pidFile, 'utf8'))
-  const alive = () => { try { process.kill(pid, 0); return true } catch { return false } }
-  const pause = new Int32Array(new SharedArrayBuffer(4))
-  for (let waited = 0; alive() && waited < 2000; waited += 50) Atomics.wait(pause, 0, 0, 50)
-  const left = alive()
-  if (left) process.kill(pid, 'SIGKILL')
-  assert.equal(left, false, 'la copia que no contestó quedó corriendo después de que doctor terminó')
+  const foreign = path.join(project.home, '.gemini', 'config', 'plugins', 'cauce')
+  fs.mkdirSync(foreign, { recursive: true })
+  fs.writeFileSync(path.join(foreign, 'hook.js'), 'process.stdout.write("{}")\n')
+  assert.deepEqual(doctorWithHome(project.home, project.target).errors, [])
 })

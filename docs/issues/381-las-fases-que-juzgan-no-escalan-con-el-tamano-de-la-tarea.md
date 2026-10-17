@@ -1,14 +1,15 @@
 ---
 caso: 381
 titulo: las fases que juzgan no escalan con el tamaño de la tarea
-estado: abierto
+estado: resuelto
+resuelto-en: 0.109.0
 prioridad: media
 version-detectada: 0.106.0
 ---
 
 # 381 — Build, Review, Verify y QA cuestan casi lo mismo en una tarea de una línea que en una de cien, y en `lite` corren las cuatro
 
-**🔴 abierto** · detectado en 0.106.0 · prioridad **media** — las fases que juzgan son el 67 % del gasto de una
+**🟢 resuelto en 0.109.0** · detectado en 0.106.0 · prioridad **media** — las fases que juzgan son el 67 % del gasto de una
 corrida de tareas chicas. 0.103.3 y 0.103.4 abarataron los pasos de oficina y de escritura y dijeron, a propósito,
 que «los pasos que juzgan no cambian»; éste es el caso que pide mirarlos.
 
@@ -75,3 +76,48 @@ Classify fueron el 2 %—; 0.103.5 volvió a cargar las reglas en los de escritu
 
 - 380 — no hay salida «hazlo a mano».
 - Las entradas de 0.103.3, 0.103.4 y 0.103.5 del CHANGELOG.
+
+## Cierre
+
+**Resuelto en 0.109.0 sin recortar ninguna fase que juzga.** Se midieron las tres palancas antes de construir, y dos
+quedaron descartadas por sus propios datos. La tercera ya existía con otro nombre. Cada decisión se le consultó a
+Manuel con los números a la vista.
+
+**Lo que se midió.** Se recorrieron los 141 diarios de corridas de `autobuild` que hay en esta máquina, de varias
+instancias, con los `journal.jsonl` de cada corrida:
+
+- **QA en `lite`: 101 corridas, 3 en rojo, y las tres encontraron un defecto real** que Verify había dejado pasar con
+  las pruebas en verde. Las tres eran sobre el runtime o el navegador: «C1 falla en el navegador», «C1 fails on the
+  real runtime». En `full`, 1 en rojo de 43.
+- **Los agentes extra de Verify son condicionales, no fijos.** `missing-tests` se lanzó 53 veces en 144 tareas,
+  alrededor del 37 %, y cada vez suma un segundo `verify`. `verify-human` se lanzó 6 veces. La premisa del caso,
+  «Verify lanza varios agentes por tarea», describe la corrida que lo originó y no el recorrido: en esa corrida las
+  tres tareas cayeron en el rebote.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **En `lite`, QA no corre si Verify ya ejerció cada criterio — se decidió que no.** Sobre 101 tareas `lite`, QA atrapó
+  tres defectos que Verify no veía porque son del runtime y no de las pruebas. Saltearla los habría entregado. Es el
+  argumento que el caso ya nombraba en «Tradeoffs» con el 316, y medido pesa más que el ahorro.
+- **Verify en un solo agente, con `missing-tests` como pregunta dentro de él — se decidió que no.** No es un costo fijo,
+  porque sólo corre en el 37 % de las tareas. Y fundirlo haría que quien juzga si una prueba cubre el criterio sea el
+  mismo que la escribe, que es la separación que R9 cuida.
+- **Reglas por fase, con un campo `fase:` — se hizo distinto: ya existía como `aplica:`** (`engine/automation/rules.js`,
+  caso 141). Una regla con `aplica:` no se carga en ningún agente: queda nombrada en una línea del bloque y se lee
+  cuando el disparador ocurre. El disparador es texto libre, y el molde sólo lo ejemplificaba con superficies del
+  producto. Un `fase:` lo habría duplicado.
+  - Antes de documentarlo se midió con `claude -p`, el 2026-10-16, sobre tres copias de un banco `tarea` fuera del
+    repositorio. Su `CLAUDE.md` traía el bloque de reglas con una sola línea, `planning/rules/commits.md (aplica: al
+    commitear)`, sin importarla, y la regla pedía el footer `Proceso: cauce` en todo commit. Con el pedido real de
+    commit de planning del recorrido, los tres commits terminaron con `Proceso: cauce`: los tres agentes abrieron la
+    regla nombrada y la aplicaron. Costó USD 0,24 a 0,27 por corrida.
+  - `template/planning/rules/README.md` dice ahora que el disparador también puede ser un momento del trabajo
+    —`aplica: al commitear`, `aplica: al escribir en Jira`—, con esa medición y su límite: son sesiones cortas, y si
+    un paso la saltea, se carga.
+- **«El peso de las reglas es en parte de la instancia» (tradeoff) — sigue siendo de la instancia.** Las reglas de Jira
+  que QA cargaba dejan de pesar si la instancia les declara `aplica:`. El motor ya lo permite y ahora el molde lo dice.
+
+**Lo que el caso no preveía.** De las tres palancas, la que bajaba el costo sin bajar el rigor era la única que ya
+estaba construida. Las otras dos ahorraban sacando justamente lo que esas tareas necesitaban: una revisión del
+runtime, y que no juzgue quien escribe.
+

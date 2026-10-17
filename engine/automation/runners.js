@@ -7,7 +7,6 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
 const F = require('../core/files')
 const O = require('../core/ownership')
 const { fill } = require('./rules')
@@ -142,17 +141,7 @@ function runnerConfig(paths, root) {
   return JSON.parse(render(paths.configSource, opsPrefix(root), paths.automationRoot, root))
 }
 
-// Runners que además de los archivos necesitan un registro propio para que el wiring cuente. Copiar
-// y quedarse ahí deja un plugin inerte: los archivos están, `doctor` da verde y nada se ejecuta.
-function activated(runner) {
-  if (!runner.activation) return true
-  const result = spawnSync(runner.command, runner.activation.verify, { encoding: 'utf8' })
-  if (result.status !== 0) return null
-  return `${result.stdout || ''}`.includes(runner.activation.expect)
-}
-
 module.exports = {
-  activated,
   RUNNER_NAMES,
   OPS_DIR,
   OPS_ROOT,

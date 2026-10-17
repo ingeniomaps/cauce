@@ -10,15 +10,6 @@ const { PLACEHOLDERS } = require('../core/onboarding')
 
 const EPIC_STATES = ['open', 'active', 'closed']
 
-// Vocabulario común de paradas. Una parada sin nombre obliga a quien la recibe —persona, supervisor o
-// workflow— a reconstruir del estado entero qué pasó, y es lo primero que se pierde cuando cada runner
-// inventa su propia frase. `context` emite las dos que puede determinar solo; el resto las nombra la
-// fase que para.
-const STOP_REASONS = [
-  'awaiting-review', 'blocked-on-human', 'not-ready', 'plan-rejected', 'review-unresolved',
-  'verify-regression', 'verify-inconsistent', 'qa-failed', 'commit-failed', 'budget-low',
-]
-
 // El contrato de una línea de BACKLOG, en un solo lugar: lo usa el lector para armar la cola y el
 // validador para rechazar lo que el lector va a descartar. Separados, el validador aprobaba la forma
 // que el lector no leía, que es la manera más cara de tener las dos cosas.
@@ -186,8 +177,10 @@ function readCast(rest) {
 const ACCEPTANCE = /_Aceptaci[oó]n:\s*(.*?\S)_(?![A-Za-z0-9])/i
 // Los paréntesis del contrato de una línea de tarea. Se enumeran por su clave y no como «cualquier
 // paréntesis» para no llevarse puesta una aclaración de la prosa: la descripción usa paréntesis igual
-// que cualquier texto, y el criterio `(→ C1)` va acá porque `criteria` ya lo extrae.
-const MARKERS = /\((?:→|->|criterios?\s|epic:|service:|cast:|depende:|sin partir:)[^)]*\)/gi
+// que cualquier texto, y el criterio `(→ C1)` va acá porque `criteria` ya lo extrae. Sus formas en cursiva,
+// `*(criterio C1)*` y `*(→ C1)*`, se llevan los asteriscos: sin ellos quedaban sueltos en la descripción (caso 384).
+const MARKERS = new RegExp(String.raw`\*\(\s*(?:→|->|criterios?\s)[^)]*\)\*`
+  + String.raw`|\((?:→|->|criterios?\s|epic:|service:|cast:|depende:|sin partir:)[^)]*\)`, 'gi')
 
 // Cuántas condiciones tiene una aceptación escrita en prosa. Estuvo mucho tiempo sin contarse con una
 // razón buena —contar condiciones en una frase es una lectura, y un número inventado es peor que
@@ -481,7 +474,7 @@ function inboxSections(dir) {
 }
 
 module.exports = {
-  EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
+  EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING,
   TASK_LINE, TASK_LINE_ANY_LANE,
   read, section, withoutComments, frontmatter, readEpics, readDone, readWip, readWips, wipName, noSplitReason,
   acceptanceConditions, tableRows, taskFromLine,

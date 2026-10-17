@@ -274,5 +274,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   // 68 desde el 2026-10-15: la tarea que el clasificador devuelve a la sesión suelta su reserva con
   // `tools/ops.js release` (caso 380), la misma consigna y la misma raíz que la del 163; y la que no puede
   // devolver por tocar una superficie crítica recibe su reparto de `tools/ops.js agents list`, como Classify.
-  assert.equal(hits, 68, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 69 desde el 2026-10-16: después del plan, el recorrido dicta `tools/ops.js governed` para saber qué va a frenar
+  // el guard de gobernanza (caso 383). Misma forma literal y misma raíz que el `release` del 163.
+  assert.equal(hits, 69, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

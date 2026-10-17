@@ -171,6 +171,41 @@ test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async (
   assert.deepEqual(prompts.filter((one) => /\brelease\b/.test(one.prompt)).map((one) => one.key), [],
     'soltó una reserva sobre una tarea que sigue en la cola')
 })
+
+// La partida no puede prestarle su slug a una parte: R25 dice que las partes son unidades nuevas, y la guarda de
+// arriba lee «la cola sigue ofreciéndola» como que la escritura no ocurrió. Un agente real lo hizo citando
+// justamente R25, y la corrida paró con el partido escrito y commiteado (caso 385).
+test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada lo dice', async () => {
+  const grande = { ...baseScript()[KEY.context], claimed: true }
+  const { result, prompts } = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [grande, { ...grande, queued: grande.queued + 1 }] },
+  )
+  const split = prompts.find((one) => one.key === 'Decompose|split')
+  assert.ok(split, 'no hubo partición')
+  assert.match(split.prompt, /slug nuevo, distinto de T-1/)
+
+  assert.equal(result.reason, 'split-not-applied', JSON.stringify(result).slice(0, 160))
+  assert.match(result.detail, /reus[oó] el slug de T-1/)
+  assert.doesNotMatch(result.detail, /la escritura no ocurrió/, 'la escritura sí ocurrió: la cola creció')
+
+  // Y si la cola creció con todas las partes, el slug no lo reusó nadie: la partida quedó al lado de sus partes.
+  const left = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [grande, { ...grande, queued: grande.queued + 2 }] },
+  )
+  assert.match(left.result.detail, /T-1 quedó en ella: sacala/)
+  assert.doesNotMatch(left.result.detail, /reus[oó]/)
+
+  // Una cola que creció a medias no es «no ocurrió», y una estimación sin subtareas no revienta la corrida.
+  const partial = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b', 'T-1c'] } },
+    { contexts: [grande, { ...grande, queued: grande.queued + 1 }] },
+  )
+  assert.match(partial.result.detail, /creció en 1 de 3/)
+  const none = await runFlow({ [KEY.decompose]: { hours: 12, needsSplit: true } }, { contexts: [grande, grande] })
+  assert.equal(none.result.reason, 'split-not-applied', JSON.stringify(none.result).slice(0, 160))
+})
 // Qué distingue una cola ocupada de una terminada, y por qué importa, está junto a la guarda que las
 // separa (`automatization/workflows/autobuild.js`, la condición sobre `queued`).
 //
@@ -305,7 +340,7 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   }
 
   const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1',
-    'closing', 'checkpoint-held']
+    'closing', 'checkpoint-held', 'governed']
   for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
   // Lo que redacta —una entrada o un commit de planning— va con el de escritura, que carga las reglas del
   // proyecto. Con el de oficina el commit ignoraba la convención de la empresa (caso 302).
@@ -369,4 +404,22 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   assert.match(done, /en status IDLE —una línea «status: IDLE» en su frontmatter es lo que lee el motor—/)
   assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+" desde \S+: si marca esta entrada, corregí/)
   assert.match(done, /Si marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
+})
+
+// Las reglas de la empresa pueden reescribir el asunto que el recorrido dicta, y al reescribirlo el escriba a veces
+// se comía el scope: tres de cinco commits de una corrida lo conservaron y dos no (caso 377). Todo pedido que dicta
+// un `chore(planning)` dice qué parte del asunto no es de la regla.
+test('todo commit de planning conserva el scope y el slug aunque la regla cambie el asunto', async () => {
+  const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }
+  const gate = { [KEY.contract]: { ...baseScript()[KEY.contract], humanCheckpoint: true } }
+  const runs = [await runFlow(gate), await runFlow({ [KEY.critique]: blocked })]
+  const dictating = runs.flatMap(({ prompts }) => prompts).filter((one) => /chore\(planning\)/.test(one.prompt))
+  const labels = new Set(dictating.map((one) => one.key.split('|')[1]))
+  for (const label of ['planning-commit', 'planning-block', 'human-checkpoint']) {
+    assert.ok(labels.has(label), `la prueba no llegó a ver ${label}`)
+  }
+  for (const one of dictating) {
+    assert.match(one.prompt, /el scope `planning` y el slug se conservan tal cual/, one.key)
+  }
 })

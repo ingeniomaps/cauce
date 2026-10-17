@@ -10,6 +10,28 @@ const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, realPath, t
 const AP = require('./approval')
 const CHAT = require('./chat')
 
+// El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
+// «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
+// son lo que la propuesta cambia, y editarlos directo saltea el ciclo entero; y `evaluations/` es el
+// denominador con que se juzga, así que moverlo ablanda toda medición pasada sin tocar una regla.
+//
+// Quedan afuera las dos clases de evidencia, que registran lo que pasó un día en vez de decidir algo:
+// `learning/reports/` y `evaluations/results/` —esta última se escribe en cada corrida, así que
+// gobernarla pediría un override por evaluación—. Por eso `evaluations/` se nombra por partes.
+const governedPattern = new RegExp(
+  String.raw`^(?:(?:template\/)?planning\/(?:rules\/|adr\/|PROTOCOL\.md|` +
+    String.raw`METHODOLOGY\.md|FLOW\.md)|automatization\/|engine\/` +
+    String.raw`|agents\/[a-z0-9-]+\/(?:system\/)?[a-z0-9-]+\/(?:SKILL\.md|references\/` +
+    String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
+)
+
+// Las rutas de `files` —como las nombra el índice de `repo`— que son gobernanza para la raíz `ops`. La usan el
+// guard y `ops governed`, que contesta antes de construir lo mismo que el guard va a frenar al commitear.
+function governedOf(ops, repo, files) {
+  const fromOps = (file) => (ops ? path.relative(realPath(ops), path.resolve(repo, file)) : file)
+  return files.filter((file) => governedPattern.test(fromOps(file)))
+}
+
 function governance(input) {
   if (process.env.OPS_GOVERNANCE_OVERRIDE === '1') return
   const command = commandOf(input)
@@ -24,29 +46,13 @@ function governance(input) {
   // `dependencies` frenan por algo que está mal —una verificación que falla, un manifiesto sin su lockfile—
   // y callarlos porque hay alguien hablando sería tapar un rojo.
   if (CHAT.said(input)) return
-  // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
-  // «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
-  // son lo que la propuesta cambia, y editarlos directo saltea el ciclo entero; y `evaluations/` es el
-  // denominador con que se juzga, así que moverlo ablanda toda medición pasada sin tocar una regla.
-  //
-  // Quedan afuera las dos clases de evidencia, que registran lo que pasó un día en vez de decidir algo:
-  // `learning/reports/` y `evaluations/results/` —esta última se escribe en cada corrida, así que
-  // gobernarla pediría un override por evaluación—. Por eso `evaluations/` se nombra por partes.
-  const governedPattern = new RegExp(
-    String.raw`^(?:(?:template\/)?planning\/(?:rules\/|adr\/|PROTOCOL\.md|` +
-      String.raw`METHODOLOGY\.md|FLOW\.md)|automatization\/|engine\/` +
-      String.raw`|agents\/[a-z0-9-]+\/(?:system\/)?[a-z0-9-]+\/(?:SKILL\.md|references\/` +
-      String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
-  )
   // El índice nombra cada ruta desde la raíz del repositorio —también lanzado desde `ops/`— y la gobernanza
   // se declara desde la raíz ops: con `ops/` dentro del repo, el layout por defecto de `init`, era
   // `ops/planning/rules/…` contra `^planning/` y el guard no frenaba nada sin decirlo (caso 334). Se juzga
   // la ruta relativa a la raíz ops cuando la hay; la que se aprueba y se nombra sigue siendo la del índice.
   const { dir, staged } = stagedForCommit(command, cwdOf(input), input)
   const ops = opsRoot(input)
-  const repo = toplevel(dir)
-  const fromOps = (file) => (ops ? path.relative(realPath(ops), path.resolve(repo, file)) : file)
-  const governed = staged.filter((file) => governedPattern.test(fromOps(file)))
+  const governed = governedOf(ops, toplevel(dir), staged)
   if (!governed.length) return
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
@@ -56,4 +62,4 @@ function governance(input) {
   block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pending, input)}`)
 }
 
-module.exports = { governance }
+module.exports = { governance, governedOf }

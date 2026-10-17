@@ -60,3 +60,9 @@ hacer es que quien lo lea sepa cuándo le toca.
 
 Conviene para lo que es de un dominio acotado —un proveedor, un stack, una integración— y no para lo que
 gobierna cómo se trabaja: esas se pagan y se cargan.
+
+El disparador también puede ser un momento del trabajo y no una superficie: `aplica: al commitear`,
+`aplica: al escribir en Jira`. Una regla de commits o de un tracker rige sólo en ese paso, y cargada pesa en
+todos los demás, también en los que nunca commitean ni tocan el tracker. Se midió con la marca que una regla
+así pedía en cada commit: tres agentes que commiteaban con la regla sólo nombrada la abrieron y la aplicaron
+los tres (caso 381). Es una medición sobre sesiones cortas; si en tu instancia un paso la saltea, se carga.

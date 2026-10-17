@@ -14,6 +14,56 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.109.0] - 2026-10-16
+
+### Cambiado
+
+- **Las razones de parada van por familias, y son las que `autobuild` usa de verdad.** `PROTOCOL.md` decía que toda
+  parada se nombraba con una de diez razones, y el recorrido paraba con cuarenta. Ahora el protocolo las agrupa en
+  nueve familias, según el tramo donde paró, y una prueba compara la lista con el recorrido en los dos sentidos.
+  **Si leés la razón de una parada**, el checkpoint humano sin resolver ahora se llama `awaiting-review`, como en
+  `ops context`, y no `awaiting-human-review`. `review-unresolved`, `verify-regression`, `verify-inconsistent` y
+  `budget-low` quedan deprecadas, con su reemplazo escrito: ningún recorrido las emitía (caso 390).
+- **`aplica:` también sirve para un momento del trabajo, no sólo para una superficie.** Una regla de commits o de un
+  tracker puede declarar `aplica: al commitear` o `aplica: al escribir en Jira`: queda nombrada en el bloque y deja de
+  cargarse en cada agente. En tres sesiones con una regla de commits sólo nombrada, los tres agentes la abrieron y la
+  aplicaron. Si en tu instancia un paso la saltea, cargala. Lo explica `planning/rules/README.md` (caso 381).
+
+### Agregado
+
+- **`ops governed <planning> <archivo>...` dice qué archivos va a frenar el guard de gobernanza.** Usa la misma regla que
+  el guard y descuenta lo aprobado en `planning/.ops-approval`. Con `--service <dir>` resuelve también las rutas
+  escritas desde el servicio de la tarea.
+
+### Corregido
+
+- **Antigravity corre Cauce sólo en su proyecto.** `automation install . antigravity` pedía registrar el plugin con
+  `agy plugin install`, y esa copia, una por usuario, corría en toda carpeta sin plugin propio, con la raíz y las
+  reglas del proyecto que la registró. `agy` 1.4.0 descubre el plugin del `.agents/` del proyecto sin registrarlo,
+  así que Cauce ya no pide ese paso, `doctor` avisa si queda una copia global, y el puente se abstiene fuera de su
+  proyecto. **Si alguna vez corriste `agy plugin install .agents/plugins/cauce`, quitala con
+  `agy plugin uninstall cauce`**, y reinstalá el adaptador con `automation install . antigravity` (caso 392).
+- **`autobuild` para antes de construir si el plan toca gobernanza sin aprobar.** El commit de un subagente no puede
+  esperar a una persona, así que la corrida se enteraba al final, con Build, Review, Verify y QA ya pagados. Ahora
+  pregunta con `ops governed` después del plan y para con `governance-approval-needed`, nombrando qué escribir en
+  `planning/.ops-approval` y dejando la fila en `human/`. Si el Commit igual se frena por una aprobación, por un archivo
+  que el plan no nombró, para con `commit-needs-approval`, con el trabajo stageado y sin el commit de planning que la
+  rotulaba bloqueada (caso 383).
+- **La descripción de una tarea ya no arrastra los asteriscos de un criterio en cursiva.** Una línea que cita su
+  criterio como `*(criterio C1)*` le pasaba a cada fase una descripción terminada en `**` (caso 384).
+- **El commit de estado de planning conserva el scope `planning` cuando tus reglas cambian el asunto.** Si una
+  regla tuya pedía otro tipo, el agente reescribía `chore(planning): …` y a veces se le perdía el scope. Ahora el
+  pedido dice que el scope y el slug se conservan, salvo que tu regla fije otro scope (caso 377).
+- **Ready marca lo que agrega y no se puede probar.** Al aclarar una aceptación, Ready podía sumarle una condición a
+  futuro («cuando exista el selector») o una nota de fuera de alcance, y Verify paraba la corrida por esa cláusula
+  con el trabajo ya hecho. Ahora Ready escribe esas cláusulas como un tramo aparte, marcado
+  `(fuera de verify: <razón>)`, que Verify ya no exige probar (caso 382).
+
+- **Partir una tarea pide slugs nuevos para las partes.** Si una subtarea se quedaba con el slug de la partida,
+  la corrida paraba con `split-not-applied` y decía que la escritura no había ocurrido, con el partido ya escrito
+  y commiteado. Ahora la consigna pide un slug nuevo por parte, como dice R25. Si igual pasa, la parada dice qué
+  subtarea hay que renombrar antes de reanudar (caso 385).
+
 ## [0.108.0] - 2026-10-14
 
 ### Agregado

@@ -1,14 +1,15 @@
 ---
 caso: 382
 titulo: Ready deja pasar una aceptación que depende de algo que todavía no existe, y la duda aparece al final
-estado: abierto
+estado: resuelto
+resuelto-en: 0.109.0
 prioridad: media
 version-detectada: 0.106.0
 ---
 
 # 382 — Una aceptación con «cuando exista X» pasa Ready, se construye, se revisa y se verifica, y recién al cerrar se escala como ambigua
 
-**🔴 abierto** · detectado en 0.106.0 · prioridad **media** — la pregunta costó el recorrido entero de la tarea antes
+**🟢 resuelto en 0.109.0** · detectado en 0.106.0 · prioridad **media** — la pregunta costó el recorrido entero de la tarea antes
 de hacerse, y además no hacía falta: la respuesta estaba en la propia tarea.
 
 ## Resumen
@@ -76,3 +77,58 @@ que necesita aserción y mutación, cuando sólo marca la costura con otra tarea
 
 - 378 — una corrección de la aceptación que no llegaba al replan.
 - 380, 381.
+
+## Cierre
+
+**Resuelto en 0.109.0, con una causa que ninguna de las dos lecturas del caso nombraba.** Se leyeron los diarios
+de las dos corridas (`journal.jsonl` de `wf_81ce8e36-77f` y de `wf_b32d7c2f-7fb`), siguiendo la aceptación de una fase a la siguiente:
+
+- **Primera ocurrencia.** La línea decía «el del celular cambia con el país». Ready devolvió `ready: true` con un
+  `refinedAcceptance` que agregaba «el ejemplo del celular corresponde al país que usa el formulario: hoy el de la
+  ruta (…) y, **cuando exista, el del selector**». Verify recibió esa aceptación y marcó como `ambiguous` justamente
+  «El ejemplo del celular corresponde, cuando exista, al país del selector». No fue Plan, como suponía la lectura 1.
+  La cláusula la escribió Ready, la fase que tenía que frenarla.
+- **Segunda ocurrencia.** La línea no traía ninguna nota de fuera de alcance. Ready la refinó agregando «La
+  normalización del 9 o el 15 es de `celular-de-argentina-…` y no entra acá. El default «país del aliado» queda
+  fuera», y `verify-human` escaló esas dos frases como criterio ambiguo.
+
+Las dos veces, Ready agregó al aclarar algo que no se puede probar y lo dejó como condición. La salida ya existía
+desde el caso 140: la marca `(fuera de verify: <razón>)`, que Verify respeta desde el 195 (`declaredOut`). Ready no
+sabía que tenía que usarla. Se le preguntó a Manuel cómo arreglarlo, porque había tres caminos, y eligió la consigna
+de Ready.
+
+**El arreglo.** La consigna de Ready dice que lo que al aclarar quede fuera de alcance, o dependa de algo que
+todavía no existe, no es una condición que se pueda probar: va como tramo propio, separado por «;», con la marca, o
+no va.
+
+**Lo que se corrió para saber que funciona.**
+
+- Arnés, `test/workflows/autobuild-queue.test.js`: «Ready escribe lo que no se puede probar como un tramo fuera de
+  verify, no como condición». Falla con el `autobuild.js` de antes del cambio y pasa después.
+- **Ready real, sobre el escenario saneado de la primera ocurrencia.** Es un banco donde el formulario decide el país
+  por la ruta y el selector es otra tarea de la cola que depende de ésta. Se corrió el prompt de Ready volcado del
+  arnés con `claude -p`, el 2026-10-16:
+  - **Con la línea original** («cambia con el país»), seis corridas, tres con la consigna nueva y tres con la vieja.
+    Ninguna escribió la cláusula a futuro: todas acotaron el ejemplo al país de la ruta. No se reprodujo lo que hizo
+    la instancia. Una corrida nueva dio `ready: false`, pero porque el banco no le dejaba correr `ops agents list`;
+    sobre la tarea dijo que estaba lista.
+  - **Con una línea que tienta** («cambia con el país del selector», con el selector sin existir), cuatro corridas.
+    Las dos con la consigna nueva dieron `ready: true` y dejaron la cláusula como tramo propio:
+    «el ejemplo del celular cambia según el país elegido en el selector (fuera de verify: el selector de país
+    todavía no existe, lo trae selector-de-pais-en-el-celular, que depende de esta tarea)».
+    Las dos con la vieja dieron `ready: false` y escalaron a una persona con `[PENDIENTE: el selector no existe…]`.
+  - USD 0,31 a 0,43 por corrida.
+
+**Recorrido de lo que el caso enumeraba.**
+
+- **Correr la búsqueda de decisiones abiertas antes de Build — se decidió que no.** Agrega una lectura a cada tarea y
+  no ataca dónde nace la cláusula, que es Ready.
+- **Que Plan no pueda introducir un «cuando exista» sin marcarlo — se hizo distinto.** No fue Plan sino Ready, y la
+  marca es `(fuera de verify: …)` y no `(depende:)`. Lo que la cláusula condiciona no es esta tarea sino una parte que
+  otra tarea entrega.
+- **«Mirar antes de Build agrega una lectura» (tradeoff) — no aplica**: el arreglo no agrega ninguna.
+- **«Una nota de fuera de alcance dentro de la aceptación se trata como condición» (segunda ocurrencia) — se hizo**
+  en el mismo lugar: es lo que la consigna nueva le pide a Ready al escribirla. Una nota así escrita a mano en la
+  línea sigue llegando sin marca. Para eso `check` ya avisa desde el 140 cuando la condición nombra el registro, y
+  la marca es la salida documentada en `PROTOCOL.md`.
+
