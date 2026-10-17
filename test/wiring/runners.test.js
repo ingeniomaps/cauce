@@ -142,12 +142,12 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
 // Un `agy` viejo no dejaba de dónde deducir la raíz: su payload mandaba `workspacePaths` vacío y un `Cwd` que
 // apuntaba al scratch del CLI o al home, y corría la copia registrada en `~/.gemini/config/plugins/`. Desde ahí
 // ni el cwd ni `__dirname` llevan al proyecto, así que el puente no encontraba la raíz y, como falla cerrado,
-// negaba cada herramienta. `agy` 1.4.0 manda la carpeta y descubre el plugin del proyecto (caso 392), pero un
-// payload sin carpeta tiene que seguir resolviendo: es lo que mide esto.
+// negaba cada herramienta. `agy` 1.4.0 manda la carpeta y descubre el plugin del proyecto (caso 392), pero el
+// puente sigue sacando la raíz del ancla escrita, y desde una carpeta ajena tiene que resolverla: es lo que mide esto.
 //
 // Y su `hooks.json` existe sólo porque Cauce lo creó: fusionarlo dejaba viva la entrada anterior cuando
 // la ruta del puente cambiaba, y esa entrada muerta rompía la sesión entera.
-test('install deja el puente de Antigravity resoluble desde la copia que agy registra', () => {
+test('install deja el puente de Antigravity resoluble desde una carpeta que no lleva al proyecto', () => {
   const os = require('node:os')
   const { base, workspace, target, runCli, env } = installedProject('cauce-agy-', 'antigravity')
 
@@ -199,8 +199,8 @@ test('install deja el puente de Antigravity resoluble desde la copia que agy reg
 })
 
 // El puente tal como corre instalado, con los marcadores puestos. Se lo hace resolver desde una carpeta
-// que no lleva a ningún proyecto, que es la situación real: `agy` ejecuta la copia registrada en
-// `~/.gemini/`, donde ni el `__dirname` ni el cwd llegan al repositorio del usuario.
+// que no lleva a ningún proyecto, que es lo que vivía un `agy` viejo con la copia registrada en `~/.gemini/`,
+// donde ni el `__dirname` ni el cwd llegan al repositorio del usuario.
 test('el puente de Antigravity resuelve la raíz como corre instalado', () => {
   const os = require('node:os')
   const bridge = require(path.join(root, 'antigravity', 'hook.js'))

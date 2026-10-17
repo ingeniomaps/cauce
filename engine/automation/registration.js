@@ -11,14 +11,17 @@
 
 const fs = require('node:fs')
 const os = require('node:os')
+const path = require('node:path')
 
-// Qué sobra fuera de esta instalación. No se borra desde acá: es configuración del usuario, fuera del proyecto, y
-// la puede haber dejado otro proyecto que todavía la usa con un `agy` viejo.
+// Qué sobra fuera de esta instalación. No se borra desde acá: es configuración del usuario, fuera del proyecto. Y
+// se mira que sea un puente de Cauce: un plugin ajeno que se llame igual no es asunto de este doctor.
 function registrationProblems(paths, runner) {
   const stray = runner.strayCopy
   if (!stray) return []
   const dir = stray.path.replace(/^~(?=\/|$)/, os.homedir())
-  if (!fs.existsSync(dir)) return []
+  let bridge = ''
+  try { bridge = fs.readFileSync(path.join(dir, 'hook.js'), 'utf8') } catch { return [] }
+  if (!bridge.includes('Cauce')) return []
   return [`hay una copia del plugin registrada para todo el usuario en ${dir}: ${runner.command} la corre en toda `
     + 'carpeta que no tenga plugin propio, con la raíz y las reglas del proyecto que la registró. Este proyecto no '
     + `la necesita, porque ${runner.command} descubre el plugin de ${paths.install}. Quitala con `

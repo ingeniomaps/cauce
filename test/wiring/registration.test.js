@@ -61,3 +61,12 @@ test('una copia registrada a nivel global sobra, y doctor dice cómo quitarla', 
   assert.equal(again.status, 0, again.stderr)
   assert.match(again.stdout + again.stderr, /agy plugin uninstall cauce/)
 })
+
+test('un plugin ajeno que se llama cauce no es asunto de doctor', () => {
+  const project = antigravityProject('cauce-registro-ajeno-')
+  assert.equal(project.runCli(['automation', 'install', project.target, 'antigravity']).status, 0)
+  const foreign = path.join(project.home, '.gemini', 'config', 'plugins', 'cauce')
+  fs.mkdirSync(foreign, { recursive: true })
+  fs.writeFileSync(path.join(foreign, 'hook.js'), 'process.stdout.write("{}")\n')
+  assert.deepEqual(doctorWithHome(project.home, project.target).errors, [])
+})

@@ -11,7 +11,7 @@ Cada adaptador traduce el mismo toolkit al espacio de nombres de su herramienta.
 | `artifacts` | los recorridos y cualquier archivo que el adaptador aporte |
 | `capabilities` | qué ejecuta de verdad —`nativeHooks`, `nativeWorkflows`, `nativeSkills`, `checkpointing`, `projectInstructions`— y qué queda como protocolo manual |
 | `roleSkills` | dónde se instala el catálogo de cargos, cuando la herramienta tiene skills |
-| `activation` | el paso manual que lo pone a correr, cómo verificarlo y qué se espera ver |
+| `strayCopy` | dónde quedaría una copia del plugin fuera del proyecto, que `doctor` señala, y cómo se quita |
 | `commands` | los nombres de los recorridos y con qué prefijo se los invoca acá |
 
 Lo que un adaptador **no** declara es qué acciones requieren confirmación humana: eso no varía por

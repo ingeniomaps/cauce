@@ -12,8 +12,8 @@ const OPS_DIR = '{{OPS_DIR}}'
 
 // Y la ruta absoluta. Un `agy` viejo mandaba `workspacePaths` vacío y un `Cwd` que apuntaba al scratch del CLI
 // o al home, y ejecutaba la copia registrada en `~/.gemini/config/plugins/`, cuyo `__dirname` no lleva a ningún
-// proyecto: sin el ancla escrita al instalar no había raíz. `agy` 1.4.0 descubre el plugin en el `.agents/` del
-// proyecto y manda la carpeta de trabajo (caso 392), así que el ancla queda para el payload que no la trae.
+// proyecto: sin el ancla escrita al instalar no había raíz. La raíz sigue saliendo de acá. La carpeta que manda
+// `agy` 1.4.0 decide otra cosa: si esta llamada es del proyecto o el puente se abstiene (caso 392).
 const OPS_ROOT = '{{OPS_ROOT}}'
 
 // Los dos marcadores y la carpeta desde la que corre el puente, juntos y pasables como argumento. El
@@ -189,16 +189,22 @@ function undescribed(event, input, normalized) {
     + 'Antigravity cambió el formato de sus llamadas, el puente tiene que aprenderlo en normalize().'
 }
 
-// Si el payload nombra la carpeta de trabajo y no es la de este proyecto, el puente no tiene nada que decir. Pasa
-// con una copia registrada a nivel global: `agy` la corre en toda carpeta sin plugin propio, con la raíz del
-// proyecto que la registró, y juzgar ahí es aplicarle a otra carpeta las reglas de uno (caso 392, R26). Sin la
-// carpeta en el payload no hay cómo saberlo, y se juzga como antes.
+// Si el payload nombra la carpeta de trabajo y no cae dentro de este proyecto, el puente se abstiene: es una copia
+// global corriendo en una carpeta ajena (caso 392, R26). Una carpeta de más arriba también es ajena —`agy` sólo
+// descubre el plugin desde el proyecto hacia adentro—, y sin carpeta en el payload no hay cómo saberlo: se juzga.
+// Las dos rutas se comparan reales, porque abstenerse es dejar pasar: un symlink de un solo lado callaba al puente
+// dentro de su propio proyecto.
+function real(dir) {
+  try { return fs.realpathSync(dir) } catch { return path.resolve(dir) }
+}
+
 function elsewhere(input, markers = MARKERS) {
-  const paths = (input.workspacePaths || []).filter(Boolean).map((one) => path.resolve(one))
+  const listed = Array.isArray(input.workspacePaths) ? input.workspacePaths : []
+  const paths = listed.filter((one) => typeof one === 'string' && one).map(real)
   const root = declaredRoot(markers)
   if (!paths.length || !root) return false
-  const workspace = workspaceOf(root, markers)
-  return !paths.some((one) => within(one, workspace) || within(workspace, one))
+  const workspace = real(workspaceOf(root, markers))
+  return !paths.some((one) => within(one, workspace))
 }
 
 function evaluate(event, input) {

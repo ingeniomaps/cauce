@@ -1,9 +1,7 @@
 'use strict'
 
-// El puente de Antigravity opina sólo sobre su proyecto (caso 392). `agy` 1.4.0 descubre el plugin del proyecto en
-// `.agents/plugins/` y le manda `workspacePaths` con la carpeta de trabajo. Una copia registrada a nivel global corre
-// en toda carpeta sin plugin propio, con la raíz del proyecto que la registró. Ahí lo que corresponde es abstenerse,
-// no decidir con las reglas de otro (R26).
+// El puente de Antigravity opina sólo sobre su proyecto. Por qué una copia suya llega a correr en otra carpeta está
+// en `engine/automation/registration.js` (caso 392).
 
 const { installedProject } = require('../support/environment')
 
@@ -38,10 +36,27 @@ test('el puente se abstiene en una carpeta que no es su proyecto', () => {
   assert.deepEqual(outside, { decision: 'allow' })
   assert.deepEqual(answer('stop', { workspacePaths: [elsewhere] }), { decision: 'stop' })
 
-  // En su proyecto sigue juzgando igual que siempre.
-  const inside = answer('pre-shell', push(workspace))
-  assert.equal(inside.decision, 'deny')
-  assert.match(inside.reason, /git push/)
+  // Una carpeta de más arriba también es ajena: la que agrupa proyectos no es este proyecto.
+  assert.deepEqual(answer('pre-shell', push(base)), { decision: 'allow' })
+
+  // En su proyecto sigue juzgando igual que siempre, también abierto en una subcarpeta o nombrado por un symlink.
+  const sub = path.join(workspace, 'src')
+  fs.mkdirSync(sub)
+  const alias = path.join(base, 'alias')
+  fs.symlinkSync(workspace, alias)
+  for (const where of [workspace, sub, alias]) {
+    const inside = answer('pre-shell', push(where))
+    assert.equal(inside.decision, 'deny', where)
+    assert.match(inside.reason, /git push/)
+  }
+})
+
+test('un workspacePaths con otra forma no tumba al puente', () => {
+  const { base, workspace, env } = installedProject('cauce-agy-scope-shape-', 'antigravity')
+  const answer = asGlobalCopy(base, workspace, env)
+  const shaped = answer('pre-shell',
+    { workspacePaths: workspace, toolCall: { args: { CommandLine: 'git push', Cwd: workspace } } })
+  assert.equal(shaped.decision, 'deny')
 })
 
 // Un `agy` que no manda la carpeta de trabajo —el que se midió el 2026-09-23— no le deja al puente con qué

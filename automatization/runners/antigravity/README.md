@@ -18,10 +18,10 @@ copia por usuario, y `agy` la corre en **toda** carpeta que no tenga plugin prop
 cargos del proyecto que la registró. Hasta 0.108.0 Cauce pedía ese paso, porque un `agy` anterior sólo corría la
 copia registrada. Si quedó alguna, `automation doctor` lo dice, y se quita con `agy plugin uninstall cauce`.
 
-El payload de `agy` 1.4.0 trae la carpeta de trabajo en `workspacePaths` y en el `Cwd` de cada llamada, y el puente
-la usa para encontrar la raíz. Si esa carpeta no es la de este proyecto, el puente se abstiene: es lo que pasaría
-con una copia global vieja, y una copia así no tiene por qué decidir sobre otra carpeta. Para un payload que no trae
-la carpeta, como el de un `agy` viejo, el puente sigue usando la raíz que `install` deja escrita como ruta absoluta.
+El puente encuentra la raíz por la ruta absoluta que `install` deja escrita. El payload de `agy` 1.4.0 trae además la
+carpeta de trabajo en `workspacePaths`, y el puente la usa para una sola cosa: si no cae dentro de este proyecto
+—una carpeta ajena o una de más arriba—, se abstiene. Un payload sin carpeta, como el de un `agy` viejo, se juzga
+como siempre.
 
 `agy plugin validate .agents/plugins/cauce` comprueba el plugin del proyecto.
 

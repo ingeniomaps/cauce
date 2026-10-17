@@ -85,8 +85,8 @@ function staleArtifacts(root, name) {
   return (runner.artifacts || []).filter((item) => state(item) === 'desactualizado').map((item) => item.target)
 }
 
-// `afterInstall` es la llamada con la que cierra `install`: ahí una copia registrada vieja es el paso que sigue
-// —registrar lo que se acaba de instalar—, no una instalación rota, así que se avisa en vez de fallar.
+// `afterInstall` es la llamada con la que cierra `install`: ahí una copia registrada a nivel global se avisa en vez de
+// fallar, porque lo que se acaba de instalar quedó bien y lo que sobra está fuera del proyecto.
 function doctor(root, name, output = console, { afterInstall = false } = {}) {
   const runner = runnerManifest(root, name)
   const paths = runnerPaths(root, name, runner)
