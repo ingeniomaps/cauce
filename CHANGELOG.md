@@ -14,6 +14,19 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.110.0] - 2026-10-17
+
+### Corregido
+
+- **`automation install` dice en qué carpeta tiene que abrirse la sesión para que corran los guards.** Los runners
+  cargan la configuración del proyecto desde la carpeta en que se abre la sesión hasta la raíz de su repo git, y no
+  más arriba. Una sesión abierta en un repo de producto dentro de la carpeta de un sidecar, o en una subcarpeta sin
+  git, corría sin guards, sin reglas y sin cargos, y nada lo avisaba. Ahora `install` lo dice con la ruta puesta.
+  **Si trabajás con Antigravity desde un repo de producto, abrí la sesión con `agy --add-dir <carpeta del
+  workspace>`**: así corren los guards y las reglas encuentran la instancia. En Claude Code y Gemini, `--add-dir` e
+  `--include-directories` no cargan los hooks de la carpeta agregada, así que esas sesiones se abren en la carpeta
+  del workspace. Codex documenta la misma búsqueda (caso 393).
+
 ## [0.109.0] - 2026-10-16
 
 ### Cambiado
