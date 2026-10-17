@@ -50,6 +50,7 @@
     "nativeSkills": true
   },
   "roleSkills": ".agents/plugins/cauce/skills",
+  "addDir": "--add-dir",
   "strayCopy": {
     "path": "~/.gemini/config/plugins/cauce",
     "remove": "agy plugin uninstall cauce"

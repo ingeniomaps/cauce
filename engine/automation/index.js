@@ -313,6 +313,10 @@ function foreignHooks(current, incoming, install) {
 // instrucciones de Codex es el mismo que el de la empresa. Conservarlo entero —lo correcto para un
 // archivo del proyecto— dejaba a ese runner sin una sola línea de Cauce, así que su contenido se
 // fusiona adentro, entre marcas, y todo lo demás del archivo queda intacto.
+function isGitRoot(dir) {
+  return fs.existsSync(path.join(dir, '.git'))
+}
+
 function install(root, name, output = console, options = {}) {
   // `install` arma la superficie de consumo de una empresa: punteros a cada cargo, una copia de los
   // workflows y los guards. Acá los cargos y los workflows son el producto —la copia divergiría— y
@@ -441,6 +445,16 @@ function install(root, name, output = console, options = {}) {
   // ops no encuentra ninguno mientras esta misma salida dice que están todos instalados.
   for (const dir of paths.install !== root ? landed : []) {
     output.log(`  ${name}: ${dir} — los encuentra por nombre una sesión abierta en ${paths.install}`)
+  }
+  // Dónde corren los guards, que no se invocan y por eso nadie nota que faltan. Los runners cargan la
+  // configuración del proyecto desde la carpeta en que se abre la sesión hasta la raíz de su repo git, y no más
+  // arriba (caso 393). Sin git en la carpeta de instalación, una subcarpeta ya queda afuera; en sidecar, también
+  // cada repo de producto con git propio. Sólo en Antigravity se midió un flag que lo resuelve, y lo declara su
+  // manifiesto.
+  if (runner.capabilities && runner.capabilities.nativeHooks && !(paths.install === root && isGitRoot(root))) {
+    const escape = runner.addDir ? `; desde ahí abrila con ${runner.command} ${runner.addDir} ${paths.install}` : ''
+    output.log(`  ${name}: los guards corren en una sesión abierta en ${paths.install}, no en una subcarpeta sin git`
+      + ` ni en un repo de producto con git propio${escape}`)
   }
   installOwnWorkflows(root, name, runner, paths, output)
   installRoleSkills(root, runner, output)
