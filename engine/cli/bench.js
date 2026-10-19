@@ -103,9 +103,10 @@ const AUTHOR = 'banco de cauce'
 // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que git
 // contesta exacto.
 //
-// Las líneas de trabajo armadas sobre un banco. `ops line` las deja al lado de la instancia, que acá es al
-// lado de lo que se borra: sobrevivían a rehacerlo, ya sin repositorio y con el estado de la corrida
-// anterior, que `check` seguía dando por válido (caso 357). Se reconocen por lo que son y no por el nombre
+// Las líneas de trabajo de antes de 0.111.0 armadas sobre un banco. `ops line` las dejaba al lado de la
+// instancia, que acá es al lado de lo que se borra: sobrevivían a rehacerlo, ya sin repositorio y con el estado
+// de la corrida anterior, que `check` seguía dando por válido (caso 357). Las de ahora quedan adentro, en
+// `lines/`, y se van con el banco. Se reconocen por lo que son y no por el nombre
 // —el `.git` del árbol apunta adentro del banco—, y eso vale también para la que quedó huérfana, que git ya
 // no lista. Una carpeta vecina que se llame parecido y no sea una línea no entra.
 //

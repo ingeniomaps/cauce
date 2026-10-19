@@ -65,7 +65,7 @@ const MANIFEST = {
     // La fecha, del mismo comando que trae los nombres (caso 115).
     today: { type: 'string' },
     // Las líneas de trabajo que la instancia tiene, para que la épica proponga un reparto entre ellas y no
-    // entre nombres inventados. Las sabe `ops lines`, que es quien mira los árboles.
+    // entre nombres inventados. Las sabe `ops lines`: las declaradas y las de antes, que mira en los árboles.
     lines: { type: 'array', maxItems: 20, items: { type: 'string', maxLength: 60 } },
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       domain: { type: 'string' }, agent: { type: 'string' },
@@ -202,7 +202,8 @@ const contract = await agent(
   `4. "node tools/ops.js context planning --json" — copy its inbox field into inbox and its today field ` +
   `into today, both verbatim, and nothing else it printed.\n` +
   `5. "node tools/ops.js lines ${WORKDIR} --json" — copy into lines every non-empty line field under ` +
-  `trees, verbatim. If it refuses —the instance is not in git—, lines is [].\n` +
+  `trees and every name field under declared, verbatim. If it refuses —the instance is not in git—, ` +
+  `lines is [].\n` +
   `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
   `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +

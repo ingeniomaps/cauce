@@ -13,6 +13,9 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const LNP = require('../planning/lines')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
+const LT = require('../core/line-trees')
+const LN = require('./lines')
+const C = require('../planning/claims')
 
 const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' })
 const branchExists = (cwd, name) => git(cwd, 'rev-parse', '--verify', '--quiet', `refs/heads/${name}`).status === 0
@@ -36,6 +39,7 @@ function join(dir, name, cli) {
   if (!fs.existsSync(path.join(planning, 'BACKLOG.md'))) {
     return fail(`${root} (ruta resuelta) no es una raíz ops: falta planning/BACKLOG.md.`, USAGE)
   }
+  if (name && LT.declared(root)[name]) return retire(LN.real(root), name, cli)
   const where = LNP.placement(planning)
   if (!where) return fail(`${root} no está en un repositorio git: las líneas son worktrees de él.`, REFUSED)
   const head = git(root, 'symbolic-ref', '--short', '-q', 'HEAD')
@@ -121,4 +125,167 @@ function print(report, name) {
     + (conflicts.length ? ' — deja el merge en curso, con esos conflictos para resolver' : ''))
 }
 
-module.exports = { join }
+// Retirar una línea declarada (caso 394). Su trabajo llega a la rama viva de cada repositorio por PR, como el de
+// cualquier rama: acá no se mergea nada. Se comprueba que haya llegado y se desarma lo que la línea armó —sus
+// árboles, sus ramas, los enlaces de su carpeta y su declaración—. En seco dice qué falta; con `--apply` se
+// niega si algo no llegó o tiene cambios sin commitear, porque lo que se retira no vuelve.
+function retire(root, name, cli) {
+  const branch = `${LNP.BRANCH}${name}`
+  const repos = LT.trees(root).filter((one) => one.line === name).map(({ repo, source, tree }) => {
+    const live = LNP.startPoint(source)
+    const has = branchExists(source, branch)
+    // Sin rama no hay nada que perder; con rama, llegó si la viva la contiene.
+    const merged = !has || Boolean(live && git(source, 'merge-base', '--is-ancestor', branch, live).status === 0)
+    const exists = fs.existsSync(tree)
+    const dirty = exists ? (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length : 0
+    return { repo, source, tree, branch, live, has, merged, exists, dirty }
+  })
+  const ST = require('../planning/state')
+  const state = ST.snapshot(path.join(root, 'planning'))
+  const milestones = state.milestones.filter((one) => one.line === name
+    && one.tasks.some((task) => !state.done.set.has(task.slug))).map((one) => one.slug)
+  const report = { line: name, branch, applied: false, repos, milestones }
+  const held = repos.filter((one) => !one.merged || one.dirty)
+  if (cli.has('--apply')) {
+    if (held.length) {
+      const why = held.map((one) => heldWhy(one)).join('; ')
+      return fail(`la línea ${name} no se puede retirar todavía: ${why}. Si ya se mergeó en el remoto, `
+        + '`git fetch` primero: la rama viva se lee de lo último que se bajó.', REFUSED)
+    }
+    for (const one of repos) {
+      if (one.exists) {
+        const removed = git(one.source, 'worktree', 'remove', one.tree)
+        if (removed.status !== 0) {
+          return fail(`git worktree remove falló en ${one.repo}: ${(removed.stderr || '').trim()}`, REFUSED)
+        }
+      }
+      // `-D` y no `-d`: `-d` pregunta contra el `HEAD` del checkout principal, que puede estar en otra rama.
+      // Que la viva la contiene ya se comprobó arriba.
+      if (one.has) git(one.source, 'branch', '-D', branch)
+    }
+    const folder = path.join(LT.sessionOf(root), LT.DIR, name)
+    if (fs.existsSync(folder)) unlinkOnly(folder)
+    const lines = LT.sessionOf(root) && path.join(LT.sessionOf(root), LT.DIR)
+    try { fs.rmdirSync(lines) } catch { /* quedan otras líneas */ }
+    report.leftover = fs.existsSync(folder) ? folder : ''
+    const config = LT.config(root)
+    delete config.lines[name]
+    if (!Object.keys(config.lines).length) delete config.lines
+    fs.writeFileSync(path.join(root, 'ops.config.json'), `${JSON.stringify(config, null, 2)}\n`)
+    report.applied = true
+  }
+  if (cli.has('--json')) return console.log(JSON.stringify(report))
+  console.log(`RETIRAR la línea ${name}  (${repos.length} repositorio(s))`)
+  for (const one of repos) {
+    console.log(`  ${one.repo}  ${one.merged ? `llegó a ${one.live || '(sin rama viva)'}` : heldWhy(one, false)}`
+      + `${one.merged && one.dirty ? `, pero ${one.dirty} cambio(s) sin commitear en ${one.tree}` : ''}`)
+  }
+  if (milestones.length) {
+    console.log(`  quedan hitos de la línea sin terminar: ${milestones.join(', ')} — sin la línea no los toma `
+      + 'nadie: sacales el `line:` para que los tome la principal, o retirala cuando estén')
+  }
+  if (report.applied) {
+    console.log(`✓ retirada: sin árboles, sin ${branch} y fuera de ops.config.json, que hay que commitear`)
+    if (report.leftover) console.log(`  quedó ${report.leftover} con algo que no es de la línea: miralo y borralo`)
+  } else if (held.length) console.log('  todavía no se puede retirar')
+  else console.log(`Para hacerlo: ops lines join <ops-root> ${name} --apply`)
+}
+
+const heldWhy = (one, named = true) => `${named ? `${one.repo}: ` : ''}${one.merged
+  ? `${one.dirty} cambio(s) sin commitear en ${one.tree}`
+  : one.live ? `${one.branch} no llegó a ${one.live}`
+    : `no tiene rama viva contra qué comprobar que ${one.branch} llegó`}`
+
+// Lo que queda de la carpeta de una línea después de sacar sus árboles son enlaces. Se borran ésos y las carpetas
+// que quedan vacías, nada más: un enlace se quita sin tocar adonde lleva, y una carpeta con algo adentro que no es
+// de la línea se queda, y se dice (R23).
+function unlinkOnly(dir) {
+  for (const entry of fs.readdirSync(dir)) {
+    const at = path.join(dir, entry)
+    const stat = fs.lstatSync(at)
+    if (stat.isSymbolicLink()) fs.unlinkSync(at)
+    else if (stat.isDirectory()) unlinkOnly(at)
+  }
+  try { fs.rmdirSync(dir) } catch { /* tiene algo propio */ }
+}
+
+// Pasar una línea de antes a la disposición nueva (caso 394). La de antes es un worktree de la instancia en
+// `line/<nombre>` con su carpeta de sesión al lado, y lo que commiteó ahí es planning: llega a la instancia
+// mergeando esa rama en la que tiene el árbol principal, que es lo que hacía `join`. Después se retiran ese
+// worktree y su rama, y se arma la línea nueva. Lo del producto no se mueve: sus ramas de tarea siguen donde
+// estaban. Sobre lo que no se puede traer —un reclamo en vuelo, que tiene el id del árbol que se va— se niega.
+//
+// La carpeta de al lado no se borra. Tiene lo que alguien copió a mano para que la línea anduviera —un
+// `CLAUDE.md`, permisos—, y eso no se tira sin mirarlo (R23): se dice dónde quedó.
+function migrate(dir, name, repos, cli) {
+  const root = LN.real(opsRoot(dir))
+  const legacy = name && LN.legacyTree(root, name)
+  if (!legacy) {
+    return fail(`no hay una línea ${name || '(sin nombre)'} de antes en esta instancia: una de antes es un worktree `
+      + `de la instancia en ${LNP.BRANCH}${name || '<nombre>'}. \`ops lines migrate <ops-root> <nombre> <repo>...\``,
+    USAGE)
+  }
+  const top = git(root, 'rev-parse', '--show-toplevel').stdout.trim()
+  if (LN.real(legacy.tree) === LN.real(top)) {
+    return fail(`esto es el árbol de la línea ${name}: migrala desde la instancia principal.`, USAGE)
+  }
+  const head = git(root, 'symbolic-ref', '--short', '-q', 'HEAD')
+  if (head.status !== 0) return fail('la instancia no está en ninguna rama: no hay a dónde traer la línea.', REFUSED)
+  const into = head.stdout.trim()
+  const branch = `${LNP.BRANCH}${name}`
+  const where = LNP.placement(path.join(root, 'planning'))
+  const claims = C.read(path.join(legacy.tree, where.relative)).map((one) => one.slug)
+  const session = LT.sessionOf(root)
+  const report = {
+    line: name, tree: legacy.tree, branch, into, applied: false,
+    commits: Number(git(root, 'rev-list', '--count', `${into}..${branch}`).stdout.trim()) || 0,
+    dirty: (git(legacy.tree, 'status', '--porcelain', '--untracked-files=no').stdout || '').split('\n')
+      .filter(Boolean).length,
+    claims,
+    home: session ? path.join(path.dirname(session), `${path.basename(session)}-${name}`) : '',
+  }
+  const apply = cli.has('--apply')
+  if (apply) {
+    if (report.dirty || claims.length) {
+      return fail(`la línea ${name} no se puede migrar todavía: ${[
+        report.dirty && `${report.dirty} cambio(s) sin commitear en ${legacy.tree}`,
+        claims.length && `reclamos en vuelo (${claims.join(', ')}), que llevan el id del árbol que se retira: `
+          + 'cerralos o soltalos desde la línea',
+      ].filter(Boolean).join('; ')}.`, REFUSED)
+    }
+    if ((git(root, 'status', '--porcelain', '--untracked-files=no').stdout || '').trim()) {
+      return fail('la instancia tiene cambios sin commitear: commitealos o guardalos antes de traer la línea.',
+        REFUSED)
+    }
+    if (report.commits) {
+      const merged = git(root, 'merge', '--no-ff', '--no-edit', '-m', `merge ${branch} into ${into}`, branch)
+      if (merged.status !== 0) {
+        return fail(`traer ${branch} a ${into} no salió solo: ${(merged.stderr || merged.stdout || '').trim()}\n`
+          + 'Resolvé el merge —`ops lines join` clasifica cada conflicto— y repetí la migración.', REFUSED)
+      }
+    }
+    const removed = git(root, 'worktree', 'remove', legacy.tree)
+    if (removed.status !== 0) return fail(`git worktree remove falló: ${(removed.stderr || '').trim()}`, REFUSED)
+    git(root, 'branch', '-d', branch)
+    const made = LN.assemble(root, name, repos)
+    if (made.error) {
+      return fail(`la línea de antes quedó retirada y su planning en ${into}, pero la nueva no se armó: `
+        + `${made.error}`, REFUSED)
+    }
+    report.applied = true
+    report.made = made
+  }
+  if (cli.has('--json')) return console.log(JSON.stringify(report))
+  console.log(`MIGRAR la línea ${name}  ${legacy.tree} (${branch}) → ${LT.DIR}/${name}/`)
+  console.log(`  ${report.commits} commit(s) de planning que traer a ${into}`)
+  if (report.dirty) console.log(`  ${report.dirty} cambio(s) sin commitear en el árbol de la línea: --apply se niega`)
+  if (claims.length) console.log(`  reclamos en vuelo: ${claims.join(', ')} — --apply se va a negar hasta cerrarlos`)
+  if (!apply) return console.log(`Para hacerlo: ops lines migrate <ops-root> ${name} <repo>... --apply`)
+  LN.print(report.made)
+  if (report.home && fs.existsSync(report.home)) {
+    console.log(`⚠ ${report.home} era la carpeta de sesión de la línea y ya no se usa. No se borra sola: si le `
+      + 'copiaste algo a mano, rescatalo, y después borrala.')
+  }
+}
+
+module.exports = { join, migrate }

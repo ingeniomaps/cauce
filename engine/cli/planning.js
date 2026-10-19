@@ -173,7 +173,11 @@ function context(dir, cli) {
   // distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo que se acota es qué se
   // ofrece, no qué se sabe: `done` sigue siendo global, así que una dependencia que vive en otro hito se
   // juzga igual de bien.
-  const from = CL.runner()
+  // La línea va primero porque da el id: la sesión de una línea corre desde la misma instancia que la principal.
+  const asked = LN.sessionLine(root, cli.value('--line'))
+  if (asked.error) return fail(asked.error, USAGE)
+  const { line } = asked
+  const from = CL.runner(asked.id)
   const mio = state.wips.find((one) => one.runner === P.wipName(from)) || null
   const hito = cli.value('--hito')
   // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir
@@ -181,7 +185,6 @@ function context(dir, cli) {
   // comando que dice qué hacer y el que lo autoriza contestaban distinto, y sólo se veía al reclamar.
   const own = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
   // La línea acota antes que el hito (caso 239), y con la misma excepción: lo que ya tenés no se esconde.
-  const line = LN.currentLine(root)
   const lined = LN.scope(state.milestones, line, new Set([own && own.slug, mio && mio.task].filter(Boolean)))
   state.claims = [...state.claims, ...LN.claimsElsewhere(root)]
   let hitoOmitido = ''
@@ -248,6 +251,7 @@ function context(dir, cli) {
     // De qué línea es este árbol y qué hitos no se le ofrecen por ser de otra: sin decirlo, una cola acotada
     // se lee igual que una cola terminada.
     line,
+    ...(asked.legacy ? { lineWarning: LN.LEGACY(line) } : {}),
     otherLines: lined.hidden.map((one) => one.slug),
     claimed,
     taken,
@@ -325,6 +329,7 @@ function context(dir, cli) {
     if (!report.line && !report.otherLines.length) return
     console.log(`LINE   ${report.line || '(ninguna)'}${report.otherLines.length
       ? ` — de otras líneas, no se ofrecen: ${report.otherLines.join(', ')}` : ''}`)
+    if (report.lineWarning) console.log(`       ⚠ ${report.lineWarning}`)
   }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')

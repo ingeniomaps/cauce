@@ -18,8 +18,9 @@ order: 20
 - **`order` decide el lugar en la cola**, de menor a mayor, después de lo que siga en `BACKLOG.md`. Con un solo
   archivo lo decidía la posición; partido, hay que decirlo. De a diez deja lugar para meter uno en el medio.
 - **Cuando el hito se queda sin tareas, el archivo se borra**: `autobuild` lo hace al cerrar la última.
-- **`line: <nombre>` lo hace de una línea de trabajo**: sólo lo ve el árbol en la rama `line/<nombre>` —el que
-  arma `ops line`—, y el principal deja de ofrecerlo. Sin `line`, el hito es del árbol principal.
+- **`line: <nombre>` lo hace de una línea de trabajo**: sólo lo ve la sesión que lleva esa línea —`/autobuild
+  <nombre>`, o `--line <nombre>` en `context` y `claim`—, y la principal deja de ofrecerlo. Sin `line`, el hito
+  es de la principal.
   `delivery/teamwork.md` cuenta cuándo conviene.
 
 `node tools/ops.js split-backlog planning` pasa los hitos que haya en `BACKLOG.md` a sus archivos, con el orden

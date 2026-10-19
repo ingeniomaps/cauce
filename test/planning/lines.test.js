@@ -12,6 +12,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const LN = require('../../engine/planning/lines')
+const P = require('../../engine/planning/parser')
 
 const git = (cwd, ...args) => {
   const result = spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, encoding: 'utf8' })
@@ -64,7 +65,7 @@ test('cada árbol ve los hitos de su línea, y context y claim contestan lo mism
 
   const refused = claim(trees.line, 'r-line', 'auth-token')
   assert.notEqual(refused.status, 0)
-  assert.match(refused.stderr, /auth-token no es de ninguna línea: se toma desde el árbol principal/)
+  assert.match(refused.stderr, /auth-token no es de ninguna línea: se toma sin --line, desde la sesión principal/)
   assert.match(claim(trees.main, 'r-main', 'admin-consulta').stderr, /es de la línea admin/)
   assert.match(context(trees.line, 'r-line', '--hito', 'auth').stderr, /el hito auth no es de ninguna línea/)
 })
@@ -338,4 +339,63 @@ test('join --apply --json cuenta un check que no pudo correr, sin romper el JSON
   assert.equal(report.applied, true)
   assert.equal(report.check.ok, false)
   assert.match(report.check.output, /falta BACKLOG\.md/)
+})
+
+// Caso 394. Una sola instancia y la línea por argumento: la sesión principal y la de una línea corren `ops`
+// desde el mismo árbol y sin `CAUCE_RUNNER`, así que lo único que las separa es `--line`.
+function declared() {
+  const ops = path.join(tempRoot('cauce-lineas-declaradas-'), 'demo-ops')
+  assert.equal(run(['init', ops, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.mkdirSync(path.join(ops, 'planning', 'backlog'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), hito('auth', 'auth-token', ''))
+  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'admin'))
+  const config = JSON.parse(fs.readFileSync(path.join(ops, 'ops.config.json'), 'utf8'))
+  fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ ...config, lines: { admin: ['app'] } }))
+  git(ops, 'init', '-q', '-b', 'main')
+  const as = (...args) => run(args, ops, { CAUCE_RUNNER: '', CAUCE_OWNER: 't@t' })
+  return { ops, planning: path.join(ops, 'planning'), as }
+}
+
+test('la sesión dice su línea con --line, y sin argumento es la principal', () => {
+  const { ops, planning, as } = declared()
+  const read = (...args) => JSON.parse(as('context', planning, '--json', ...args).stdout)
+  const principal = read()
+  assert.deepEqual([principal.task.slug, principal.line, principal.otherLines], ['auth-token', '', ['admin']])
+  const admin = read('--line', 'admin')
+  assert.deepEqual([admin.task.slug, admin.line, admin.otherLines], ['admin-consulta', 'admin', ['auth']])
+  assert.equal(principal.lineWarning, undefined, 'una línea declarada no es la de antes')
+
+  // Los dos ids, y la prueba de que separan a las sesiones: reclaman a la vez.
+  const top = fs.realpathSync(ops)
+  assert.match(principal.wipFile, new RegExp(`^wip/${P.wipName(top)}\\.md$`))
+  assert.equal(admin.wipFile, `wip/${P.wipName(`${top}#line/admin`)}.md`)
+  assert.equal(as('claim', planning, 'auth-token').status, 0)
+  const took = as('claim', planning, 'admin-consulta', '--line', 'admin')
+  assert.equal(took.status, 0, `las dos sesiones reclaman a la vez: ${took.stderr}`)
+  assert.equal(read('--line', 'admin').claimed, true)
+  assert.equal(read().task.slug, 'auth-token', 'la principal sigue con la suya')
+
+  // Cada una toma sólo lo suyo, y lo dice como se toma lo otro.
+  assert.match(as('claim', planning, 'auth-token', '--line', 'admin').stderr,
+    /no es de ninguna línea: se toma sin --line, desde la sesión principal/)
+  assert.match(as('release', planning, 'admin-consulta').stderr, /admin-consulta es de t@t/,
+    'la principal no suelta lo de la línea')
+  assert.equal(as('release', planning, 'admin-consulta', '--line', 'admin').status, 0)
+
+  // Una línea que no está declarada se dice, en vez de contestar como la principal.
+  for (const command of [['context', planning, '--json'], ['claim', planning, 'auth-token'],
+    ['release', planning, 'auth-token'], ['worktree', planning, 'auth-token']]) {
+    const unknown = as(...command, '--line', 'pagos')
+    assert.equal(unknown.status, 2, command[0])
+    assert.match(unknown.stderr, /la línea pagos no está declarada en ops\.config\.json/, command[0])
+  }
+})
+
+test('una línea de antes sigue saliendo de la rama de su árbol, y context avisa que hay que migrarla', () => {
+  const trees = instance()
+  const line = context(trees.line, 'r-line').json
+  assert.equal(line.line, 'admin')
+  assert.match(line.lineWarning, /disposición de antes de 0\.111\.0.*ops lines migrate <ops-root> admin/)
+  assert.match(run(['context', trees.line], undefined, { CAUCE_RUNNER: 'r-line' }).stdout, /⚠ la línea admin sale/)
+  assert.equal(context(trees.main, 'r-main').json.lineWarning, undefined, 'la principal no tiene nada que migrar')
 })

@@ -22,6 +22,7 @@ const { readWip, readWips } = require('../planning/parser')
 const { runner } = require('../planning/claims')
 const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
+const LT = require('../core/line-trees')
 
 // Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
 // angosta: vale para esa ruta y para ninguna otra, a diferencia de la variable, que apaga el guard hasta
@@ -194,6 +195,7 @@ const INSTANCE_CONFIG = 'ops.config.json'
 
 function isProduct(root, file) {
   if (opsOwned(root, file) || file === path.join(root, INSTANCE_CONFIG)) return false
+  if (lineAt(root, file)) return true
   const declared = configOf(root).workspaceRoots
   const roots = (Array.isArray(declared) ? declared : [])
     .filter((entry) => entry && typeof entry.path === 'string')
@@ -225,6 +227,21 @@ function instancePlan(root, planning) {
   if (process.env.CAUCE_RUNNER) return null
   const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' })
   return readWip(planning, top.status === 0 ? top.stdout.trim() : root)
+}
+
+// La línea en cuyo árbol cae un archivo (caso 394), por la ruta: es lo único que el guard puede saber de ella,
+// porque el `--line` lo recibe `ops` y no la sesión.
+const lineAt = (root, file) => LT.trees(root).find(({ tree }) => [tree, landing(path.sep, tree)]
+  .some((one) => !path.relative(one, file).startsWith('..')))
+
+// El plan de esa línea. Su sesión corre `ops` con `--line`, así que su WIP queda bajo el id de la instancia con
+// la línea, y el guard deducía el de la principal: la primera edición de cada tarea de una línea se frenaba
+// con el plan escrito. Con `CAUCE_RUNNER` el id es el declarado y no hay nada que deducir.
+function linePlan(root, planning, file) {
+  const hit = !process.env.CAUCE_RUNNER && lineAt(root, file)
+  if (!hit) return null
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' })
+  return readWip(planning, LT.runnerOf(top.status === 0 ? top.stdout.trim() : root, hit.line))
 }
 
 function planFirst(input) {
@@ -265,7 +282,10 @@ function planFirst(input) {
       + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con '
       + 'un estado verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
   for (const raw of filesOf(input)) {
-    if (!isProduct(root, path.resolve(cwdOf(input), raw))) continue
+    const file = path.resolve(cwdOf(input), raw)
+    if (!isProduct(root, file)) continue
+    const lined = linePlan(root, planning, file)
+    if (lined && lined.complete + lined.pending > 0) continue
     if (approved(input, raw)) continue
     // Con un plan a la vista no se ofrece ninguna de las dos salidas: aprobar la ruta escribe «esto no es
     // trabajo de una tarea», que ahí es falso, y anunciar la variable ofrece el permiso más ancho cuando

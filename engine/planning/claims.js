@@ -15,6 +15,7 @@ const fs = require('node:fs')
 const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const P = require('./parser')
+const { runnerOf } = require('../core/line-trees')
 
 const DIR = 'claims'
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -50,10 +51,12 @@ function owner(root) {
 // para todos— cuando invoca desde una instancia sidecar compartida. Esa falla no queda en silencio:
 // `claim` se niega a darle una segunda tarea a un runner que ya tiene una, y ese es el mensaje que
 // manda a poner la variable.
-function runner() {
+//
+// `line` es la línea que la sesión dijo llevar con `--line` (caso 394), y le da un id propio.
+function runner(line = '') {
   if (process.env.CAUCE_RUNNER) return process.env.CAUCE_RUNNER.trim()
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' })
-  return result.status === 0 ? (result.stdout || '').trim() : process.cwd()
+  return runnerOf(result.status === 0 ? (result.stdout || '').trim() : process.cwd(), line)
 }
 
 // La rama donde vive el trabajo de una tarea. La escriben `worktree` al crearla y `check` al buscar si

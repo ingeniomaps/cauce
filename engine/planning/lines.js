@@ -2,28 +2,68 @@
 
 // Qué trabajo es de qué línea, y qué reclamó cada una (caso 239).
 //
-// Una línea es un worktree de la instancia en su rama `line/<nombre>`, con su propia carpeta de sesión (lo arma
-// `ops line`). Su autobuild ya lee su propio árbol; lo que faltaba es que no tomara el trabajo de otra. Un hito
-// se declara de una línea con `line: <nombre>` en el frontmatter de su `backlog/<hito>.md`. Una línea ve sólo
-// sus hitos, y el árbol que no es de ninguna ve los que no tienen línea. Lo que no se declara se comporta como
+// Un hito se declara de una línea con `line: <nombre>` en el frontmatter de su `backlog/<hito>.md`. Una línea
+// ve sólo sus hitos, y la sesión principal ve los que no tienen línea. Lo que no se declara se comporta como
 // antes.
 //
-// La línea sale de la rama y no de un argumento: un argumento hay que recordarlo en cada corrida, y olvidarlo
-// reproduce el caso en silencio.
+// Desde el caso 394 una línea es un nombre y los repositorios que trabaja, declarados en `ops.config.json`
+// (`engine/core/line-trees.js`), y la sesión dice cuál lleva con `--line`. Antes salía de la rama del árbol de
+// la instancia, porque cada línea tenía su propio worktree de ella; con una sola instancia ese dato no existe.
+// Olvidar el argumento no pisa a nadie: sin él la sesión es la principal, que nunca toma un hito de una línea.
 
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const C = require('./claims')
+const LT = require('../core/line-trees')
 
-const BRANCH = 'line/'
-const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const { BRANCH, NAME } = LT
 const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' })
 
+// Deprecado: la línea leída de la rama del árbol, para las líneas armadas antes de 0.111.0 con su carpeta de
+// sesión aparte. La reemplaza `--line`, y `ops lines migrate` pasa cada una a la disposición nueva; se borra
+// en la 1.0.0.
 function currentLine(root) {
   const head = git(root, 'symbolic-ref', '--short', '-q', 'HEAD')
   const branch = head.status === 0 ? head.stdout.trim() : ''
   return branch.startsWith(BRANCH) ? branch.slice(BRANCH.length) : ''
+}
+
+// La línea de la sesión que pregunta: la que dice `--line`, que tiene que estar declarada, y sin argumento la
+// principal. `root` es el planning. Una línea pedida que no existe se dice: contestar como la principal le
+// daría a esa sesión el trabajo de otra.
+//
+// `id` es la línea que va en el id del runner, y la de antes no lleva: su árbol ya le daba uno propio, y
+// cambiárselo dejaría sin dueño los reclamos que tiene en vuelo.
+function sessionLine(root, asked) {
+  if (asked) {
+    if (!NAME.test(asked)) return { error: `--line ${asked} no es un nombre de línea (minúsculas y guiones)` }
+    if (!LT.declared(path.join(root, '..'))[asked]) {
+      return { error: `la línea ${asked} no está declarada en ops.config.json. Se arma con `
+        + `\`ops line <ops-root> ${asked} <repo>...\`` }
+    }
+    return { line: asked, id: asked, legacy: false }
+  }
+  const legacy = currentLine(root)
+  return { line: legacy, id: '', legacy: Boolean(legacy) }
+}
+
+// El aviso de una sesión que corre en una línea de antes, que sigue andando hasta que se la migre.
+const LEGACY = (line) => `la línea ${line} sale de la rama de este árbol, que es la disposición de antes de `
+  + `0.111.0. Pasala a la nueva con \`ops lines migrate <ops-root> ${line} <repo>...\`: deja de andar en la 1.0.0.`
+
+// De dónde sale la rama de una línea nueva (caso 395). Sin punto de partida, `git worktree add -b` toma el
+// `HEAD`, y el checkout suele estar en una rama de trabajo: la línea nacía con commits ajenos sin mergear.
+// Primero la rama por defecto de un remoto, en lo último que se bajó de ella; después `main` o `master`
+// locales. Sin ninguna, '' y queda el `HEAD`, que es lo único que hay. Es también contra qué se cuenta lo
+// que una línea lleva hecho.
+function startPoint(repo) {
+  const refs = (git(repo, 'for-each-ref', '--format=%(refname)%09%(symref:short)', 'refs/remotes/').stdout || '')
+    .split('\n').map((one) => one.split('\t'))
+  const remote = refs.find(([name, target]) => name.endsWith('/HEAD') && target)
+  if (remote) return remote[1]
+  return ['main', 'master'].find((one) => git(repo, 'rev-parse', '--verify', '--quiet', `refs/heads/${one}`)
+    .status === 0) || ''
 }
 
 // Los hitos que esta línea puede tomar. Lo que ya tiene en curso no se esconde aunque sea de otra: un filtro
@@ -36,8 +76,8 @@ function scope(milestones, line, keep = new Set()) {
 // Lo que se le dice a quien pide trabajo de otra línea: dónde se toma.
 function whereToTake(milestone) {
   return milestone.line
-    ? `es de la línea ${milestone.line}: se toma desde su carpeta (\`ops line\`)`
-    : 'no es de ninguna línea: se toma desde el árbol principal'
+    ? `es de la línea ${milestone.line}: se toma con --line ${milestone.line} (/autobuild ${milestone.line})`
+    : 'no es de ninguna línea: se toma sin --line, desde la sesión principal'
 }
 
 function lineErrors(milestones) {
@@ -89,8 +129,11 @@ function status(root) {
   const base = trees.length ? trees[0].branch : ''
   const ST = require('./state')
   const CK = require('./checkpoints')
+  // Las líneas declaradas (caso 394) van aparte y sólo si hay: sin líneas la salida es la de siempre.
+  const lines = declaredStatus(root, where.here)
   return {
     base,
+    ...(lines.declared.length ? lines : {}),
     trees: trees.map(({ tree, branch }) => {
       const planning = path.join(tree, where.relative)
       const line = branch.startsWith(BRANCH) ? branch.slice(BRANCH.length) : ''
@@ -119,6 +162,59 @@ function status(root) {
       }
     }),
   }
+}
+
+// Lo que separa a una rama de la línea de aquello de donde salió, en su repositorio.
+function measure(source, from, branch) {
+  if (!from) return { ahead: null, behind: null, files: [] }
+  const counted = git(source, 'rev-list', '--left-right', '--count', `${from}...${branch}`)
+  if (counted.status !== 0) return { ahead: null, behind: null, files: [] }
+  const [behind, ahead] = counted.stdout.trim().split(/\s+/).map((n) => Number(n) || 0)
+  const files = (git(source, 'diff', '--name-only', `${from}...${branch}`).stdout || '').split('\n').filter(Boolean)
+  return { ahead, behind, files }
+}
+
+// El estado de cada línea declarada: sus árboles, cuánto llevan contra la rama viva de su repositorio, lo que
+// tienen sin commitear, y su parte del planning —que es uno solo, el de la instancia—. Y el solape: dos líneas
+// sobre el mismo repositorio no se pisan, pero lo que cambien las dos choca al mergear, y eso se ve antes
+// comparando los archivos que tocó cada rama.
+function declaredStatus(root, instance) {
+  const ops = path.join(root, '..')
+  const trees = LT.trees(ops)
+  if (!trees.length) return { declared: [], overlaps: [] }
+  const ST = require('./state')
+  const CK = require('./checkpoints')
+  const P = require('./parser')
+  const state = ST.snapshot(root)
+  const byRepo = new Map()
+  const declared = [...new Set(trees.map((one) => one.line))].map((name) => {
+    const repos = trees.filter((one) => one.line === name).map(({ repo, source, tree }) => {
+      const branch = `${BRANCH}${name}`
+      const exists = fs.existsSync(tree)
+      const moved = measure(source, startPoint(source), branch)
+      byRepo.set(repo, [...(byRepo.get(repo) || []), { line: name, files: moved.files }])
+      const dirty = exists ? (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length : 0
+      return { repo, tree, branch, exists, ahead: moved.ahead, behind: moved.behind, dirty }
+    })
+    const own = scope(state.milestones, name).milestones
+    const slugs = new Set(own.flatMap((one) => one.tasks.map((task) => task.slug)))
+    const id = P.wipName(LT.runnerOf(instance, name))
+    return {
+      name, repos,
+      milestones: own.map((one) => ({ slug: one.slug, tasks: one.tasks.length })),
+      claims: state.claims.filter((one) => slugs.has(one.slug))
+        .map((one) => ({ slug: one.slug, runner: one.runner, started: one.started })),
+      wips: state.wips.filter((one) => one.runner === id)
+        .map((one) => ({ task: one.task, runner: one.runner, phase: one.phase })),
+      checkpoints: CK.holding(root, name).map((one) => one.file),
+    }
+  })
+  const overlaps = [...byRepo].filter(([, all]) => all.length > 1).map(([repo, all]) => ({
+    repo, lines: all.map((one) => one.line),
+    files: [...new Set(all.flatMap((one) => one.files))]
+      .filter((file) => all.filter((one) => one.files.includes(file)).length > 1).sort(),
+  }))
+  return { declared, overlaps }
 }
 
 // Qué significa cada archivo en conflicto al juntar dos líneas, y qué hacer con él. Las reglas son las que
@@ -173,6 +269,7 @@ function mergeWarnings(root, milestones, tableRows) {
 }
 
 module.exports = {
-  BRANCH, NAME, currentLine, scope, whereToTake, lineErrors, worktrees, placement, claimsElsewhere, status,
+  BRANCH, NAME, currentLine, sessionLine, LEGACY, startPoint, scope, whereToTake, lineErrors, worktrees, placement,
+  claimsElsewhere, status,
   classifyConflicts, duplicateEpics, mergeWarnings,
 }

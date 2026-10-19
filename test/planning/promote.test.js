@@ -13,11 +13,6 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-const git = (cwd, ...args) => {
-  const result = spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, encoding: 'utf8' })
-  assert.equal(result.status, 0, result.stderr)
-}
-
 const epic = (hitos, extra = '') => `---
 epic: 004
 title: Pedidos
@@ -74,15 +69,13 @@ function instance(name, text) {
 
 test('promote escribe un hito por cada uno propuesto, con su orden, su línea y sus historias', () => {
   const planning = instance('hitos', epic(HITOS))
-  // La línea existe como rama: no hay nada que avisar sobre ella.
+  // La línea está declarada (caso 394): no hay nada que avisar sobre ella.
   const ops = path.dirname(planning)
-  git(ops, 'init', '-q', '-b', 'main')
-  git(ops, 'add', '.gitignore', 'planning')
-  git(ops, 'commit', '-qm', 'base')
-  git(ops, 'branch', 'line/admin')
+  const config = JSON.parse(fs.readFileSync(path.join(ops, 'ops.config.json'), 'utf8'))
+  fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ ...config, lines: { admin: ['app'] } }))
   const result = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(result.stdout.includes('no tiene árbol'), false, 'la línea admin existe')
+  assert.equal(result.stdout.includes('no está armada'), false, 'la línea admin existe')
   assert.match(result.stdout, /backlog\/alta-pedidos\.md.*2 tarea/)
   assert.match(result.stdout, /backlog\/consola\.md.*line: admin.*1 tarea/)
   const alta = fs.readFileSync(path.join(planning, 'backlog', 'alta-pedidos.md'), 'utf8')
@@ -151,8 +144,21 @@ test('promote avisa de una línea que todavía no tiene árbol ni rama, y promue
   const planning = instance('sin-linea', epic(HITOS.replace('(line: admin)', '(line: admn)')))
   const result = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(result.status, 0, result.stderr)
-  assert.match(result.stdout, /line admn no tiene árbol todavía: nadie la ve hasta "ops line \. admn"/)
+  assert.match(result.stdout, /line admn no está armada todavía: nadie la toma hasta "ops line \. admn <repo>\.\.\."/)
   assert.match(fs.readFileSync(path.join(planning, 'backlog', 'consola.md'), 'utf8'), /^line: admn$/m)
+})
+
+// Una línea de antes de 0.111.0 no está declarada: existe porque tiene su rama en la instancia.
+test('promote cuenta como armada una línea de antes, que tiene su rama', () => {
+  const planning = instance('linea-vieja', epic(HITOS))
+  const ops = path.dirname(planning)
+  const git = (...args) => assert.equal(spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args],
+    { cwd: ops, encoding: 'utf8' }).status, 0)
+  git('init', '-q', '-b', 'main'); git('add', '.gitignore', 'planning'); git('commit', '-qm', 'base')
+  git('branch', 'line/admin')
+  const result = run(['promote', planning, 'epic-004-pedidos'])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout.includes('no está armada'), false, result.stdout)
 })
 
 test('promote se niega, sin escribir, ante un hito que ya está en BACKLOG.md y ante uno que pasa R17', () => {

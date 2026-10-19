@@ -157,3 +157,48 @@ test('una línea que llega entre comillas o no es un nombre no se escribe en el 
   assert.match(await gateOf("'admin'"), /"line: admin"/)
 })
 
+
+// Caso 394. La sesión dice su línea al lanzar: `/autobuild pagos`. El nombre solo es la línea únicamente si el
+// contrato dice que está declarada; si no, sigue siendo un pedido, como antes de que hubiera líneas.
+const declared = (changes = {}) => ({ [KEY.contract]: { ...baseScript()[KEY.contract], lines: ['pagos'] },
+  ...changes })
+const asked = (prompts, pattern) => prompts.filter((one) => pattern.test(one.prompt)).map((one) => one.prompt)
+
+test('la línea sale del argumento, y los comandos que contestan por la sesión la llevan', async () => {
+  for (const args of ['pagos', '--line pagos', { line: 'pagos' }]) {
+    const { result, prompts } = await runFlow(declared(), { args })
+    ranToEnd(result)
+    const commands = asked(prompts, /tools\/ops\.js (context|claim|release) /)
+    assert.ok(commands.length > 1, JSON.stringify(args))
+    for (const prompt of commands) {
+      assert.match(prompt, /tools\/ops\.js (context|claim|release) \S+( T-1)? --line pagos[" ]/, JSON.stringify(args))
+    }
+    assert.doesNotMatch(prompts.map((one) => one.prompt).join('\n'), /pidió[^»]*«pagos»/,
+      'el nombre de la línea se tomó por un pedido')
+  }
+
+  // Con la bandera, lo demás del texto sigue siendo el pedido.
+  const both = await runFlow(declared(), { args: '--line pagos sólo esta tarea' })
+  assert.match(promptOf(both.prompts, KEY.build), /pidió, para todas sus tareas: «sólo esta tarea»/)
+
+  // El nombre solo que no está declarado es un pedido, y ningún comando lleva --line.
+  const loose = await runFlow({}, { args: 'pagos' })
+  assert.doesNotMatch(loose.prompts.map((one) => one.prompt).join('\n'), /--line/)
+  assert.match(promptOf(loose.prompts, KEY.build), /pidió, para todas sus tareas: «pagos»/)
+})
+
+test('en una línea declarada se construye y se commitea en el árbol de la línea, sin retirarlo', async () => {
+  const LINE_TREE = { ok: true, path: '/s/lines/pagos/api', work: '/s/lines/pagos/api', branch: 'line/pagos',
+    repo: '/s/api', line: 'pagos' }
+  const { result, prompts } = await runFlow(inLine({ ...declared(), [WORKTREE]: LINE_TREE }, { line: 'pagos' }),
+    { args: 'pagos' })
+  ranToEnd(result)
+  assert.match(promptOf(prompts, WORKTREE), /ops\.js worktree \S+ T-1 --line pagos --json/)
+  assert.ok(promptOf(prompts, KEY.build).includes(LINE_TREE.work))
+  const commit = promptOf(prompts, KEY.commit)
+  assert.match(commit, /árbol de la línea pagos, \/s\/lines\/pagos\/api, en la rama line\/pagos/)
+  assert.match(commit, /sin cortar otra ni renombrarla\. El árbol no se saca/)
+  // Lo del árbol de una tarea no corre acá: renombrar la rama le quitaría su nombre a la línea, y retirar el
+  // árbol la dejaría sin checkout para la tarea siguiente.
+  assert.doesNotMatch(commit, /git branch -m|worktree remove|git switch -c/)
+})

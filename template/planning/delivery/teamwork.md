@@ -100,51 +100,77 @@ momento y sin git de por medio.
 `ops worktree` lo avisa cuando prepara un árbol sobre una instancia embebida. No lo frena: un árbol por
 rama con un solo agente es un uso legítimo, y lo que se rompe es la coordinación entre varios.
 
-**Una línea de trabajo, su propia carpeta de sesión.** Cuando cada línea lleva su propia rama de la
-instancia —una por persona o por frente—, no alcanza con un worktree del repo `ops/`: la configuración del
-runner vive en la carpeta que contiene a la instancia, que todos los worktrees comparten, así que todas las
-sesiones correrían los guards de un solo árbol. Una línea se arma con:
+**Una línea de trabajo, para lo que la principal no toma.** El trabajo de siempre es el principal: una sesión,
+la carpeta de siempre, los checkouts de siempre. Una línea existe sólo para que **otra** sesión tome, a la vez,
+trabajo que la principal no toma —un frente aparte, como pagos mientras vos seguís con lo tuyo—. Quien trabaja
+concentrado en lo suyo no tiene líneas, y nada de esto le aparece.
+
+Una línea es un nombre y los repositorios del producto que trabaja:
 
 ```bash
-node tools/ops.js line . admin
+node tools/ops.js line . pagos backend-pagos
 ```
 
-Crea `<carpeta>-admin/` al lado, con un worktree de la instancia en la rama `line/admin`, su motor, los
-repositorios del producto enlazados y los mismos runners instalados ahí. La sesión de esa línea se abre en
-esa carpeta, y sus guards son los de su árbol. `automation install` se niega a mover los guards de la carpeta
-compartida a otro árbol, y dice que para eso está `ops line`.
+Declara la línea en `ops.config.json` —`"lines": { "pagos": ["backend-pagos"] }`, que se commitea— y arma,
+dentro de la carpeta de sesión, un worktree de cada repositorio en `lines/pagos/<repo>/`, en la rama
+`line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. Los repositorios
+que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` resuelva igual que desde la carpeta
+de sesión. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
+adentro.
 
-Si una raíz declarada es la carpeta que contiene a la instancia —`..`, con un repositorio por servicio
-adentro—, lo que se enlaza son sus hijos: los repositorios y también los archivos sueltos de esa carpeta.
-Lo que **no** viaja es lo que no es de Cauce y va por carpeta de sesión: la memoria que el runner guarda
-para esa carpeta arranca vacía en la de la línea, y la configuración del runner es la que la línea instala.
+```
+acme/                         la carpeta de sesión: una sola, con un solo CLAUDE.md y un solo .claude/
+├── acme-ops/                 la instancia, una sola: un planning, un staging
+├── backend-pagos/            checkout principal: ahí sigue la principal
+├── shared-lib/
+└── lines/
+    └── pagos/
+        ├── backend-pagos/    worktree en line/pagos
+        └── shared-lib -> ../../shared-lib
+```
 
-Qué trabajo es de cada línea se declara en el hito: `line: admin` en el frontmatter de su `backlog/<hito>.md`.
-El árbol de la línea `admin` sólo ve esos hitos, y el principal sólo los que no son de ninguna, así que el
-autobuild de una no toma la tarea de la otra aunque las dos colas terminen en el mismo archivo después de
-mergear. La línea sale de la rama, no de un argumento: no hay nada que recordar al lanzar. `ops context` la
-muestra en la línea `LINE`, con los hitos que no te ofrece. Y los reclamos se ven entre los árboles: `context`
-y `claim` leen también los de los otros worktrees de la instancia, porque cada línea los commitea en su rama.
+La sesión de la línea se abre **en la misma carpeta** que la principal, con las mismas reglas, los mismos
+permisos y la misma instancia, y dice qué línea lleva: `/autobuild pagos`, o `--line pagos` en `context`, `claim`
+y `release`. Sin argumento la sesión es la principal: ve los hitos sin `line:` y nunca toma uno de una línea, así
+que olvidarlo no pisa a nadie. Con la línea, cada tarea se construye y se verifica en el árbol de la línea y se
+commitea en su rama, que junta las tareas de la línea y se lleva a un PR entera. El id del runner de la sesión
+lleva la línea, así que las dos sesiones tienen cada una su WIP y sus reclamos aunque corran `ops` desde la misma
+instancia.
+
+Qué trabajo es de cada línea se declara en el hito: `line: pagos` en el frontmatter de su `backlog/<hito>.md`. La
+sesión de `pagos` sólo ve esos hitos y la principal sólo los que no son de ninguna. `ops context` muestra la línea
+en la línea `LINE`, con los hitos que no te ofrece.
+
+**Dos líneas pueden trabajar el mismo repositorio**, cada una en su rama: no se pisan, porque git no deja la misma
+rama en dos árboles. Lo que no se aísla es el merge, así que `ops line` lo avisa al armarla y `ops lines` muestra
+qué archivos cambiaron las dos.
 
 El checkpoint entre hitos también es por línea. Cuando una línea termina un hito y el proyecto pide revisión
 humana, queda en `checkpoints/<hito>.md` con su `line:`, y frena a esa línea y a ninguna otra: quien trabaja
-en `admin` sigue mientras `auth` espera que la revisen, también después de traer su rama. Para detener todo a
-propósito está `AWAITING_REVIEW.md`, que frena a todas. `checkpoints/README.md` tiene el detalle.
+en `admin` sigue mientras `auth` espera que la revisen. Para detener todo a propósito está `AWAITING_REVIEW.md`,
+que frena a todas. `checkpoints/README.md` tiene el detalle.
 
-**Qué está haciendo cada línea** lo dice `node tools/ops.js lines .`: un bloque por árbol con la cola de su
-línea, sus reclamos, lo que tiene en vuelo, los checkpoints que la frenan y cuántos commits la separan de la
-base. Es lo que antes se veía abriendo una carpeta por línea. Y qué hito es de qué línea lo propone `flow` en
-la sección `## Hitos` de la épica, entre las líneas que ese mismo comando le muestra; quien promueve lo
-confirma o lo cambia, y `promote` lo escribe.
+**Qué está haciendo cada línea** lo dice `node tools/ops.js lines .`: un bloque por línea con sus árboles, cuánto
+los separa de la rama viva, lo que tienen sin commitear, su cola, sus reclamos, lo que tiene en vuelo y los
+checkpoints que la frenan. Y qué hito es de qué línea lo propone `flow` en la sección `## Hitos` de la épica, entre
+las líneas que ese mismo comando le muestra; quien promueve lo confirma o lo cambia, y `promote` lo escribe.
 
-**Juntar** es `node tools/ops.js lines join . <nombre>`, desde el árbol que recibe. En seco dice cuántos
-commits trae, qué archivos van a chocar y qué hacer con cada uno —lo que sigue abajo—, qué épicas repiten
-número y qué reclamos en vuelo vienen con la línea. Con `--apply` mergea y corre `check` sobre lo que quedó;
-con conflictos deja el merge en curso, como git, y la clasificación al lado. Nunca empuja.
+**Retirarla** es `node tools/ops.js lines join . <nombre>`, cuando su rama ya llegó por PR a la rama viva de cada
+repositorio. En seco dice qué repositorio falta y qué hitos de la línea quedan sin terminar; con `--apply` saca
+los árboles, las ramas y los enlaces, y la quita de `ops.config.json`. Se niega si algo no llegó o tiene cambios
+sin commitear.
 
-Al juntar dos líneas, casi nada de lo que cada una escribió choca: la cola, el INBOX, la evidencia, los
-reclamos, los checkpoints y las acciones humanas son un archivo por unidad. Quedan dos archivos que las dos
-pueden escribir. `LESSONS.md`: si las dos líneas anotaron una lección, su tabla choca al juntarse, y se
+**Las líneas de antes de 0.111.0** eran un worktree de la instancia en `line/<nombre>`, con su propia carpeta de
+sesión al lado, y su planning vivía en esa rama. Siguen andando —la línea sale de la rama de su árbol— hasta la
+1.0.0. `node tools/ops.js lines migrate . <nombre> <repo>...` la pasa a la disposición nueva: trae su planning a la
+instancia, retira el worktree y su rama, y arma la línea nueva. Se niega con reclamos en vuelo, que llevan el id
+del árbol que se va. La carpeta de al lado no se borra sola: puede tener algo que alguien copió a mano. Para una de
+éstas, `lines join` sigue juntando la rama de planning como antes: en seco dice qué archivos chocan y qué hacer
+con cada uno, y con `--apply` mergea y corre `check`.
+
+Al juntar el planning de dos ramas, casi nada de lo que cada una escribió choca: la cola, el INBOX, la evidencia,
+los reclamos, los checkpoints y las acciones humanas son un archivo por unidad. Quedan dos archivos que las dos
+pueden escribir. `LESSONS.md`: si las dos ramas anotaron una lección, su tabla choca al juntarse, y se
 resuelve a mano quedándose con las filas de las dos. Ahí el conflicto es correcto, porque una corrida puede
 actualizar una fila que ya estaba. Y `HUMAN_ACTIONS.md`, la tabla anterior de acciones humanas, si alguien le
 sigue agregando filas a mano: los recorridos ya no la escriben —ver «Lo que git tiene que saber», más abajo—.
