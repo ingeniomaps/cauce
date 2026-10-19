@@ -33,6 +33,10 @@ function session(name) {
   const ops = path.join(base, 'ops')
   assert.equal(run(['init', ops, '--name', 'Lineas', '--mode', 'sidecar', '--no-install']).status, 0)
   ok(ops, 'init', '-q', '-b', 'main')
+  // La identidad vive en el repositorio, como en una instancia real: el merge de `lines migrate` la necesita
+  // para su commit, y en CI no hay una global.
+  ok(ops, 'config', 'user.email', 't@t')
+  ok(ops, 'config', 'user.name', 't')
   ok(ops, 'add', ...fs.readdirSync(ops).filter((one) => one !== 'node_modules' && one !== '.git'))
   ok(ops, 'commit', '-qm', 'instancia')
   for (const repo of ['pagos', 'auth']) {
