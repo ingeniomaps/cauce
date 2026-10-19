@@ -162,6 +162,8 @@ const WORKTREE = {
   properties: {
     ok: { type: 'boolean' }, path: { type: 'string' }, work: { type: 'string' }, branch: { type: 'string' },
     repo: { type: 'string' }, details: { type: 'string' },
+    // El de una línea: no es de la tarea sino de la línea, y se commitea en su rama sin retirarlo (caso 394).
+    line: { type: 'string' },
   },
 }
 const READY = {
@@ -380,11 +382,18 @@ const TWO_COMMANDS = ' Stageá en un comando y commiteá en otro aparte: juntos 
 // un reclamo se mueve. Al commitear se renombra a la forma de siempre, y el árbol se saca: la rama queda,
 // que es lo que se lleva a un PR, y la carpeta de la línea no acumula un árbol por tarea cerrada.
 //
+// El árbol de una línea es la excepción: su rama es la de la línea, que junta las tareas que lleva y se mergea
+// entera, y el árbol sigue después de la tarea (caso 394).
+//
 // Y una rama por tarea. «Si no es viva, commiteá ahí» apilaba la tarea siguiente del mismo servicio sobre la
 // rama de la anterior: en una corrida real dos tareas terminaron en una rama con el nombre de la primera, y
 // hubo que abrirlas en un solo PR (caso 307). Una rama que la persona eligió y no es de ninguna tarea se
 // respeta como antes.
-const BRANCHED = (slug, tree, earlier = []) => (tree
+const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
+  ? ` El repositorio es el árbol de la línea ${tree.line}, ${tree.path}, en la rama ${tree.branch}: commiteá ahí y `
+    + 'en esa rama, sin cortar otra ni renombrarla. El árbol no se saca: es de la línea y sigue después de esta '
+    + `tarea. El checkout principal de ${tree.repo} no se toca.`
+  : tree
   ? ` El repositorio es el árbol de trabajo ${tree.path}, en la rama ${tree.branch}: commiteá ahí, y no en el `
     + `checkout compartido. Antes de commitear renombrá esa rama con \`git branch -m <tipo>/${slug}\`, donde `
     + 'tipo es el del Conventional Commit. Cuando el commit esté verificado y el árbol limpio, sacalo con '
@@ -483,6 +492,8 @@ const CONTRACT = {
     boundaries: { type: 'array', items: { type: 'string' } },
     // Qué archivos de un runner quedaron atrás del motor instalado; por qué importa, donde se lee.
     staleAdapter: { type: 'array', items: { type: 'string' } },
+    // Las líneas declaradas; por qué, donde se decide la de esta corrida.
+    lines: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -502,14 +513,19 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 const RAW = String((typeof args === 'string' ? args : (args || {}).note) || '')
 const MAX_FLAG = /(?:^|\s)--max(?:=|\s+)(\d+)(?=\s|$)/
 const LIMIT = Number((typeof args === 'object' && args && args.max) || (RAW.match(MAX_FLAG) || [])[1]) || 0
-const ASKED = RAW.replace(MAX_FLAG, ' ').trim()
-const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo en lo `
-  + 'que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y lo '
-  + 'decís.' : ''
+// La línea que lleva esta sesión (caso 394): `--line pagos` en el texto, `line` si `args` es un objeto, o el
+// nombre solo —`/autobuild pagos`— cuando el contrato dice que es una línea declarada. Una palabra suelta que
+// no lo es sigue siendo un pedido, como antes de que hubiera líneas. Sin línea la corrida es la principal.
+const LINE_FLAG = /(?:^|\s)--line(?:=|\s+)([a-z0-9]+(?:-[a-z0-9]+)*)(?=\s|$)/
+const NAMED_LINE = String((typeof args === 'object' && args && args.line) || (RAW.match(LINE_FLAG) || [])[1] || '')
+let ASKED = RAW.replace(MAX_FLAG, ' ').replace(LINE_FLAG, ' ').trim()
+const OPERATOR = () => (ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo `
+  + 'en lo que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y '
+  + 'lo decís.' : '')
 // A quien critica el plan le llega como dato y no como pedido: en una corrida real la crítica encontró en el
 // plan una decisión atribuida a «quien lanzó la corrida», no tuvo contra qué contrastarla y la dejó
 // marcada como supuesto.
-const OPERATOR_SAID = ASKED ? ` Para que lo contrastes: quien lanzó esta corrida pidió «${ASKED}».` : ''
+const OPERATOR_SAID = () => (ASKED ? ` Para que lo contrastes: quien lanzó esta corrida pidió «${ASKED}».` : '')
 // A quien reclama el pedido le llega entero, porque es el único que puede declinar una tarea que la persona
 // excluyó con palabras. Sin el pedido la instrucción de declinar no tenía contra qué decidir: una corrida real
 // lanzada con «sólo esta tarea» reclamó la siguiente, la planificó y frenó en Build (caso 297).
@@ -677,6 +693,12 @@ if (!contract.rootOk) {
 // la corrida anda igual, con el recorrido y los agentes de la versión anterior. Quien actualizó cree tener el
 // arreglo y no lo tiene. Este script es justamente una de esas copias, así que el aviso llega con la versión
 // siguiente a la que lo trae: una copia más vieja que ésta no sabe preguntar (caso 308).
+// El nombre solo es la línea si está declarada, y entonces deja de ser un pedido. Los comandos que contestan
+// por la sesión la llevan: qué cola ve, con qué id reclama y dónde se construye.
+const LINE = NAMED_LINE || ((contract.lines || []).includes(ASKED) ? ASKED : '')
+if (LINE && LINE === ASKED) ASKED = ''
+const ON_LINE = LINE ? ` --line ${LINE}` : ''
+
 const stale = (contract.staleAdapter || []).filter((file) => file.includes('.claude/'))
 if (stale.length) {
   return stop('adapter-stale', `El motor se actualizó y el adaptador de Claude quedó en la versión anterior: `
@@ -775,7 +797,7 @@ const registerHuman = async (prompt, label, slug = '') => {
   if (!slug) return ''
   const pending = async () => {
     const row = await clerk(
-      `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Copiá en tasks el campo task de cada `
+      `Corré "node tools/ops.js context ${P}${ON_LINE} --json" desde ${ROOT}. Copiá en tasks el campo task de cada `
       + 'fila de humanActions, entero y tal cual, sin recortarlo ni corregirlo; si no hay ninguna, tasks va '
       + 'vacío. Poné readOk en true sólo si el comando salió con código 0 y devolvió JSON. El comando es la '
       + 'fuente de verdad: no abras archivos de planning.',
@@ -842,7 +864,8 @@ const halt = async (reason, detail = '', subject = '') => {
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => clerk(
-  `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
+  `Corré "node tools/ops.js context ${P}${ON_LINE} --json" desde ${ROOT} y reportá sólo lo que imprimió. ` +
+  `Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile, checkpoint y ` +
   `line de sus campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
   `pending tal cual si viene —y ` +
@@ -874,7 +897,10 @@ const runLine = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(unquoted((planning || {}).line
 if (!planning) return halt('context-unavailable', `no se pudo leer el estado de ${P}`)
 // Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
 // cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
-if (!planning.readOk) return halt('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`)
+if (!planning.readOk) {
+  return halt('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`
+    + (LINE ? `, y que ${LINE} sea una línea declarada: \`ops lines\` las lista` : ''))
+}
 // La fecha de la primera lectura, para lo que se escribe después de la última: la relectura que cierra la
 // cola puede volver sin `today`, y una fila fechada `undefined` no se puede leer (caso 214).
 const startedOn = planning.today
@@ -990,7 +1016,7 @@ while (rounds++ < MAX_TASKS) {
   if (!planning.claimed && !planning.wipActive) {
     phase('Claim')
     const claim = await clerk(
-      `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
+      `Corré "node tools/ops.js claim ${P} ${task.id}${ON_LINE}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
       `copiá el mensaje en details.${DECLINABLE(completed)}`,
       { schema: CLAIM, label: `claim:${task.id}` },
@@ -1106,7 +1132,8 @@ while (rounds++ < MAX_TASKS) {
       // falla, la relectura la trae en `manualHeld` y la vuelta siguiente para nombrándola.
       if ((planning.manual || []).includes(task.id)) {
         await clerk(
-          `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: la clasificaste manual, así que la ` +
+          `Corré "node tools/ops.js release ${P} ${task.id}${ON_LINE}" desde ${ROOT}: la clasificaste manual, ` +
+          `así que la ` +
           'hace la sesión y su reserva no reserva trabajo. No escribas ningún archivo vos: lo escribe el comando.',
           { label: `release:${task.id}` },
         )
@@ -1211,7 +1238,7 @@ while (rounds++ < MAX_TASKS) {
   // Cuesta un agente, porque el recorrido no tiene con qué correr un comando. Un agente contra una
   // corrida entera.
   const releaseBlocked = async () => clerk(
-    `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó bloqueada por la fila que `
+    `Corré "node tools/ops.js release ${P} ${task.id}${ON_LINE}" desde ${ROOT}: quedó bloqueada por la fila que `
     + 'acabás de registrar y todavía no hay nada construido, así que su reserva no reserva trabajo. No '
     + 'escribas ningún archivo vos: lo escribe el comando.',
     { label: `release:${task.id}` },
@@ -1253,10 +1280,11 @@ while (rounds++ < MAX_TASKS) {
     return halt(reason, `${detail}${note}`)
   }
 
-  // En una línea de trabajo la tarea se construye en un árbol propio. Las líneas comparten por enlace el
-  // mismo checkout del producto, así que cortar la rama ahí lo dejaba parado en la tarea de una para todas
-  // las demás (caso 274). Fuera de una línea no hay con quién pisarse y se trabaja en la carpeta que está:
-  // un árbol aparte es para cuando dos sesiones se tocan.
+  // En una línea de trabajo la tarea no se construye en el checkout principal. Una línea de antes compartía
+  // por enlace ese checkout con las demás, así que cortar la rama ahí lo dejaba parado en la tarea de una para
+  // todas (caso 274), y se arma un árbol por tarea. Una línea declarada tiene el suyo por repositorio, y el
+  // comando lo entrega (caso 394). Fuera de una línea no hay con quién pisarse y se trabaja en la carpeta que
+  // está: un árbol aparte es para cuando dos sesiones se tocan.
   //
   // `declared` es el servicio como lo nombra planning, que es lo que viaja al WIP y a `done/`; `task.service`
   // pasa a ser dónde se trabaja. El comando reusa el árbol si ya existe, así que retomar cae en el mismo.
@@ -1265,8 +1293,9 @@ while (rounds++ < MAX_TASKS) {
   if (planning.line) {
     phase('Worktree')
     tree = await clerk(
-      `Corré "node tools/ops.js worktree ${P} ${task.id} --json" desde ${ROOT} y reportá sólo lo que imprimió: ` +
-      `ok=true con exit 0, y path, work, branch y repo de sus campos. Si falla, ok=false y el mensaje en ` +
+      `Corré "node tools/ops.js worktree ${P} ${task.id}${ON_LINE} --json" desde ${ROOT} y reportá sólo lo que ` +
+      `imprimió: ok=true con exit 0, y path, work, branch, repo y line de sus campos —line vacío si no viene—. ` +
+      `Si falla, ok=false y el mensaje en ` +
       `details. No crees ni toques ningún archivo vos: el árbol lo arma el comando.`,
       { schema: WORKTREE, label: `worktree:${task.id}` },
     )
@@ -1410,7 +1439,7 @@ while (rounds++ < MAX_TASKS) {
         // Va **después** de la guarda de arriba y no antes de leer el contexto: si el reemplazo no
         // ocurrió, la tarea sigue viva y su reclamo tiene que seguir puesto (caso 163).
         await clerk(
-          `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó partida y su reserva `
+          `Corré "node tools/ops.js release ${P} ${task.id}${ON_LINE}" desde ${ROOT}: quedó partida y su reserva `
           + 'ya no aplica. No escribas ningún archivo vos: lo escribe el comando.',
           { label: `release:${task.id}` },
         )
@@ -1433,7 +1462,7 @@ while (rounds++ < MAX_TASKS) {
       `El plan cubre ` +
       `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
       `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +
-      `pasos.${OPERATOR}`,
+      `pasos.${OPERATOR()}`,
       { schema: PLAN, label: 'plan' },
     )
     if (!plan) return halt('agent-unavailable', 'Plan no devolvió resultado')
@@ -1441,7 +1470,7 @@ while (rounds++ < MAX_TASKS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente, contra ${task.acceptance}.${DECIDED()}${OPERATOR_SAID}${MANIFEST}${VERDICT}${REPLANNED} ` +
+        `existente, contra ${task.acceptance}.${DECIDED()}${OPERATOR_SAID()}${MANIFEST}${VERDICT}${REPLANNED} ` +
         `Plan: ${JSON.stringify(plan)}`,
         { schema: CRITIQUED, label: 'critique' },
       )
@@ -1473,7 +1502,7 @@ while (rounds++ < MAX_TASKS) {
           { schema: PLAN, label: 'replan' },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${OPERATOR_SAID}${MANIFEST}` +
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${OPERATOR_SAID()}${MANIFEST}` +
           `${VERDICT}` +
           `${REPLANNED} Plan: ${JSON.stringify(plan)}`,
           { schema: CRITIQUED, label: 'critique' },
@@ -1552,7 +1581,7 @@ while (rounds++ < MAX_TASKS) {
         `código: ${JSON.stringify(approved.noted)}. ` : '') +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente. Al terminar corré ` +
-      `"node tools/ops.js context ${P} --json" desde ${ROOT} y reportá con qué status quedó y, en steps, ` +
+      `"node tools/ops.js context ${P}${ON_LINE} --json" desde ${ROOT} y reportá con qué status quedó y, en steps, ` +
       `cuántos pasos pendientes cuenta ese comando en su campo wip. Tienen que ser ${plan.steps.length}: si ` +
       `cuenta otra cantidad, el formato de los pasos está mal; corregilo sin cambiar su texto y volvé a correrlo.`,
       { label: 'wip', schema: {
@@ -1617,7 +1646,7 @@ while (rounds++ < MAX_TASKS) {
     + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : '')
     + (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones, que cumplís al `
       + `escribir: ${approved.conditions.join('; ')}.` : '')
-    + OPERATOR + WHERE,
+    + OPERATOR() + WHERE,
     { schema: BUILD, label: 'build' },
   )
   if (!build) return halt('agent-unavailable', 'Build no devolvió resultado')
@@ -2094,7 +2123,7 @@ while (rounds++ < MAX_TASKS) {
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
     `y no era de la tarea. Si un guard frena el commit pidiendo la aprobación de una persona, no la pidas ni la ` +
     `esquives: committed en false, y en needsApproval las rutas que nombra.` +
-    `${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR}`,
+    `${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR()}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
@@ -2135,7 +2164,8 @@ while (rounds++ < MAX_TASKS) {
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE —una línea «status: IDLE» en su ` +
     // Dicho con su forma: sin eso quien cierra la buscaba en el fuente del motor, una llamada por tarea.
     `frontmatter es lo que lee el motor—; y soltá la reserva corriendo ` +
-    `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
+    `"node tools/ops.js release ${P} ${task.id}${ON_LINE}". lane y review van textuales, copiados de estos ` +
+    `hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
     // `done` y `qa` no van textuales, y hay que decirlo: lo que llega se escribió con la tarea abierta. Sin
     // decirlo dependía de que quien escribe lo acomodara por su cuenta, y cuando en 0.103.4 cambió quién
@@ -2363,7 +2393,8 @@ if (completed.length && contract.humanCheckpoint && !cut) {
   )
   const holds = async () => {
     const read = await clerk(
-      `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Copiá blocked y checkpoints de sus campos, ` +
+      `Corré "node tools/ops.js context ${P}${ON_LINE} --json" desde ${ROOT}. Copiá blocked y checkpoints de ` +
+      `sus campos, ` +
       'tal cual. Poné readOk en true sólo si el comando salió con código 0 y devolvió JSON. El comando es la ' +
       'fuente de verdad: no abras archivos de planning.',
       { schema: CHECKPOINT_HELD, label: 'checkpoint-held' },

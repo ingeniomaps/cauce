@@ -15,13 +15,14 @@ line: admin
 ```
 
 - **Se destraba cambiando `status` a `resuelta`**, no borrando el archivo: es el registro de qué se revisó.
-- **`line` dice a quién frena.** El checkpoint de la línea `admin` frena al árbol de la rama `line/admin` y a
-  ningún otro; `line:` sin valor es el del árbol principal. Un archivo que no trae el campo frena a todos.
+- **`line` dice a quién frena.** El checkpoint de la línea `admin` frena a la sesión que lleva esa línea y a
+  ninguna otra; `line:` sin valor es el de la principal. Un archivo que no trae el campo frena a todas.
 - **El archivo se llama como su `hito`.** `check` lo exige, junto con el `status`.
 - **Lo que el motor lee es el frontmatter.** Un `status: resuelta` escrito más abajo, en las instrucciones, no
   destraba nada. Y un `line` que no es un nombre de línea frena a todas: ante la duda, frena.
-- **La línea es la rama.** Un árbol está en la línea `admin` mientras su rama sea `line/admin`. Si cambiás de
-  rama en la carpeta de una línea, deja de ver su checkpoint como propio.
+- **La línea la dice la sesión.** Una sesión está en la línea `admin` cuando la lleva —`/autobuild admin`,
+  `--line admin`—. En una línea de antes de 0.111.0 la línea es la rama del árbol: si cambiás de rama ahí, deja
+  de ver su checkpoint como propio.
 
 `node tools/ops.js context planning` dice si algo te frena y nombra el archivo.
 

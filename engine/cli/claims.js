@@ -21,7 +21,9 @@ function claim(dir, slug, cli) {
   if (!task) return fail(`${slug} no está en BACKLOG: sólo se toma trabajo ya promovido.`, USAGE)
   // Lo mismo que contesta `context` (caso 239): si uno la ofreciera y el otro no, sólo se vería al reclamar.
   const milestone = state.milestones.find((one) => one.tasks.includes(task))
-  if (LN.scope([milestone], LN.currentLine(root)).hidden.length) {
+  const asked = LN.sessionLine(root, cli.value('--line'))
+  if (asked.error) return fail(asked.error, USAGE)
+  if (LN.scope([milestone], asked.line).hidden.length) {
     return fail(`${slug} ${LN.whereToTake(milestone)}.`, REFUSED)
   }
   const across = LN.claimsElsewhere(root).find((one) => one.slug === slug)
@@ -37,14 +39,14 @@ function claim(dir, slug, cli) {
   // Y lo mismo con una fila pendiente en HUMAN_ACTIONS, que es lo que `context` ya saltea (caso 336). Salvo el
   // WIP propio: ahí `context` la sigue ofreciendo —el plan en vuelo manda— y retomarla tiene que poder.
   const waiting = ST.pendingHumanActions(root).find((row) => row.task === slug)
-  const resuming = state.wips.some((wip) => wip.task === slug && wip.runner === P.wipName(CL.runner()))
+  const resuming = state.wips.some((wip) => wip.task === slug && wip.runner === P.wipName(CL.runner(asked.id)))
   if (waiting && !resuming) {
     return fail(`${slug} espera una acción humana: ${waiting.action} Se toma cuando la fila esté resuelta.`,
       REFUSED)
   }
 
   const me = CL.owner(root)
-  const from = CL.runner()
+  const from = CL.runner(asked.id)
   if (!me) {
     return fail('No sé quién sos. Configurá `git config user.email` o exportá CAUCE_OWNER: '
       + 'un reclamo anónimo no dice a quién preguntarle.', USAGE)
@@ -105,10 +107,12 @@ function claim(dir, slug, cli) {
   }
 }
 
-function release(dir, slug) {
+function release(dir, slug, cli) {
   const root = planningRoot(dir)
   if (!slug) return fail('Falta el slug. `ops release <planning-dir> <tarea>`', USAGE)
-  const from = CL.runner()
+  const asked = LN.sessionLine(root, cli.value('--line'))
+  if (asked.error) return fail(asked.error, USAGE)
+  const from = CL.runner(asked.id)
   const taken = CL.read(root).find((one) => one.slug === slug)
   if (!taken) return fail(`${slug} no está tomada por nadie.`, USAGE)
   if (taken.runner !== from) {

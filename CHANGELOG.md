@@ -14,6 +14,44 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.111.0] - 2026-10-19
+
+### Cambiado
+
+- **Una línea de trabajo ya no tiene carpeta de sesión propia: vive en `lines/<línea>/<repo>/`, dentro de la de
+  siempre.** Es un nombre y los repositorios del producto que trabaja: `ops line . pagos backend-pagos` la declara
+  en `ops.config.json` (`"lines": { "pagos": ["backend-pagos"] }`, que se commitea) y arma un worktree de cada
+  repositorio en la rama `line/pagos`, con los demás enlazados al lado. No instala runners ni crea `.claude/` ni
+  `CLAUDE.md`: la sesión de la línea se abre en la misma carpeta que la principal, con sus reglas, sus permisos y
+  la única instancia. Cada árbol es un checkout aparte: **sus dependencias se instalan adentro**. Antes, la carpeta
+  de al lado nacía sin las instrucciones del proyecto ni los permisos entre carpetas (caso 394).
+- **La sesión dice qué línea lleva**: `/autobuild pagos`, o `--line pagos` en `context`, `claim`, `release` y
+  `worktree`. **Sin argumento es la principal**, que ve los hitos sin `line:` y nunca toma uno de una línea. El id
+  del runner de una línea la lleva, así que las dos sesiones tienen su WIP y sus reclamos aunque corran `ops` desde
+  la misma instancia. Las tareas de una línea se construyen, se verifican y se commitean en su árbol y en su rama.
+- **`ops lines` muestra las líneas declaradas** —sus árboles, cuánto los separa de la rama viva, su cola, sus
+  reclamos— y, cuando dos trabajan el mismo repositorio, qué archivos cambiaron las dos. `ops line` lo avisa al
+  armarla. **`ops lines join . <línea>` retira una línea** cuya rama ya llegó por PR a la rama viva: saca sus
+  árboles, sus ramas y su declaración, y se niega si algo no llegó o tiene cambios sin commitear.
+- **Sin líneas declaradas, nada cambia**: `context`, `claim`, `check`, `contract` y `/autobuild` dan la misma salida
+  que en 0.110.0.
+
+### Deprecado
+
+- **Las líneas de antes** —un worktree de la instancia con su carpeta `<carpeta>-<nombre>/` al lado— siguen
+  andando: la línea sale de la rama de su árbol, y `context` lo avisa. **Pasalas con `ops lines migrate . <nombre>
+  <repo>...`**, que trae su planning a la instancia, retira el worktree y su rama, y arma la línea nueva; se niega
+  con reclamos en vuelo. La carpeta de al lado no se borra sola: rescatá lo que le hayas copiado a mano y borrala.
+  La lectura de la línea desde la rama se retira en la 1.0.0.
+
+### Corregido
+
+- **La rama de una línea nueva sale de la rama viva, no de la rama en que esté la instancia.** `ops line` creaba
+  `line/<nombre>` desde el `HEAD`, y si la instancia estaba en una rama de trabajo la línea nacía con sus commits sin
+  mergear. Ahora parte de la rama por defecto del remoto, o de `main` o `master`, lo dice en la salida (`sale de:`) y
+  avisa si la instancia estaba en otra. **Si querés una línea montada sobre otra rama**, creá antes
+  `git branch line/<nombre> <rama>`: `ops line` usa la que ya existe (caso 395).
+
 ## [0.110.0] - 2026-10-17
 
 ### Corregido

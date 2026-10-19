@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { PATH_SHAPE, EXTENSION_SHAPE } = require('../core/migrations')
 const { LOCAL_CONFIG } = require('./paths')
+const LT = require('../core/line-trees')
 
 const MODES = ['embedded', 'sidecar', 'toolkit']
 
@@ -51,7 +52,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone',
+    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -85,7 +86,34 @@ function validateOpsConfig(config) {
   validateMigrations(config.migrations, errors)
   validateInbox(config.inbox, errors)
   validateComments(config.comments, errors)
+  validateLines(config.lines, errors)
   return errors
+}
+
+// Las líneas de trabajo (caso 394). Una entrada que no tiene la forma no es de ninguna línea, y el motor la
+// ignora: sin decirlo acá, la sesión que la lleva recibiría «no está declarada» sin saber por qué.
+function validateLines(lines, errors) {
+  if (lines === undefined) return
+  if (!lines || typeof lines !== 'object' || Array.isArray(lines)) {
+    errors.push('ops.config.json: lines debe ser un objeto { "<línea>": ["<repo>", ...] }')
+    return
+  }
+  for (const [name, repos] of Object.entries(lines)) {
+    if (!LT.NAME.test(name)) {
+      errors.push(`ops.config.json: lines.${name} no es un nombre de línea (minúsculas y guiones)`)
+    }
+    if (!Array.isArray(repos) || !repos.length) {
+      errors.push(`ops.config.json: lines.${name} debe ser una lista no vacía de repositorios`)
+      continue
+    }
+    for (const repo of repos) {
+      if (typeof repo !== 'string' || !LT.safeRepo(repo)) {
+        errors.push(`ops.config.json: lines.${name}: ${JSON.stringify(repo)} no es un repositorio de la carpeta de `
+          + 'sesión: va relativo a ella, sin «..» y fuera de lines/')
+      }
+    }
+    if (new Set(repos).size !== repos.length) errors.push(`ops.config.json: lines.${name} repite un repositorio`)
+  }
 }
 
 // El umbral del aviso de tamaño del INBOX. Sólo un entero positivo: un cero o un texto se leerían como

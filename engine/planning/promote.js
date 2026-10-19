@@ -16,6 +16,7 @@ const BK = require('./backlog')
 const EM = require('./epic-milestones')
 const SZ = require('./sizing')
 const { validateEpic } = require('./contracts')
+const LT = require('../core/line-trees')
 
 const STEP = 10
 // La referencia al criterio va delante del guión en una historia y detrás del texto en una tarea: la lee
@@ -29,13 +30,15 @@ function taskLine(story, num) {
   return `- [ ] **${story.slug}** — ${rest}${ref ? ` ${ref}` : ''}${cites}`
 }
 
-// Las líneas que ya tienen rama. Un hito de una línea que nadie armó no lo ve ningún árbol, y `check` no lo
-// dice: la línea sale de la rama (caso 239), así que lo único que la delata es que la rama no esté. Se
+// Las líneas que existen: las declaradas en `ops.config.json` (caso 394), y las de antes, que tienen su rama
+// en la instancia. Un hito de una línea que nadie armó no lo toma ninguna sesión, y `check` no lo dice. Se
 // avisa y no se niega, porque declarar el hito antes de armar la línea es un orden legítimo.
 function knownLines(root) {
   const refs = spawnSync('git', ['-C', root, 'for-each-ref', '--format=%(refname:short)', 'refs/heads/line/'],
     { encoding: 'utf8' })
-  return refs.status === 0 ? refs.stdout.split('\n').filter(Boolean).map((one) => one.slice('line/'.length)) : []
+  const legacy = refs.status === 0
+    ? refs.stdout.split('\n').filter(Boolean).map((one) => one.slice('line/'.length)) : []
+  return [...Object.keys(LT.declared(path.join(root, '..'))), ...legacy]
 }
 
 function nextOrder(root) {
@@ -93,7 +96,7 @@ function plan(root, epicName) {
   if (activated === text) return { error: `no se pudo reescribir "status: open" en ${at}` }
   const known = new Set(knownLines(root))
   const warnings = [...new Set(milestones.map((one) => one.line).filter((line) => line && !known.has(line)))]
-    .map((line) => `line ${line} no tiene árbol todavía: nadie la ve hasta "ops line . ${line}"`)
+    .map((line) => `line ${line} no está armada todavía: nadie la toma hasta "ops line . ${line} <repo>..."`)
   return { epic, files, warnings, path: epic.path, text: activated }
 }
 

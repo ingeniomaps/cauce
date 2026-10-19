@@ -335,14 +335,15 @@ function install(root, name, output = console, options = {}) {
       throw new Error(`${runner.config.target} contiene JSON inválido (${error.message})`)
     }
   }
-  // No mueve en silencio los guards de una carpeta de sesión compartida a otro árbol; por qué, en el
-  // encabezado de `engine/cli/lines.js` (caso 218).
+  // No mueve en silencio los guards de una carpeta de sesión compartida a otro árbol. La configuración del
+  // runner vive en esa carpeta y los guards apuntan a una ruta fija bajo ella, así que instalar desde un
+  // worktree de la instancia los movía para todas las sesiones que se abren ahí (caso 218).
   const foreign = foreignHooks(current, incoming, paths.install)
-  if (foreign && !options.force && !options.ownFolder) {
+  if (foreign && !options.force) {
     throw new Error(`${runner.config.target} tiene los guards de Cauce apuntando a ${foreign.theirs}; instalar `
       + `desde acá los movería a ${foreign.ours} para todas las sesiones que se abren en ${paths.install}.\n`
-      + 'Si este árbol es una línea de trabajo, armala con "ops line <ops-root> <nombre>", que le da su '
-      + 'propia carpeta de sesión. Si de verdad querés moverlos, repetí con --force.')
+      + 'Una línea de trabajo no necesita su propia instalación: corre en esta misma carpeta, con '
+      + '"ops line <ops-root> <nombre> <repo>...". Si de verdad querés moverlos, repetí con --force.')
   }
   const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
   const resolvedItems = items.map((item) => ({ item, ...resolveItem(paths, root, name, item) }))

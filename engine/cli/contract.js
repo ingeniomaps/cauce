@@ -18,6 +18,7 @@ const P = require('../planning/parser')
 const { fail, opsRoot, USAGE } = require('./io')
 const A = require('../automation')
 const M = require('../core/manifest')
+const LT = require('../core/line-trees')
 
 // Los cuatro que componen el contrato, con la ruta relativa a la raíz de la instancia. El orden es el que
 // usa el mensaje de error: se nombra el primero que falte y no los cuatro, porque arreglar uno suele
@@ -231,6 +232,7 @@ function contract(dir, cli) {
 
   const roots = Array.isArray(config.workspaceRoots) ? config.workspaceRoots : []
   const runner = config.runner || {}
+  const lines = LT.declared(root, config)
   const excepciones = P.section(readIfAny(path.join(root, 'organization', 'workspace.md')),
     /Excepciones de autonom/)
   const report = {
@@ -256,6 +258,9 @@ function contract(dir, cli) {
     // Los del toolkit primero y los del proyecto después, que es el orden en que se leen: lo segundo amplía
     // o restringe lo primero, y al revés se leería como si el proyecto fijara la base.
     boundaries: [...limits(sections['AGENTS.md']), ...limits(excepciones)],
+    // Las líneas declaradas, para que `/autobuild pagos` sepa que `pagos` es una línea y no un pedido (caso
+    // 394). Sólo cuando hay: sin líneas el contrato es el de siempre.
+    ...(Object.keys(lines).length ? { lines: Object.keys(lines) } : {}),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   console.log(`${report.project}  (${report.workspaceRoots.join('; ') || 'sin raíces declaradas'})`)
@@ -265,6 +270,7 @@ function contract(dir, cli) {
     + `${report.commitToLiveBranch ? ', también en la rama viva' : ', en rama propia'} · `
     + `checkpoint ${report.humanCheckpoint ? 'entre hitos' : 'no'}`)
   console.log(`límites    ${report.boundaries.length} · contratos ${report.contracts.length} caracteres`)
+  if (report.lines) console.log(`líneas     ${report.lines.join(', ')}`)
 }
 
 module.exports = { contract, warnings, missingSections, restoreAdvice }

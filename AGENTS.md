@@ -79,8 +79,9 @@ node engine/cli/ops.js bench <suelto|tarea|sidecar> [--force]
 ```
 
 Imprime la ruta de un banco que se recrea entero en cada corrida, con las mismas garantías que el de
-evaluación —`check` pasa, el motor viene enlazado, el borrado se comprueba antes—. Si sobre el banco se armó
-una línea de trabajo, rehacerlo se la lleva también: queda al lado y no adentro, y sobrevivía. Los escenarios son las
+evaluación —`check` pasa, el motor viene enlazado, el borrado se comprueba antes—. Una línea de trabajo armada
+sobre el banco queda adentro, en `lines/`, y se va con él; las de antes de 0.111.0 quedaban al lado, y rehacerlo se
+las lleva también. Los escenarios son las
 tres formas en que una medición necesita el mundo, y se agrega uno cuando hace falta, no antes:
 
     suelto    la instancia sola, para medir un comando que no depende de la cola.

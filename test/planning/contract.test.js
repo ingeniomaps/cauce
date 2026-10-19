@@ -346,3 +346,15 @@ test('una línea en blanco cierra la viñeta: lo que sigue no se pega al último
   assert.match(hecho.stderr, /no llegan a los agentes/)
   assert.match(hecho.stderr, /prosa que nadie declaró/, 'y cita el párrafo que de verdad se pierde')
 })
+
+// Caso 394: lo que recibe el recorrido para leer `/autobuild <nombre>`, en los dos estados de la instancia.
+test('contract lista las líneas declaradas, y sin líneas no trae el campo', () => {
+  const root = instance('cauce-contract-lineas-')
+  assert.equal('lines' in contractOf(root).value, false)
+  assert.doesNotMatch(run(['contract', root]).stdout, /líneas/)
+  const file = path.join(root, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  fs.writeFileSync(file, JSON.stringify({ ...config, lines: { pagos: ['api'], auth: ['api', 'web'] } }, null, 2))
+  assert.deepEqual(contractOf(root).value.lines, ['pagos', 'auth'])
+  assert.match(run(['contract', root]).stdout, /^líneas {5}pagos, auth$/m)
+})

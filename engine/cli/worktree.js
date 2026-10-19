@@ -16,6 +16,8 @@ const CL = require('../planning/claims')
 const R = require('../core/repos')
 const O = require('../core/ownership')
 const { treeOf } = require('../core/task-trees')
+const LT = require('../core/line-trees')
+const LN = require('../planning/lines')
 const { fail, planningRoot, USAGE, REFUSED } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -42,8 +44,10 @@ function worktree(dir, slug, cli) {
 
   // No reserva —eso es `claim`— pero se niega a montar sobre lo de otro: preparar un árbol para una
   // tarea ajena es trabajo que se va a tirar, y el aviso cuesta menos que descubrirlo después.
+  const asked = LN.sessionLine(root, cli.value('--line'))
+  if (asked.error) return fail(asked.error, USAGE)
   const taken = state.claims.find((one) => one.slug === slug)
-  if (taken && taken.runner !== CL.runner()) {
+  if (taken && taken.runner !== CL.runner(asked.id)) {
     return fail(`${slug} la tomó ${taken.owner}; preparar un árbol para su tarea no ayuda a nadie.`, REFUSED)
   }
 
@@ -57,6 +61,7 @@ function worktree(dir, slug, cli) {
     return fail(`no encontré el repositorio de ${task.service || '(sin service)'}: revisá workspaceRoots `
       + 'en ops.config.json y que la ruta del servicio exista.', USAGE)
   }
+  if (asked.id) return lineWork(root, task, repo, asked.id, cli)
 
   const branch = CL.branchOf(slug)
   // Un árbol borrado a mano sigue listado: sin retirarlo, se lo daba por existente. Se retira ése y no se
@@ -120,6 +125,32 @@ function worktree(dir, slug, cli) {
   // de otro en una máquina, así que darlo hecho evita el modo de fallo que deja a los dos con el mismo.
   console.log(`  export CAUCE_RUNNER=${target}`)
   console.log(`  node tools/ops.js claim ${path.relative(process.cwd(), root) || '.'} ${slug}`)
+}
+
+// En una línea la tarea se construye en el árbol de la línea (caso 394). Cada línea tiene su checkout de cada
+// repositorio que trabaja, así que adentro no hay con quién pisarse, y un árbol más por tarea la dejaría sin
+// lo que ya acumuló en su rama. Se entrega con la misma forma que el de una tarea, más `line`: quien lo recibe
+// commitea ahí, en la rama de la línea, y no lo retira.
+function lineWork(root, task, repo, name, cli) {
+  const ops = path.join(root, '..')
+  const own = LT.trees(ops).find((one) => one.line === name && fs.existsSync(one.source)
+    && fs.realpathSync(one.source) === repo)
+  if (!own) {
+    return fail(`${task.service || '.'} vive en ${repo}, que no es de la línea ${name}. Si le toca, se suma con `
+      + `\`ops line <ops-root> ${name} <repo>\`; si no, el hito no es de esta línea.`, REFUSED)
+  }
+  if (!fs.existsSync(own.tree)) {
+    return fail(`falta el árbol de ${own.repo} en la línea ${name} (${own.tree}): \`ops line <ops-root> ${name}\` `
+      + 'lo vuelve a armar.', REFUSED)
+  }
+  const seen = R.serviceDirs(ops, task.service).filter((dir) => fs.existsSync(dir)).map((dir) => fs.realpathSync(dir))
+    .find((dir) => !path.relative(repo, dir).startsWith('..')) || repo
+  const work = path.join(own.tree, path.relative(repo, seen))
+  const branch = git(own.tree, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
+  const report = { path: own.tree, work, branch, repo, line: name, runner: CL.runner(name), reused: true }
+  if (cli.has('--json')) return console.log(JSON.stringify(report))
+  console.log(`= ${own.tree}  (${branch || 'sin rama'})`)
+  console.log(`  ${task.slug} se construye en el árbol de la línea ${name}, en ${work}`)
 }
 
 module.exports = { worktree }

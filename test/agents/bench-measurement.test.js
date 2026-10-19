@@ -15,6 +15,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 // La ruta que el comando imprime, resuelta contra la raíz. La guarda de salida vacía es la misma que en
 // `bench.test.js`, y ahí está por qué; duplicada acá se repite, así que acá sólo se usa.
@@ -92,7 +93,6 @@ test('bench sidecar deja instancia y producto como repositorios hermanos', () =>
   const hecho = armar('sidecar')
   assert.equal(hecho.status, 0, hecho.stderr)
   const dir = benchDir(hecho, TOOLKIT)
-  const { spawnSync } = require('node:child_process')
   const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).stdout.trim()
 
   const config = JSON.parse(fs.readFileSync(path.join(dir, 'ops.config.json'), 'utf8'))
@@ -217,14 +217,18 @@ test('la ruta sale sola por stdout, aunque el escenario tenga algo más que deci
   assert.match(armar('tarea').stderr, /export CAUCE_RUNNER=/)
 })
 
-// Caso 357. Una línea de trabajo se arma al lado de la instancia, que en el banco es al lado de lo que se
-// borra: sobrevivía a rehacerlo, sin repositorio y con el estado de la corrida anterior.
+// Caso 357. Una línea de antes de 0.111.0 se armaba al lado de la instancia, que en el banco es al lado de lo
+// que se borra: sobrevivía a rehacerlo, sin repositorio y con el estado de la corrida anterior. `ops line` ya no
+// la arma así —se arma a mano, con lo que hacía—, pero la que quedó se sigue llevando.
+const legacyLine = (dir, tree) => assert.equal(spawnSync('git', ['-C', dir, 'worktree', 'add', '-q', '-b',
+  'line/medida', tree], { encoding: 'utf8' }).status, 0)
+
 test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () => {
   const dir = benchDir(armar('sidecar'), TOOLKIT)
   const bench = path.dirname(dir)
   const home = `${bench}-medida`
   const tree = path.join(home, 'ops')
-  assert.equal(run(['line', dir, 'medida']).status, 0)
+  legacyLine(dir, tree)
   assert.equal(fs.existsSync(path.join(tree, 'planning')), true, 'la precondición: la línea quedó armada')
   // Una carpeta vecina que no es una línea del banco no se toca, se llame como se llame.
   const neighbour = `${bench}-ajena`
@@ -241,8 +245,7 @@ test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () =>
   assert.equal(armar('sidecar').status, 0)
   assert.equal(fs.existsSync(home), false, 'con --force, la línea se va con el banco')
   assert.equal(fs.existsSync(path.join(neighbour, 'nota.md')), true, 'y la vecina que no es una línea, no')
-  const again = run(['line', dir, 'medida'])
-  assert.equal(again.status, 0, `la línea se puede volver a armar sobre el banco nuevo: ${again.stderr}`)
+  legacyLine(dir, tree)
 
   // La que quedó huérfana —su repositorio ya no la conoce— no dice si tiene trabajo: se trata como si lo
   // tuviera, y se va igual con --force.
@@ -254,4 +257,12 @@ test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () =>
   assert.equal(fs.existsSync(home), false)
   fs.unlinkSync(path.join(neighbour, 'nota.md'))
   fs.rmdirSync(neighbour)
+
+  // La de ahora queda adentro del banco, en `lines/`, y se va con él (caso 394).
+  const now = run(['line', dir, 'actual', 'app'])
+  assert.equal(now.status, 0, now.stderr)
+  assert.ok(fs.existsSync(path.join(bench, 'lines', 'actual', 'app')))
+  assert.equal(fs.existsSync(`${bench}-actual`), false, 'quedó una carpeta al lado')
+  assert.equal(armar('sidecar').status, 0)
+  assert.equal(fs.existsSync(path.join(bench, 'lines')), false)
 })

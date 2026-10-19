@@ -201,9 +201,10 @@ muta nada.
   ahora, con su aceptación y sus criterios. Es la entrada correcta para empezar a trabajar. Con `--hito`
   la cola se acota a ese hito, que es como un equipo se reparte trabajo sin coordinarse.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
-- `node tools/ops.js lines .` — qué hace cada línea de trabajo: su cola, sus reclamos, su WIP, sus
-  checkpoints y cuánto la separa de la base. `lines join . <nombre>` trae una línea, en seco o con
-  `--apply`; `delivery/teamwork.md` cuenta qué choca al juntar.
+- `node tools/ops.js lines .` — qué hace cada línea de trabajo: sus árboles, su cola, sus reclamos, su WIP,
+  sus checkpoints, cuánto la separa de la rama viva y qué archivos tocaron dos líneas sobre el mismo
+  repositorio. `lines join . <nombre>` retira una línea ya mergeada, en seco o con `--apply`;
+  `delivery/teamwork.md` cuenta cómo se arma y se lleva una.
 - `node tools/ops.js recurring planning [--promote <qué>]` — qué trabajo recurrente venció y con
   qué línea se promueve. Emite esa línea; escribirla en `BACKLOG.md` es de una persona.
 - `node tools/ops.js check planning` — validación de contratos y trazabilidad.
@@ -293,8 +294,8 @@ nombrando la rama —«commiteá en main»—; «commiteá» a secas termina en 
 
 El estado de planning —la cola, los reclamos, `done/`, el INBOX, las acciones humanas— sigue la misma idea
 con una diferencia: no va a una rama por tarea sino a **una sola rama de trabajo** que se acumula, con un
-PR abierto. Se trabaja en la carpeta de la instancia; un segundo árbol (`ops line`) es para cuando dos
-sesiones trabajan a la vez.
+PR abierto. Se trabaja en la carpeta de la instancia; una línea de trabajo (`ops line`) es para cuando otra
+sesión toma, a la vez, trabajo que la principal no toma.
 
 Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
 `organization/workspace.md`, con su razón; ninguna de esas prohibiciones se amplía ahí, y la

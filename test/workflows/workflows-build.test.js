@@ -40,7 +40,7 @@ test('autobuild implementa el protocolo completo sin rutas de proyectos fuente',
 })
 
 test('autobuild deriva gate, mutex y selección de tarea del CLI, no de un modelo', () => {
-  assert.match(workflow, /ops\.js context \$\{P\} --json/, 'el estado sale del comando determinista')
+  assert.match(workflow, /ops\.js context \$\{P\}\$\{ON_LINE\} --json/, 'el estado sale del comando determinista')
   const selection = workflow.slice(workflow.indexOf("phase('Pick')"), workflow.indexOf("phase('Ready')"))
   for (const file of ['BACKLOG', 'HUMAN', 'WIP', 'GATE']) {
     assert.equal(

@@ -32,6 +32,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { DIR: CLAIMS } = require('../planning/claims')
 const { BRANCH: LINE } = require('../planning/lines')
+const LT = require('./line-trees')
 
 const read = (file) => {
   try { return fs.readFileSync(file, 'utf8').trim() } catch { return '' }
@@ -121,9 +122,21 @@ function taskTrees(planning, folders) {
   return [...found]
 }
 
-// Lo escribible de un proyecto con sus árboles de tarea: la instancia, las raíces, y esas mismas carpetas
-// en cada árbol. Lo arman igual los guards que lo necesitan, para que no puedan contestar distinto.
+// Los árboles de las líneas declaradas (caso 394), que git tiene registrados como árboles de su repositorio.
+// Caen dentro de la carpeta de sesión, que no siempre es una raíz: con una raíz por repositorio, sin esto el
+// guard frenaba la primera escritura de cada línea. Lo que se abre es el árbol y no la carpeta de la línea,
+// donde lo demás son enlaces a lo que ya se juzga por su cuenta.
+function lineTrees(root) {
+  return LT.trees(root).filter(({ source, tree }) => {
+    const repo = repository(source)
+    return repo && real(repo.top) === real(source) && registered(tree, repo.common)
+  }).map(({ tree }) => tree)
+}
+
+// Lo escribible de un proyecto con sus árboles de tarea y de línea: la instancia, las raíces, y esas mismas
+// carpetas en cada árbol de tarea. Lo arman igual los guards que lo necesitan, para que no puedan contestar
+// distinto.
 const withTaskTrees = (root, declared) => [root, ...declared,
-  ...taskTrees(path.join(root, 'planning'), [root, ...declared])]
+  ...taskTrees(path.join(root, 'planning'), [root, ...declared]), ...lineTrees(root)]
 
 module.exports = { taskTrees, treeOf, withTaskTrees }

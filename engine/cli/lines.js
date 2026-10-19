@@ -1,40 +1,29 @@
 'use strict'
 
-// Una línea de trabajo: un worktree del repositorio de la instancia con su propia carpeta de sesión (caso 218).
+// Una línea de trabajo: un nombre y un worktree por cada repositorio del producto que trabaja (caso 394).
 //
-// La configuración del runner vive en la raíz de la sesión, y en sidecar esa raíz es la carpeta que contiene a
-// la instancia: todos los worktrees la comparten, así que todas las sesiones corrían los guards de un solo
-// árbol, y instalar desde otro los movía para todas. Una línea se arma al lado, en `<raíz>-<nombre>/`, con lo
-// que su sesión necesita para no depender del árbol principal: su worktree, su motor y su configuración.
+// La línea vive dentro de la carpeta de sesión, en `lines/<línea>/<repo>/`, y no lleva configuración propia: la
+// sesión que la lleva se abre donde siempre, con las mismas reglas, los mismos permisos y la misma instancia.
+// Hasta 0.110.0 cada línea era un worktree de la instancia con su propia carpeta de sesión al lado (caso 218),
+// y todo lo que vivía en la carpeta original había que replicarlo o enlazarlo: cada cosa que faltaba era un
+// caso nuevo, y las que faltaban al final eran las que hacen la gobernanza.
 //
-// El motor se enlaza al `node_modules` del árbol principal en vez de reinstalarse: es el mismo paquete
-// instalado —su versión la fija la instalación, no la rama— y un worktree no lo trae porque está
-// gitignoreado. Los repositorios del producto que viven fuera de la instancia se enlazan a los originales:
-// separar el trabajo dentro del producto es de `ops worktree`, por tarea.
+// Los repositorios que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` escrito en un
+// repositorio resuelva igual que desde la carpeta de sesión. Las dependencias no se enlazan: un árbol es un
+// checkout aparte, y que cada línea pruebe lo suyo es la razón de tenerlo.
 
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const A = require('../automation')
-const { installRoot } = require('../automation/runners')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
 const LNP = require('../planning/lines')
+const LT = require('../core/line-trees')
 const { BRANCH, NAME } = LNP
-const R = require('../core/repos')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
-const inside = (base, target) => !path.relative(base, target).startsWith('..')
-
-// Dónde queda cada pieza de la línea. Sólo calcula —no toca el disco— para poder probar los dos modos.
-function layout(root, top, name) {
-  const install = installRoot(root)
-  const home = path.join(path.dirname(install), `${path.basename(install)}-${name}`)
-  // Sidecar: el repo de la instancia vive dentro de la carpeta de sesión, y la línea lo replica adentro de la
-  // suya. Embebido: la sesión se abre dentro del repo, y la línea es un worktree hermano del repo entero.
-  const tree = inside(install, top)
-    ? path.join(home, path.relative(install, top))
-    : path.join(path.dirname(top), `${path.basename(top)}-${name}`)
-  return { install, home, tree, ops: path.join(tree, path.relative(top, root)), branch: `${BRANCH}${name}` }
+const real = (dir) => (fs.existsSync(dir) ? fs.realpathSync(dir) : dir)
+const isDir = (dir) => {
+  try { return fs.statSync(dir).isDirectory() } catch { return false }
 }
 
 function linkIfMissing(link, target) {
@@ -44,119 +33,166 @@ function linkIfMissing(link, target) {
   return true
 }
 
-function ignoreLink(tree, link) {
-  if (!inside(tree, link)) return
-  const common = git(tree, 'rev-parse', '--git-common-dir')
-  if (common.status !== 0) return
-  const file = path.join(path.resolve(tree, common.stdout.trim()), 'info', 'exclude')
-  const entry = `/${path.relative(tree, link).split(path.sep).join('/')}`
+// El worktree de la instancia que una línea de antes tenía en `line/<nombre>`, o null.
+const legacyTree = (root, name) => LNP.worktrees(root).find((one) => one.branch === `${BRANCH}${name}`) || null
+
+// Los repositorios que la línea no trabaja, enlazados en su carpeta en el mismo lugar que en la de sesión. Se
+// enlaza en cada nivel que lleva a un repositorio propio, para que `../` resuelva igual a cualquier
+// profundidad. Quedan afuera los archivos sueltos y lo oculto —`CLAUDE.md`, `.claude/`: la configuración de la
+// sesión, que la línea no tiene—, `lines/` y la instancia, que es una sola.
+function linkSiblings(session, name, repos, instance) {
+  const owned = new Set(repos.map((one) => path.normalize(one)))
+  const levels = new Set([''])
+  for (const repo of owned) {
+    for (let dir = path.dirname(repo); dir !== '.'; dir = path.dirname(dir)) levels.add(dir)
+  }
+  const linked = []
+  for (const level of [...levels].sort()) {
+    for (const entry of fs.readdirSync(path.join(session, level)).sort()) {
+      const relative = path.join(level, entry)
+      const original = path.join(session, relative)
+      if (entry.startsWith('.') || (!level && entry === LT.DIR) || owned.has(relative) || levels.has(relative)) continue
+      if (!isDir(original) || real(original) === instance) continue
+      if (linkIfMissing(path.join(session, LT.DIR, name, relative), original)) linked.push(relative)
+    }
+  }
+  return linked
+}
+
+// `lines/` no es del proyecto: si la carpeta de sesión es un repositorio, se anota en su `exclude`, que no
+// viaja. Sólo si es la raíz de uno: una carpeta adentro de otro repositorio ajeno no es asunto de la línea.
+function ignoreLines(session) {
+  const top = git(session, 'rev-parse', '--show-toplevel')
+  if (top.status !== 0 || real(top.stdout.trim()) !== real(session)) return
+  const common = git(session, 'rev-parse', '--git-common-dir').stdout.trim()
+  const file = path.join(path.resolve(session, common), 'info', 'exclude')
+  const entry = `/${LT.DIR}/`
   const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
   if (current.split('\n').includes(entry)) return
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, `${current}${current && !current.endsWith('\n') ? '\n' : ''}${entry}\n`)
 }
 
-function line(dir, name, cli) {
-  // Real, porque git devuelve rutas reales: mezcladas con una que pasa por un enlace, la línea caía en la
-  // carpeta compartida en vez de al lado.
-  const given = opsRoot(dir)
-  const root = fs.existsSync(given) ? fs.realpathSync(given) : given
-  if (!name || !NAME.test(name)) {
-    return fail('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre>`', USAGE)
-  }
-  const repo = git(root, 'rev-parse', '--show-toplevel')
-  if (repo.status !== 0) return fail(`${root} no está en un repositorio git: una línea es un worktree de él.`, REFUSED)
-  const where = layout(root, repo.stdout.trim(), name)
-
-  // Una línea borrada a mano sigue listada: sin retirarla, se daba por reusada y quedaba a medias. Se retira
-  // ésa y no se poda todo, que le quitaría el registro a cualquier otro árbol que hoy no esté.
-  if (!fs.existsSync(where.tree)) git(root, 'worktree', 'remove', '--force', where.tree)
-  const listed = git(root, 'worktree', 'list', '--porcelain').stdout || ''
-  const reused = listed.split('\n').some((entry) => entry.trim() === `worktree ${where.tree}`)
+// Un árbol de la línea: el que ya está se reusa, uno borrado a mano se retira del registro y se vuelve a armar,
+// y la rama nueva sale de la rama viva del repositorio (caso 395). La que ya existe se usa tal cual: es también
+// la salida para montar una línea sobre otra rama a propósito, creándola antes.
+function plant(session, name, repo, warnings) {
+  const source = path.join(session, repo)
+  const tree = LT.treeOf(session, name, repo)
+  const branch = `${BRANCH}${name}`
+  if (!fs.existsSync(tree)) git(source, 'worktree', 'remove', '--force', tree)
+  const listed = git(source, 'worktree', 'list', '--porcelain').stdout || ''
+  const reused = listed.split('\n').some((entry) => entry.trim() === `worktree ${tree}`)
+  let from = ''
   if (!reused) {
-    if (fs.existsSync(where.tree)) {
-      return fail(`${where.tree} ya existe y no es un worktree de esta instancia.`, REFUSED)
-    }
-    const hasBranch = git(root, 'rev-parse', '--verify', '--quiet', `refs/heads/${where.branch}`).status === 0
-    const args = hasBranch ? [where.tree, where.branch] : ['-b', where.branch, where.tree]
-    const added = git(root, 'worktree', 'add', ...args)
-    if (added.status !== 0) return fail(`git worktree add falló: ${(added.stderr || '').trim()}`, REFUSED)
-  }
-
-  // El motor, donde `packagePath` lo busca: bajo la raíz ops o un nivel arriba.
-  const engine = linkIfMissing(path.join(where.ops, 'node_modules'), path.join(root, 'node_modules'))
-    || linkIfMissing(path.join(path.dirname(where.ops), 'node_modules'), path.join(path.dirname(root), 'node_modules'))
-  // El enlace al motor no es del proyecto, y el `.gitignore` de la instancia no siempre lo cubre: un patrón
-  // con barra final ignora un directorio y un enlace no lo es para git, así que la línea nacía con
-  // `node_modules` sin trackear. Se anota en el `exclude` del repositorio, que comparten sus árboles y no
-  // viaja (caso 275).
-  ignoreLink(where.tree, path.join(where.ops, 'node_modules'))
-  let config = {}
-  try { config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')) } catch { config = {} }
-  const roots = (config.workspaceRoots || []).map((one) => one.path || '').filter(Boolean)
-  const linked = roots
-    .filter((relative) => linkIfMissing(path.resolve(where.ops, relative), path.resolve(root, relative)))
-
-  // Los mismos runners que tiene la instancia, instalados desde la línea: su configuración queda en la carpeta
-  // de la línea y apunta a su árbol.
-  const runners = A.RUNNER_NAMES.filter((runner) => {
-    try { return fs.existsSync(A.runnerPaths(root, runner, A.runnerManifest(root, runner)).configTarget) } catch {
-      return false
-    }
-  })
-  const quiet = { log: () => {}, error: () => {} }
-  // Si el runner no se puede instalar, la línea no está armada: quedó el árbol, con los recorridos y los
-  // guards de otra carpeta o sin ninguno. Se dice, en vez de contestar que quedó (caso 363).
-  //
-  // `ownFolder`: la configuración que una línea embebida trae por git puede llevar los guards apuntando a la
-  // carpeta original —la de Codex lleva la ruta escrita—. La instalación se niega a mover guards de una
-  // carpeta de sesión que otro árbol comparte; la de una línea es sólo suya, y moverlos acá es el punto.
-  for (const runner of runners) {
-    try { A.install(where.ops, runner, quiet, { ownFolder: true }) } catch (error) {
-      return fail(`${error.message}\n\nEl árbol se creó en ${where.tree}, pero la línea ${name} quedó sin su `
-        + `runner (${runner}): sus recorridos y sus guards no apuntan a ella. Resolvé lo de arriba en la `
-        + 'instancia y repetí este comando.', REFUSED)
+    if (fs.existsSync(tree)) return { error: `${tree} ya existe y no es un worktree de ${repo}.` }
+    const hasBranch = git(source, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
+    if (!hasBranch) from = LNP.startPoint(source)
+    fs.mkdirSync(path.dirname(tree), { recursive: true })
+    const args = hasBranch ? [tree, branch] : ['-b', branch, tree, ...(from ? [from] : [])]
+    const added = git(source, 'worktree', 'add', ...args)
+    if (added.status !== 0) return { error: `git worktree add falló en ${repo}: ${(added.stderr || '').trim()}` }
+    const head = git(source, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
+    // `main` y `master` no llevan barra; lo que la lleva es `<remoto>/<rama>`.
+    if (!hasBranch && head && from && head !== (from.includes('/') ? from.slice(from.indexOf('/') + 1) : from)) {
+      warnings.push(`${repo} está en ${head}; ${branch} sale de ${from}, la rama viva. Si la querías sobre ${head}: `
+        + `borrá el árbol, creá la rama con \`git -C ${source} branch ${branch} ${head}\` y repetí.`)
     }
   }
+  return { repo, tree, branch, from, reused }
+}
 
-  // Una raíz que es la carpeta que contiene a la instancia —`..`, con un repositorio por servicio adentro— no
-  // se puede enlazar entera: su lugar en la línea es la propia carpeta de la línea, que ya existe. Se enlazan
-  // sus hijos, y con ellos viaja también lo que la sesión lee de esa carpeta y no es una raíz. La instancia
-  // no se enlaza porque ya está: es el worktree. Y queda afuera la configuración de todo runner, también la
-  // del que la instancia no tiene instalado: enlazada, instalarlo después desde la línea escribiría en la
-  // carpeta original y movería los guards de la otra sesión (caso 218). Va después de instalar para no
-  // pisar lo que la instalación escribe (caso 263).
-  const configOf = (runner) => {
-    try {
-      const target = A.runnerPaths(root, runner, A.runnerManifest(root, runner)).configTarget
-      return path.relative(installRoot(root), target).split(path.sep)[0]
-    } catch { return '' }
+const no = (error, code) => ({ error, code })
+
+// Arma la línea y devuelve qué quedó, o `{ error, code }`. Separado de la salida porque lo usa también
+// `ops lines migrate`, que imprime lo suyo.
+function assemble(root, name, given) {
+  if (!name || !NAME.test(name)) {
+    return no('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre> <repo>...`', USAGE)
   }
-  for (const relative of roots) {
-    const target = path.resolve(where.ops, relative)
-    const original = path.resolve(root, relative)
-    if (target === original || !inside(target, where.tree) || !fs.existsSync(original)) continue
-    const skip = new Set(A.RUNNER_NAMES.map(configOf))
-    for (const name of fs.readdirSync(original).sort()) {
-      if (!skip.has(name) && linkIfMissing(path.join(target, name), path.join(original, name))) {
-        linked.push(path.join(relative, name))
-      }
+  const config = LT.config(root)
+  if (!config.mode) return no(`${root} (ruta resuelta) no es una raíz ops: falta ops.config.json.`, USAGE)
+  const session = LT.sessionOf(root, config)
+  if (!session) {
+    return no(`una línea de trabajo necesita una instancia sidecar, y ésta es ${config.mode}: en embebido el `
+      + 'worktree del repositorio se llevaría una segunda instancia adentro, con su propio planning.', REFUSED)
+  }
+  if (legacyTree(root, name)) {
+    return no(`la línea ${name} está armada con la disposición de antes, con su propia carpeta de sesión. `
+      + `Pasala a la nueva con \`ops lines migrate <ops-root> ${name} <repo>...\`.`, REFUSED)
+  }
+  const top = git(root, 'rev-parse', '--show-toplevel')
+  if (top.status !== 0) return no(`${root} no está en un repositorio git.`, REFUSED)
+  const instance = real(top.stdout.trim())
+  const lines = LT.declared(root, config)
+  const repos = [...new Set([...(lines[name] || []), ...given.map((one) => path.normalize(one).replace(/\/+$/, ''))])]
+  if (!repos.length) {
+    return no(`Falta qué repositorios trabaja la línea ${name}: \`ops line <ops-root> ${name} <repo>...\`, cada `
+      + `uno nombrado desde ${session}.`, USAGE)
+  }
+  for (const repo of repos) {
+    const source = path.join(session, repo)
+    const its = LT.safeRepo(repo) && isDir(source) ? git(source, 'rev-parse', '--show-toplevel') : null
+    if (!its || its.status !== 0 || real(its.stdout.trim()) !== real(source)) {
+      return no(`${repo} no es la raíz de un repositorio git dentro de ${session}.`, USAGE)
+    }
+    if (real(source) === instance) {
+      return no(`${repo} es la instancia: una línea trabaja repositorios del producto, y la instancia es una `
+        + 'sola para todas las sesiones.', USAGE)
     }
   }
 
-  // La raíz que el repositorio registra como enlace de git nace vacía en la línea, y `check` lo dice; acá se
-  // repite porque éste es el momento en que todavía se puede corregir antes de abrir la sesión (caso 358).
-  // Avisa y no se niega: no se conoce una instancia con esa disposición, y a quien la tenga le frenaría lo
-  // que hoy le anda a medias.
-  const warnings = R.nestedRootWarnings(root)
-  const report = {
-    home: installRoot(where.ops), tree: where.tree, branch: where.branch, reused, engine, linked, runners, warnings,
+  const warnings = []
+  // Dos líneas sobre el mismo repositorio no se pisan —cada una tiene su rama y su árbol—, pero el merge no lo
+  // aísla nadie. Se permite y se dice; `ops lines` muestra qué archivos cambiaron las dos.
+  for (const repo of repos) {
+    const others = Object.entries(lines).filter(([other, its]) => other !== name && its.includes(repo))
+      .map(([other]) => other)
+    if (others.length) {
+      const named = others.map((one) => `la línea ${one}`).join(' y ')
+      warnings.push(`${repo} también es de ${named}, en otra rama: no se pisan, pero lo que cambien las dos choca `
+        + 'al mergear. `ops lines` muestra qué archivos tocaron.')
+    }
   }
+  const trees = []
+  for (const repo of repos) {
+    const planted = plant(session, name, repo, warnings)
+    if (planted.error) {
+      const done = trees.length
+        ? ` Quedaron armados ${trees.map((one) => one.tree).join(', ')}; repetir los reusa.` : ''
+      return no(`${planted.error}${done}`, REFUSED)
+    }
+    trees.push(planted)
+  }
+  const linked = linkSiblings(session, name, repos, instance)
+  ignoreLines(session)
+  // La pertenencia se escribe al final: con un árbol que no se pudo armar, la línea no queda declarada a medias.
+  const wrote = JSON.stringify(lines[name] || []) !== JSON.stringify(repos)
+  if (wrote) {
+    config.lines = { ...(config.lines || {}), [name]: repos }
+    fs.writeFileSync(path.join(root, 'ops.config.json'), `${JSON.stringify(config, null, 2)}\n`)
+  }
+
+  return { line: name, session, trees, linked, warnings, declared: wrote }
+}
+
+function line(dir, name, given, cli) {
+  // Real, porque git devuelve rutas reales: mezcladas con una que pasa por un enlace, ningún árbol coincidía.
+  const report = assemble(real(opsRoot(dir)), name, given)
+  if (report.error) return report.code === USAGE ? fail(report.error, USAGE) : fail(report.error, REFUSED)
   if (cli.has('--json')) return console.log(JSON.stringify(report))
-  console.log(`${reused ? '=' : '✓'} ${where.tree}  (${where.branch})`)
-  if (linked.length) console.log(`  enlazados al original: ${linked.join(', ')}`)
-  console.log(`  runners: ${runners.join(', ') || '(ninguno instalado en la instancia)'}`)
-  console.log(`Abrí la sesión de esta línea en ${report.home}: ahí está su configuración, apuntando a su árbol.`)
+  print(report)
+}
+
+function print({ line: name, trees, linked, warnings, declared }) {
+  for (const one of trees) {
+    console.log(`${one.reused ? '=' : '✓'} ${one.tree}  (${one.branch})`)
+    if (one.from) console.log(`  sale de: ${one.from}`)
+  }
+  if (linked.length) console.log(`  enlazados: ${linked.join(', ')}`)
+  if (declared) console.log('  ops.config.json declara la línea: commitealo, que es de donde la lee el equipo')
+  console.log(`La línea ${name} se lleva desde esta misma sesión, en otra conversación: /autobuild ${name}, o `
+    + `--line ${name} en context y claim. Cada árbol es un checkout aparte: sus dependencias se instalan adentro.`)
   for (const warning of warnings) console.log(`⚠ ${warning}`)
 }
 
@@ -185,6 +221,25 @@ function lines(dir, cli) {
     console.log(`  en vuelo: ${one.wips.map((w) => `${w.task} [${w.phase}] ${w.runner}`).join(', ') || none}`)
     console.log(`  checkpoints: ${one.checkpoints.join(', ') || none}`)
   }
+  for (const one of report.declared || []) {
+    console.log(`\n${one.name}  (línea declarada)`)
+    for (const repo of one.repos) {
+      const moved = !repo.exists ? '  falta el árbol: ops line lo vuelve a armar'
+        : repo.ahead === null ? '  sin rama viva contra qué contar'
+          : (repo.ahead || repo.behind ? `  +${repo.ahead} / -${repo.behind}` : '')
+      console.log(`  ${repo.repo}  ${repo.tree}  (${repo.branch})${moved}`
+        + `${repo.dirty ? `  · ${repo.dirty} sin commitear` : ''}`)
+    }
+    console.log(`  cola: ${one.milestones.map((m) => `${m.slug} (${m.tasks})`).join(', ') || '(vacía)'}`)
+    console.log(`  reclamos: ${one.claims.map((c) => `${c.slug} (${c.runner}, ${c.started})`).join(', ') || none}`)
+    console.log(`  en vuelo: ${one.wips.map((w) => `${w.task} [${w.phase}] ${w.runner}`).join(', ') || none}`)
+    console.log(`  checkpoints: ${one.checkpoints.join(', ') || none}`)
+  }
+  for (const one of report.overlaps || []) {
+    console.log(`\n⚠ ${one.repo} lo trabajan ${one.lines.join(' y ')}, cada una en su rama. `
+      + (one.files.length ? `Cambiaron las dos, y van a chocar al mergear: ${one.files.join(', ')}`
+        : 'Todavía no tocaron los mismos archivos.'))
+  }
 }
 
-module.exports = { line, lines, layout }
+module.exports = { line, lines, assemble, print, legacyTree, real }

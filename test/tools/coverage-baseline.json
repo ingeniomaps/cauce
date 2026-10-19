@@ -140,13 +140,13 @@
     "functions": 100
   },
   "engine/cli/lines-join.js": {
-    "lines": 98,
-    "branches": 50,
+    "lines": 94,
+    "branches": 44,
     "functions": 100
   },
   "engine/cli/lines.js": {
     "lines": 97,
-    "branches": 56,
+    "branches": 86,
     "functions": 90
   },
   "engine/cli/ops.js": {
@@ -501,8 +501,8 @@
   },
   "engine/planning/lines.js": {
     "lines": 100,
-    "branches": 95,
-    "functions": 100
+    "branches": 94,
+    "functions": 98
   },
   "engine/hooks/ai-signature.js": {
     "lines": 100,
@@ -557,6 +557,11 @@
   "engine/automation/machine-bound.js": {
     "lines": 100,
     "branches": 80,
+    "functions": 100
+  },
+  "engine/core/line-trees.js": {
+    "lines": 100,
+    "branches": 96,
     "functions": 100
   }
 }

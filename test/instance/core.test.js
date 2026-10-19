@@ -409,3 +409,18 @@ test('inbox.warnLines se valida, y no declararlo es válido', () => {
   assert.match(errorsOf({ lines: 3 })[0], /no está permitido/)
   assert.match(errorsOf([])[0], /debe ser un objeto/)
 })
+
+// Caso 394.
+test('lines declara cada línea con sus repositorios, y lo que no tiene la forma se nombra', () => {
+  const errorsOf = (lines) => validateOpsConfig({ ...opsConfig(), lines })
+  assert.deepEqual(errorsOf({ pagos: ['backend-pagos'], auth: ['servicios/auth', 'backend-pagos'] }), [])
+  assert.deepEqual(errorsOf(undefined), [], 'sin líneas es lo de siempre')
+  assert.match(errorsOf(['pagos']).join('\n'), /lines debe ser un objeto/)
+  assert.match(errorsOf({ Pagos: ['x'] }).join('\n'), /lines\.Pagos no es un nombre de línea/)
+  assert.match(errorsOf({ pagos: [] }).join('\n'), /lines\.pagos debe ser una lista no vacía/)
+  assert.match(errorsOf({ pagos: 'x' }).join('\n'), /lines\.pagos debe ser una lista no vacía/)
+  for (const repo of ['../afuera', '/abs', '.', 'lines/otra', '', 3]) {
+    assert.match(errorsOf({ pagos: [repo] }).join('\n'), /no es un repositorio de la carpeta de sesión/, String(repo))
+  }
+  assert.match(errorsOf({ pagos: ['x', 'x'] }).join('\n'), /lines\.pagos repite un repositorio/)
+})
