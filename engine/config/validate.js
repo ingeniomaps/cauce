@@ -102,8 +102,9 @@ function validateLines(lines, errors) {
     if (!LT.NAME.test(name)) {
       errors.push(`ops.config.json: lines.${name} no es un nombre de línea (minúsculas y guiones)`)
     }
-    if (!Array.isArray(repos) || !repos.length) {
-      errors.push(`ops.config.json: lines.${name} debe ser una lista no vacía de repositorios`)
+    // Vacía es una línea que todavía no trabaja ningún repositorio: el frente se decide antes (caso 421).
+    if (!Array.isArray(repos)) {
+      errors.push(`ops.config.json: lines.${name} debe ser una lista de repositorios`)
       continue
     }
     for (const repo of repos) {

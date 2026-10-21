@@ -159,7 +159,7 @@ const no = (error, code) => ({ error, code })
 // `ops lines migrate`, que imprime lo suyo.
 function assemble(root, name, given) {
   if (!name || !NAME.test(name)) {
-    return no('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre> <repo>...`', USAGE)
+    return no('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre> [<repo>...]`', USAGE)
   }
   const config = LT.config(root)
   if (!config.mode) return no(`${root} (ruta resuelta) no es una raíz ops: falta ops.config.json.`, USAGE)
@@ -177,10 +177,6 @@ function assemble(root, name, given) {
   const instance = real(top.stdout.trim())
   const lines = LT.declared(root, config)
   const repos = [...new Set([...(lines[name] || []), ...given.map((one) => path.normalize(one).replace(/\/+$/, ''))])]
-  if (!repos.length) {
-    return no(`Falta qué repositorios trabaja la línea ${name}: \`ops line <ops-root> ${name} <repo>...\`, cada `
-      + `uno nombrado desde ${session}.`, USAGE)
-  }
   for (const repo of repos) {
     const source = path.join(session, repo)
     const its = LT.safeRepo(repo) && isDir(source) ? git(source, 'rev-parse', '--show-toplevel') : null
@@ -217,9 +213,11 @@ function assemble(root, name, given) {
     }
     trees.push(planted)
   }
-  ignoreLines(session)
+  if (trees.length) ignoreLines(session)
   // La pertenencia se escribe al final: con un árbol que no se pudo armar, la línea no queda declarada a medias.
-  const wrote = JSON.stringify(lines[name] || []) !== JSON.stringify(repos)
+  // Sin repositorios se declara igual: el frente se decide antes que el repositorio, y su sesión ya puede llevar
+  // la planificación (caso 421). Los árboles se arman cuando una tarea de la línea los pide, en `ops worktree`.
+  const wrote = JSON.stringify(lines[name]) !== JSON.stringify(repos)
   if (wrote) {
     config.lines = { ...(config.lines || {}), [name]: repos }
     fs.writeFileSync(path.join(root, 'ops.config.json'), `${JSON.stringify(config, null, 2)}\n`)
@@ -243,6 +241,10 @@ function print({ line: name, trees, unlinked, warnings, declared }) {
   }
   if (unlinked.length) {
     console.log(`  sin los enlaces de antes: ${unlinked.join(', ')} (una línea ya no enlaza lo que no trabaja)`)
+  }
+  if (!trees.length) {
+    console.log(`  la línea ${name} todavía no trabaja ningún repositorio: el árbol de cada uno se arma cuando una `
+      + `tarea de la línea lo pide (ops worktree --line ${name}), o se suma con ops line <ops-root> ${name} <repo>`)
   }
   if (declared) console.log('  ops.config.json declara la línea: commitealo, que es de donde la lee el equipo')
   console.log(`La línea ${name} se lleva desde esta misma sesión, en otra conversación: /autobuild ${name}, o `

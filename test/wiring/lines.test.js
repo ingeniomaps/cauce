@@ -176,7 +176,7 @@ test('el árbol de un repositorio con compose avisa que es el mismo proyecto, co
   }
 })
 
-test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un repositorio y en embebido', () => {
+test('una línea se niega sin nombre, sobre lo que no es un repositorio y en embebido', () => {
   const { ops, tree } = session('cauce-line-refuse-')
   const refused = (args, pattern) => {
     const result = run(['line', ops, ...args])
@@ -184,7 +184,6 @@ test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un re
     assert.match(result.stderr, pattern)
   }
   refused(['Mal Nombre', 'pagos'], /en minúsculas y con guiones/)
-  refused(['x'], /Falta qué repositorios trabaja la línea x/)
   refused(['x', 'shared-lib'], /shared-lib no es la raíz de un repositorio git/)
   refused(['x', '../afuera'], /no es la raíz de un repositorio git/)
   refused(['x', 'ops'], /ops es la instancia/)

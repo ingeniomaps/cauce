@@ -6,49 +6,18 @@
 // es de git— sino esa resolución, que el comando no monte sobre lo de otro, y que entregue el id de
 // runner hecho, que es el dato cuyo olvido deja a dos agentes indistinguibles.
 
-const { tempRoot, run, discard } = require('../support/environment')
+const { run } = require('../support/environment')
+const { montar, git } = require('../support/worktree-bench')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
 const R = require('../../engine/core/repos')
-
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
-const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
-
-// Una instancia sidecar con un repositorio al lado, que es el montaje que la guía recomienda para varios
-// agentes: `ops/` una sola vez y los árboles de trabajo aparte.
-function montar(nombre) {
-  const base = tempRoot(nombre)
-  const repo = path.join(base, 'producto')
-  fs.mkdirSync(path.join(repo, 'api'), { recursive: true })
-  fs.writeFileSync(path.join(repo, 'api', 'main.go'), 'package main\n')
-  git(repo, 'init', '-q', '-b', 'main')
-  git(repo, 'config', 'user.email', 'test@test')
-  git(repo, 'config', 'user.name', 'test')
-  git(repo, 'add', 'api/main.go')
-  git(repo, 'commit', '-q', '-m', 'base')
-
-  const ops = path.join(base, 'producto-ops')
-  fs.mkdirSync(ops, { recursive: true })
-  fs.cpSync(MOLDE, path.join(ops, 'planning'), { recursive: true })
-  fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({
-    project: 'demo', mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '../producto' }],
-  }, null, 2))
-  fs.writeFileSync(path.join(ops, 'planning', 'BACKLOG.md'), `# Backlog promovido
-
-## Hito uno — Primero
-
-- [ ] **alta** [lite] — Alta. _Aceptación: rechaza duplicado._ (service: api)
-`)
-  return { base, repo, planning: path.join(ops, 'planning') }
-}
 
 // Fija las dos identidades y no sólo el runner. Sin el owner, `ops claim` lo deduce de `git config
 // user.email` — y ahí la prueba pasa a depender de cómo esté configurada la máquina: verde en una con
-// identidad global y roja en CI, que no tiene ninguna. Es el mismo tropiezo que ya documenta el helper
-// `git` de esta suite, un nivel más arriba.
+// identidad global y roja en CI, que no tiene ninguna. Es el mismo tropiezo por el que `montar` fija la
+// identidad en el repositorio (`test/support/worktree-bench.js`).
 function como(runner, fn, owner = 'prueba@acme.com') {
   const previo = { runner: process.env.CAUCE_RUNNER, owner: process.env.CAUCE_OWNER }
   process.env.CAUCE_RUNNER = runner
@@ -403,31 +372,4 @@ test('una raíz vecina con el nombre parecido no se toma por el repositorio del 
   fs.writeFileSync(file, JSON.stringify(config, null, 2))
   const hecho = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
   assert.equal(hecho.work, path.join(`${repo}-alta`, 'api'))
-})
-
-// Caso 394. En una línea declarada la tarea se construye en el árbol de la línea, que ya existe: no se arma
-// otro por tarea, y lo que se entrega dice que es de la línea para que se commitee ahí sin retirarlo.
-test('con --line entrega el árbol de la línea, con dónde trabajar adentro', () => {
-  const { base, repo, planning } = montar('cauce-wt-linea-')
-  const ops = path.dirname(planning)
-  git(ops, 'init', '-q', '-b', 'main')
-  const made = run(['line', ops, 'pagos', 'producto'])
-  assert.equal(made.status, 0, made.stderr)
-  const tree = path.join(fs.realpathSync(base), 'lines', 'pagos', 'producto')
-  const asked = run(['worktree', planning, 'alta', '--line', 'pagos', '--json'])
-  assert.equal(asked.status, 0, asked.stderr)
-  const report = JSON.parse(asked.stdout)
-  assert.deepEqual([report.path, report.work, report.branch, report.line, report.reused],
-    [tree, path.join(tree, 'api'), 'line/pagos', 'pagos', true])
-  assert.equal(report.repo, fs.realpathSync(repo))
-  assert.equal(fs.existsSync(path.join(base, 'producto-alta')), false, 'armó un árbol por tarea')
-  assert.equal(git(repo, 'rev-parse', '--verify', '--quiet', 'refs/heads/task/alta').status, 1)
-
-  // Sin el árbol, o con el servicio en un repositorio que no es de la línea, no hay dónde construirla.
-  discard(tree)
-  assert.match(run(['worktree', planning, 'alta', '--line', 'pagos']).stderr,
-    /falta el árbol de producto en la línea pagos/)
-  const config = JSON.parse(fs.readFileSync(path.join(ops, 'ops.config.json'), 'utf8'))
-  fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ ...config, lines: { pagos: ['otro'] } }))
-  assert.match(run(['worktree', planning, 'alta', '--line', 'pagos']).stderr, /que no es de la línea pagos/)
 })

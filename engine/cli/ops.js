@@ -168,7 +168,7 @@ function usage() {
   ops split-backlog <planning-dir>
   ops promote <planning-dir> <epic-NNN-slug>
   ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>
-  ops line <ops-root> <nombre> <repo>... [--json]
+  ops line <ops-root> <nombre> [<repo>...] [--json]
   ops lines <ops-root> [--json]
   ops lines join <ops-root> <nombre> [--apply] [--json]
   ops lines migrate <ops-root> <nombre> <repo>... [--apply] [--json]

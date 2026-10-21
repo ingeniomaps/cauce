@@ -106,7 +106,11 @@ trabajo que la principal no toma —un frente aparte, como pagos mientras vos se
 concentrado en lo suyo no tiene líneas, y nada de esto le aparece.
 
 Una línea es un **frente de trabajo**: un nombre, los hitos que lleva —los que dicen `line: <nombre>`— y los
-repositorios del producto donde vive ese trabajo:
+repositorios del producto donde vive ese trabajo. El frente se decide antes que el repositorio, así que una línea
+puede nacer sin ninguno —`node tools/ops.js line . pagos`—: queda declarada, sin nada en disco, y su sesión ya puede
+escribir sus hitos y planificarlos. El repositorio de la primera tarea que pide su árbol —`ops worktree --line`, que
+es lo que corre `/autobuild`— se suma a la línea en ese momento, con su árbol, y la salida lo dice. Si ya se sabe,
+se nombra al armarla:
 
 ```bash
 node tools/ops.js line . pagos backend-pagos
