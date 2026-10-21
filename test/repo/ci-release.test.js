@@ -69,31 +69,101 @@ test('la release publica sólo lo que todavía no salió', { skip: process.platf
   fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: '@x/y', version: '1.2.3' }))
   const bin = path.join(repo, 'bin')
   fs.mkdirSync(bin)
-  const decide = ({ tagged, onNpm }) => {
+  // Lo que contesta el `npm view` real, medido con npm 11.16.0: la versión por `stdout`, o `E404` por `stderr`
+  // cuando no está —también mientras el registro todavía no muestra la que se acaba de publicar (caso 425)—.
+  const answers = {
+    yes: 'echo 1.2.3',
+    no: 'echo "npm error code E404" >&2; echo "npm error 404 No match found for version 1.2.3" >&2; exit 1',
+    down: 'echo "npm error code ECONNREFUSED" >&2; exit 1',
+  }
+  const attempt = ({ tagged, npm }) => {
     fs.writeFileSync(path.join(bin, 'git'), `#!/usr/bin/env bash\nexit ${tagged ? 0 : 2}\n`, { mode: 0o755 })
-    const npm = onNpm ? 'echo 1.2.3' : 'exit 1'
-    fs.writeFileSync(path.join(bin, 'npm'), `#!/usr/bin/env bash\n${npm}\n`, { mode: 0o755 })
+    fs.writeFileSync(path.join(bin, 'npm'), `#!/usr/bin/env bash\n${answers[npm]}\n`, { mode: 0o755 })
     const out = path.join(repo, 'out')
     fs.rmSync(out, { force: true })
     const done = spawnSync('bash', ['-c', step], {
       cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_OUTPUT: out },
     })
+    return { done, out }
+  }
+  const decide = (state) => {
+    const { done, out } = attempt(state)
     assert.equal(done.status, 0, done.stderr)
     return Object.fromEntries(fs.readFileSync(out, 'utf8').trim().split('\n').map((one) => one.split('=')))
   }
 
-  assert.deepEqual(decide({ tagged: false, onNpm: false }), { version: '1.2.3', release: 'true', published: 'false' },
+  assert.deepEqual(decide({ tagged: false, npm: 'no' }), { version: '1.2.3', release: 'true', published: 'false' },
     'una versión nueva se publica')
-  assert.deepEqual(decide({ tagged: false, onNpm: true }), { version: '1.2.3', release: 'true', published: 'true' },
+  assert.deepEqual(decide({ tagged: false, npm: 'yes' }), { version: '1.2.3', release: 'true', published: 'true' },
     'si npm ya la tiene, falta sólo la release: no se republica')
-  assert.deepEqual(decide({ tagged: true, onNpm: true }), { version: '1.2.3', release: 'false' },
+  assert.deepEqual(decide({ tagged: true, npm: 'yes' }), { version: '1.2.3', release: 'false' },
     'con su tag, ya salió entera y no se toca')
+  // Sin poder preguntarle a npm, «no está» sería una suposición, y publicar sobre ella corre la puerta entera
+  // para terminar rechazado si la versión ya salió.
+  const down = attempt({ tagged: false, npm: 'down' })
+  assert.notEqual(down.done.status, 0, 'un npm que no contesta no se lee como una versión sin publicar')
+  assert.match(down.done.stderr, /No se pudo preguntarle a npm/, 'y dice por qué frena')
+  assert.match(down.done.stderr, /ECONNREFUSED/, 'con lo que contestó npm')
+  assert.equal(/published=/.test(fs.readFileSync(down.out, 'utf8')), false, 'sin decidir nada')
 
   // Las dos salidas gobiernan los pasos que escriben afuera: sin esto, decidir no frenaría nada.
   const source = workflow('release')
   const gate = "steps\\.version\\.outputs\\.release == 'true' && steps\\.version\\.outputs\\.published != 'true'"
-  assert.match(source, new RegExp(`- name: Publish to npm\\n\\s+if: ${gate}`))
+  assert.match(source, new RegExp(`- name: Publish to npm\\n(?:\\s+id: publish\\n)?\\s+if: ${gate}`))
   assert.match(source, /- name: Create GitHub release\n\s+if: steps\.version\.outputs\.release == 'true'/)
+})
+
+// El registro tarda en mostrar una versión recién publicada —unos 80 segundos al publicar 0.113.0—, y un
+// reintento lanzado en ese intervalo la vuelve a publicar: npm la rechaza y la release, que era lo único que
+// faltaba, no salía (caso 425). Con el rechazo de npm y la versión a la vista, el paso sigue.
+const unix = { skip: process.platform === 'win32' }
+test('un publish que npm rechaza porque la versión ya salió sigue a la release', unix, () => {
+  const step = workflowStep(workflow('release'), 'id: publish')
+  assert.ok(step.length, 'no se encontró el paso que publica')
+
+  const repo = tempRoot('cauce-publish-')
+  fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: '@x/y', version: '1.2.3' }))
+  const bin = path.join(repo, 'bin')
+  fs.mkdirSync(bin)
+  // `sleep` falso: la espera es entre consultas al registro, y acá no hay registro que esperar.
+  fs.writeFileSync(path.join(bin, 'sleep'), '#!/usr/bin/env bash\nexit 0\n', { mode: 0o755 })
+  const conflict = 'echo "npm error You cannot publish over the previously published versions: 1.2.3." >&2; exit 1'
+  const run = ({ publish, view }) => {
+    const calls = path.join(repo, 'calls')
+    fs.writeFileSync(calls, '')
+    fs.writeFileSync(path.join(bin, 'npm'), [
+      '#!/usr/bin/env bash', `echo "$1" >> ${JSON.stringify(calls)}`,
+      `case "$1" in publish) ${publish} ;; view) ${view} ;; esac`, '',
+    ].join('\n'), { mode: 0o755 })
+    const done = spawnSync('bash', ['-e', '-c', step], {
+      cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VERSION: '1.2.3' },
+    })
+    return { ...done, calls: fs.readFileSync(calls, 'utf8').trim().split('\n') }
+  }
+
+  const fresh = run({ publish: 'echo "+ @x/y@1.2.3"', view: 'exit 1' })
+  assert.equal(fresh.status, 0, fresh.stderr)
+  assert.deepEqual(fresh.calls, ['publish'], 'un publish que sale no pregunta nada más')
+
+  const late = run({ publish: conflict, view: 'echo 1.2.3' })
+  assert.equal(late.status, 0, `${late.stdout}${late.stderr}`)
+  assert.match(late.stdout, /ya estaba en npm/, 'dice que la versión ya había salido')
+  assert.deepEqual(late.calls, ['publish', 'view'], 'y lo confirma con el registro, sin volver a publicar')
+
+  // Lo que falla por otra razón falla como antes, sin esperar a un registro que no tiene nada que mostrar.
+  const broken = run({ publish: 'echo "npm error code ELIFECYCLE" >&2; exit 3', view: 'echo 1.2.3' })
+  assert.equal(broken.status, 3, 'la puerta en rojo deja el paso en rojo')
+  assert.deepEqual(broken.calls, ['publish'], 'sin preguntarle nada al registro')
+
+  // npm dice que la versión existe y el registro nunca la muestra: no se anuncia lo que nadie puede instalar.
+  const missing = run({ publish: conflict, view: 'echo "npm error code E404" >&2; exit 1' })
+  assert.notEqual(missing.status, 0, 'sin la versión a la vista no hay release')
+  assert.match(missing.stderr, /no la muestra/, 'y dice qué falta')
+  assert.ok(missing.calls.filter((one) => one === 'view').length > 1, 'después de volver a preguntar')
+
+  const gate = "steps\\.version\\.outputs\\.release == 'true' && steps\\.version\\.outputs\\.published != 'true'"
+  assert.match(workflow('release'), new RegExp(`- name: Publish to npm\\n\\s+id: publish\\n\\s+if: ${gate}`),
+    'y sigue siendo el paso que sólo corre si falta publicar')
 })
 
 // `upgrade` le imprime la entrada del CHANGELOG a quien está por aplicar la versión. Sin entrada, la
