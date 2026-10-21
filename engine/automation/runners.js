@@ -6,6 +6,7 @@
 // los cuatro igual.
 
 const fs = require('node:fs')
+const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const F = require('../core/files')
 const O = require('../core/ownership')
@@ -141,6 +142,34 @@ function runnerConfig(paths, root) {
   return JSON.parse(render(paths.configSource, opsPrefix(root), paths.automationRoot, root))
 }
 
+const VERSION_TIMEOUT_MS = 5000
+
+// Los nombres de las herramientas que escriben, que el puente escucha, son de una versión del runner, y el runner se
+// actualiza solo. Cuando cambian, los guards de archivos dejan de correr sin que nada falle: pasó con agy 1.4, que
+// pasó a escribir con `write_file` y `edit_file` (caso 410). La lista no se puede comparar con la del runner, que no
+// la publica; lo que sí se compara es la versión, contra la que se midió.
+function toolsDrift(runner) {
+  // Con plazo: un `--version` que espera algo —una actualización, un login— colgaba `doctor` entero. Lanzado como
+  // líder de su grupo, el corte se lleva también a los hijos de un wrapper, como en `run` (`hooks/shell.js`).
+  const shown = spawnSync(runner.command, ['--version'], { encoding: 'utf8', timeout: VERSION_TIMEOUT_MS,
+    detached: true })
+  if (shown.error && shown.error.code === 'ETIMEDOUT') {
+    try { process.kill(-shown.pid, 'SIGKILL') } catch { /* ya no está */ }
+  }
+  // La versión se busca en stdout y después en stderr, donde la imprimen algunas herramientas. Si stdout viene vacío y
+  // stderr sólo trae un aviso con números («1.4.2 → 1.5.0»), sale una versión que no es: sin conocer el formato de
+  // cada runner no hay cómo distinguirlos.
+  const version = (`${shown.stdout || ''}${shown.stderr || ''}`.match(/\d+\.\d+(?:\.\d+)?/) || [''])[0]
+  if (!version) {
+    return [`no se pudo leer la versión de ${runner.command} con --version: comprobá a mano que sus herramientas de `
+      + `escribir archivos sigan siendo las que escucha ${runner.config.source}`]
+  }
+  if (version === runner.toolsMeasuredWith || version.startsWith(`${runner.toolsMeasuredWith}.`)) return []
+  return [`${runner.command} ${version}: las herramientas que escriben archivos se midieron con ${runner.command} `
+    + `${runner.toolsMeasuredWith}. Si esta versión las renombró, los guards de archivos no corren: mirá en el `
+    + `registro de una sesión con qué herramienta escribe y sumala al matcher de ${runner.config.source}`]
+}
+
 module.exports = {
   RUNNER_NAMES,
   OPS_DIR,
@@ -154,4 +183,5 @@ module.exports = {
   inline,
   render,
   runnerConfig,
+  toolsDrift,
 }

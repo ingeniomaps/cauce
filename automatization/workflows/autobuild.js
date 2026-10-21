@@ -372,6 +372,12 @@ const COMMIT = {
 // intentaba así, se frenaba y lo repetía en dos: pasó en cuatro de cinco corridas reales (caso 299).
 const TWO_COMMANDS = ' Stageá en un comando y commiteá en otro aparte: juntos en la misma línea se frenan, '
   + 'porque el guard que revisa el commit lee el índice antes de que el comando corra.'
+// Acompaña al commit de la tarea, el único cuyo mensaje escribe el agente. Un comando que escribía el archivo
+// del mensaje y commiteaba se frenaba entero, y el reintento corría `git commit -F` sobre el archivo que había
+// dejado la tarea anterior: dos commits salieron con su asunto y su `Task:` (caso 400). Con el id en el nombre,
+// lo que quedó de otra tarea no se puede tomar por éste.
+const MESSAGE_OF = (id) => ` Si escribís el mensaje en un archivo, hacelo con el nombre commit-${id}.txt y, antes `
+  + `del commit, comprobá que su pie diga "Task: ${id}": un archivo de mensaje con otro nombre es de otra tarea.`
 // Acompaña al prompt de Commit. El repo de un servicio queda en su rama viva después de cada merge, que es
 // justo donde arranca la corrida siguiente: sin esto el commit caía ahí, sin PR ni CI (caso 251). Cortar la
 // rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
@@ -494,6 +500,8 @@ const CONTRACT = {
     staleAdapter: { type: 'array', items: { type: 'string' } },
     // Las líneas declaradas; por qué, donde se decide la de esta corrida.
     lines: { type: 'array', items: { type: 'string' } },
+    // El Mapa real de `workspace.md`, si el proyecto lo escribió; por qué, en `SCOPE`.
+    map: { type: 'string' },
   },
 }
 
@@ -718,7 +726,10 @@ const SCOPE = () => `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es 
   `no vuelvas a leer ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} ni ${P}/PROTOCOL.md.` +
   (governing.length ? ` Las reglas que rigen este proyecto son éstas, relativas a ${ROOT}: ${governing.join(', ')}. ` +
     'Leé las que toquen tu fase antes de planificar, construir o revisar; donde una propia contradice a una del ' +
-    'sistema, rige la propia.' : '')
+    'sistema, rige la propia.' : '') +
+  // Este preámbulo prohíbe releer `workspace.md`, así que el índice que el proyecto escribió ahí llega por acá o no
+  // llega (caso 409). Entrar por el mapa ahorra explorar el repositorio para encontrar dónde va el cambio.
+  (contract.map ? `\n\nDónde vive cada cosa, según el Mapa real del proyecto:\n${contract.map}` : '')
 // Lo que una revisión declara haber abierto viene con la ruta de esta máquina, y `review` va textual a
 // `done/`: no se le puede pedir a quien escribe que las acomode. Se les cambia el prefijo acá, a cada ruta
 // que cuelga de una raíz del proyecto; lo demás —el motor, un temporal— queda como vino (caso 321).
@@ -2123,7 +2134,7 @@ while (rounds++ < MAX_TASKS) {
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
     `y no era de la tarea. Si un guard frena el commit pidiendo la aprobación de una persona, no la pidas ni la ` +
     `esquives: committed en false, y en needsApproval las rutas que nombra.` +
-    `${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR()}`,
+    `${TWO_COMMANDS}${MESSAGE_OF(task.id)}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR()}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')

@@ -39,7 +39,8 @@ invariantes.
   archivo que no sea un documento (`.md`, `.txt`, `.adoc`) o una imagen (`.png`, `.jpg`, `.jpeg`, `.gif`,
   `.svg`, `.webp`): lo demás se ejecuta y se prueba, también lo que no tiene extensión, como un `Makefile`.
   Rige para lo cerrado desde el 2026-09-24; lo anterior no se juzga con ella. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
-  `[supuesto: ...]`. `commit:` apunta a `<sha> <asunto>`, o a `n/a — razón` cuando la tarea no
+  `[supuesto: ...]`: son los registros de R14 escritos como cita —lo verificado o documentado va como
+  `[fuente: ...]`, con lo que se corrió o se citó, y una hipótesis como `[supuesto: ...]`—. `commit:` apunta a `<sha> <asunto>`, o a `n/a — razón` cuando la tarea no
   produce commit.
 - Acción humana: fila `| tarea | estado | origen | acción y condición de desbloqueo |`, con el estado
   en el vocabulario cerrado `pendiente | resuelta` —la fecha puede ir detrás—. Mientras la fila no
@@ -83,7 +84,9 @@ invariantes.
    corregir.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real, como dice `QA.md`.
-12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
+12. Commit: stage explícito y commits verificables, uno por naturaleza del diff. Si la tarea la revisa otra sesión,
+    quien construye se detiene acá con el WIP en `phase: Review`, y quien revisa la juzga sobre lo commiteado y hace
+    Done (`delivery/teamwork.md`, «Una sesión construye y otra revisa»).
 13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
     el reclamo y cerrar la épica si no le queda ninguna historia abierta. El estado de planning se
     commitea en la rama en la que está el repositorio de la instancia. Si ésa es una rama viva que no

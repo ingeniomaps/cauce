@@ -358,3 +358,23 @@ test('contract lista las líneas declaradas, y sin líneas no trae el campo', ()
   assert.deepEqual(contractOf(root).value.lines, ['pagos', 'auth'])
   assert.match(run(['contract', root]).stdout, /^líneas {5}pagos, auth$/m)
 })
+
+// Caso 409: qué parte del Mapa real viaja y cuándo no viaja nada. El porqué está en `workspaceMap`.
+test('contract lleva el Mapa real que escribió el proyecto, y nada si sigue siendo el del molde', () => {
+  const root = instance('cauce-contract-mapa-')
+  const { value: plain } = contractOf(root)
+  assert.equal('map' in plain, false, 'el texto del molde no es un mapa')
+
+  const file = path.join(root, 'organization', 'workspace.md')
+  const text = fs.readFileSync(file, 'utf8')
+  const start = text.indexOf('## Mapa real')
+  const end = text.indexOf('\n## ', start + 1)
+  fs.writeFileSync(file, `${text.slice(0, start)}## Mapa real\n\n<!-- nota para quien edita -->\n`
+    + '- app → `../app`: Next.js. Estilos y tokens en `src/styles/_variables.scss`.\n'
+    + '- api → `../api`: Go. Rutas en `cmd/api/routes.go`.\n'
+    + text.slice(end))
+  const { value } = contractOf(root)
+  assert.equal(value.map, '- app → `../app`: Next.js. Estilos y tokens en `src/styles/_variables.scss`.\n'
+    + '- api → `../api`: Go. Rutas en `cmd/api/routes.go`.', 'textual, sin el encabezado ni los comentarios')
+  assert.match(run(['contract', root]).stdout, /^mapa {7}2 línea\(s\) de organization\/workspace\.md$/m)
+})

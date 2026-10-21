@@ -1,6 +1,6 @@
 'use strict'
 
-const { commitParts } = require('./contracts')
+const { commitParts } = require('./done-entry')
 
 // El sha y el repositorio de cada commit que una entrada nombra: `<sha> <mensaje> (<repo>@<rama>)`.
 //

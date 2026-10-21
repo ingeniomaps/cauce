@@ -372,6 +372,20 @@ test('cada tarea queda en su rama, también cuando el repositorio quedó en la d
   assert.match(other, /Ahí cortá igual `git switch -c <tipo>\/T-2`, desde donde está/)
 })
 
+// Caso 400: cada tarea nombra su propio archivo de mensaje, y el pie se comprueba antes de commitear. El porqué,
+// junto a `MESSAGE_OF` en `autobuild.js`.
+test('el commit de la tarea ata el mensaje a su id, tarea por tarea', async () => {
+  const first = baseScript()[KEY.context]
+  const two = { contexts: [first, { ...first, slug: 'T-2' }, { ...first, hasTask: false, queued: 0 }] }
+  const commit = { committed: true, hash: 'abc123', branch: 'feat/T-1', live: false }
+  const { prompts } = await runFlow({ 'Claim|claim:T-2': { claimed: true }, [KEY.commit]: commit }, two)
+  const [one, other] = prompts.filter((item) => item.key === KEY.commit).map((item) => item.prompt)
+  assert.match(one, /con el nombre commit-T-1\.txt/)
+  assert.match(one, /comprobá que su pie diga "Task: T-1"/)
+  assert.match(other, /con el nombre commit-T-2\.txt/)
+  assert.doesNotMatch(other, /commit-T-1|Task: T-1/, 'el commit de la segunda tarea lleva el mensaje de la primera')
+})
+
 // Caso 299. En cada corrida real medida, el agente que commitea stageó y commiteó en una línea, lo frenó el
 // guard y repitió. Los cuatro pasos que commitean lo dicen de antemano, y los que no commitean no lo llevan.
 test('todo paso que commitea avisa que stagear y commitear van en comandos separados', async () => {

@@ -77,6 +77,8 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
   assert.doesNotMatch(text.stdout, /Abrí la sesión|runners:/, 'la salida manda a otra sesión')
   assert.match(text.stdout, /^= .*lines\/pagos\/pagos {2}\(line\/pagos\)\n/)
   assert.match(text.stdout, /desde esta misma sesión.*\/autobuild pagos/s)
+  // Sin compose no hay nada de compose que decir (caso 399).
+  assert.doesNotMatch(text.stdout, /compose|COMPOSE_PROJECT_NAME/i)
 
   // La segunda vez reusa lo que ya está, y no vuelve a escribir la declaración.
   const again = json(['line', ops, 'pagos', '--json'])
@@ -107,6 +109,70 @@ test('la rama de una línea nueva sale de la rama viva y no del HEAD del checkou
   assert.equal(json(['line', ops, 'd', 'pagos', '--json']).trees[0].from, '')
   assert.equal(ok(repo, 'rev-parse', 'line/d'), ok(repo, 'rev-parse', 'feature/sin-mergear'))
   assert.match(run(['line', ops, 'e', 'pagos']).stdout, /\(line\/e\)\n {2}sale de: origin\/trunk\n/)
+})
+
+// Caso 398: el árbol avisa cuando su `core.hooksPath` apunta a una carpeta que no tiene. El porqué, en `missingHooks`.
+test('el árbol de una línea avisa cuando su core.hooksPath apunta a una carpeta que no tiene', () => {
+  const { base, ops, tree } = session('cauce-line-hooks-')
+  const repo = path.join(base, 'pagos')
+  fs.mkdirSync(path.join(repo, '.husky', '_'), { recursive: true })
+  fs.writeFileSync(path.join(repo, '.husky', '.gitignore'), '_\n')
+  ok(repo, 'add', '.husky/.gitignore'); ok(repo, 'commit', '-qm', 'husky')
+  ok(repo, 'config', 'core.hooksPath', '.husky/_')
+  const warned = (report) => report.warnings.filter((one) => /hooksPath/.test(one))
+  const report = json(['line', ops, 'pagos', 'pagos', '--json'])
+  assert.equal(fs.existsSync(path.join(tree('pagos', 'pagos'), '.husky', '_')), false)
+  assert.match(warned(report).join('\n'), /pagos: core\.hooksPath apunta a \.husky\/_, que este árbol no tiene/)
+  assert.equal(fs.existsSync(path.join(tree('pagos', 'pagos'), '.husky', '_')), false, 'el aviso no la copia')
+  // Mientras falte se repite al volver a pedir la línea, y deja de decirse cuando la instalación la genera.
+  assert.equal(warned(json(['line', ops, 'pagos', '--json'])).length, 1)
+  fs.mkdirSync(path.join(tree('pagos', 'pagos'), '.husky', '_'))
+  assert.deepEqual(warned(json(['line', ops, 'pagos', '--json'])), [])
+  // Una ruta absoluta que existe, o un repositorio sin hooksPath, no dicen nada.
+  ok(repo, 'config', 'core.hooksPath', path.join(repo, '.husky', '_'))
+  assert.deepEqual(warned(json(['line', ops, 'otra', 'pagos', '--json'])), [])
+  assert.deepEqual(warned(json(['line', ops, 'sin', 'auth', '--json'])), [])
+})
+
+// Caso 399: el aviso sale sólo donde hay compose, y trae el valor que separa los proyectos. El porqué, junto a
+// `COMPOSE` en `lines.js`.
+test('el árbol de un repositorio con compose avisa que es el mismo proyecto, con el nombre que lo separa', () => {
+  const { base, ops } = session('cauce-line-compose-')
+  const front = path.join(base, 'Front.App')
+  fs.mkdirSync(front)
+  ok(front, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(front, 'compose.yaml'), 'services:\n  web:\n    image: node:24\n')
+  ok(front, 'add', 'compose.yaml'); ok(front, 'commit', '-qm', 'compose')
+  const compose = (report) => report.warnings.filter((one) => /compose/.test(one))
+  const report = json(['line', ops, 'web', 'Front.App', 'auth', '--json'])
+  assert.equal(compose(report).length, 1, 'avisa por el repositorio que tiene compose, y sólo por ése')
+  assert.match(compose(report)[0], /^Front\.App: su compose, desde este árbol, es el mismo proyecto que desde el /)
+  assert.match(compose(report)[0], /COMPOSE_PROJECT_NAME=front-app-web en el \.env del árbol/)
+  // El aviso calla con un nombre propio y no con el del original. El porqué, en `composeNamed`.
+  fs.writeFileSync(path.join(front, '.env'), 'COMPOSE_PROJECT_NAME=front\n')
+  const treeEnv = path.join(base, 'lines', 'web', 'Front.App', '.env')
+  fs.writeFileSync(treeEnv, 'COMPOSE_PROJECT_NAME=front\n')
+  assert.equal(compose(json(['line', ops, 'web', '--json'])).length, 1, 'calla con el nombre del original')
+  fs.writeFileSync(treeEnv, 'COMPOSE_PROJECT_NAME=\nDB_PORT=5432\n')
+  assert.equal(compose(json(['line', ops, 'web', '--json'])).length, 1, 'calla con un nombre vacío')
+  fs.writeFileSync(treeEnv, 'PORT=3000\nCOMPOSE_PROJECT_NAME=front-app-web\n')
+  assert.deepEqual(compose(json(['line', ops, 'web', '--json'])), [], 'avisa aunque ya se hizo lo que pide')
+  // El nombre que sugiere empieza como Compose exige: con una letra o un dígito.
+  const infra = path.join(base, '_infra')
+  fs.mkdirSync(infra)
+  ok(infra, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(infra, 'compose.yml'), 'services: {}\n')
+  ok(infra, 'add', 'compose.yml'); ok(infra, 'commit', '-qm', 'compose')
+  assert.match(compose(json(['line', ops, 'ops-infra', '_infra', '--json'])).join('\n'),
+    /COMPOSE_PROJECT_NAME=infra-ops-infra /)
+  // Lo que se mira es el árbol, que es desde donde corre el compose; los cuatro nombres que Compose busca.
+  const tree = path.join(base, 'lines', 'api', 'pagos')
+  assert.deepEqual(compose(json(['line', ops, 'api', 'pagos', '--json'])), [])
+  for (const name of ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml']) {
+    fs.writeFileSync(path.join(tree, name), 'services: {}\n')
+    assert.match(compose(json(['line', ops, 'api', '--json'])).join('\n'), /^pagos: su compose/m, name)
+    fs.unlinkSync(path.join(tree, name))
+  }
 })
 
 test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un repositorio y en embebido', () => {
@@ -145,6 +211,84 @@ test('un árbol borrado a mano se vuelve a armar, y la línea pedida por un enla
   const rebuilt = json(['line', ops, 'b', '--json'])
   assert.equal(rebuilt.trees[0].reused, false, 'un árbol borrado se dio por reusado')
   assert.ok(fs.existsSync(path.join(tree('b', 'pagos'), 'a.js')))
+})
+
+// Caso 408. Una línea crece sumando repositorios, y el que se suma casi siempre ya estaba enlazado como hermano: ese
+// enlace lo puso la línea y se reemplaza por el árbol. Cualquier otra cosa en esa ruta se sigue negando.
+test('sumar a una línea un repositorio que ella misma enlazó reemplaza el enlace por su árbol', () => {
+  const { base, ops, tree } = session('cauce-line-suma-')
+  assert.ok(json(['line', ops, 'w', 'pagos', '--json']).linked.includes('auth'))
+  assert.equal(fs.lstatSync(tree('w', 'auth')).isSymbolicLink(), true)
+  const grown = run(['line', ops, 'w', 'auth', '--json'])
+  assert.equal(grown.status, 0, grown.stderr)
+  assert.deepEqual(JSON.parse(grown.stdout).trees.map((one) => [one.repo, one.reused]),
+    [['pagos', true], ['auth', false]])
+  assert.equal(fs.lstatSync(tree('w', 'auth')).isSymbolicLink(), false, 'quedó el enlace')
+  assert.equal(ok(tree('w', 'auth'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'line/w')
+  assert.ok(fs.existsSync(path.join(base, 'auth', 'a.js')), 'se llevó el repositorio al que apuntaba el enlace')
+  assert.deepEqual(configOf(ops).lines.w, ['pagos', 'auth'])
+
+  // Un enlace a otra cosa no es el que puso la línea, y una carpeta real tampoco: los dos se siguen negando.
+  json(['line', ops, 'z', 'pagos', '--json'])
+  fs.unlinkSync(tree('z', 'auth'))
+  fs.symlinkSync(path.join(base, 'shared-lib'), tree('z', 'auth'), 'dir')
+  const other = run(['line', ops, 'z', 'auth'])
+  assert.notEqual(other.status, 0)
+  assert.match(other.stderr, /ya existe y no es un worktree de auth/)
+  assert.equal(fs.lstatSync(tree('z', 'auth')).isSymbolicLink(), true, 'se sacó un enlace que no era de la línea')
+  fs.mkdirSync(tree('y', 'auth'), { recursive: true })
+  assert.match(run(['line', ops, 'y', 'auth']).stderr, /ya existe y no es un worktree de auth/)
+  // Un enlace roto también ocupa la ruta: el error dice eso, no el de git.
+  fs.mkdirSync(path.dirname(tree('x', 'auth')), { recursive: true })
+  fs.symlinkSync(path.join(base, 'no-existe'), tree('x', 'auth'), 'dir')
+  assert.match(run(['line', ops, 'x', 'auth']).stderr, /ya existe y no es un worktree de auth/)
+
+  // Con la rama ocupada el árbol no se arma, y el enlace tiene que quedar.
+  json(['line', ops, 'v', 'pagos', '--json'])
+  ok(path.join(base, 'auth'), 'switch', '-q', '-c', 'line/v')
+  const failed = run(['line', ops, 'v', 'auth'])
+  assert.notEqual(failed.status, 0)
+  assert.match(failed.stderr, /git worktree add falló en auth/)
+  assert.equal(fs.lstatSync(tree('v', 'auth')).isSymbolicLink(), true, 'el árbol falló y el enlace no volvió')
+
+  // El árbol que git armó aunque saliera con error se deja, y repetir lo reusa. El porqué, en `plant`.
+  ok(path.join(base, 'auth'), 'switch', '-q', 'main')
+  const hook = path.join(base, 'auth', '.git', 'hooks', 'post-checkout')
+  fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 })
+  const built = run(['line', ops, 'v', 'auth'])
+  assert.notEqual(built.status, 0)
+  assert.match(built.stderr, /El árbol quedó armado en .*auth: repetí el comando para reusarlo/)
+  assert.equal(fs.lstatSync(tree('v', 'auth')).isSymbolicLink(), false, 'se tocó un árbol registrado')
+  assert.ok(fs.existsSync(path.join(tree('v', 'auth'), 'a.js')))
+  fs.unlinkSync(hook)
+  assert.equal(run(['line', ops, 'v', 'auth']).status, 0, 'repetir no lo reusó')
+})
+
+// Caso 408, un nivel más abajo: el nivel enlazado deja lugar al árbol y conserva a sus hermanos, y la falla lo deja
+// enlazado. El porqué, en `linkOnTheWay`.
+test('sumar un repositorio anidado reemplaza el enlace de la carpeta que lo contiene', () => {
+  const { base, ops, tree } = session('cauce-line-suma-anidado-')
+  const web = path.join(base, 'grupo', 'web')
+  fs.mkdirSync(path.join(base, 'grupo', 'docs'), { recursive: true })
+  fs.mkdirSync(web)
+  ok(web, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(web, 'a.js'), '\n')
+  ok(web, 'add', 'a.js'); ok(web, 'commit', '-qm', 'init')
+  assert.ok(json(['line', ops, 'w', 'pagos', '--json']).linked.includes('grupo'))
+  const level = path.join(base, 'lines', 'w', 'grupo')
+
+  ok(web, 'switch', '-q', '-c', 'line/w')
+  assert.match(run(['line', ops, 'w', path.join('grupo', 'web')]).stderr, /git worktree add falló en grupo\/web/)
+  assert.equal(fs.lstatSync(level).isSymbolicLink(), true, 'el árbol falló y el enlace del nivel no volvió')
+  ok(web, 'switch', '-q', 'main')
+
+  const grown = run(['line', ops, 'w', path.join('grupo', 'web'), '--json'])
+  assert.equal(grown.status, 0, grown.stderr)
+  assert.equal(fs.lstatSync(level).isSymbolicLink(), false)
+  assert.equal(ok(tree('w', path.join('grupo', 'web')), 'rev-parse', '--abbrev-ref', 'HEAD'), 'line/w')
+  assert.equal(fs.realpathSync(path.join(level, 'docs')), path.join(base, 'grupo', 'docs'),
+    'el nivel perdió a sus hermanos')
+  assert.ok(fs.existsSync(path.join(web, 'a.js')), 'se llevó el repositorio')
 })
 
 test('dos líneas sobre el mismo repositorio se permiten, se avisan y muestran qué archivos tocaron las dos', () => {
@@ -248,6 +392,44 @@ test('una línea de antes se migra: su planning llega a la instancia y se arma l
   assert.ok(fs.existsSync(path.join(home, 'CLAUDE.md')))
   assert.ok(done.stdout.includes(`⚠ ${home} era la carpeta de sesión de la línea y ya no se usa`), done.stdout)
   assert.match(run(['lines', 'migrate', ops, 'vieja', 'pagos']).stderr, /no hay una línea vieja de antes/)
+})
+
+// Caso 397: migrar avisa fuera de la rama viva y no frena, y una línea empujada no avisa. El porqué, en `arrival`.
+test('migrar avisa si la instancia no está en su rama viva, y no por una línea empujada', () => {
+  const { base, ops } = session('cauce-line-migrate-avisa-')
+  legacy(base, ops, 'vieja')
+  const warned = (report) => report.warnings.join('\n')
+  const quiet = json(['lines', 'migrate', ops, 'vieja', 'pagos', '--json'])
+  assert.deepEqual([quiet.into, quiet.live, quiet.warnings], ['main', 'main', []], 'en la viva no avisa')
+
+  ok(ops, 'switch', '-q', '-c', 'build/upgrade')
+  assert.match(warned(json(['lines', 'migrate', ops, 'vieja', 'pagos', '--json'])),
+    /la instancia está en build\/upgrade; el planning de vieja va a quedar ahí y no en main/)
+  // Sin commits que traer no hay planning que vaya a ningún lado, y no avisa.
+  ok(ops, 'worktree', 'add', '-q', '-b', 'line/vacia', path.join(`${base}-vacia`, 'ops'))
+  const empty = json(['lines', 'migrate', ops, 'vacia', 'pagos', '--json'])
+  assert.deepEqual([empty.commits, empty.warnings], [0, []], 'avisa sin nada que traer')
+  // Empujada y sin llegar a la viva, que es donde el aviso del 396 hablaba: ya no dice nada de eso.
+  ok(ops, 'update-ref', 'refs/remotes/origin/line/vieja', 'line/vieja')
+  const pushed = run(['lines', 'migrate', ops, 'vieja', 'pagos'])
+  assert.equal(pushed.status, 0, pushed.stderr)
+  assert.match(pushed.stdout, /⚠ la instancia está en build\/upgrade/)
+  assert.doesNotMatch(pushed.stdout, /empujada|dos caminos/)
+
+  // Con --apply el aviso sale antes de traerla, y también cuando --apply se niega.
+  const tracked = path.join(ops, ok(ops, 'ls-files').split('\n')[0])
+  const before = fs.readFileSync(tracked, 'utf8')
+  fs.appendFileSync(tracked, '\n')
+  const refused = run(['lines', 'migrate', ops, 'vieja', 'pagos', '--apply'])
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stdout, /⚠ la instancia está en build\/upgrade/, 'el apply que se niega no avisa')
+  fs.writeFileSync(tracked, before)
+  const applied = run(['lines', 'migrate', ops, 'vieja', 'pagos', '--apply'])
+  assert.equal(applied.status, 0, applied.stderr)
+  assert.ok(applied.stdout.indexOf('⚠ la instancia está en build/upgrade') > -1, applied.stdout)
+  assert.ok(applied.stdout.indexOf('⚠ la instancia está en build/upgrade') < applied.stdout.indexOf('MIGRAR'),
+    'el aviso llega después de haber traído la línea')
+  assert.equal(applied.stdout.split('⚠ la instancia está en').length, 2, 'avisa dos veces')
 })
 
 // Un repositorio anidado en la carpeta de sesión: lo que se enlaza es cada nivel que lleva a él, para que `../`

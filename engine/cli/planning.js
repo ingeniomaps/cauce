@@ -177,7 +177,7 @@ function context(dir, cli) {
   const asked = LN.sessionLine(root, cli.value('--line'))
   if (asked.error) return fail(asked.error, USAGE)
   const { line } = asked
-  const from = CL.runner(asked.id)
+  const from = CL.runner(asked.id, path.join(root, '..'))
   const mio = state.wips.find((one) => one.runner === P.wipName(from)) || null
   const hito = cli.value('--hito')
   // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir

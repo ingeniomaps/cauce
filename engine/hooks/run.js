@@ -11,6 +11,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { readInput, block, opsRoot } = require('./input')
 const shell = require('./shell')
+const { dependencies } = require('./dependencies')
 const { verify } = require('./verify')
 const files = require('./files')
 const { migrations } = require('./migrations')
@@ -66,7 +67,7 @@ function repairable(output, root) {
 const guards = {
   destructive: shell.destructive,
   'git-add': shell.gitAdd,
-  dependencies: shell.dependencies,
+  dependencies,
   governance,
   'live-commit': liveCommit,
   'ai-signature': aiSignature,
@@ -179,8 +180,8 @@ const hookMetadata = [
   {
     name: 'secrets-shell',
     event: 'PreToolUse · shell',
-    purpose: 'Bloquea leer por shell una credencial conocida o declarada; lo que la persona pidió en el chat '
-      + 'pasa.',
+    purpose: 'Bloquea leer o escribir por shell una credencial conocida o declarada; lo que la persona pidió en '
+      + 'el chat pasa.',
   },
   {
     name: 'ops-config',

@@ -196,3 +196,39 @@ test('git -C a una variable asignada en el comando apunta a donde la variable di
   assert.equal(at('W=/otro/lado\ncd "$W/ops" && git commit -m x'), '/otro/lado/ops')
   assert.equal(at('git -C $W/app commit -m x'), '/sesion/$W/app', 'sin asignar, queda como estaba')
 })
+
+// Lo que el shell escribe y desde dónde, en las formas que la revisión de 0.112.0 encontró mal leídas: `>&` hacia un
+// archivo, `$HOME` con las llaves desparejas o entre comillas simples, y un `cd` absoluto después de uno desconocido.
+test('los destinos y los cd se leen como los lee el shell', () => {
+  const { writesWithBase, cdTarget } = require('../../engine/hooks/shell-writes')
+  const at = (command) => writesWithBase(command, '/w').map(({ raw, base }) => `${raw}@${base}`)
+  assert.deepEqual(at('echo $T >&.npmrc'), ['.npmrc@/w'], '`>&` hacia un archivo es una escritura')
+  for (const command of ['cmd >&2', 'cmd 2>&1', 'cmd >&-']) assert.deepEqual(at(command), [], command)
+  assert.deepEqual(at('cmd 2>&1 && ls > out'), ['out@/w'])
+  const home = os.homedir()
+  assert.equal(cdTarget('$HOME/p', '/w'), path.join(home, 'p'))
+  assert.equal(cdTarget('${HOME}', '/w'), home)
+  for (const odd of ['$HOME}', '${HOME', '$HOMEDIR']) assert.equal(cdTarget(odd, '/w'), null, odd)
+  assert.deepEqual(at("cd '$HOME' && echo > f"), ['f@null'], 'entre comillas simples es un nombre, no la casa')
+  assert.deepEqual(at('cd "$HOME" && echo > f'), [`f@${home}`])
+  assert.deepEqual(at('cd $X; cd /abs && echo > out'), ['out@/abs'], 'un cd absoluto vuelve a dar base')
+  assert.deepEqual(at('cd $X; cd rel && echo > out'), ['out@null'])
+  // Un descriptor de varios dígitos, o seguido de otra redirección, no es un archivo; un dígito pegado a una palabra
+  // es parte de ella.
+  for (const command of ['exec 3>&10', 'cmd >&12']) assert.deepEqual(at(command), [], command)
+  assert.deepEqual(at('echo x >&2>/dev/null'), ['/dev/null@/w'])
+  assert.deepEqual(at('cat file2>out'), ['out@/w'])
+  // Un `cd` con una redirección puede fallar a propósito: lo que sigue se juzga en las dos carpetas.
+  assert.deepEqual(at('cd a 2>/dev/null && echo > b'), ['b@/w', 'b@/w/a'])
+  assert.deepEqual(at('cd a && echo > b'), ['b@/w/a'])
+})
+
+// Un `cd` solo deja en la carpeta personal: `removal` lo resolvía contra el directorio de antes, y un borrado ahí se
+// juzgaba en otro lugar (revisión de 0.112.0).
+test('destructive juzga un rm después de un cd solo en la carpeta personal', () => {
+  const root = tempRoot('ops-hook-cd-solo-')
+  blocked('destructive', { cwd: root, tool_input: { command: 'cd && rm -rf .' } }, /se lleva la carpeta personal/)
+  // Y con una redirección el `cd` se sigue igual: sin seguirlo, `rm -rf home` se juzgaba en el directorio de antes.
+  blocked('destructive', { cwd: root, tool_input: { command: 'cd / 2>/dev/null && rm -rf home' } },
+    /se lleva la carpeta personal/)
+})

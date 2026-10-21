@@ -200,6 +200,17 @@ function warnings(root) {
     + `${lost.map((one) => `"${one.slice(0, 60)}…"`).join(', ')}`]
 }
 
+// «Mapa real» es el índice del proyecto: qué servicio vive dónde y dónde documenta cada uno lo suyo, y lo llena
+// `onboard`. El preámbulo de cada fase les dice a los agentes que no relean `workspace.md`, así que sin viajar acá no
+// le llegaba a ninguno (caso 409). Viaja textual y sólo si es del proyecto: el texto del molde son instrucciones
+// para quien lo completa, no un mapa, y con él el contrato sigue siendo el de siempre.
+function workspaceMap(root) {
+  const body = (file) => P.withoutComments(P.section(readIfAny(file), /Mapa real/)).split('\n').slice(1).join('\n')
+    .trim()
+  const mine = body(path.join(root, 'organization', 'workspace.md'))
+  return mine && mine !== body(TEMPLATE_WORKSPACE) ? mine : ''
+}
+
 function contract(dir, cli) {
   const root = opsRoot(dir)
   const missing = SOURCES.find((name) => !fs.existsSync(path.join(root, name)))
@@ -233,6 +244,7 @@ function contract(dir, cli) {
   const roots = Array.isArray(config.workspaceRoots) ? config.workspaceRoots : []
   const runner = config.runner || {}
   const lines = LT.declared(root, config)
+  const map = workspaceMap(root)
   const excepciones = P.section(readIfAny(path.join(root, 'organization', 'workspace.md')),
     /Excepciones de autonom/)
   const report = {
@@ -261,6 +273,7 @@ function contract(dir, cli) {
     // Las líneas declaradas, para que `/autobuild pagos` sepa que `pagos` es una línea y no un pedido (caso
     // 394). Sólo cuando hay: sin líneas el contrato es el de siempre.
     ...(Object.keys(lines).length ? { lines: Object.keys(lines) } : {}),
+    ...(map ? { map } : {}),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   console.log(`${report.project}  (${report.workspaceRoots.join('; ') || 'sin raíces declaradas'})`)
@@ -271,6 +284,7 @@ function contract(dir, cli) {
     + `checkpoint ${report.humanCheckpoint ? 'entre hitos' : 'no'}`)
   console.log(`límites    ${report.boundaries.length} · contratos ${report.contracts.length} caracteres`)
   if (report.lines) console.log(`líneas     ${report.lines.join(', ')}`)
+  if (report.map) console.log(`mapa       ${report.map.split('\n').length} línea(s) de organization/workspace.md`)
 }
 
 module.exports = { contract, warnings, missingSections, restoreAdvice }

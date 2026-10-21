@@ -56,6 +56,15 @@ redirección `<`, un intérprete en línea—. Un comodín que la nombra —`rg 
 cuenta igual. Lo que sólo la nombra —`ls`, `test -f`, `rm`, `cp .env.example .env`— pasa, y lo que la
 persona pidió en el chat también.
 
+### Escribir una credencial desde el shell
+
+`secrets` mira las herramientas de edición; desde el shell, `secrets-shell` frena también escribir un archivo que
+`secrets` frenaría —`echo … > .npmrc`, `tee ~/.netrc`, `cp clave id_ed25519`—, con la misma aprobación por archivo.
+Lo que va después de un `>` es una escritura y se juzga como tal, no como algo que el comando lee. La única
+excepción son `.env` y `.env.local`: armarlos desde su plantilla es el paso de setup de casi todo repositorio; el resto
+de la familia —`.env.keys`, `.env.production`— frena como en la edición. Ve los
+destinos que ve `shell-boundary`; un intérprete en línea o `npm config set` que escriban el archivo pasan.
+
 Lo que no ve ninguno, comprobado en sesiones reales: una búsqueda sobre la carpeta que no nombra el archivo
 —un `rg` de todo el árbol—, un nombre armado en una variable, y en Gemini el propio entorno del runner,
 que carga el `.env` de la carpeta al arrancar (documentado en geminicli.com/docs/reference/configuration):

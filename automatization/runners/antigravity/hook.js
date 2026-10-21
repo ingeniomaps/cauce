@@ -130,9 +130,11 @@ function cwdFor(args, root, markers) {
 
 function normalize(input, root, markers = MARKERS) {
   const args = input.toolCall && input.toolCall.args || {}
-  const file = args.TargetFile || args.AbsolutePath || ''
+  // `Path`, `Content` y `Replacement` son los de `write_file` y `edit_file`, con que escribe agy 1.4; los otros, los de
+  // las herramientas de antes, que una instalación con un agy anterior sigue recibiendo (caso 410).
+  const file = args.TargetFile || args.AbsolutePath || args.Path || ''
   const content = args.CodeContent || args.ReplacementContent
-    || (args.ReplacementChunks && JSON.stringify(args.ReplacementChunks)) || ''
+    || (args.ReplacementChunks && JSON.stringify(args.ReplacementChunks)) || args.Content || args.Replacement || ''
   return {
     sessionId: input.conversationId,
     cwd: cwdFor(args, root, markers),
@@ -168,12 +170,15 @@ function refusal(event, message, blocking) {
 // `OPS_HOOK_COMMAND` u `OPS_HOOK_FILE` (caso 198).
 const DESCRIBED_BY = {
   'pre-shell': { field: 'command', names: 'CommandLine' },
-  'pre-files': { field: 'file_path', names: 'TargetFile ni AbsolutePath' },
+  'pre-files': { field: 'file_path', names: 'TargetFile, AbsolutePath ni Path' },
+  // La lectura de agy 1.4 (`read_file`) nombra el archivo en `Path`, y sin él `secrets-read` no tendría qué juzgar
+  // (caso 413).
+  'pre-read': { field: 'file_path', names: 'TargetFile, AbsolutePath ni Path' },
 }
 
 // Un archivo sin su contenido tampoco se puede juzgar: los guards que miran qué se escribe —secretos,
 // migraciones— verían un texto vacío. Basta que el campo esté; vacío es un archivo vacío.
-const CONTENT_FIELDS = ['CodeContent', 'ReplacementContent', 'ReplacementChunks']
+const CONTENT_FIELDS = ['CodeContent', 'ReplacementContent', 'ReplacementChunks', 'Content', 'Replacement']
 
 function undescribed(event, input, normalized) {
   const need = DESCRIBED_BY[event]
@@ -182,7 +187,7 @@ function undescribed(event, input, normalized) {
   const args = Object.keys(fields)
   const missing = !normalized.tool_input[need.field] ? need.names
     : event === 'pre-files' && !CONTENT_FIELDS.some((field) => field in fields)
-      ? 'CodeContent, ReplacementContent ni ReplacementChunks' : ''
+      ? 'CodeContent, ReplacementContent, ReplacementChunks, Content ni Replacement' : ''
   if (!missing) return ''
   const received = args.length ? `toolCall.args trae ${args.join(', ')}` : `llegó ${Object.keys(input).join(', ')}`
   return `la llamada no trae ${missing}, así que no hay nada que juzgar y no se autoriza (${received}). Si `

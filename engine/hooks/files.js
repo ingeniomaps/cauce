@@ -240,8 +240,7 @@ const lineAt = (root, file) => LT.trees(root).find(({ tree }) => [tree, landing(
 function linePlan(root, planning, file) {
   const hit = !process.env.CAUCE_RUNNER && lineAt(root, file)
   if (!hit) return null
-  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' })
-  return readWip(planning, LT.runnerOf(top.status === 0 ? top.stdout.trim() : root, hit.line))
+  return readWip(planning, runner(hit.line, root))
 }
 
 function planFirst(input) {

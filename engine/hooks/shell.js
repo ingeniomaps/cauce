@@ -1,22 +1,22 @@
 'use strict'
 
 // Los guards que juzgan el **texto** de un comando antes de que se ejecute: qué destruye, qué publica,
-// qué toca una dependencia y qué escribe fuera de las raíces. Es el grupo `pre-shell` que el registro
-// declara, y de lo que parten los cuatro es `commandOf`. Uno mira además el índice —`dependencies`,
-// acotado a un commit—; los otros tres deciden sólo con lo que el comando dice.
+// qué stagea y qué escribe fuera de las raíces. Son parte del grupo `pre-shell` que el registro declara, y
+// los tres parten de `commandOf` y deciden sólo con lo que el comando dice. `dependencies`, que además lee
+// el índice, vive en `dependencies.js`; cómo se lee qué escribe un comando, en `shell-writes.js`.
 //
 // Correr los gates de un commit era lo otro que hacía este archivo y hoy vive en `verify.js`, que de acá
 // no usa más que `run`; lo que un commit no toca sin una persona vive en `governance.js`, por lo mismo.
 // Cambian por otra causa: una herramienta nueva, no una evasión nueva.
 
-const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
-  commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
-  withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned, assignedValues,
+  commandOf, cwdOf, block, writableRoots, outsideRoots, DECLARE_IT, opsRoot, withoutGitGlobals, gitDirectory, owns,
+  asRun, assignedValues,
 } = require('./input')
+const { writesWithBase } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -205,179 +205,6 @@ function gitAdd(input) {
   }
 }
 
-// Un `package.json` cambia sin tocar nada de lo que su lockfile registra: un script, una descripción, la
-// configuración de una herramienta. Frenar eso por la sola presencia del archivo en el índice obligaba a
-// pedir permiso por un cambio sin riesgo (caso 181). Se deja pasar sólo lo medido, y lo demás frena como
-// antes, incluido lo que no se puede comparar.
-//
-// La lista salió de correr `npm install --package-lock-only` con npm 11.16.0 cambiando una clave por vez:
-// las claves name, version, license, engines, bin, funding, workspaces, os y cpu, y los scripts preinstall,
-// install y postinstall, sí mueven el lock. Con pnpm 10.30.2 y `pnpm install --lockfile-only`, la misma
-// medición: todas éstas son inertes también —incluidos los scripts de instalación y las claves que npm sí
-// registra—, y lo que mueve su lock es `pnpm.overrides`, `resolutions` y `pnpm.patchedDependencies`, que no
-// están en la lista y por eso no aflojan (caso 375). Los scripts de instalación se siguen tratando como en
-// npm: es más estricto que lo medido y cuesta un rechazo raro, no un lock viejo. yarn y bun siguen sin medir.
-const INERT_KEYS = new Set([
-  'scripts', 'description', 'keywords', 'author', 'repository', 'homepage', 'bugs', 'private', 'type',
-  'main', 'files', 'exports', 'config', 'jest', 'eslintConfig', 'prettier',
-])
-const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall']
-// Un solo lockfile, de un gestor medido. Dos a la vez no aflojan: cuál manda lo decide el gestor que corra.
-const MEASURED_LOCKS = new Set(['package-lock.json', 'pnpm-lock.yaml'])
-
-function lockUnaffected(dir, file, lockfiles) {
-  if (path.basename(file) !== 'package.json' || !MEASURED_LOCKS.has(lockfiles.join())) return false
-  const read = (ref) => {
-    const shown = run('git', ['-C', dir, 'show', `${ref}:${file}`], dir)
-    if (!shown.ok) return null
-    try { return JSON.parse(shown.output) } catch { return null }
-  }
-  const before = read('HEAD')
-  const after = read('')
-  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return false
-  const same = (one, other) => JSON.stringify(one) === JSON.stringify(other)
-  const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])]
-    .filter((key) => !same(before[key], after[key]))
-  if (changed.some((key) => !INERT_KEYS.has(key))) return false
-  const scripts = (one) => (one && typeof one.scripts === 'object' ? one.scripts : {}) || {}
-  return INSTALL_SCRIPTS.every((name) => same(scripts(before)[name], scripts(after)[name]))
-}
-
-function dependencies(input) {
-  if (process.env.OPS_DEPENDENCIES_OVERRIDE === '1') return
-  const command = commandOf(input)
-  const unsafePackageCommand = /\b(?:npm|pnpm|yarn|bun)\s+publish\b/.test(command)
-    || new RegExp(String.raw`\b(?:npm|pnpm|yarn)\s+(?:install|add)\b${MISMO}*(?:\s-g\b|\s--global\b)`)
-      .test(command)
-  if (unsafePackageCommand) {
-    block('Publicar paquetes o instalar dependencias globales requiere una acción humana explícita.')
-  }
-  if (!isCommit(command)) return
-  const { dir, staged } = stagedForCommit(command, cwdOf(input), input)
-  const manifests = new Set(['package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'Cargo.toml'])
-  const locks = new Set([
-    'package-lock.json',
-    'pnpm-lock.yaml',
-    'yarn.lock',
-    'bun.lock',
-    'bun.lockb',
-    'poetry.lock',
-    'uv.lock',
-    'go.sum',
-    'Cargo.lock',
-  ])
-  const byDir = new Map()
-  for (const file of staged) {
-    const base = path.basename(file)
-    if (!manifests.has(base) && !locks.has(base)) continue
-    const parent = path.dirname(file)
-    const state = byDir.get(parent) || { manifests: [], locks: [] }
-    state[manifests.has(base) ? 'manifests' : 'locks'].push(base)
-    byDir.set(parent, state)
-  }
-  // Lo que se juzga acá es el archivo staged, así que la aprobación por ruta lo expresa: autorizar
-  // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
-  // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
-  const sinAprobar = (parent, names) => AP.pendingNow(opsRoot(input),
-    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name)), input)
-  // Un lock cuenta si está en disco **o** si el commit lo va a llevar, y la unión no es un detalle: el
-  // disco solo perdía el que alguien borró del árbol sin stagear el borrado —sigue en el índice, sigue
-  // en el próximo commit— y ahí la comprobación dejaba de dispararse justo cuando más hacía falta. Es
-  // la misma forma que `verify` en chico. El índice se lee una vez y sólo si hay algo que decidir.
-  const index = byDir.size ? run('git', ['-C', dir, 'ls-files'], dir) : { ok: true, output: '' }
-  if (!index.ok) {
-    block(`no se pudo leer el índice de ${dir}, así que no hay cómo saber qué lockfiles va a llevar el `
-      + 'commit.')
-  }
-  const enElIndice = new Set(index.output.split('\n').filter(Boolean))
-  for (const [parent, state] of byDir) {
-    const enParent = (name) => (parent === '.' ? name : path.posix.join(parent, name))
-    // La regla de «varios lockfiles» sí es sobre el disco y sólo sobre el disco: lo que rompe ahí es que
-    // el gestor que corra elija uno, y el que corre lee el árbol.
-    const onDisk = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
-    const existingLocks = [...new Set([...onDisk, ...[...locks].filter((n) => enElIndice.has(enParent(n)))])]
-    if (onDisk.length > 1) {
-      block(`${parent}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
-    }
-    const manifests = sinAprobar(parent, state.manifests)
-      .filter((name) => !lockUnaffected(dir, name, existingLocks))
-    if (state.manifests.length && existingLocks.length && !state.locks.length && manifests.length) {
-      // Un lock que ya no está en disco pero sigue en el índice impide aflojar y no se ve: se nombra.
-      const stale = existingLocks.filter((name) => !onDisk.includes(name))
-      block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
-        + (stale.length ? `Hay otro lockfile en el índice y no en disco —${stale.join(', ')}—: con dos, un `
-          + 'manifiesto que no toca dependencias tampoco afloja. Si ya no se usa, sacalo del índice.\n' : '')
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests, input))
-    }
-    const lockfiles = sinAprobar(parent, state.locks)
-    if (state.locks.length && !state.manifests.length && lockfiles.length) {
-      block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', lockfiles, input))
-    }
-  }
-}
-
-// El destino de una escritura se juzgaba sólo en `Edit`/`Write`, así que el mismo archivo se escribía
-// sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien quería pasar.
-// Registrar `workspace-boundary` en este grupo no alcanzaba —lee `filesOf`, que en un comando no
-// devuelve nada—, así que lo que faltaba era leer el comando.
-//
-// **Esto no puede ser completo y no se presenta como si lo fuera.** `eval`, una variable armada dos
-// líneas antes, un heredoc dentro de `bash -c`, un `python -c "open(...)"` o un script propio escriben
-// igual y ningún patrón los ve. Frena la forma habitual, como el resto de `destructive`; quien quiera
-// pasar, pasa. Presentarlo como un límite invitaría a confiar en él más de lo que aguanta.
-// Tres familias, porque los comandos no nombran su destino igual: `tee` y `truncate` escriben en cada
-// argumento, `cp` y sus hermanos en el último, y `sed` sólo escribe con `-i` —sin él lee y manda a
-// stdout, y esa redirección la ve REDIRECT—.
-//
-// El salto de línea termina una lista de argumentos igual que `;`. Sin excluirlo, la de un `cp` seguía
-// leyendo la línea de abajo y el destino terminaba siendo el comando siguiente: un bloqueo que nombraba
-// `…/python3`, una ruta que no aparecía en el comando. Se veía con un heredoc debajo, pero el heredoc no
-// era la causa —sólo hacía que la lectura frenara en un token que sobrevive—: sin él la lista cruzaba
-// igual y el último token era la marca de lo entrecomillado, que el filtro final descarta. O sea que
-// pasaba de casualidad, y aserciar que pasa no fijaba nada.
-// Y el `|` después de `>` es el override de `noclobber`, no una tubería: `>| destino` escribe igual que
-// `> destino` aunque el shell esté configurado para no pisar. Sin admitirlo acá el guard no veía ese
-// destino —el `|` está fuera de la clase que captura la ruta, así que la coincidencia moría—, y con él
-// se perdían los tres guards que salen de `writesWithBase` a la vez. Lo que un agente se escribía por
-// ese hueco era su propia `.ops-approval` (caso 164).
-const REDIRECT = /(?:^|[\s(])&?\d*>>?\|?\s*(?![&(])([^\s;|&<>()]+)/g
-const EVERY_ARG = /(?:^|[\s;|&(])(tee|truncate)\s+([^;|&<>()\n]+)/g
-const LAST_ARG = /(?:^|[\s;|&(])(cp|mv|install|rsync)\s+([^;|&<>()\n]+)/g
-const SED = /(?:^|[\s;|&(])sed\s+([^;|&<>()\n]+)/g
-const IN_PLACE = /(?:^|\s)-{1,2}i/
-
-// Los argumentos que no son flags. El valor de un flag se cuela —`truncate -s 0 log` trae el `0`— y no
-// hace falta sacarlo: un token así resuelve contra el cwd, que está adentro de la raíz, así que nunca
-// decide un bloqueo. Filtrarlo sería una rama que ninguna prueba puede ver caer.
-const positional = (text) => text.trim().split(/\s+/).filter((one) => one && !one.startsWith('-'))
-
-// Un `>` adentro de una cadena no redirige nada. Pierde el destino entrecomillado, que es un falso
-// negativo — el error barato en un guard que ya es incompleto, porque el caro es frenar un comando
-// legítimo y que alguien apague el guard entero.
-//
-// `$HOME` y `~` se expanden porque son como se escribe el destino que esto vino a ver; el incidente que
-// lo originó decía `> $HOME/.claude/...`. Cualquier otra variable queda sin resolver y no se juzga:
-// adivinar su valor sería inventarlo, y un límite inventado frena lo que nadie pidió frenar.
-function writeTargets(command) {
-  const clean = unquoted(command)
-  const found = new Set()
-  for (const match of clean.matchAll(REDIRECT)) found.add(match[1])
-  for (const match of clean.matchAll(EVERY_ARG)) for (const one of positional(match[2])) found.add(one)
-  for (const match of clean.matchAll(LAST_ARG)) {
-    const args = positional(match[2])
-    // Con un solo argumento no hay destino: `cp solo` está a medio escribir, no escribe en `solo`.
-    if (args.length > 1) found.add(args[args.length - 1])
-  }
-  for (const match of clean.matchAll(SED)) {
-    const args = positional(match[1])
-    if (IN_PLACE.test(match[1]) && args.length) found.add(args[args.length - 1])
-  }
-  return [...found]
-    .map((one) => one.replace(/^~(?=$|\/)/, os.homedir()).replace(/^\$\{?HOME\}?(?=$|\/)/, os.homedir()))
-    .filter((one) => !/[$`\u0000]/.test(one))
-}
-
 // Los destinos que no son de nadie y aparecen en cualquier comando legítimo: los descriptores del
 // sistema y el temporal, que es donde el propio runner deja lo que no va al repositorio. Sin esta lista
 // el guard frena `> /dev/null 2>&1`, y lo primero que hace quien lo sufre es apagarlo entero.
@@ -386,48 +213,15 @@ function writeTargets(command) {
 const DEVICES = /^\/dev\/(?:null|stdout|stderr|tty|fd\/)/
 const TEMP = new RegExp(`^${real(os.tmpdir())}(?:/|$)`)
 
-// A dónde deja parado un `cd`. `null` significa que no se sabe, que no es lo mismo que la raíz: un
-// destino con variable o un `cd -` dependen de un estado que este proceso no tiene.
-function cdTarget(argument, base) {
-  if (argument === undefined) return os.homedir()
-  if (argument === '-' || /[$`\u0000]/.test(argument)) return null
-  if (/^~(?=$|\/)/.test(argument)) return argument.replace(/^~/, os.homedir())
-  return path.resolve(base, argument)
-}
-
-// El destino de un `cd` entre comillas se lee antes de vaciarlas. Vaciado quedaba como destino desconocido
-// y frenaba toda escritura relativa que viniera después, aunque la ruta estuviera escrita entera:
-// `cd "/ruta/copia" && sed -i … src/x.js` (caso 298). Queda afuera lo que sin comillas se leería distinto:
-// un espacio o un `;` partirían el tramo, y `~` entre comillas es un nombre y no la casa de nadie.
-const QUOTED_CD = /((?:^|[;&|\n(])\s*cd\s+)(["'])([^"'\s;|&<>()~]+)\2/g
-
-// Las escrituras de un comando, cada una con el directorio contra el que hay que resolverla. El `cd`
-// del propio comando cambia eso para todo lo que viene después y es lo primero que el shell ejecuta;
-// sin mirarlo, el guard juzgaba una ruta que nadie iba a escribir, y fallaba en los dos sentidos.
-//
-// Se recorre por tramos y se lleva la cuenta, en vez de mirar sólo el primero como hace `gitDirectory`.
-// Ahí alcanza porque un comando elige un repositorio; acá cada escritura puede caer bajo un `cd`
-// distinto, y juzgar la primera contra el último sería cambiar un error de lugar en vez de arreglarlo.
-//
-// Los tramos salen del texto ya sin comillas, así que un `;` adentro de una cadena no parte nada.
-function writesWithBase(command, cwd) {
-  const found = []
-  let base = cwd
-  // El `|` que sigue a un `>` no parte nada: es el override de `noclobber`, no una tubería. Partir ahí
-  // separaba la redirección de su destino —`echo x >| ruta` quedaba como `echo x >` y ` ruta`— y el
-  // destino no lo veía nadie, que es por donde se colaba escribir la propia `.ops-approval` (caso 164).
-  for (const segment of unquoted(expandAssigned(command).replace(QUOTED_CD, '$1$3')).split(/[;&\n]+|(?<!>)\|+/)) {
-    const cd = segment.match(/^\s*cd(?:\s+(\S+))?\s*$/)
-    if (cd) { base = base === null ? null : cdTarget(cd[1], base); continue }
-    for (const raw of writeTargets(segment)) found.push({ raw, base })
-  }
-  return found
-}
-
+// El destino de una escritura se juzgaba sólo en `Edit`/`Write`, así que el mismo archivo se escribía
+// sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien quería pasar.
+// Registrar `workspace-boundary` en este grupo no alcanzaba —lee `filesOf`, que en un comando no
+// devuelve nada—, así que lo que faltaba era leer el comando.
 function shellBoundary(input) {
   const allowed = writableRoots(input)
   const found = []
-  for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
+  // Sin el cuerpo de los heredocs, también con un delimitador como `END-1`, por lo que dice `writtenCredentials`.
+  for (const { raw, base } of writesWithBase(asRead(commandOf(input)), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
     // no puede verificar no autoriza —el criterio que fijó el 031 para el índice—.
@@ -493,6 +287,4 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = {
-  destructive, gitAdd, dependencies, shellBoundary, run, writesWithBase, cdTarget, positional, QUOTED_CD,
-}
+module.exports = { destructive, gitAdd, shellBoundary, run, MISMO }

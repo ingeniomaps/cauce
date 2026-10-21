@@ -88,16 +88,99 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   assert.equal(renamed.decision, 'deny')
   assert.match(renamed.reason, /no trae CommandLine/)
   assert.match(renamed.reason, /Command, Cwd/)
-  const noFile = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: { Path: '.env', Cwd: cwd } } })
+  const noFile = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: { FilePath: '.env', Cwd: cwd } } })
   assert.equal(noFile.decision, 'deny')
-  assert.match(noFile.reason, /no trae TargetFile ni AbsolutePath/)
+  assert.match(noFile.reason, /no trae TargetFile, AbsolutePath ni Path/)
   // Con el archivo pero sin el contenido, los guards que juzgan contenido verían un texto vacío.
-  const renamedContent = { TargetFile: 'db/migrations/1.sql', Content: 'DROP TABLE x;', Cwd: cwd }
+  const renamedContent = { TargetFile: 'db/migrations/1.sql', Text: 'DROP TABLE x;', Cwd: cwd }
   const noContent = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: renamedContent } })
   assert.equal(noContent.decision, 'deny')
-  assert.match(noContent.reason, /no trae CodeContent, ReplacementContent ni ReplacementChunks/)
+  assert.match(noContent.reason, /no trae CodeContent, ReplacementContent, ReplacementChunks, Content ni Replacement/)
   // Sin entrada no hay llamada descrita: se invoca así a mano, con OPS_HOOK_*, y sigue como antes (caso 198).
   assert.equal(evaluate('pre-shell', {}).decision, 'allow')
+})
+
+// Caso 410. agy 1.4 escribe con `write_file` {Path, Content} y `edit_file` {Path, Target, Replacement}, medido en el
+// registro de una sesión con agy 1.4.2. El matcher es una expresión regular sobre el nombre de la herramienta.
+test('el puente de Antigravity juzga las escrituras de agy 1.4, y sigue juzgando las de antes', () => {
+  const hooks = JSON.parse(fs.readFileSync(path.join(root, 'antigravity', 'hooks.json'), 'utf8')).cauce.PreToolUse
+  const files = hooks.find((one) => one.hooks.some((hook) => /pre-files/.test(hook.command)))
+  const matches = (tool) => new RegExp(`^(?:${files.matcher})$`).test(tool)
+  const writers = ['write_file', 'edit_file', 'write_to_file', 'replace_file_content', 'multi_replace_file_content']
+  for (const tool of writers) {
+    assert.ok(matches(tool), tool)
+  }
+  // Una lectura no pasa por pre-files: llegaría sin contenido y el puente la negaría.
+  for (const tool of ['read_file', 'view_file', 'run_command']) assert.equal(matches(tool), false, tool)
+
+  const { evaluate } = require(path.join(root, 'antigravity', 'hook.js'))
+  const cwd = path.resolve(root, '..', '..')
+  const call = (name, args) => evaluate('pre-files',
+    { workspacePaths: [cwd], toolCall: { name, args: { ...args, Cwd: cwd } } })
+  const created = call('write_file', { Path: path.join(cwd, '.env'), Content: 'TOKEN=x' })
+  assert.equal(created.decision, 'deny')
+  assert.match(created.reason, /\.env parece contener secretos/)
+  const edited = call('edit_file', { Path: path.join(cwd, '.npmrc'), Target: 'a', Replacement: 'b' })
+  assert.equal(edited.decision, 'deny')
+  assert.match(edited.reason, /\.npmrc es un archivo de credenciales/)
+  // El contenido que llega es el nuevo: un guard que mira lo que se escribe ve `Replacement`, no `Target`.
+  const { normalize } = require(path.join(root, 'antigravity', 'hook.js'))
+  assert.equal(normalize({ toolCall: { args: { Path: '/x/a.js', Target: 'viejo', Replacement: 'nuevo' } } }, cwd)
+    .tool_input.content, 'nuevo')
+  assert.equal(normalize({ toolCall: { args: { Path: '/x/a.js', Content: 'todo' } } }, cwd).tool_input.file_path,
+    '/x/a.js')
+})
+
+// Caso 413. agy 1.4 lee con `read_file` {Path, StartLine, EndLine, ByteOffset}, medido en el registro de una sesión, y
+// esa lectura tiene que pasar por `secrets-read` como la de Claude y la de Gemini.
+test('el puente de Antigravity juzga las lecturas de agy con secrets-read', () => {
+  const hooks = JSON.parse(fs.readFileSync(path.join(root, 'antigravity', 'hooks.json'), 'utf8')).cauce.PreToolUse
+  const reads = hooks.find((one) => one.hooks.some((hook) => /pre-read/.test(hook.command)))
+  assert.ok(reads, 'ninguna herramienta de agy llega a pre-read')
+  const matches = (tool) => new RegExp(`^(?:${reads.matcher})$`).test(tool)
+  assert.ok(matches('read_file'))
+  for (const tool of ['write_file', 'edit_file', 'run_command']) assert.equal(matches(tool), false, tool)
+
+  const { evaluate } = require(path.join(root, 'antigravity', 'hook.js'))
+  const cwd = path.resolve(root, '..', '..')
+  const read = (args) => evaluate('pre-read',
+    { workspacePaths: [cwd], toolCall: { name: 'read_file', args: { ...args, Cwd: cwd } } })
+  const secret = read({ Path: path.join(cwd, '.env'), StartLine: 1 })
+  assert.equal(secret.decision, 'deny')
+  assert.match(secret.reason, /\.env es una credencial/)
+  assert.equal(read({ Path: path.join(cwd, 'package.json') }).decision, 'allow')
+  // Sin el archivo no hay qué juzgar, y como el resto del puente se niega diciendo qué llegó (caso 200).
+  const unnamed = read({ File: '.env' })
+  assert.equal(unnamed.decision, 'deny')
+  assert.match(unnamed.reason, /no trae TargetFile, AbsolutePath ni Path/)
+})
+
+// Caso 410: `doctor` avisa cuando agy no es la versión en que se midieron sus herramientas. El porqué, en `toolsDrift`.
+test('doctor de Antigravity avisa cuando agy no es la versión en que se midieron sus herramientas', () => {
+  const { base, target, env } = installedProject('cauce-agy-version-', 'antigravity')
+  const bin = path.join(base, 'bin')
+  fs.mkdirSync(bin)
+  const doctor = (version, body = `echo ${version}`) => {
+    fs.writeFileSync(path.join(bin, 'agy'), `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+    const result = spawnSync(process.execPath, [path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js'),
+      'automation', 'doctor', target, 'antigravity'], { encoding: 'utf8', env: { ...env, PATH: `${bin}:${env.PATH}` },
+      timeout: 20000 })
+    assert.equal(result.error, undefined, 'doctor se colgó esperando a agy --version')
+    return `${result.stdout}${result.stderr}`
+  }
+  const manifest = path.join(root, 'antigravity', 'manifest.json')
+  const measured = JSON.parse(fs.readFileSync(manifest, 'utf8')).toolsMeasuredWith
+  assert.equal(measured, '1.4', 'la versión en que se midieron write_file y edit_file')
+  assert.doesNotMatch(doctor('1.4.3'), /se midieron/, 'un parche de la misma versión no avisa')
+  const newer = doctor('agy 1.5.0')
+  assert.match(newer, /agy 1\.5\.0: las herramientas que escriben archivos se midieron con agy 1\.4/)
+  assert.match(newer, /hooks\.json/)
+  assert.match(doctor('algo sin versión'), /no se pudo leer la versión de agy/)
+  assert.match(doctor('', 'echo agy 1.5.0 >&2'), /agy 1\.5\.0: las herramientas/, 'la versión que sale por stderr')
+  // Un wrapper que no termina: doctor vuelve, lo dice y no deja procesos vivos. El porqué, en `toolsDrift`.
+  const nap = `${60 + (process.pid % 9)}.25`
+  assert.match(doctor('', `sleep ${nap}; echo 1.4.3`), /no se pudo leer la versión de agy/)
+  assert.notEqual(spawnSync('pgrep', ['-f', `^sleep ${nap}$`]).status, 0, 'quedó vivo el hijo del wrapper')
 })
 
 // Los dos errores en el mismo evento `stop`, porque separados los dos dan `continue` y cualquiera de

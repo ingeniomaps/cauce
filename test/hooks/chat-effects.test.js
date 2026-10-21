@@ -12,11 +12,10 @@ const {
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 
 const { spawnSync } = require('node:child_process')
-const { execute, executeAll } = require('../../engine/hooks/run')
+const { execute } = require('../../engine/hooks/run')
 
 // Qué líneas entran en la aprobación cuando la persona la nombró: el contenido, que hasta 0.83.0 no se
 // miraba (caso 119). Por qué se compara y contra qué, en `self-approval`.
@@ -204,68 +203,6 @@ test('el hook de mensaje nunca frena ni imprime, reciba lo que reciba', () => {
   }
   assert.ok(fs.existsSync(path.join(DIR, `${session}.json`)), 'y con una entrada válida registra el mensaje')
   fs.rmSync(path.join(DIR, `${session}.json`), { force: true })
-})
-
-// Caso 287. Lo que un `grep` busca y lo que un `sed`, un `awk` o un `jq` ejecutan no es un archivo. Leído como
-// ruta, buscar en el código el nombre de un archivo de entorno frenaba como si se lo abriera. Las dos mitades
-// van juntas: el patrón pasa, y el archivo que viene después se sigue frenando.
-test('secrets-shell no toma por un archivo el patrón de una búsqueda', () => {
-  const root = planFirstRoot('ops-hook-patron-', WIP_CON_PLAN)
-  const runs = (command) => ({ cwd: root, tool_input: { command } })
-  for (const command of [
-    // Los tres que frenaron recorridos reales.
-    String.raw`grep -rn "\.env\.schema" src`, String.raw`grep -rn "process\.env\." src | head`,
-    'grep -rln "credentials.json" src',
-    String.raw`sed -n '/\.env/p' README.md`, String.raw`rg -e '\.env' -e 'id_rsa' src`,
-    "awk -F= '/.env/ {print $1}' notas.txt", "jq '.env' package.json", 'grep --regexp=.env src/a.js',
-    "jq --arg file .env '.x' package.json",
-  ]) assert.doesNotThrow(() => execute('secrets-shell', runs(command)), command)
-  for (const command of [
-    'grep KEY .env', 'grep -e KEY .env', 'grep -rn "x" src .env', "sed -n '1,5p' .env", "sed -e 1p .env",
-    "awk -F= '{print $1}' .env", 'grep -f .env notas.txt', "jq -r .token credentials.json", 'rg KEY .env',
-    // Con una bandera cuyo valor no se conoce, lo que sigue se mira entero: se confunde hacia el lado que frena.
-    'grep --max-count 3 KEY .env',
-  ]) blocked('secrets-shell', runs(command), /lee .*credencial/)
-})
-
-// Leer una credencial por shell, en cualquier runner (caso 104): lo que la muestra se frena, lo que sólo la
-// nombra pasa, y lo que la persona pidió en el chat también.
-test('secrets-shell frena leer una credencial por shell y deja pasar lo demás', () => {
-  const root = planFirstRoot('ops-hook-lee-shell-', WIP_CON_PLAN)
-  const runs = (command) => ({ cwd: root, tool_input: { command } })
-  for (const command of ['cat .env', 'head -3 ./.env', 'grep TOKEN .env', 'sed -n 1p .env', 'source .env',
-    '. .env', 'wc -l < .env', 'cat id_ed25519 | base64', 'X=1 cat .env', 'echo $(cat .npmrc)',
-    `node -e "console.log(require('node:fs').readFileSync('.env','utf8'))"`,
-    `python3 -c "print(open('.env').read())"`,
-    // Las dos formas con que un agente lo leyó en una sesión real, cuando el guard no las veía.
-    'nl -ba .env', "rg -n KEY -g '.env*'", "grep -rn KEY --include='*.env' .",
-    // Y con el comodín antes del patrón, que el README nombra y el guard leía como si fuera el patrón (caso 342).
-    "rg -g '.env*' KEY", "rg --glob '.env*' KEY .", "grep --include='*.env' -rn KEY .",
-    // El verbo se busca detrás de prefijos con sus banderas, con ruta, dentro de un subshell y entre tramos vacíos.
-    'xargs -0 cat .env', '/bin/cat .env', '(cat .env)', 'true; ; cat .env']) {
-    blocked('secrets-shell', runs(command), /lee .*credencial/)
-  }
-  for (const command of ['cat .env.example', 'ls -la .env', 'test -f .env', 'rm .env', 'cp .env.example .env',
-    'git add .env.example', 'git commit -m "no leer el .env; cat .env"', 'grep -r TOKEN src', 'ls .env*',
-    'cat *.md']) {
-    assert.doesNotThrow(() => execute('secrets-shell', runs(command)), command)
-  }
-  assert.throws(() => executeAll(['pre-shell'], runs('cat .env')), /lee .*credencial/)
-  // Sin chat queda la aprobación por archivo; con chat, pasa lo que la persona nombró.
-  pasteApproval(root, messageOf('secrets-shell', runs('cat .env')))
-  assert.doesNotThrow(() => execute('secrets-shell', runs('cat .env')))
-  const chat = chatSession()
-  try {
-    const asked = chat.says('mostrame qué hay en el .npmrc')
-    assert.doesNotThrow(() => execute('secrets-shell', asked(runs('cat .npmrc'))))
-    blocked('secrets-shell', runs('cat .npmrc'), /lee .*credencial/)
-    // Nombrar sin pedir tampoco autoriza por esta vía (caso 109). El 109 lo dio por cubierto porque este
-    // guard coteja por el mismo `unauthorized` que el de lectura, y eso es un argumento: la vía que el
-    // propio caso señaló con nombre y línea no tenía ninguna aserción. Va con un archivo que esta prueba
-    // no aprobó antes —`.env` y `.npmrc` ya están concedidos acá—, porque si no lo dejaría pasar el 116.
-    blocked('secrets-shell', chat.says('¿para qué sirve el id_ed25519?')(runs('cat id_ed25519')),
-      /lee .*credencial/)
-  } finally { chat.close() }
 })
 
 // El vocabulario de `chat.js` del lado de quien autoriza (caso 118). Qué palabra entra y por qué se decide

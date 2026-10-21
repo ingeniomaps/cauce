@@ -169,6 +169,33 @@ test('plan-first no frena lo que la persona pidió en el chat, y sí el trabajo 
   } finally { chat.close() }
 })
 
+// Caso 415: con la variable el pedido deja de eximir y el bloqueo no ofrece el chat; sin ella, la exención de la
+// persona no cambia. El porqué, junto a `delegated` en `chat.js`.
+test('un pedido delegado no tiene la autoridad de la persona', () => {
+  const root = planFirstRoot('ops-hook-chat-delegado-', WIP_IDLE)
+  const writes = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, 'src', 'altas.js') } })
+  const chat = chatSession()
+  const previous = process.env.CAUCE_DELEGATED
+  try {
+    const request = chat.says('construí la tarea de tu línea siguiendo el protocolo')
+    assert.doesNotThrow(() => execute('plan-first', writes(request)), 'la persona sigue exenta')
+    process.env.CAUCE_DELEGATED = '1'
+    blocked('plan-first', writes(request), /sin plan/)
+    // Tampoco se ofrece confirmar por el chat: no hay a quién, y el bloqueo manda a la aprobación por archivo. El
+    // control es el mismo bloqueo de un subagente sin la variable, que sí la ofrece.
+    assert.doesNotMatch(messageOf('plan-first', writes(request)), /Esa confirmación cubre/)
+    delete process.env.CAUCE_DELEGATED
+    assert.match(messageOf('plan-first', writes((extra) => request({ agent_id: 'a1', ...extra }))),
+      /Esa confirmación cubre/)
+    process.env.CAUCE_DELEGATED = '0'
+    assert.doesNotThrow(() => execute('plan-first', writes(request)), 'sólo 1 la activa')
+  } finally {
+    if (previous === undefined) delete process.env.CAUCE_DELEGATED
+    else process.env.CAUCE_DELEGATED = previous
+    chat.close()
+  }
+})
+
 test('los guards de límites no dejan al agente escribirse la aprobación ni el registro del chat', () => {
   const { DIR } = require('../../engine/hooks/chat')
   const root = planFirstRoot('ops-hook-autoaprueba-', WIP_CON_PLAN)

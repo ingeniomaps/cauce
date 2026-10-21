@@ -81,25 +81,119 @@ function plant(session, name, repo, warnings) {
   const tree = LT.treeOf(session, name, repo)
   const branch = `${BRANCH}${name}`
   if (!fs.existsSync(tree)) git(source, 'worktree', 'remove', '--force', tree)
-  const listed = git(source, 'worktree', 'list', '--porcelain').stdout || ''
-  const reused = listed.split('\n').some((entry) => entry.trim() === `worktree ${tree}`)
+  const reused = registered(source, tree)
   let from = ''
   if (!reused) {
-    if (fs.existsSync(tree)) return { error: `${tree} ya existe y no es un worktree de ${repo}.` }
+    // El enlace que `linkSiblings` puso cuando el repositorio todavía no era de la línea se reemplaza por su árbol: así
+    // crece una línea, y negarse obligaba a borrarlo a mano (caso 408). Se saca el enlace, nunca lo que apunta.
+    const unlinked = linkOnTheWay(session, name, repo)
+    if (unlinked) fs.unlinkSync(unlinked.at)
+    // `occupied` y no `existsSync`: un enlace roto también ocupa la ruta, y sin verlo el error era el de git, opaco.
+    if (occupied(tree)) return { error: `${tree} ya existe y no es un worktree de ${repo}.` }
+    // Sin el árbol, el enlace vuelve: los `../${repo}` de los otros repositorios de la línea lo necesitan. Lo que
+    // quedó entre el árbol y el enlace se saca sólo si está vacío; un checkout a medias no se borra (R23).
+    const restore = () => {
+      for (let dir = tree; dir.startsWith(unlinked.at); dir = path.dirname(dir)) {
+        try { fs.rmdirSync(dir) } catch (error) { if (error.code !== 'ENOENT') break }
+      }
+      return linkIfMissing(unlinked.at, unlinked.source)
+    }
     const hasBranch = git(source, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
     if (!hasBranch) from = LNP.startPoint(source)
-    fs.mkdirSync(path.dirname(tree), { recursive: true })
     const args = hasBranch ? [tree, branch] : ['-b', branch, tree, ...(from ? [from] : [])]
-    const added = git(source, 'worktree', 'add', ...args)
-    if (added.status !== 0) return { error: `git worktree add falló en ${repo}: ${(added.stderr || '').trim()}` }
+    let added
+    try {
+      fs.mkdirSync(path.dirname(tree), { recursive: true })
+      added = git(source, 'worktree', 'add', ...args)
+    } catch (error) {
+      // Lo que se relanza es lo que falló; si reponer el enlace también falla, ese error taparía al primero.
+      try { if (unlinked) restore() } catch { /* el enlace queda sin reponer; el error que vale es el de arriba */ }
+      throw error
+    }
+    if (added.status !== 0) {
+      const error = `git worktree add falló en ${repo}: ${(added.stderr || '').trim()}`
+      // Git puede dejar el árbol armado y salir con error: un `post-checkout` que falla le pasa su código. Ese árbol
+      // está registrado, así que no se toca —borrarlo a mano deja el registro colgado— y repetir lo reusa.
+      if (registered(source, tree)) {
+        return { error: `${error}\nEl árbol quedó armado en ${tree}: repetí el comando para reusarlo.` }
+      }
+      if (!unlinked) return { error }
+      return restore() ? { error }
+        : { error: `${error}\nEl enlace a ${unlinked.source} no se pudo reponer: ${unlinked.at} quedó con lo que git `
+          + 'dejó. Mirá qué tiene y, si no es nada, borralo y repetí.' }
+    }
     const head = git(source, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
-    // `main` y `master` no llevan barra; lo que la lleva es `<remoto>/<rama>`.
-    if (!hasBranch && head && from && head !== (from.includes('/') ? from.slice(from.indexOf('/') + 1) : from)) {
+    if (!hasBranch && head && from && head !== LNP.branchOf(from)) {
       warnings.push(`${repo} está en ${head}; ${branch} sale de ${from}, la rama viva. Si la querías sobre ${head}: `
         + `borrá el árbol, creá la rama con \`git -C ${source} branch ${branch} ${head}\` y repetí.`)
     }
   }
+  const hooks = missingHooks(tree)
+  if (hooks) {
+    warnings.push(`${repo}: core.hooksPath apunta a ${hooks}, que este árbol no tiene; hasta que la instalación del `
+      + 'repositorio la genere, git commitea sin hooks y no lo dice.')
+  }
+  if (COMPOSE.some((file) => fs.existsSync(path.join(tree, file))) && !composeNamed(tree, source)) {
+    const project = `${path.basename(repo)}-${name}`.toLowerCase().replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^[^a-z0-9]+/, '')
+    warnings.push(`${repo}: su compose, desde este árbol, es el mismo proyecto que desde el checkout de siempre, con `
+      + `los mismos volúmenes y contenedores. Poné COMPOSE_PROJECT_NAME=${project} en el .env del árbol, sin copiar `
+      + 'el del original; lo que el compose fija a mano —name:, container_name, una IP— se separa del lado del '
+      + 'producto.')
+  }
   return { repo, tree, branch, from, reused }
+}
+
+// Compose nombra el proyecto por la carpeta, y el árbol se llama como el repositorio para que `../` resuelva igual:
+// desde el árbol es el mismo proyecto (caso 399). Se dice sólo donde hay compose, con los nombres que él busca, y sin
+// leerlo: lo que choca primero es ese nombre, que no está escrito en el archivo.
+const COMPOSE = ['compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml']
+// Con un nombre propio en el `.env` del árbol el aviso calla: es lo que pide hacer, y uno que no se apaga se deja de
+// leer. Propio es distinto del que tiene el checkout de siempre: un `.env` versionado que fija el nombre lo trae igual
+// al árbol, y ahí el choque sigue.
+const composeName = (dir) => {
+  try {
+    // Un valor vacío no es un nombre: con `\s*` el `=` sin nada tomaba la línea de abajo.
+    const text = fs.readFileSync(path.join(dir, '.env'), 'utf8')
+    return (text.match(/^[ \t]*COMPOSE_PROJECT_NAME[ \t]*=[ \t]*(\S+)/m) || [])[1]
+  } catch { return undefined }
+}
+const composeNamed = (tree, source) => {
+  const own = composeName(tree)
+  return Boolean(own) && own !== composeName(source)
+}
+
+const occupied = (at) => {
+  try { return Boolean(fs.lstatSync(at)) } catch { return false }
+}
+
+const registered = (source, tree) => (git(source, 'worktree', 'list', '--porcelain').stdout || '').split('\n')
+  .some((entry) => entry.trim() === `worktree ${tree}`)
+
+// El enlace que deja `linkSiblings` en el camino al árbol: el del propio repositorio, o el de una carpeta de arriba si
+// es anidado, cuyo nivel `linkSiblings` rearma con sus hermanos. Sólo decide: cualquier otra cosa —una carpeta, un
+// enlace a otro lado— no es de la línea y la decide quien la puso (R23).
+function linkOnTheWay(session, name, repo) {
+  const parts = path.normalize(repo).split(path.sep)
+  for (let i = 1; i <= parts.length; i += 1) {
+    const relative = path.join(...parts.slice(0, i))
+    const at = LT.treeOf(session, name, relative)
+    const source = path.join(session, relative)
+    try {
+      if (fs.lstatSync(at).isSymbolicLink()) return real(at) === real(source) ? { at, source } : null
+    } catch { return null }
+  }
+  return null
+}
+
+// `core.hooksPath` vive en la configuración del repositorio y la comparten todos sus worktrees, pero la carpeta
+// a la que suele apuntar —`.husky/_`— la genera la instalación y git la ignora: un árbol nuevo no la trae, y
+// git no corre ningún hook ni avisa (caso 398). Se dice y no se copia: lo que va adentro es de la herramienta.
+// Relativa, git la resuelve desde la raíz del árbol.
+function missingHooks(tree) {
+  const value = git(tree, 'config', '--path', 'core.hooksPath').stdout.trim()
+  if (!value || path.isAbsolute(value)) return ''
+  return isDir(path.join(tree, value)) ? '' : value
 }
 
 const no = (error, code) => ({ error, code })

@@ -38,15 +38,15 @@ function claim(dir, slug, cli) {
   if (blocker) return fail(`${slug} depende de ${blocker}, que todavía no está en DONE.`, REFUSED)
   // Y lo mismo con una fila pendiente en HUMAN_ACTIONS, que es lo que `context` ya saltea (caso 336). Salvo el
   // WIP propio: ahí `context` la sigue ofreciendo —el plan en vuelo manda— y retomarla tiene que poder.
+  const from = CL.runner(asked.id, path.join(root, '..'))
   const waiting = ST.pendingHumanActions(root).find((row) => row.task === slug)
-  const resuming = state.wips.some((wip) => wip.task === slug && wip.runner === P.wipName(CL.runner(asked.id)))
+  const resuming = state.wips.some((wip) => wip.task === slug && wip.runner === P.wipName(from))
   if (waiting && !resuming) {
     return fail(`${slug} espera una acción humana: ${waiting.action} Se toma cuando la fila esté resuelta.`,
       REFUSED)
   }
 
   const me = CL.owner(root)
-  const from = CL.runner(asked.id)
   if (!me) {
     return fail('No sé quién sos. Configurá `git config user.email` o exportá CAUCE_OWNER: '
       + 'un reclamo anónimo no dice a quién preguntarle.', USAGE)
@@ -112,14 +112,19 @@ function release(dir, slug, cli) {
   if (!slug) return fail('Falta el slug. `ops release <planning-dir> <tarea>`', USAGE)
   const asked = LN.sessionLine(root, cli.value('--line'))
   if (asked.error) return fail(asked.error, USAGE)
-  const from = CL.runner(asked.id)
+  const from = CL.runner(asked.id, path.join(root, '..'))
   const taken = CL.read(root).find((one) => one.slug === slug)
   if (!taken) return fail(`${slug} no está tomada por nadie.`, USAGE)
-  if (taken.runner !== from) {
+  // Una tarea en DONE ya no tiene trabajo que liberar: el reclamo no reserva nada, y quien la cierra suele ser otra
+  // sesión que la de quien la tomó —el revisor que cierra lo que construyó otro—. Negárselo dejaba el reclamo que
+  // `check` manda a soltar con este mismo comando (caso 412). La de una tarea en curso sigue siendo del que la tomó.
+  const closed = P.readDone(root).set.has(slug)
+  if (taken.runner !== from && !closed) {
     return fail(`${slug} es de ${taken.owner}. Si se abandonó, borrá ${taken.at} a mano.`, REFUSED)
   }
   fs.rmSync(CL.file(root, slug))
-  console.log(`✓ ${slug} soltada; volvió a la cola`)
+  console.log(closed ? `✓ ${slug} soltada: ya estaba en DONE, el reclamo no reservaba nada`
+    : `✓ ${slug} soltada; volvió a la cola`)
 }
 
 // Qué runners tienen trabajo abierto, para que un agente pueda preguntar antes de inventarse un id.

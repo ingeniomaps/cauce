@@ -9,7 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const P = require('../planning/parser')
 const HA = require('../planning/human-actions')
-const PC = require('../planning/contracts')
+const DE = require('../planning/done-entry')
 const AD = require('../planning/adoption')
 const F = require('../core/files')
 const { fail, planningRoot, TODAY, USAGE, REFUSED } = require('./io')
@@ -39,7 +39,7 @@ function adopt(dir) {
     return console.log(`✓ ${AD.BASELINE} sellado con ${slugs.length} entrada(s); la lista no cambió`)
   }
   const epics = P.readEpics(root)
-  const pending = P.readDone(root).entries.filter((entry) => PC.doneEntryErrors(entry, epics).length)
+  const pending = P.readDone(root).entries.filter((entry) => DE.doneEntryErrors(entry, epics).length)
   if (!pending.length) {
     return console.log('= no hay nada que exentar: todas las entradas de DONE cumplen el contrato')
   }

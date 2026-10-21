@@ -14,6 +14,7 @@ const P = require('../planning/parser')
 const BK = require('../planning/backlog')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
+const DE = require('../planning/done-entry')
 const SR = require('../planning/structure')
 const SZ = require('../planning/sizing')
 const RC = require('../planning/recurring')
@@ -159,12 +160,12 @@ function check(dir, cli) {
     humanActions: humanActions.filter((row) => !row.file || row.valid),
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
-  warnings.push(...PC.doneCeremonyWarnings(done, new Set(adopted)))
+  warnings.push(...DE.doneCeremonyWarnings(done, new Set(adopted)))
   // Antes de que el recorrido pague Build para descubrirlo en Verify. Cuesta un regex sobre la cola y
   // corre en los cuatro carriles, incluidos los que saltean Ready (caso 140).
   warnings.push(...PC.unverifiableAcceptance(milestones))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
-  errors.push(...PC.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
+  errors.push(...DE.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
   const ops = path.resolve(root, '..')
   warnings.push(...DC.unknownCommitWarnings(done.entries, (items) => R.commitStatus(ops, items)))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente

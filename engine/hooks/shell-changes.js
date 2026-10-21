@@ -17,6 +17,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
+const { cdTarget, QUOTED_CD, REDIRECTIONS } = require('./shell-writes')
 
 // Lo que un shell admite delante del verbo: asignaciones, `sudo` con sus banderas, `time`, un paréntesis, y
 // las palabras de un `if` o de un bucle escritos en una línea.
@@ -110,8 +111,6 @@ function withoutSubstitutions(text) {
   return last
 }
 
-const REDIRECT = /(?:^|\s)\d*&?[<>]{1,2}&?\d*\s*\S*/g
-
 // Dos lecturas que el resto de los guards no hace, y que por eso se quedan acá en vez de cambiar lo que
 // comparten todos: cada una, puesta en la lectura común, le cambiaba el veredicto a `destructive`.
 //
@@ -172,7 +171,6 @@ function unwrapped(text) {
   return open.slice(0, end).trimEnd()
 }
 function steps(command, cwd) {
-  const { cdTarget, QUOTED_CD } = require('./shell')
   const found = []
   const outer = []
   let base = cwd
@@ -180,7 +178,7 @@ function steps(command, cwd) {
   for (const { text, opens, closes } of pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3'))) {
     // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
     // `cd /otra 2>/dev/null` es un `cd`.
-    const clean = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
+    const clean = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECTIONS, ' ')
     const header = clean.match(DEFINES)
     if (header) lost = true
     const piece = header ? clean.slice(header[0].length) : clean
@@ -192,7 +190,7 @@ function steps(command, cwd) {
       if (to === undefined) base = os.homedir()
       else if (MKTEMP.test(to)) base = path.join(os.tmpdir(), 'mktemp')
       else if (path.isAbsolute(home(to))) base = home(to)
-      else base = base === null ? null : cdTarget(to, base)
+      else base = cdTarget(to, base)
     } else {
       const words = shellWords(unwrapped(withoutSubstitutions(piece)))
       let prefixed = false
@@ -206,7 +204,7 @@ function steps(command, cwd) {
         const to = rest.filter((word) => !word.startsWith('-'))
         const named = to.length === 1 ? home(to[0]) : null
         if (named && path.isAbsolute(named)) base = named
-        else base = named && base !== null ? cdTarget(named, base) : null
+        else base = named ? cdTarget(named, base) : null
       } else found.push({ verb, rest, base: lost ? null : base })
     }
     for (let level = 0; level < closes && outer.length; level += 1) base = outer.pop()

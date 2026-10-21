@@ -209,6 +209,25 @@ function unlinkOnly(dir) {
   try { fs.rmdirSync(dir) } catch { /* tiene algo propio */ }
 }
 
+// A dónde llega lo que la migración trae, dicho antes de traerlo. Avisa y no frena: traerla a una rama de trabajo
+// para abrir su PR es legítimo, y lo que faltaba era que se viera. El planning va al HEAD de la instancia, que suele
+// ser la rama de un upgrade y no la viva (caso 397, el mismo defecto que el 395 en `ops line`).
+//
+// No avisa si la rama de la línea está empujada con su PR. Se midió en GitHub: que los mismos commits lleguen a la
+// viva por los dos PR, con dos y con cuatro bases de merge, deja el de la instancia en `MERGEABLE CLEAN` (caso 396).
+function arrival(root, branch, into, commits) {
+  const live = LNP.startPoint(root)
+  if (!live) return { live: '', warnings: [] }
+  const name = LNP.branchOf(live)
+  const warnings = []
+  if (into !== name && commits) {
+    const line = branch.slice(LNP.BRANCH.length)
+    warnings.push(`la instancia está en ${into}; el planning de ${line} va a quedar ahí y no en ${name}. Si es la `
+      + 'rama de su PR, está bien; si no, pasate a una antes de --apply.')
+  }
+  return { live: name, warnings }
+}
+
 // Pasar una línea de antes a la disposición nueva (caso 394). La de antes es un worktree de la instancia en
 // `line/<nombre>` con su carpeta de sesión al lado, y lo que commiteó ahí es planning: llega a la instancia
 // mergeando esa rama en la que tiene el árbol principal, que es lo que hacía `join`. Después se retiran ese
@@ -236,15 +255,21 @@ function migrate(dir, name, repos, cli) {
   const where = LNP.placement(path.join(root, 'planning'))
   const claims = C.read(path.join(legacy.tree, where.relative)).map((one) => one.slug)
   const session = LT.sessionOf(root)
+  const commits = Number(git(root, 'rev-list', '--count', `${into}..${branch}`).stdout.trim()) || 0
   const report = {
     line: name, tree: legacy.tree, branch, into, applied: false,
-    commits: Number(git(root, 'rev-list', '--count', `${into}..${branch}`).stdout.trim()) || 0,
+    commits,
     dirty: (git(legacy.tree, 'status', '--porcelain', '--untracked-files=no').stdout || '').split('\n')
       .filter(Boolean).length,
     claims,
     home: session ? path.join(path.dirname(session), `${path.basename(session)}-${name}`) : '',
+    ...arrival(root, branch, into, commits),
   }
   const apply = cli.has('--apply')
+  // Con --apply el aviso sale antes de traer la línea, y también si --apply se niega: no frena (el 397 decidió que
+  // traerla a una rama de trabajo es legítimo), así que lo que garantiza es que quede dicho a dónde fue, no que se
+  // pueda decidir antes. Para eso está la corrida sin --apply.
+  if (apply && !cli.has('--json')) for (const warning of report.warnings) console.log(`⚠ ${warning}`)
   if (apply) {
     if (report.dirty || claims.length) {
       return fail(`la línea ${name} no se puede migrar todavía: ${[
@@ -280,6 +305,7 @@ function migrate(dir, name, repos, cli) {
   console.log(`  ${report.commits} commit(s) de planning que traer a ${into}`)
   if (report.dirty) console.log(`  ${report.dirty} cambio(s) sin commitear en el árbol de la línea: --apply se niega`)
   if (claims.length) console.log(`  reclamos en vuelo: ${claims.join(', ')} — --apply se va a negar hasta cerrarlos`)
+  if (!apply) for (const warning of report.warnings) console.log(`⚠ ${warning}`)
   if (!apply) return console.log(`Para hacerlo: ops lines migrate <ops-root> ${name} <repo>... --apply`)
   LN.print(report.made)
   if (report.home && fs.existsSync(report.home)) {

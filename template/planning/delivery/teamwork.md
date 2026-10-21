@@ -116,7 +116,13 @@ dentro de la carpeta de sesión, un worktree de cada repositorio en `lines/pagos
 `line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. Los repositorios
 que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` resuelva igual que desde la carpeta
 de sesión. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
-adentro.
+adentro. Aparte son los archivos, no lo que el repositorio nombra fuera de git. Docker Compose toma el nombre del
+proyecto de la carpeta, y el árbol se llama como el repositorio —para que `../` resuelva igual—, así que desde
+`lines/pagos/backend-pagos/` un `docker compose up` es el mismo proyecto que desde `backend-pagos/`: los mismos
+volúmenes, aunque no tengan nombre, y los mismos contenedores. Lo que el compose fija a mano —un volumen con `name:`,
+un `container_name`, una IP, un puerto— choca además con cualquier nombre de proyecto. Las dos cosas se separan del
+lado del producto: `COMPOSE_PROJECT_NAME` en el `.env` del árbol para lo primero, y el nombre de la línea en lo fijo
+para lo segundo. Cauce no reescribe el compose.
 
 ```
 acme/                         la carpeta de sesión: una sola, con un solo CLAUDE.md y un solo .claude/
@@ -197,6 +203,51 @@ de compartir el plan se paga entonces, que es cuando sirve.
 
 Lo que no hay que hacer es empujar tu `wip/<runner>.md`: sería devolver a git el archivo que más cambia,
 todos los días, para resolver algo que pasa una vez cada tanto.
+
+## Una sesión construye y otra revisa
+
+Una tarea se puede repartir entre quien la construye y quien la juzga: un programador —de cualquier runner— y un
+revisor que no fue quien la escribió. El traspaso es por los archivos de planning, y no hace falta nada más que esto:
+
+- **Quien construye** reclama, escribe su plan en el WIP, construye y commitea, y ahí se detiene: deja el WIP en
+  `phase: Review`, con los pasos tachados, y no escribe en `done/` ni saca la tarea de la cola.
+- **Quien revisa** toma la tarea por ese estado. Juzga con lo que está en disco —la aceptación, el WIP, el diff de la
+  rama y la mutación que la aceptación declara, corrida en una copia—, no con el informe de quien construyó. Si aprueba,
+  hace el cierre entero: `done/<tarea>.md`, la tarea fuera de la cola, el WIP limpio y `ops release` del reclamo, que
+  suelta aunque lo haya tomado otro porque la tarea ya está en DONE. Si no aprueba, anota los hallazgos en
+  `## Bloqueos` del WIP y lo devuelve a `phase: Build`, sin soltar el reclamo: la tarea sigue siendo de quien la
+  construye, que la retoma desde los hallazgos.
+
+Dentro de una línea los dos tienen el mismo id —el de la instancia con la línea, desde cualquier carpeta—, así que el
+revisor ve el WIP del programador como propio y lo continúa: no hay que pasarle nada. La contracara es que ese WIP es
+el de los dos, así que **no trabajan la misma línea a la vez**: el revisor entra cuando el programador dejó
+`phase: Review`, y el programador vuelve cuando el revisor la devolvió. Si hace falta que trabajen en paralelo, cada
+uno declara su propio id con `CAUCE_RUNNER`, y entonces el revisor lee el plan del otro con `ops runners`.
+
+**Un rol que lanza otro agente se lanza con `CAUCE_DELEGATED=1`.** Cauce no frena lo que la persona pide en el chat, y el
+pedido con que un coordinador lanza a un programador —`claude -p "…"`, `codex exec "…"`, `gemini -p "…"`— le llega al runner
+como si fuera de ella. Sin la variable, esa sesión entera queda sin `plan-first` ni la gobernanza. Con ella, ningún mensaje de
+la sesión cuenta como de la persona, y lo que el guard frena se aprueba por archivo. El comando del recorrido
+(`/autobuild <línea>`) no necesita la variable: un comando de Cauce nunca contó como pedido de la persona.
+
+### Qué runner puede tomar qué rol
+
+Cualquiera de los cuatro que Cauce soporta puede ser líder —escribe la aceptación—, programador o revisor, con los guards
+de Cauce corriendo y el traspaso de arriba. Se midió con sesiones reales, cada rol con un pedido que sólo nombraba el rol
+(Claude 2.1, agy 1.4, Gemini 0.63 y Codex 0.162, en octubre de 2026). Lo que cambia entre ellos es qué hay que darle al
+runner para que el rol ande, y eso es configuración del runner, no de Cauce:
+
+| Runner | Líder | Programador | Revisor | Lo que el runner necesita |
+|---|---|---|---|---|
+| Claude | ✓ | ✓ | ✓ | Nada. Es el único donde `/autobuild` es un recorrido con fases; en los otros es un skill que el agente sigue. |
+| Antigravity (`agy`) | ✓ | ✓ | ✓ | Nada. No tiene hook de mensaje, así que lo que se le pide nunca exime de un guard. |
+| Codex | ✓ | ✓ | ✓ | Para commitear en el árbol de una línea, `-s danger-full-access`: con `workspace-write` su sandbox deja el `.git` de sólo lectura, también con el `.git` en `writable_roots`. Ahí lo contienen los guards de Cauce. La otra salida es que commitee otro rol. |
+| Gemini | ✓ | ✓ | ✓ | Que la persona le permita la terminal en `~/.gemini/policies/` (`toolName = "run_shell_command"`, `decision = "allow"`): sin interfaz, lo que pediría confirmación se niega, y la carpeta de políticas del proyecto todavía no la lee. Y que confíe en la carpeta —en su lista de carpetas de confianza o con `GEMINI_CLI_TRUST_WORKSPACE=true`—: con `--skip-trust` corre sin la configuración del proyecto, que es donde están los hooks, y ningún guard de Cauce corre. |
+
+Un runner que no está en la tabla necesita su adaptador antes de tomar cualquier rol: cómo se registran sus hooks, cómo se
+llaman sus herramientas de leer, escribir y correr comandos, y dónde lee sus reglas. Con el nombre de una herramienta mal
+alcanza para que un guard deje de correr sin que nada lo diga. Por eso, para Antigravity, que se actualiza solo,
+`automation doctor` avisa cuando su versión no es la que se midió.
 
 ## Cuando el equipo crece o se achica
 
