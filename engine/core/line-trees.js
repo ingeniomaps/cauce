@@ -59,7 +59,7 @@ function trees(root, read = config(root)) {
 
 // El id de runner de una sesión que lleva una línea. Las dos sesiones corren `ops` desde la misma instancia,
 // así que el id que se deduce del árbol es el mismo para las dos: compartirían el WIP, y la segunda no podría
-// reclamar mientras la primera tuviera una tarea. Con `CAUCE_RUNNER` el id es el que se declaró.
+// reclamar mientras la primera tuviera una tarea.
 const runnerOf = (base, line) => (line ? `${base}#${BRANCH}${line}` : base)
 
 module.exports = { DIR, BRANCH, NAME, config, sessionOf, declared, safeRepo, treeOf, trees, runnerOf }

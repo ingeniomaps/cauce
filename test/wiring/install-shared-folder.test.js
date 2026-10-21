@@ -46,7 +46,7 @@ test('instalar desde un worktree no mueve los guards de la carpeta compartida si
   assert.match(shellHook(base), /\/ops-b\//, 'con --force se mueven, que es la salida declarada')
 })
 
-// Revisión de la rama: un hook propio con comillas escapadas rompía cualquier instalación, porque la
+// Revisión de la rama del caso 394: un hook propio con comillas escapadas rompía cualquier instalación, porque la
 // configuración se leía con una regex sobre el texto.
 test('un hook propio con comillas escapadas no rompe la reinstalación', () => {
   const { base, target } = instance('cauce-line-quotes-')

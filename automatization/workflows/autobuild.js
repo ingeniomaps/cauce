@@ -701,8 +701,8 @@ if (!contract.rootOk) {
 // la corrida anda igual, con el recorrido y los agentes de la versión anterior. Quien actualizó cree tener el
 // arreglo y no lo tiene. Este script es justamente una de esas copias, así que el aviso llega con la versión
 // siguiente a la que lo trae: una copia más vieja que ésta no sabe preguntar (caso 308).
-// El nombre solo es la línea si está declarada, y entonces deja de ser un pedido. Los comandos que contestan
-// por la sesión la llevan: qué cola ve, con qué id reclama y dónde se construye.
+// Los comandos que contestan por la sesión llevan su línea (ver `LINE_FLAG`): qué cola ve, con qué id reclama y
+// dónde se construye.
 const LINE = NAMED_LINE || ((contract.lines || []).includes(ASKED) ? ASKED : '')
 if (LINE && LINE === ASKED) ASKED = ''
 const ON_LINE = LINE ? ` --line ${LINE}` : ''
@@ -727,8 +727,8 @@ const SCOPE = () => `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es 
   (governing.length ? ` Las reglas que rigen este proyecto son éstas, relativas a ${ROOT}: ${governing.join(', ')}. ` +
     'Leé las que toquen tu fase antes de planificar, construir o revisar; donde una propia contradice a una del ' +
     'sistema, rige la propia.' : '') +
-  // Este preámbulo prohíbe releer `workspace.md`, así que el índice que el proyecto escribió ahí llega por acá o no
-  // llega (caso 409). Entrar por el mapa ahorra explorar el repositorio para encontrar dónde va el cambio.
+  // El Mapa real llega por acá o no llega (caso 409, en `workspaceMap`). Entrar por el mapa ahorra explorar el
+  // repositorio para encontrar dónde va el cambio.
   (contract.map ? `\n\nDónde vive cada cosa, según el Mapa real del proyecto:\n${contract.map}` : '')
 // Lo que una revisión declara haber abierto viene con la ruta de esta máquina, y `review` va textual a
 // `done/`: no se le puede pedir a quien escribe que las acomode. Se les cambia el prefijo acá, a cada ruta
@@ -1329,8 +1329,8 @@ while (rounds++ < MAX_TASKS) {
         `ninguna decisión pendiente: ${task.acceptance}.${DECIDED()} Aclará la redacción y nada más; ` +
         `nunca amplíes el ` +
         `alcance. ` +
-        // Las dos cláusulas que pararon corridas en Verify con el trabajo hecho las había agregado Ready al
-        // aclarar: una condición a futuro y dos notas de fuera de alcance (caso 382). Verify ya respeta la marca.
+        // Lo que paró dos corridas en Verify con el trabajo hecho lo había agregado Ready al aclarar: una condición
+        // a futuro en una, dos notas de fuera de alcance en la otra (caso 382). Verify ya respeta la marca.
         `Si al aclarar escribís algo que queda fuera de alcance o depende de algo que todavía no existe, eso no ` +
         `es una condición que se pueda probar: va como tramo propio, separado por «;», con la marca ` +
         `(fuera de verify: <razón>), o no va.`,
@@ -1419,7 +1419,8 @@ while (rounds++ < MAX_TASKS) {
         //
         // Con la cola más larga sí ocurrió, pero una parte se quedó con el slug de la partida: la corrida no puede
         // seguir con una tarea cuya aceptación ya no es la que tiene en memoria, y decir «no ocurrió» mandaba a
-        // buscar una escritura que estaba hecha (caso 385).
+        // buscar una escritura que estaba hecha. Un agente real lo hizo citando justamente R25, que dice que las partes
+        // son unidades nuevas (caso 385).
         if (planning.hasTask && planning.slug === task.id) {
           // Si una parte se quedó con el slug, la cola crece en una menos que las partes; si la partida quedó entera
           // al lado de todas, crece en todas, y ahí lo que falta es borrarla, no renombrar nada.

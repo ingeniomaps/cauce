@@ -2,8 +2,8 @@
 
 // Lo que los guards saben de una línea declarada (caso 394): que su árbol es del proyecto aunque la raíz sea un
 // repositorio y no la carpeta de sesión que lo contiene, y que el plan de la sesión que la lleva está bajo el id
-// de la instancia con su línea. Los dos se deciden por la ruta de lo que se escribe, que es lo único que el
-// guard ve: el `--line` lo recibe `ops`, no la sesión.
+// de la instancia con su línea. Los dos se deciden por la ruta de lo que se escribe; el porqué, en `lineAt`
+// (`engine/hooks/files.js`).
 
 const { tempRoot, run } = require('../support/environment')
 const { blocked, BACKLOG_WITH_TASK } = require('../support/hooks-harness')
@@ -100,7 +100,7 @@ test('el id de una línea no depende de la carpeta desde donde se corre ops', ()
     fs.writeFileSync(path.join(planning, 'wip', `${expected}.md`),
       '---\ntask: t-pagos\nphase: Build\n---\n\n## Plan aprobado\n1. [ ] Cobrar\n')
     // El guard, desde la carpeta de sesión —donde se abre la sesión— y desde el árbol, ve el plan de la línea. La raíz
-    // se la da `OPS_ROOT`, como el shim instalado (`run-hook.sh`): sin ella, desde esas carpetas no juzga nada.
+    // se la da `OPS_ROOT`, como el shim instalado (el porqué, en `run-hook.sh`).
     const root = process.env.OPS_ROOT
     process.env.OPS_ROOT = ops
     try {

@@ -6,8 +6,8 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-// Una tarea `[manual]` la hace la sesión, sin agentes (caso 380): ofrecérsela a un runner es lanzar el
-// recorrido que el carril existe para evitar, y no nombrarla deja una cola que parece vacía con trabajo.
+// Caso 380: una tarea `[manual]` no se le ofrece a un runner y `context` la nombra aparte. El porqué, en
+// `currentTask` (`engine/planning/state.js`).
 test('una tarea manual no se le ofrece a ningún runner, y context la nombra aparte', () => {
   const base = tempRoot('cauce-manual-')
   const target = path.join(base, 'demo-ops')
@@ -38,7 +38,7 @@ test('una tarea manual no se le ofrece a ningún runner, y context la nombra apa
   const waits = JSON.parse(run(['context', planning, '--json']).stdout)
   assert.deepEqual(waits.waiting, [{ slug: 'despues', dep: 'a-mano', owner: 'la sesión, a mano' }])
 
-  // Y la que este runner reclamó se nombra como suya: es la que haría negar el reclamo siguiente.
+  // Y la que este runner reclamó se nombra como suya (`manualHeld`).
   const env = { CAUCE_OWNER: 'ana@acme.com', CAUCE_RUNNER: 'sesion-ana' }
   assert.equal(run(['claim', planning, 'a-mano'], undefined, env).status, 0)
   const held = JSON.parse(run(['context', planning, '--json'], undefined, env).stdout)

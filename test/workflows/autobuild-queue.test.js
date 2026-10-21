@@ -108,9 +108,7 @@ test('la aceptación que Ready corrige se escribe en la línea de la tarea y la 
   assert.match(run.prompts.find((one) => one.key === KEY.critique).prompt, new RegExp(`contra ${refined}`))
 })
 
-// Lo que Ready agrega al aclarar y no se puede probar —una nota de fuera de alcance, algo que depende de lo que todavía
-// no existe— llegaba a Verify como una condición más, y la corrida paraba en `acceptance-ambiguous` con el trabajo
-// hecho: pasó dos veces, y las dos cláusulas las había escrito Ready (caso 382). La marca del 140 ya era la salida.
+// Caso 382: Ready escribe lo que no se puede probar con la marca del 140. El porqué, en la consigna de Ready.
 test('Ready escribe lo que no se puede probar como un tramo fuera de verify, no como condición', async () => {
   const run = await runFlow({})
   const ready = run.prompts.find((one) => one.key === KEY.ready)

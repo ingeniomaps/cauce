@@ -158,8 +158,8 @@ test('una línea que llega entre comillas o no es un nombre no se escribe en el 
 })
 
 
-// Caso 394. La sesión dice su línea al lanzar: `/autobuild pagos`. El nombre solo es la línea únicamente si el
-// contrato dice que está declarada; si no, sigue siendo un pedido, como antes de que hubiera líneas.
+// Caso 394: la sesión dice su línea al lanzar, `/autobuild pagos`. Cuándo el nombre solo es la línea, junto a
+// `LINE_FLAG` en `autobuild.js`.
 const declared = (changes = {}) => ({ [KEY.contract]: { ...baseScript()[KEY.contract], lines: ['pagos'] },
   ...changes })
 const asked = (prompts, pattern) => prompts.filter((one) => pattern.test(one.prompt)).map((one) => one.prompt)

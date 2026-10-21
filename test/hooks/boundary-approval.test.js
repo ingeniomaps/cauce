@@ -67,8 +67,7 @@ test('la confirmación del bloqueo abre exactamente la ruta y el verbo que el bl
   }
 })
 
-// Cada orden va en una sesión propia: el bloqueo anterior deja el ítem esperando, y el mensaje siguiente
-// que no niegue lo confirmaría —que es el canal, no este guard—.
+// Cada orden va en una sesión propia (`chatSession`).
 test('una orden del chat no abre nada, ni con la ruta entera: la lista de verbos no dice qué se pide', () => {
   const { shell } = project('ops-hook-limite-orden-')
   for (const text of [`borrá ${OUT}/cache`, `mirá ${OUT}/cache y decime cuánto pesa`, 'borrá cache',

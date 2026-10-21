@@ -113,9 +113,8 @@ test('la release publica sólo lo que todavía no salió', { skip: process.platf
   assert.match(source, /- name: Create GitHub release\n\s+if: steps\.version\.outputs\.release == 'true'/)
 })
 
-// El registro tarda en mostrar una versión recién publicada —unos 80 segundos al publicar 0.113.0—, y un
-// reintento lanzado en ese intervalo la vuelve a publicar: npm la rechaza y la release, que era lo único que
-// faltaba, no salía (caso 425). Con el rechazo de npm y la versión a la vista, el paso sigue.
+// Caso 425: con el rechazo de npm y la versión a la vista, el paso sigue a la release. El porqué, en el paso
+// `Publish to npm` de `release.yml`.
 const unix = { skip: process.platform === 'win32' }
 test('un publish que npm rechaza porque la versión ya salió sigue a la release', unix, () => {
   const step = workflowStep(workflow('release'), 'id: publish')

@@ -26,7 +26,7 @@ const governedPattern = new RegExp(
 )
 
 // Las rutas de `files` —como las nombra el índice de `repo`— que son gobernanza para la raíz `ops`. La usan el
-// guard y `ops governed`, que contesta antes de construir lo mismo que el guard va a frenar al commitear.
+// guard y `ops governed` (`engine/cli/governed.js`).
 function governedOf(ops, repo, files) {
   const fromOps = (file) => (ops ? path.relative(realPath(ops), path.resolve(repo, file)) : file)
   return files.filter((file) => governedPattern.test(fromOps(file)))

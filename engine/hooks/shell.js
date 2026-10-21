@@ -217,12 +217,13 @@ const TEMP = new RegExp(`^${real(os.tmpdir())}(?:/|$)`)
 // El destino de una escritura se juzgaba sólo en `Edit`/`Write`, así que el mismo archivo se escribía
 // sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien quería pasar.
 // Registrar `workspace-boundary` en este grupo no alcanzaba —lee `filesOf`, que en un comando no
-// devuelve nada—, así que lo que faltaba era leer el comando.
+// devuelve nada—, así que lo que faltaba era leer el comando. Frena la forma habitual, como el resto de
+// `destructive`; quien quiera pasar, pasa (`shell-writes.js` dice por qué no puede ser completo).
 function shellBoundary(input) {
   const allowed = writableRoots(input)
   const found = []
   const strayed = []
-  // Sin el cuerpo de los heredocs, también con un delimitador como `END-1`, por lo que dice `writtenCredentials`.
+  // Sin el cuerpo de los heredocs, también con un delimitador como `END-1` (`asRead`).
   for (const { raw, base } of writesWithBase(asRead(commandOf(input)), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que

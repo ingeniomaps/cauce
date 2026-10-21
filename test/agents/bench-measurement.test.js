@@ -217,9 +217,8 @@ test('la ruta sale sola por stdout, aunque el escenario tenga algo más que deci
   assert.match(build('tarea').stderr, /export CAUCE_RUNNER=/)
 })
 
-// Caso 357. Una línea de antes de 0.111.0 se armaba al lado de la instancia, que en el banco es al lado de lo
-// que se borra: sobrevivía a rehacerlo, sin repositorio y con el estado de la corrida anterior. `ops line` ya no
-// la arma así —se arma a mano, con lo que hacía—, pero la que quedó se sigue llevando.
+// Caso 357; el porqué, en `benchLines`. `ops line` ya no arma una línea de antes de 0.111.0 —se arma a mano, con lo
+// que hacía—, pero la que quedó se sigue llevando.
 const legacyLine = (dir, tree) => assert.equal(spawnSync('git', ['-C', dir, 'worktree', 'add', '-q', '-b',
   'line/medida', tree], { encoding: 'utf8' }).status, 0)
 

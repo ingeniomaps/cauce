@@ -1,9 +1,8 @@
 'use strict'
 
-// Las razones con que para `autobuild` contra el vocabulario del motor, en los dos sentidos (caso 390). El protocolo
-// decía «toda parada se nombra con una de éstas» sobre diez nombres, y el recorrido paraba con cuarenta: cada parada
-// nueva nacía con su nombre y nada la comparaba con la lista. Esto es ese comparador —el que R27 pide para una lista
-// que alguien tiene que acordarse de ampliar—, y el de la prosa contra el motor está en `context.test.js`.
+// Las razones con que para `autobuild` contra el vocabulario del motor, en los dos sentidos (caso 390; el porqué, en
+// `stops.js`). Es el comparador que R27 pide para una lista que alguien tiene que acordarse de ampliar; el de la prosa
+// contra el motor está en `context.test.js`.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')

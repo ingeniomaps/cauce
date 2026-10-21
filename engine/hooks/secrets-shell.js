@@ -118,8 +118,8 @@ function readTokens(command) {
 const SETUP_ENV = /^\.env(?:\.local)?$/
 function writtenCredentials(input, command) {
   const found = new Map()
-  // Sin el cuerpo de los heredocs, que es dato: `commandOf` ya saca el de un delimitador de letras, y `asRead` también
-  // el de `END-1` o `E.O.F`, que si no se leía como comandos y frenaba crear un script que nombra una credencial.
+  // Sin el cuerpo de los heredocs, que es dato (`asRead`): leído como comandos, frenaba crear un script que nombra
+  // una credencial.
   for (const { raw, base } of writesWithBase(asRead(command), cwdOf(input))) {
     if (SETUP_ENV.test(path.basename(raw))) continue
     // Bajo un `cd` que no se resuelve no se sabe dónde cae, y una aprobación por archivo no tendría qué ruta nombrar:

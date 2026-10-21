@@ -450,9 +450,9 @@ function install(root, name, output = console, options = {}) {
   }
   // Dónde corren los guards, que no se invocan y por eso nadie nota que faltan. Los runners cargan la
   // configuración del proyecto desde la carpeta en que se abre la sesión hasta la raíz de su repo git, y no más
-  // arriba (caso 393). Sin git en la carpeta de instalación, una subcarpeta ya queda afuera; en sidecar, también
-  // cada repo de producto con git propio. Sólo en Antigravity se midió un flag que lo resuelve, y lo declara su
-  // manifiesto.
+  // arriba (caso 393): medido en Antigravity, Claude Code y Gemini; Codex, por su documentación. Sin git en la
+  // carpeta de instalación, una subcarpeta ya queda afuera; en sidecar, también cada repo de producto con git
+  // propio. Sólo en Antigravity se midió un flag que lo resuelve, y lo declara su manifiesto.
   if (runner.capabilities && runner.capabilities.nativeHooks && !(paths.install === root && isGitRoot(root))) {
     const escape = runner.addDir ? `; desde ahí abrila con ${runner.command} ${runner.addDir} ${paths.install}` : ''
     output.log(`  ${name}: los guards corren en una sesión abierta en ${paths.install}, no en una subcarpeta sin git`

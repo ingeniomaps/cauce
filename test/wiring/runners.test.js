@@ -222,11 +222,8 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
   assert.equal(answers('pre-shell', 'sin-raiz').decision, 'deny')
 })
 
-// Un `agy` viejo no dejaba de dónde deducir la raíz: su payload mandaba `workspacePaths` vacío y un `Cwd` que
-// apuntaba al scratch del CLI o al home, y corría la copia registrada en `~/.gemini/config/plugins/`. Desde ahí
-// ni el cwd ni `__dirname` llevan al proyecto, así que el puente no encontraba la raíz y, como falla cerrado,
-// negaba cada herramienta. `agy` 1.4.0 manda la carpeta y descubre el plugin del proyecto (caso 392), pero el
-// puente sigue sacando la raíz del ancla escrita, y desde una carpeta ajena tiene que resolverla: es lo que mide esto.
+// El puente saca la raíz del ancla escrita al instalar, y desde una carpeta ajena tiene que resolverla: es lo que
+// mide esto. El porqué, en `OPS_ROOT` de `automatization/runners/antigravity/hook.js` (caso 392).
 //
 // Y su `hooks.json` existe sólo porque Cauce lo creó: fusionarlo dejaba viva la entrada anterior cuando
 // la ruta del puente cambiaba, y esa entrada muerta rompía la sesión entera.
@@ -281,9 +278,8 @@ test('install deja el puente de Antigravity resoluble desde una carpeta que no l
   }
 })
 
-// El puente tal como corre instalado, con los marcadores puestos. Se lo hace resolver desde una carpeta
-// que no lleva a ningún proyecto, que es lo que vivía un `agy` viejo con la copia registrada en `~/.gemini/`,
-// donde ni el `__dirname` ni el cwd llegan al repositorio del usuario.
+// El puente tal como corre instalado, con los marcadores puestos, resolviendo desde una carpeta que no lleva a
+// ningún proyecto (`OPS_ROOT`, en `hook.js`).
 test('el puente de Antigravity resuelve la raíz como corre instalado', () => {
   const os = require('node:os')
   const bridge = require(path.join(root, 'antigravity', 'hook.js'))

@@ -66,7 +66,7 @@ test('agregar una ruta escribible o una raíz la confirma una persona, con la en
     chat.close()
   }
   // Pedirlo nombrando el archivo y la ruta tampoco alcanza: es la misma salida angosta del 370. En una sesión
-  // propia, porque el bloqueo anterior dejó la entrada esperando y este mensaje la confirmaría.
+  // propia (`chatSession`).
   const order = chatSession()
   try {
     const outside = { ...BASE, writableOutsideRoots: [`${OUT}/cache`] }
@@ -110,9 +110,8 @@ test('un fragmento o un comando sobre cualquiera de los dos archivos se frena: n
   blocked('ops-config', edit(file, '["/"]'), /no puede verificar no autoriza/)
   blocked('ops-config', edit(file, '{"allowPush": true}'), /no puede verificar no autoriza/)
   blocked('ops-config', write(['~']), /no puede verificar no autoriza/)
-  // Por shell nombrar el archivo tampoco abre nada: un comando no dice con qué queda (revisión del 373). Lo
-  // que sí abre es confirmar el bloqueo, a ciegas y por ese turno: es la única vía de un runner sin
-  // herramienta de edición con contenido.
+  // Por shell nombrar el archivo tampoco abre nada; confirmar el bloqueo sí, por ese turno (revisión del 373).
+  // El porqué, en `asked` y `judgeCommand` (`engine/hooks/ops-config.js`).
   const widen = `sed -i 's/"workspaceRoots": \\[/"workspaceRoots": [{"path":"~"},/' ${file}`
   const chat = chatSession()
   try {
@@ -147,16 +146,15 @@ test('un fragmento o un comando sobre cualquiera de los dos archivos se frena: n
   }
 })
 
-// Lo que cuenta es dónde cae la entrada, no cómo está escrita: declarar un enlace de adentro que lleva afuera
-// abre lo de afuera, y comparado por texto quedaba bajo la raíz y pasaba sin confirmar (revisión del 373).
+// Revisión del 373: una entrada se juzga por dónde cae, no por cómo está escrita. El porqué, en `opened`
+// (`engine/hooks/ops-config.js`).
 test('declarar un enlace de adentro que lleva afuera ensancha, y el bloqueo muestra a dónde lleva', () => {
   const { write } = instance('ops-hook-declara-enlace-')
   const viaLink = { ...BASE, writableOutsideRoots: ['../app/enlace'] }
   assert.match(messageOf('ops-config', write(viaLink)), new RegExp(`\\n {2}declara ${OUT}\\n`))
   const asRoot = { ...BASE, workspaceRoots: [...BASE.workspaceRoots, { name: 'x', path: '../app/enlace/sub' }] }
   assert.match(messageOf('ops-config', write(asRoot)), new RegExp(`\\n {2}declara ${OUT}/sub\\n`))
-  // Una raíz de producto se resuelve como la resuelve el límite, que no expande `~`: la entrada que se
-  // confirma es la que después rige.
+  // Una raíz de producto con `~` se muestra como la resuelve el límite.
   const tilde = { ...BASE, workspaceRoots: [...BASE.workspaceRoots, { name: 'y', path: '~/datos' }] }
   assert.match(messageOf('ops-config', write(tilde)), /\n {2}declara \/.*acme-ops\/~\/datos\n/)
 })

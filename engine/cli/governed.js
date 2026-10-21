@@ -1,8 +1,7 @@
 'use strict'
 
-// Qué archivos de un plan va a frenar el guard de gobernanza al commitear, contestado antes de construir. El
-// commit de un subagente no puede esperar la aprobación de una persona, así que enterarse ahí tira Build,
-// Review, Verify y QA ya pagados (caso 383). La regla es la del guard, no una copia: `governedOf` es la misma
+// Qué archivos de un plan va a frenar el guard de gobernanza al commitear, contestado antes de construir (caso 383;
+// por qué importa saberlo antes, en `autobuild`). La regla es la del guard, no una copia: `governedOf` es la misma
 // función, y la aprobación se descuenta del mismo `planning/.ops-approval`.
 
 const fs = require('node:fs')

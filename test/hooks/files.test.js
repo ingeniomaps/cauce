@@ -155,11 +155,8 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
   }
 })
 
-// Caso 369. Qué es una prueba lo decide el nombre, y la lista era corta: un módulo ESM, una prueba de
-// Cypress o de punta a punta fuera de `test/` no contaban, así que borrarlas o apagarlas pasaba. Entran
-// las que se midieron sobre repositorios reales sin un solo falso positivo; la forma con guion queda
-// afuera a propósito —`load-test.js` y los dobles `*.fake-spec.ts` no son pruebas— y un nombre como
-// `FooTest.java` sin decidir, por falta de datos.
+// Caso 369: un `.mjs`, un `.cy.` o un `.e2e.` fuera de `test/` no contaban como prueba, y borrarlos pasaba.
+// Qué se midió y qué queda afuera a propósito, en `isTestFile`.
 test('test-evidence reconoce los nombres de prueba corrientes fuera de una carpeta de pruebas', () => {
   const remove = (name) => ({ tool_input: {
     patch: `*** Begin Patch\n*** Delete File: ${name}\n*** End Patch`,

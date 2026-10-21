@@ -54,6 +54,8 @@ function initRepo(root) {
   git(['config', 'user.name', 'Prueba'], root)
 }
 
+// Una sesión de chat nueva. Cada orden medida va en la suya: un bloqueo deja el ítem esperando, y el mensaje
+// siguiente que no lo niegue lo confirmaría —que es el canal, no el guard que se prueba—.
 function chatSession() {
   const { DIR } = require('../../engine/hooks/chat')
   const session = `prueba-${process.pid}-${sessions += 1}`

@@ -342,12 +342,11 @@ test('editar sólo comentarios de la aprobación pasa sin nombrarla, y agregar u
     const silent = chat.says('seguí con lo tuyo')
     assert.doesNotThrow(() => execute('workspace-boundary',
       edit(silent, '# aprobado mientras dure el hito', '# aprobado para siempre')))
-    // Quitar una línea tampoco se pregunta: una aprobación más corta autoriza menos.
+    // Quitar una línea tampoco se pregunta.
     assert.doesNotThrow(() => execute('workspace-boundary', edit(silent, 'src/x.js\n', '')))
     blocked('workspace-boundary', edit(silent, '# aprobado mientras dure el hito', '# nota\nsrc/nuevo.js'),
       /aprobarse solo[\s\S]*src\/nuevo\.js/)
-    // Borrar caracteres también puede activar una línea: lo que se juzga es el archivo que queda, no el
-    // fragmento que entra. Lo encontró la revisión del PR que cerró el caso.
+    // Borrar caracteres también puede activar una línea (el porqué, en `resulting`).
     fs.writeFileSync(approval, '#push origin main\nsrc/x.js\n')
     blocked('workspace-boundary', edit(silent, '#', ''), /aprobarse solo[\s\S]*push origin main/)
     blocked('workspace-boundary', edit(silent, 'main', 'main\nsrc/otro.js'), /src\/otro\.js/)

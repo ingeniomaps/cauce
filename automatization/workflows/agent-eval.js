@@ -106,7 +106,8 @@ if (!context || !context.items || !context.items.length) {
 }
 // La lista la trae un agente, y lo que devuelve se comprueba acá en vez de confiarse a la instrucción:
 // dos corridas de una sesión comparten scratchpad, y una leyó la lista de otro cargo (caso 387). El
-// filtro de casos la frenó por accidente; sin filtro habría juzgado casos ajenos sin decir nada.
+// filtro de casos la frenó por accidente, porque el id no estaba; sin filtro, o con un id que comparten 32
+// cargos, habría juzgado los casos ajenos contra el SKILL.md propio sin decir nada.
 if (context.subject !== AGENT) {
   return stop('casos-ajenos',
     `la lista de casos que llegó es de ${context.subject || '(sin sujeto)'}, no de ${AGENT}: no se corre`)

@@ -399,8 +399,7 @@ test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo 
     blocked('dependencies', commit(repo('package-lock.json', change)), /sin actualizar su lockfile/)
   }
 
-  // Con pnpm, lo mismo que con npm: medido clave por clave con pnpm 10.30.2 (caso 375). Y lo que sí mueve su
-  // lock —`pnpm.overrides`, `resolutions`— no está en la lista inerte, así que sigue frenando.
+  // Con pnpm, la lista inerte de `dependencies.js` (caso 375); `pnpm.overrides` y `resolutions` siguen frenando.
   assert.doesNotThrow(() => execute('dependencies', commit(repo('pnpm-lock.yaml', (p) => { p.scripts.cov = 'x' }))))
   // Las claves que npm registra y pnpm no: el bump de versión de cada release es la que más se cruza (caso 403).
   for (const [what, change] of [

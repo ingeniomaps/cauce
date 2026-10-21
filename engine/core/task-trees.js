@@ -124,8 +124,8 @@ function taskTrees(planning, folders) {
 
 // Los árboles de las líneas declaradas (caso 394), que git tiene registrados como árboles de su repositorio.
 // Caen dentro de la carpeta de sesión, que no siempre es una raíz: con una raíz por repositorio, sin esto el
-// guard frenaba la primera escritura de cada línea. Lo que se abre es el árbol y no la carpeta de la línea,
-// donde lo demás son enlaces a lo que ya se juzga por su cuenta.
+// guard frenaba la primera escritura de cada línea. Lo que se abre es el árbol y no la carpeta de la línea:
+// lo que quede ahí además —los enlaces de antes de 0.113.0— no es trabajo de la línea.
 function lineTrees(root) {
   return LT.trees(root).filter(({ source, tree }) => {
     const repo = repository(source)

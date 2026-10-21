@@ -314,10 +314,8 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   assert.match(etapa.prompt, /cada campo tiene su tope/, 'el resto del esquema queda corto')
   assert.match(etapa.prompt, /missing y humanAction hasta 400/,
     'y el tope nombra a los campos de la etapa que frena, que es la que más escribe')
-  // En caracteres y no en palabras: es lo que el esquema mide, y pedirlo en otra unidad deja al agente
-  // presupuestando contra algo que nadie comprueba. Y por debajo del techo (caso 379), sin el techo a la
-  // vista: el agente escribe al número más alto que ve, y nombrarle el techo se comía el margen (caso 386).
-  // Los dos porqués viven junto al esquema; acá se fija que pida 800 y que no nombre ningún techo.
+  // En caracteres, por debajo del techo (caso 379) y sin nombrarlo (caso 386). El porqué del 379 está junto al
+  // prompt y el del 386 junto al esquema, en `flow.js`; acá se fija que pida 800 y que no nombre ningún techo.
   assert.match(etapa.prompt, /summary hasta 800 caracteres,/,
     'y lo dice en la unidad que se rechaza, por debajo del techo')
   assert.doesNotMatch(etapa.prompt, /admite \d+/, 'sin decirle el techo, que es el número al que escribe')

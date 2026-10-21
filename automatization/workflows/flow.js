@@ -187,7 +187,7 @@ const BASE = `Nunca inventes clientes, métricas, restricciones ni decisiones. N
   `haría falta averiguar. No promuevas trabajo al BACKLOG, no escribas en sistemas externos y no ` +
   `declares validado nada sin evidencia observable.`
 
-// Tres comandos deterministas en un solo agente. Eran dos agentes, y el segundo además leía
+// Cinco comandos deterministas en un solo agente. Eran dos agentes, y el segundo además leía
 // `organization/` "como contexto para etapas siguientes": cada etapa es un agente nuevo con su
 // propio contexto, así que esa lectura no llegaba a ninguna parte y sólo costaba tokens.
 const contract = await agent(

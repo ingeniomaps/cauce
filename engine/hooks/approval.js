@@ -56,8 +56,9 @@ function pending(root, files, input, asked) {
   return CHAT.unauthorized(input, left(root, files), asked)
 }
 
-// Lo mismo para los gates de commit —`governance`, `verify` y `dependencies`—, que preguntan cada vez: no
-// conceden nada y no heredan lo que la sesión venía concediendo.
+// Lo mismo sin heredar lo que la sesión venía concediendo: pregunta cada vez y no concede nada. Lo usan los gates
+// de commit —`governance`, `verify`, `comments` y `dependencies`— y los guards que tampoco heredan: los límites,
+// la línea y la configuración.
 //
 // Commitear está del lado de publicar y no del de leer, y por qué esa diferencia decide quién hereda está
 // en `push.js`. Lo propio de un commit es que el objeto del permiso se mueve solo: lo que autoriza uno no
