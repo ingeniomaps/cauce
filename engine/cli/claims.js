@@ -115,11 +115,16 @@ function release(dir, slug, cli) {
   const from = CL.runner(asked.id, path.join(root, '..'))
   const taken = CL.read(root).find((one) => one.slug === slug)
   if (!taken) return fail(`${slug} no está tomada por nadie.`, USAGE)
-  if (taken.runner !== from) {
+  // Una tarea en DONE ya no tiene trabajo que liberar: el reclamo no reserva nada, y quien la cierra suele ser otra
+  // sesión que la de quien la tomó —el revisor que cierra lo que construyó otro—. Negárselo dejaba el reclamo que
+  // `check` manda a soltar con este mismo comando (caso 412). La de una tarea en curso sigue siendo del que la tomó.
+  const closed = P.readDone(root).set.has(slug)
+  if (taken.runner !== from && !closed) {
     return fail(`${slug} es de ${taken.owner}. Si se abandonó, borrá ${taken.at} a mano.`, REFUSED)
   }
   fs.rmSync(CL.file(root, slug))
-  console.log(`✓ ${slug} soltada; volvió a la cola`)
+  console.log(closed ? `✓ ${slug} soltada: ya estaba en DONE, el reclamo no reservaba nada`
+    : `✓ ${slug} soltada; volvió a la cola`)
 }
 
 // Qué runners tienen trabajo abierto, para que un agente pueda preguntar antes de inventarse un id.

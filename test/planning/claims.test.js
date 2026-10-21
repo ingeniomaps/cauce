@@ -74,6 +74,33 @@ test('dos personas no reciben la misma tarea, y la segunda no puede pisar a la p
   assert.match(despues.stdout, /^TASK {3}dashboard/m, 'soltada, vuelve a la cola')
 })
 
+// Caso 412: el reclamo de una tarea ya en DONE lo suelta cualquiera, y uno de una tarea en curso de otro se sigue
+// negando, como arriba. El porqué, en `release` de `engine/cli/claims.js`.
+test('el reclamo de una tarea cerrada lo suelta quien la cerró, aunque la haya tomado otro', () => {
+  const dir = planning('cauce-claims-cerrada-')
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard'])).status, 0)
+  const otro = { CAUCE_RUNNER: 'otro' }
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'boton'], undefined, otro)).status, 0)
+  const backlog = path.join(dir, 'BACKLOG.md')
+  fs.writeFileSync(backlog, fs.readFileSync(backlog, 'utf8').replace(/^- \[ \] \*\*dashboard\*\*.*\n/m, ''))
+  fs.writeFileSync(path.join(dir, 'done', 'dashboard.md'), '- [x] **dashboard** — Grilla\n  acept: filtra por fecha\n'
+    + '  fecha: 2026-10-20\n  done: cerrada\n  qa: n/a — prueba\n  tests: A → npm test\n  commit: n/a — prueba\n'
+    + '  lane: lite\n  review: aprobado por el revisor\n')
+  const checked = () => { const out = run(['check', dir]); return `${out.stdout}${out.stderr}` }
+  assert.match(checked(), /dashboard ya está en DONE; soltala con `ops release`/)
+
+  const revisor = como('luis@acme.com', () => run(['release', dir, 'dashboard']))
+  assert.equal(revisor.status, 0, revisor.stderr)
+  assert.match(revisor.stdout, /✓ dashboard soltada: ya estaba en DONE, el reclamo no reservaba nada/)
+  assert.doesNotMatch(revisor.stdout, /volvió a la cola/, 'no vuelve a ninguna cola')
+  assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false)
+  assert.doesNotMatch(checked(), /ya está en DONE/)
+  // La que sigue en curso es de otro, y eso no cambió.
+  const ajena = como('luis@acme.com', () => run(['release', dir, 'boton']))
+  assert.equal(ajena.status, 1)
+  assert.match(ajena.stderr, /boton es de ana@acme\.com/)
+})
+
 test('la cola tomada entera no se anuncia como cola vacía', () => {
   const dir = planning('cauce-tomada-')
   for (const slug of ['dashboard', 'boton', 'reportes']) {

@@ -198,6 +198,26 @@ de compartir el plan se paga entonces, que es cuando sirve.
 Lo que no hay que hacer es empujar tu `wip/<runner>.md`: sería devolver a git el archivo que más cambia,
 todos los días, para resolver algo que pasa una vez cada tanto.
 
+## Una sesión construye y otra revisa
+
+Una tarea se puede repartir entre quien la construye y quien la juzga: un programador —de cualquier runner— y un
+revisor que no fue quien la escribió. El traspaso es por los archivos de planning, y no hace falta nada más que esto:
+
+- **Quien construye** reclama, escribe su plan en el WIP, construye y commitea, y ahí se detiene: deja el WIP en
+  `phase: Review`, con los pasos tachados, y no escribe en `done/` ni saca la tarea de la cola.
+- **Quien revisa** toma la tarea por ese estado. Juzga con lo que está en disco —la aceptación, el WIP, el diff de la
+  rama y la mutación que la aceptación declara, corrida en una copia—, no con el informe de quien construyó. Si aprueba,
+  hace el cierre entero: `done/<tarea>.md`, la tarea fuera de la cola, el WIP limpio y `ops release` del reclamo, que
+  suelta aunque lo haya tomado otro porque la tarea ya está en DONE. Si no aprueba, anota los hallazgos en
+  `## Bloqueos` del WIP y lo devuelve a `phase: Build`, sin soltar el reclamo: la tarea sigue siendo de quien la
+  construye, que la retoma desde los hallazgos.
+
+Dentro de una línea los dos tienen el mismo id —el de la instancia con la línea, desde cualquier carpeta—, así que el
+revisor ve el WIP del programador como propio y lo continúa: no hay que pasarle nada. La contracara es que ese WIP es
+el de los dos, así que **no trabajan la misma línea a la vez**: el revisor entra cuando el programador dejó
+`phase: Review`, y el programador vuelve cuando el revisor la devolvió. Si hace falta que trabajen en paralelo, cada
+uno declara su propio id con `CAUCE_RUNNER`, y entonces el revisor lee el plan del otro con `ops runners`.
+
 ## Cuando el equipo crece o se achica
 
 **No se escala por archivo: se escala por instancia.** Los umbrales no son leyes; son el momento de mirar.

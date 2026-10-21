@@ -84,7 +84,9 @@ invariantes.
    corregir.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real, como dice `QA.md`.
-12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
+12. Commit: stage explícito y commits verificables, uno por naturaleza del diff. Si la tarea la revisa otra sesión,
+    quien construye se detiene acá con el WIP en `phase: Review`, y quien revisa la juzga sobre lo commiteado y hace
+    Done (`delivery/teamwork.md`, «Una sesión construye y otra revisa»).
 13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
     el reclamo y cerrar la épica si no le queda ninguna historia abierta. El estado de planning se
     commitea en la rama en la que está el repositorio de la instancia. Si ésa es una rama viva que no
