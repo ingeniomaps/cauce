@@ -11,7 +11,7 @@
 const path = require('node:path')
 const crypto = require('node:crypto')
 const P = require('./parser')
-const PC = require('./contracts')
+const DE = require('./done-entry')
 
 const BASELINE = '.adoption-baseline'
 
@@ -97,7 +97,7 @@ function report({ done, epics = [], adopted = [] }) {
     const entry = done.entries.find((candidate) => candidate.slug === slug)
     if (!entry) {
       warnings.push(`${BASELINE}: ${slug} no está en done/; sacalo de la lista`)
-    } else if (!PC.doneEntryErrors(entry, epics).length) {
+    } else if (!DE.doneEntryErrors(entry, epics).length) {
       warnings.push(`${BASELINE}: ${slug} ya cumple el contrato; retiralo poniéndole \`#~\` delante`)
     }
   }

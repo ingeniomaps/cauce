@@ -563,5 +563,10 @@
     "lines": 100,
     "branches": 96,
     "functions": 100
+  },
+  "engine/planning/done-entry.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
   }
 }

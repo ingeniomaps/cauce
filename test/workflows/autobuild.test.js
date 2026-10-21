@@ -51,8 +51,8 @@ test('el cierre escribe el archivo de la tarea, con la fecha que dio el motor', 
 // al final, con el trabajo hecho. Los campos no se listan acá: los nombra el propio validador al quejarse
 // de una entrada vacía, así que agregar uno rompe esta prueba en vez de pasar en silencio.
 test('el cierre nombra todos los campos que el contrato de una entrada exige', async () => {
-  const PC = require('../../engine/planning/contracts')
-  const faltantes = PC.doneEntryErrors({ slug: 'T-1', source: 'done/T-1.md' }, [])
+  const DE = require('../../engine/planning/done-entry')
+  const faltantes = DE.doneEntryErrors({ slug: 'T-1', source: 'done/T-1.md' }, [])
     .map((error) => (error.match(/falta (\w+):/) || [])[1]).filter(Boolean)
   assert.ok(faltantes.length >= 5, `el validador nombró pocos campos: ${faltantes.join(', ')}`)
 

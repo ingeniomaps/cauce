@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
+const DE = require('../../engine/planning/done-entry')
 const P = require('../../engine/planning/parser')
 
 // Por qué el corte mira lo que viene detrás lo explica `TRACE_SPLIT` en el motor. Acá se fijan las dos
@@ -19,33 +20,33 @@ test('el punto y coma de la prosa no parte una traza, y el que separa sí', () =
   const conProsa = 'A → `runtime.test.ts`, con los rojos por mutación: quitar el HEALTHCHECK pone rojos '
     + 'tres casos; `--start-period=1m` pone rojo el techo de 30 s; y un `USER root` posterior pone rojo '
     + 'el caso del usuario'
-  assert.equal(PC.validTestTrace(conProsa), true, 'una sola traza con prosa adentro es una traza')
-  assert.equal(PC.validTestTrace('C1 → uno.js; C2 → dos.js; n/a — el tercero no tiene superficie'), true,
+  assert.equal(DE.validTestTrace(conProsa), true, 'una sola traza con prosa adentro es una traza')
+  assert.equal(DE.validTestTrace('C1 → uno.js; C2 → dos.js; n/a — el tercero no tiene superficie'), true,
     'y tres trazas separadas siguen siendo tres')
-  assert.equal(PC.validTestTrace('esto no es una traza'), false, 'lo que no traza sigue sin trazar')
-  assert.equal(PC.validTestTrace('A → uno.js; esto tampoco'), true,
+  assert.equal(DE.validTestTrace('esto no es una traza'), false, 'lo que no traza sigue sin trazar')
+  assert.equal(DE.validTestTrace('A → uno.js; esto tampoco'), true,
     'el `;` que no abre otra traza es puntuación, así que el campo entero es la primera')
 
   // El rastreo de criterios usa el mismo corte, y sigue cazando lo que tiene que cazar a los dos lados
   // de un separador de verdad. Que **comparta** el corte no lo prueba ninguna aserción y está dicho en el
   // fuente: hoy las dos formas de partir dan el mismo resultado.
   const entrada = (tests) => ({ source: 'done/x.md', slug: 'x', tests, decisions: '[fuente: x]' })
-  assert.deepEqual(PC.validateDoneEntry(entrada('C1 → uno.js, y algo; C2 → dos.js'), ['C1', 'C2']), [],
+  assert.deepEqual(DE.validateDoneEntry(entrada('C1 → uno.js, y algo; C2 → dos.js'), ['C1', 'C2']), [],
     'los dos criterios se rastrean a través del separador de verdad')
-  assert.deepEqual(PC.validateDoneEntry(entrada('C1 → uno.js'), ['C1', 'C2']),
+  assert.deepEqual(DE.validateDoneEntry(entrada('C1 → uno.js'), ['C1', 'C2']),
     ['done/x.md x: la historia cita C2 y tests: no lo rastrea'],
     'y el criterio citado que nadie rastrea se sigue cazando')
 })
 
 test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
-  assert.equal(PC.validTestTrace('C1 → test:create; C2 -> npm test'), true)
-  assert.equal(PC.validTestTrace('A → make lint'), true)
-  assert.equal(PC.validTestTrace('n/a — cambio solo documental'), true)
-  assert.equal(PC.validTestTrace('tests passed'), false)
-  assert.equal(PC.validDecisionTrace('TTL de 72h. [supuesto: ventana del MVP]'), true)
-  assert.equal(PC.validDecisionTrace('Se reutiliza el guard. [fuente: src/auth.js]'), true)
-  assert.equal(PC.validDecisionTrace('TTL de 72h.'), false)
-  assert.deepEqual(PC.validateDoneEntry({
+  assert.equal(DE.validTestTrace('C1 → test:create; C2 -> npm test'), true)
+  assert.equal(DE.validTestTrace('A → make lint'), true)
+  assert.equal(DE.validTestTrace('n/a — cambio solo documental'), true)
+  assert.equal(DE.validTestTrace('tests passed'), false)
+  assert.equal(DE.validDecisionTrace('TTL de 72h. [supuesto: ventana del MVP]'), true)
+  assert.equal(DE.validDecisionTrace('Se reutiliza el guard. [fuente: src/auth.js]'), true)
+  assert.equal(DE.validDecisionTrace('TTL de 72h.'), false)
+  assert.deepEqual(DE.validateDoneEntry({
     source: 'DONE.md', slug: 'demo', tests: '', decisions: '',
   }), ['DONE.md demo: falta tests:'])
 })
@@ -54,27 +55,27 @@ test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
 // mañana` pasaba el validador entero. R9 pide lo contrario —el artefacto manda—, así que el campo
 // apunta a un sha o declara por qué no hay ninguno, con la misma salida explícita que `tests:`.
 test('commit: apunta a un sha real o declara por qué no lo hay', () => {
-  assert.equal(PC.validCommitTrace('abc1234 feat(planning): validar el estado'), true)
-  assert.equal(PC.validCommitTrace('9f68583a1b2c3d4 fix(tools): correr el shim (api@main)'), true)
-  assert.equal(PC.validCommitTrace('n/a — la tarea sólo abrió una fila en HUMAN_ACTIONS'), true)
-  assert.equal(PC.validCommitTrace('pendiente, lo subo mañana'), false)
+  assert.equal(DE.validCommitTrace('abc1234 feat(planning): validar el estado'), true)
+  assert.equal(DE.validCommitTrace('9f68583a1b2c3d4 fix(tools): correr el shim (api@main)'), true)
+  assert.equal(DE.validCommitTrace('n/a — la tarea sólo abrió una fila en HUMAN_ACTIONS'), true)
+  assert.equal(DE.validCommitTrace('pendiente, lo subo mañana'), false)
   // Una tarea que mezcla naturalezas lleva un commit por naturaleza, y cada uno responde por sí mismo:
   // validar sólo el primero dejaba pasar «y el otro ya lo subo», que es la mitad sin artefacto.
-  assert.equal(PC.validCommitTrace(
+  assert.equal(DE.validCommitTrace(
     'c58812a refactor(orders): extract resolve; 584ed11 docs(orders): drop status (api@main; sin footer)',
   ), true, 'el `;` del paréntesis final no es un separador: detrás no hay sha')
-  assert.equal(PC.validCommitTrace(
+  assert.equal(DE.validCommitTrace(
     '3e56e42 [Refactor] Move parentLabel | fc6ecc4 [Fix] Translate to pt (front@feature/DROP-26950)',
   ), true)
-  assert.equal(PC.validCommitTrace('abc1234 feat(auth): create account | pendiente el segundo'), false)
+  assert.equal(DE.validCommitTrace('abc1234 feat(auth): create account | pendiente el segundo'), false)
   // El `;` seguido de prosa se lee como nota, no como tramo: es indistinguible del `;` de adentro del
   // paréntesis final de arriba, que una instancia real ya escribe, y elegir lo contrario rechazaría
   // 71 entradas ya escritas por una forma hipotética.
-  assert.equal(PC.validCommitTrace('abc1234 feat(auth): create; nota al margen'), true)
-  assert.equal(PC.validCommitTrace('ver el PR'), false)
-  assert.equal(PC.validCommitTrace('abc1234'), false, 'un sha sin asunto no dice qué se entregó')
-  assert.equal(PC.validCommitTrace('n/a'), false, 'la salida explícita lleva su razón')
-  assert.deepEqual(PC.validateDoneEntry({
+  assert.equal(DE.validCommitTrace('abc1234 feat(auth): create; nota al margen'), true)
+  assert.equal(DE.validCommitTrace('ver el PR'), false)
+  assert.equal(DE.validCommitTrace('abc1234'), false, 'un sha sin asunto no dice qué se entregó')
+  assert.equal(DE.validCommitTrace('n/a'), false, 'la salida explícita lleva su razón')
+  assert.deepEqual(DE.validateDoneEntry({
     source: 'DONE.md', slug: 'demo', tests: 'A → npm test', commit: 'pendiente, lo subo mañana',
   }), ['DONE.md demo: commit debe apuntar a <sha> <asunto> o justificar n/a — razón'])
 })
@@ -147,21 +148,21 @@ test('la evidencia de DONE rastrea el criterio que la historia citó', () => {
     source: 'DONE.md', slug: 'alta-email-nuevo', tests, commit: 'abc1234 feat(auth): create account',
   })
 
-  assert.deepEqual(PC.validateDoneEntry(entry('C1 → test:auth crea cuenta'), ['C1']), [])
-  assert.deepEqual(PC.validateDoneEntry(entry('C1 → test:auth; C2 → test:auth duplicado'), ['C1']), [],
+  assert.deepEqual(DE.validateDoneEntry(entry('C1 → test:auth crea cuenta'), ['C1']), [])
+  assert.deepEqual(DE.validateDoneEntry(entry('C1 → test:auth; C2 → test:auth duplicado'), ['C1']), [],
     'rastrear de más no es un error: la prueba puede cubrir dos criterios')
   assert.deepEqual(
-    PC.validateDoneEntry(entry('C2 → test:auth duplicado'), ['C1']),
+    DE.validateDoneEntry(entry('C2 → test:auth duplicado'), ['C1']),
     ['DONE.md alta-email-nuevo: la historia cita C1 y tests: no lo rastrea'],
   )
   assert.deepEqual(
-    PC.validateDoneEntry(entry('C1 → test:auth'), ['C1', 'C3']),
+    DE.validateDoneEntry(entry('C1 → test:auth'), ['C1', 'C3']),
     ['DONE.md alta-email-nuevo: la historia cita C3 y tests: no lo rastrea'],
   )
   // La salida explícita se respeta: ya declara su razón y se lee en el propio DONE.
-  assert.deepEqual(PC.validateDoneEntry(entry('n/a — no hay superficie ejecutable'), ['C1']), [])
+  assert.deepEqual(DE.validateDoneEntry(entry('n/a — no hay superficie ejecutable'), ['C1']), [])
   // Sin épica no hay criterio que cruzar.
-  assert.deepEqual(PC.validateDoneEntry(entry('A → make lint'), []), [])
+  assert.deepEqual(DE.validateDoneEntry(entry('A → make lint'), []), [])
 })
 
 // La creencia que tres cargos distintos escribieron como hecho y usaron para no escribir nada: que una
@@ -211,7 +212,7 @@ test('un campo de DONE que se envuelve se lee entero', () => {
 
   assert.equal(entry.decisions, 'se eligió A y no B porque el borde que C describe lo exige '
     + '[fuente: planning/adr/001-decision.md]')
-  assert.equal(PC.validDecisionTrace(entry.decisions), true, 'la cita está: cierra una línea más abajo')
+  assert.equal(DE.validDecisionTrace(entry.decisions), true, 'la cita está: cierra una línea más abajo')
   assert.equal(entry.acceptance, 'criterio observable', 'el campo anterior no se lleva al siguiente')
   assert.equal(entry.commit, 'abc1234 feat(x): subject')
 })
@@ -353,11 +354,11 @@ test('tests: todo n/a cuenta como n/a en las tres formas documentadas', () => {
   const filesOf = () => ['apps/api/index.js']
   for (const tests of ['n/a — sin superficie', 'C1 → n/a — sin superficie', 'A → n/a — sin superficie',
     'C1 → n/a — x; C2 → n/a — y']) {
-    assert.match(PC.surfaceWithoutTests([entry(tests)], filesOf).join('|'), /alta: tests: n\/a dice que no hay/,
+    assert.match(DE.surfaceWithoutTests([entry(tests)], filesOf).join('|'), /alta: tests: n\/a dice que no hay/,
       `«${tests}» tiene que contar como n/a`)
   }
-  assert.deepEqual(PC.surfaceWithoutTests([entry('C1 → n/a — x; C2 → test/alta.test.js › «alta»')], filesOf),
+  assert.deepEqual(DE.surfaceWithoutTests([entry('C1 → n/a — x; C2 → test/alta.test.js › «alta»')], filesOf),
     [], 'con una traza real no es todo n/a')
-  assert.deepEqual(PC.surfaceWithoutTests([entry('C1 → n/a — x')], () => ['README.md']), [],
+  assert.deepEqual(DE.surfaceWithoutTests([entry('C1 → n/a — x')], () => ['README.md']), [],
     'y un commit de documentación no tiene superficie')
 })
