@@ -500,6 +500,8 @@ const CONTRACT = {
     staleAdapter: { type: 'array', items: { type: 'string' } },
     // Las líneas declaradas; por qué, donde se decide la de esta corrida.
     lines: { type: 'array', items: { type: 'string' } },
+    // El Mapa real de `workspace.md`, si el proyecto lo escribió; por qué, en `SCOPE`.
+    map: { type: 'string' },
   },
 }
 
@@ -724,7 +726,10 @@ const SCOPE = () => `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es 
   `no vuelvas a leer ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} ni ${P}/PROTOCOL.md.` +
   (governing.length ? ` Las reglas que rigen este proyecto son éstas, relativas a ${ROOT}: ${governing.join(', ')}. ` +
     'Leé las que toquen tu fase antes de planificar, construir o revisar; donde una propia contradice a una del ' +
-    'sistema, rige la propia.' : '')
+    'sistema, rige la propia.' : '') +
+  // Este preámbulo prohíbe releer `workspace.md`, así que el índice que el proyecto escribió ahí llega por acá o no
+  // llega (caso 409). Entrar por el mapa ahorra explorar el repositorio para encontrar dónde va el cambio.
+  (contract.map ? `\n\nDónde vive cada cosa, según el Mapa real del proyecto:\n${contract.map}` : '')
 // Lo que una revisión declara haber abierto viene con la ruta de esta máquina, y `review` va textual a
 // `done/`: no se le puede pedir a quien escribe que las acomode. Se les cambia el prefijo acá, a cada ruta
 // que cuelga de una raíz del proyecto; lo demás —el motor, un temporal— queda como vino (caso 321).
