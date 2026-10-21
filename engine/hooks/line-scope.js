@@ -222,4 +222,4 @@ function refusal(input, found) {
     + AP.HOW(null, held, input, held, { fixable: true, turn: true })
 }
 
-module.exports = { remember, strayed, refusal, gitTargets }
+module.exports = { DIR, remember, strayed, refusal, gitTargets }
