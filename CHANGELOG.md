@@ -14,6 +14,14 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.113.2] - 2026-10-21
+
+### Cambiado
+
+- **Nada cambia en lo que recibe tu instancia.** Esta versión deja al día la publicación del propio toolkit: reintentar
+  una publicación justo después de que npm la aceptó ya no vuelve a publicarla ni termina en rojo (caso 425). Al
+  actualizar no hay nada que hacer.
+
 ## [0.113.1] - 2026-10-21
 
 ### Corregido

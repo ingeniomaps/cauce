@@ -1,14 +1,15 @@
 ---
 caso: 425
 titulo: el reintento de release.yml vuelve a publicar lo que npm todavía no muestra, y cae en rojo después de correr la puerta entera
-estado: abierto
+estado: resuelto
+resuelto-en: 0.113.2
 prioridad: baja
 version-detectada: 0.113.0
 ---
 
 # 425 — Reintentar `release.yml` enseguida de un publish que salió lo lee como «no publicado», corre `npm run ci` y termina en «cannot publish over»
 
-**🔴 abierto** · detectado en 0.113.0 · arreglado en la rama `fix/case-425`, sin versión todavía · prioridad **baja**. No publica nada dos veces —npm lo impide— ni deja nada roto:
+**🟢 resuelto en 0.113.2** · detectado en 0.113.0 · prioridad **baja**. No publica nada dos veces —npm lo impide— ni deja nada roto:
 cuesta una corrida en rojo de unos tres minutos y un tercer intento. Pero contradice lo que el workflow y `AGENTS.md`
 prometen del reintento.
 
@@ -69,15 +70,16 @@ que hizo falta para que hubiera algo que reintentar.
   sobre reintentar con `gh workflow run release.yml`.
 - El cambio toca `.github/workflows/`: se empuja por SSH y lo mergea el dueño.
 
-## Arreglo
+## Cierre
 
-Hecho a pedido del dueño el 2026-10-21 («arregla el 425»). **Queda abierto hasta que tenga versión.** `release.yml` no
-viaja en el paquete —`files` de `package.json` deja fuera `.github/`—, así que este cambio no lleva entrada en el
-CHANGELOG ni justifica una versión propia: una 0.113.1 hecha sólo por él publicaría un paquete idéntico al 0.113.0. Y al
-mergearlo no hay ninguna versión abierta en el CHANGELOG —0.113.0 acaba de salir y no queda ningún caso abierto—, que es
-la que tomó el 220, cerrado en la 0.100.0 que salió el mismo día. El número existe cuando se abra la entrada siguiente, y
-en ese PR esta sección pasa a ser el `## Cierre` con `resuelto-en`. Esa release es además la primera corrida del
-workflow nuevo en GitHub, que es la prueba que acá falta.
+**Resuelto en 0.113.2**, a pedido del dueño el 2026-10-21 («arregla el 425»). `release.yml` no viaja en el paquete:
+`files` de `package.json` deja fuera `.github/`. Por eso este cambio no llevaba entrada propia en el CHANGELOG, y el plan
+era cerrarlo en la próxima versión que se abriera por otra cosa.
+
+**La 0.113.1 salió sin él, y fue un error.** El PR #834 seguía abierto cuando se mergeó la release de la 0.113.1, que
+salió con el 426 y dejó este caso afuera. Se vio antes del merge y se avisó recién después de publicar. El dueño decidió
+sacar la 0.113.2 para dejar todo al día en `main`. Su entrada en el CHANGELOG avisa a quien actualiza que no cambia nada
+de lo que recibe.
 
 - `Decide what this version still needs` lee de npm sólo el E404 como «no está». Cualquier otra falla frena con lo
   que contestó npm y «No se pudo preguntarle a npm si <versión> ya salió, y sin saberlo no se publica».
@@ -100,7 +102,9 @@ El enunciado, ítem por ítem:
   verde con la release creada.
 - **Corregir lo que afirma la idempotencia**: el comentario de `release.yml:19` dice que lo que npm todavía no muestra
   se reconoce al rechazarlo, y `AGENTS.md` lo mismo, con el costo de la puerta.
-- **Empujar por SSH y que lo mergee el dueño**: queda para el PR.
+- **Empujar por SSH y que lo mergee el dueño**: se hizo distinto. Por SSH, GitHub lo rechazó: la clave autentica como
+  una cuenta sin permiso en este repositorio. Se empujó por el remoto HTTPS con la credencial del proyecto, como los
+  workflows anteriores, y el dueño lo eligió así. El merge se hizo por su orden de dejar todo en `main` con la 0.113.2.
 
 **Lo que se corrió para saber que funciona.**
 
@@ -116,6 +120,8 @@ El enunciado, ítem por ítem:
   0.113.0, `published=false` para 9.9.9, y con el registro inalcanzable salió en 1 con «No se pudo preguntarle a npm».
   `Publish to npm` sobre 0.113.0 terminó en 0 con «0.113.0 ya estaba en npm: lo publicó una corrida anterior, sigue la
   release».
-- No se corrió el workflow en GitHub: hacerlo exige una release real. La primera release después del merge lo ejerce,
-  y es la que cierra el caso. El reintento dentro del intervalo sólo se puede ver si vuelve a fallar algo después del
-  publish.
+- La demora del registro se volvió a medir con la release de la 0.113.1, que todavía corrió con el workflow anterior.
+  La release de GitHub quedó creada a las 17:39:10Z, `npm view @ingeniomaps/cauce version` siguió devolviendo `0.113.0`
+  y npm fecha la versión a las 17:41:19Z. Es el mismo intervalo que el caso describe.
+- La release de la 0.113.2 es la primera corrida del workflow nuevo en GitHub. El camino del reintento dentro del
+  intervalo sólo se ejerce si algo vuelve a fallar después del publish.
