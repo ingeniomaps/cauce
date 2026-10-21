@@ -12,14 +12,14 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
 function instance(name) {
   const root = tempRoot(name)
   initRepo(root)
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], runner: {} }))
-  fs.cpSync(MOLDE, path.join(root, 'planning'), { recursive: true })
+  fs.cpSync(TEMPLATE, path.join(root, 'planning'), { recursive: true })
   fs.mkdirSync(path.join(root, 'automatization', 'tests'), { recursive: true })
   fs.mkdirSync(path.join(root, 'app'), { recursive: true })
   return root

@@ -8,13 +8,13 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
 // Una instancia sidecar con un repositorio al lado, que es el montaje que la guía recomienda para varios
 // agentes: `ops/` una sola vez y los árboles de trabajo aparte.
-function montar(nombre) {
-  const base = tempRoot(nombre)
+function mount(prefix) {
+  const base = tempRoot(prefix)
   const repo = path.join(base, 'producto')
   fs.mkdirSync(path.join(repo, 'api'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'api', 'main.go'), 'package main\n')
@@ -26,7 +26,7 @@ function montar(nombre) {
 
   const ops = path.join(base, 'producto-ops')
   fs.mkdirSync(ops, { recursive: true })
-  fs.cpSync(MOLDE, path.join(ops, 'planning'), { recursive: true })
+  fs.cpSync(TEMPLATE, path.join(ops, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({
     project: 'demo', mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '../producto' }],
   }, null, 2))
@@ -39,4 +39,4 @@ function montar(nombre) {
   return { base, repo, planning: path.join(ops, 'planning') }
 }
 
-module.exports = { montar, git }
+module.exports = { mount, git }

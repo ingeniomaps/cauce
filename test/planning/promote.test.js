@@ -13,7 +13,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-const epic = (hitos, extra = '') => `---
+const epic = (milestones, extra = '') => `---
 epic: 004
 title: Pedidos
 status: open
@@ -44,9 +44,9 @@ Pedidos.${extra}
 ## Riesgos y decisiones humanas
 
 - Ninguno.
-${hitos}`
+${milestones}`
 
-const HITOS = `
+const MILESTONES = `
 ## Hitos
 
 - **alta-pedidos** — Alta de pedidos
@@ -68,7 +68,7 @@ function instance(name, text) {
 }
 
 test('promote escribe un hito por cada uno propuesto, con su orden, su línea y sus historias', () => {
-  const planning = instance('hitos', epic(HITOS))
+  const planning = instance('hitos', epic(MILESTONES))
   // La línea está declarada (caso 394): no hay nada que avisar sobre ella.
   const ops = path.dirname(planning)
   const config = JSON.parse(fs.readFileSync(path.join(ops, 'ops.config.json'), 'utf8'))
@@ -117,18 +117,19 @@ test('sin ## Hitos la épica entra como un solo hito con su slug, también gradu
 })
 
 test('promote se niega sin escribir nada: marcadores, reparto mal escrito, hito ya existente, épica ausente', () => {
-  const planning = instance('niega', epic(HITOS, ' Por definir.'))
+  const planning = instance('niega', epic(MILESTONES, ' Por definir.'))
   const placeholder = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(placeholder.status, 1)
   assert.match(placeholder.stderr, /marcador.*Por definir/)
   assert.equal(fs.existsSync(path.join(planning, 'backlog', 'alta-pedidos.md')), false)
 
-  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), epic(HITOS.replace('  - ver-pedido\n', '')))
+  const trimmed = MILESTONES.replace('  - ver-pedido\n', '')
+  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), epic(trimmed))
   const broken = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(broken.status, 1)
   assert.match(broken.stderr, /ver-pedido sin hito/)
 
-  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), epic(HITOS))
+  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), epic(MILESTONES))
   fs.writeFileSync(path.join(planning, 'backlog', 'consola.md'), '---\norder: 15\n---\n\n## Hito consola — Ya\n')
   const taken = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(taken.status, 1)
@@ -141,7 +142,7 @@ test('promote se niega sin escribir nada: marcadores, reparto mal escrito, hito 
 })
 
 test('promote avisa de una línea que todavía no tiene árbol ni rama, y promueve igual', () => {
-  const planning = instance('sin-linea', epic(HITOS.replace('(line: admin)', '(line: admn)')))
+  const planning = instance('sin-linea', epic(MILESTONES.replace('(line: admin)', '(line: admn)')))
   const result = run(['promote', planning, 'epic-004-pedidos'])
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /line admn no está armada todavía: nadie la toma hasta "ops line \. admn <repo>\.\.\."/)
@@ -150,7 +151,7 @@ test('promote avisa de una línea que todavía no tiene árbol ni rama, y promue
 
 // Una línea de antes de 0.111.0 no está declarada: existe porque tiene su rama en la instancia.
 test('promote cuenta como armada una línea de antes, que tiene su rama', () => {
-  const planning = instance('linea-vieja', epic(HITOS))
+  const planning = instance('linea-vieja', epic(MILESTONES))
   const ops = path.dirname(planning)
   const git = (...args) => assert.equal(spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args],
     { cwd: ops, encoding: 'utf8' }).status, 0)

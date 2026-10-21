@@ -313,7 +313,7 @@ function context(dir, cli) {
       console.log(`WAIT   ${one.slug}: espera a ${one.dep}${one.owner ? ` (${one.owner})` : ''}`)
     }
   }
-  const aMano = () => {
+  const byHand = () => {
     for (const slug of report.manual) {
       console.log(`MANUAL ${slug}: la hace la sesión, sin agentes${report.manualHeld.includes(slug)
         ? ` — reclamada por este runner: terminala o soltala con \`ops release <planning> ${slug}\`` : ''}`)
@@ -340,7 +340,7 @@ function context(dir, cli) {
     // el equipo, y lo que corresponde es hablar con quien la tiene.
     tomadas()
     espera()
-    aMano()
+    byHand()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
     return reglas()
@@ -370,7 +370,7 @@ function context(dir, cli) {
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
   tomadas()
   espera()
-  aMano()
+  byHand()
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()

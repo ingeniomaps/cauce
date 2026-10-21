@@ -134,8 +134,8 @@ test('los guards de commit juzgan el árbol de una línea declarada', () => {
       blocked('git-add', { cwd, tool_input: { command } }, /está prohibido/)
     }
     // Lo que no es de ninguna línea ni raíz sigue afuera, como pide R26.
-    const ajeno = fs.realpathSync(tempRoot('cauce-hook-linea-ajeno-'))
-    assert.doesNotThrow(() => execute('git-add', { cwd: ajeno, tool_input: { command: `git add ${all}` } }))
+    const foreign = fs.realpathSync(tempRoot('cauce-hook-linea-ajeno-'))
+    assert.doesNotThrow(() => execute('git-add', { cwd: foreign, tool_input: { command: `git add ${all}` } }))
   } finally {
     if (root === undefined) delete process.env.OPS_ROOT
     else process.env.OPS_ROOT = root
