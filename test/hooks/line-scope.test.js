@@ -43,12 +43,14 @@ function session(name) {
 }
 
 // El shim instalado le da la raíz a los guards con `OPS_ROOT` (`run-hook.sh`); sin ella, desde el árbol no la hallan.
+// Y sin `CI`, que apaga el chat (`present`, chat.js) y deja sin persona a las pruebas que confirman.
 function withRoot(ops, body) {
-  const saved = { root: process.env.OPS_ROOT, runner: process.env.CAUCE_RUNNER }
+  const saved = { root: process.env.OPS_ROOT, runner: process.env.CAUCE_RUNNER, ci: process.env.CI }
   process.env.OPS_ROOT = ops
   delete process.env.CAUCE_RUNNER
+  delete process.env.CI
   try { body() } finally {
-    for (const [name, value] of [['OPS_ROOT', saved.root], ['CAUCE_RUNNER', saved.runner]]) {
+    for (const [name, value] of [['OPS_ROOT', saved.root], ['CAUCE_RUNNER', saved.runner], ['CI', saved.ci]]) {
       if (value === undefined) delete process.env[name]
       else process.env[name] = value
     }
