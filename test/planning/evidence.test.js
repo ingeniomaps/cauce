@@ -46,6 +46,13 @@ test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
   assert.equal(DE.validDecisionTrace('TTL de 72h. [supuesto: ventana del MVP]'), true)
   assert.equal(DE.validDecisionTrace('Se reutiliza el guard. [fuente: src/auth.js]'), true)
   assert.equal(DE.validDecisionTrace('TTL de 72h.'), false)
+  // R14 nombra tres registros y el contrato pide dos citas: quien escribe a la R14 lee en el error cómo se
+  // traduce, en vez de un formato que no menciona lo que acaba de escribir (caso 401).
+  assert.equal(DE.validDecisionTrace('Verificado — el TTL sale de `redis-cli TTL x`, 259200'), false)
+  assert.deepEqual(DE.validateDoneEntry({
+    source: 'DONE.md', slug: 'demo', tests: 'A → npm test', decisions: 'Hipótesis — la ventana es de 72h',
+  }), ['DONE.md demo: decisions debe citar [fuente: ...] o [supuesto: ...]. Con los registros de R14: lo verificado '
+    + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>].'])
   assert.deepEqual(DE.validateDoneEntry({
     source: 'DONE.md', slug: 'demo', tests: '', decisions: '',
   }), ['DONE.md demo: falta tests:'])

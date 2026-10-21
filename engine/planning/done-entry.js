@@ -78,7 +78,8 @@ function validateDoneEntry(entry, cited = []) {
     errors.push(`${at}: commit debe apuntar a <sha> <asunto> o justificar n/a — razón`)
   }
   if (!validDecisionTrace(entry.decisions)) {
-    errors.push(`${at}: decisions debe citar [fuente: ...] o [supuesto: ...]`)
+    errors.push(`${at}: decisions debe citar [fuente: ...] o [supuesto: ...]. Con los registros de R14: lo verificado `
+      + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>].')
   }
   return errors
 }
