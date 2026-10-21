@@ -14,6 +14,15 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.113.1] - 2026-10-21
+
+### Corregido
+
+- **`ops lines` muestra la línea que todavía no trabaja ningún repositorio.** Una línea declarada vacía
+  (`"piloto": []`) desaparecía del panorama con toda su cola, aunque `context --line` la viera. Ahora sale con
+  sus hitos, sus reclamos y su trabajo en vuelo, y dice que su primer repositorio se suma con la primera tarea que
+  pide su árbol. En `--json` viene en `declared` con `repos: []` (caso 426).
+
 ## [0.113.0] - 2026-10-21
 
 ### Cambiado
