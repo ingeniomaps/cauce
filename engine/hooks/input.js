@@ -13,6 +13,7 @@ const { MKTEMP, madeUnder } = require('./mktemp')
 const { spawnSync } = require('node:child_process')
 const { writableOutsideRoots } = require('../config/paths')
 const { withTaskTrees } = require('../core/task-trees')
+const LT = require('../core/line-trees')
 
 // Cuánto se espera el primer byte de stdin. El runner escribe su JSON al lanzar el hook, así que en el
 // camino real ya está en el búfer cuando Node termina de arrancar: el plazo sólo cubre una máquina
@@ -391,7 +392,10 @@ function owns(input, dir) {
   const declared = ops
     ? (configOf(ops).workspaceRoots || []).filter((one) => one && one.path).map((one) => path.resolve(ops, one.path))
     : []
-  return [session, ...(ops ? [ops] : []), ...declared].some((root) => within(root, dir) || within(dir, root))
+  // El árbol de una línea declarada también es de la sesión: vive en `lines/`, fuera de toda raíz de `workspaceRoots`,
+  // y sin esto ningún guard de commit lo juzgaba —ni `git add -A`, ni la rama viva, ni la puerta— (caso 414).
+  const lines = ops ? LT.trees(ops).map((one) => one.tree) : []
+  return [session, ...(ops ? [ops] : []), ...declared, ...lines].some((root) => within(root, dir) || within(dir, root))
 }
 
 // Si `target` es `base` o cuelga de ella, con las dos rutas reales: `run-hook.sh` exporta la raíz ops con el

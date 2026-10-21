@@ -76,3 +76,24 @@ test('plan-first encuentra el plan de la sesión que lleva la línea por la ruta
     else process.env.CAUCE_RUNNER = previous
   }
 })
+
+// Caso 414: los guards de commit juzgan el árbol de una línea declarada, y no un repositorio ajeno. El porqué, en
+// `owns`.
+test('los guards de commit juzgan el árbol de una línea declarada', () => {
+  const { base, ops, tree } = session('cauce-hook-linea-commit-')
+  const root = process.env.OPS_ROOT
+  process.env.OPS_ROOT = ops
+  const all = `-${'A'}`
+  try {
+    for (const [cwd, command] of [[base, `git -C ${tree} add ${all}`], [tree, `git add ${all}`],
+      [tree, 'git add --all']]) {
+      blocked('git-add', { cwd, tool_input: { command } }, /está prohibido/)
+    }
+    // Lo que no es de ninguna línea ni raíz sigue afuera, como pide R26.
+    const ajeno = fs.realpathSync(tempRoot('cauce-hook-linea-ajeno-'))
+    assert.doesNotThrow(() => execute('git-add', { cwd: ajeno, tool_input: { command: `git add ${all}` } }))
+  } finally {
+    if (root === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = root
+  }
+})
