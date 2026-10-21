@@ -93,8 +93,7 @@ function plant(session, name, repo, warnings) {
     const added = git(source, 'worktree', 'add', ...args)
     if (added.status !== 0) return { error: `git worktree add falló en ${repo}: ${(added.stderr || '').trim()}` }
     const head = git(source, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
-    // `main` y `master` no llevan barra; lo que la lleva es `<remoto>/<rama>`.
-    if (!hasBranch && head && from && head !== (from.includes('/') ? from.slice(from.indexOf('/') + 1) : from)) {
+    if (!hasBranch && head && from && head !== LNP.branchOf(from)) {
       warnings.push(`${repo} está en ${head}; ${branch} sale de ${from}, la rama viva. Si la querías sobre ${head}: `
         + `borrá el árbol, creá la rama con \`git -C ${source} branch ${branch} ${head}\` y repetí.`)
     }

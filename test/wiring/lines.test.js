@@ -250,6 +250,44 @@ test('una línea de antes se migra: su planning llega a la instancia y se arma l
   assert.match(run(['lines', 'migrate', ops, 'vieja', 'pagos']).stderr, /no hay una línea vieja de antes/)
 })
 
+// Caso 397: migrar avisa fuera de la rama viva y no frena, y una línea empujada no avisa. El porqué, en `arrival`.
+test('migrar avisa si la instancia no está en su rama viva, y no por una línea empujada', () => {
+  const { base, ops } = session('cauce-line-migrate-avisa-')
+  legacy(base, ops, 'vieja')
+  const warned = (report) => report.warnings.join('\n')
+  const quiet = json(['lines', 'migrate', ops, 'vieja', 'pagos', '--json'])
+  assert.deepEqual([quiet.into, quiet.live, quiet.warnings], ['main', 'main', []], 'en la viva no avisa')
+
+  ok(ops, 'switch', '-q', '-c', 'build/upgrade')
+  assert.match(warned(json(['lines', 'migrate', ops, 'vieja', 'pagos', '--json'])),
+    /la instancia está en build\/upgrade; el planning de vieja va a quedar ahí y no en main/)
+  // Sin commits que traer no hay planning que vaya a ningún lado, y no avisa.
+  ok(ops, 'worktree', 'add', '-q', '-b', 'line/vacia', path.join(`${base}-vacia`, 'ops'))
+  const empty = json(['lines', 'migrate', ops, 'vacia', 'pagos', '--json'])
+  assert.deepEqual([empty.commits, empty.warnings], [0, []], 'avisa sin nada que traer')
+  // Empujada y sin llegar a la viva, que es donde el aviso del 396 hablaba: ya no dice nada de eso.
+  ok(ops, 'update-ref', 'refs/remotes/origin/line/vieja', 'line/vieja')
+  const pushed = run(['lines', 'migrate', ops, 'vieja', 'pagos'])
+  assert.equal(pushed.status, 0, pushed.stderr)
+  assert.match(pushed.stdout, /⚠ la instancia está en build\/upgrade/)
+  assert.doesNotMatch(pushed.stdout, /empujada|dos caminos/)
+
+  // Con --apply el aviso sale antes de traerla, y también cuando --apply se niega.
+  const tracked = path.join(ops, ok(ops, 'ls-files').split('\n')[0])
+  const before = fs.readFileSync(tracked, 'utf8')
+  fs.appendFileSync(tracked, '\n')
+  const refused = run(['lines', 'migrate', ops, 'vieja', 'pagos', '--apply'])
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stdout, /⚠ la instancia está en build\/upgrade/, 'el apply que se niega no avisa')
+  fs.writeFileSync(tracked, before)
+  const applied = run(['lines', 'migrate', ops, 'vieja', 'pagos', '--apply'])
+  assert.equal(applied.status, 0, applied.stderr)
+  assert.ok(applied.stdout.indexOf('⚠ la instancia está en build/upgrade') > -1, applied.stdout)
+  assert.ok(applied.stdout.indexOf('⚠ la instancia está en build/upgrade') < applied.stdout.indexOf('MIGRAR'),
+    'el aviso llega después de haber traído la línea')
+  assert.equal(applied.stdout.split('⚠ la instancia está en').length, 2, 'avisa dos veces')
+})
+
 // Un repositorio anidado en la carpeta de sesión: lo que se enlaza es cada nivel que lleva a él, para que `../`
 // resuelva igual a cualquier profundidad. Y una carpeta de sesión que es ella misma un repositorio no ve
 // `lines/` como trabajo suyo.

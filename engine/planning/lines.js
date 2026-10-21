@@ -66,6 +66,9 @@ function startPoint(repo) {
     .status === 0) || ''
 }
 
+// La rama que nombra un punto de partida: `main` y `master` no llevan barra; lo que la lleva es `<remoto>/<rama>`.
+const branchOf = (point) => (point.includes('/') ? point.slice(point.indexOf('/') + 1) : point)
+
 // Los hitos que esta línea puede tomar. Lo que ya tiene en curso no se esconde aunque sea de otra: un filtro
 // elige dónde buscar trabajo nuevo, y esconder el propio dejaría un reclamo que nadie retoma.
 function scope(milestones, line, keep = new Set()) {
@@ -269,7 +272,7 @@ function mergeWarnings(root, milestones, tableRows) {
 }
 
 module.exports = {
-  BRANCH, NAME, currentLine, sessionLine, LEGACY, startPoint, scope, whereToTake, lineErrors, worktrees, placement,
-  claimsElsewhere, status,
+  BRANCH, NAME, currentLine, sessionLine, LEGACY, startPoint, branchOf, scope, whereToTake, lineErrors, worktrees,
+  placement, claimsElsewhere, status,
   classifyConflicts, duplicateEpics, mergeWarnings,
 }
