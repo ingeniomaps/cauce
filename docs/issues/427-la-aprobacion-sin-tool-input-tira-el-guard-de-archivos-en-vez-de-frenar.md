@@ -1,14 +1,15 @@
 ---
 caso: 427
 titulo: una escritura a .ops-approval que no llega en tool_input tira el guard de archivos con un TypeError en vez de frenarla
-estado: abierto
+estado: resuelto
+resuelto-en: 0.113.3
 prioridad: media
 version-detectada: 0.113.2
 ---
 
 # 427 — `resulting` lee `input.tool_input.old_string` sin respaldo, y una escritura a la aprobación por otra vía sale en 1 y no en 2
 
-**🔴 abierto** · detectado en 0.113.2 · prioridad **media**. No es lo que manda ningún runner instalado hoy, pero es la
+**🟢 resuelto en 0.113.3** · detectado en 0.113.2 · prioridad **media**. No es lo que manda ningún runner instalado hoy, pero es la
 única aprobación que el agente no puede escribirse, y ahí el guard termina con «no pude juzgar» en vez de «no».
 
 ## Resumen
@@ -93,3 +94,42 @@ esta sesión.
 - 098 y 119 — por qué el agente no puede escribirse la aprobación, y por qué se compara línea por línea.
 - 198 — la invocación a mano con `OPS_HOOK_FILE`.
 - 200 — la otra forma en que una llamada con otra forma apagaba los guards sin rastro.
+
+## Cierre
+
+**Resuelto en 0.113.3**, a pedido del dueño el 2026-10-21 («resuelve el caso 427»). No había ninguna versión abierta, y
+es un patch: corrige un guard que se caía en vez de frenar, sin guard nuevo, regla ni protocolo, como los arreglos de
+guards de 0.106.1. El encabezado del CHANGELOG dice que un cambio en un guard sube minor; la práctica lo lee como un
+cambio de conducta visible, y la versión la eligió el dueño con esa lectura.
+
+`resulting` (`engine/hooks/self-approval.js:83`) lee `input.tool_input || {}`. Sin `old_string` cae en `contentOf`,
+que es lo que hacía `added` antes de 0.108.0, y el comentario que daba `tool_input` por seguro dice ahora de dónde
+más puede llegar el archivo.
+
+El caso, sección por sección:
+
+- **Resumen, los dos daños.** El primero, salir en 1 en vez de bloquear: se fue, las tres formas salen en 2 con el
+  motivo `SELF`. El segundo, cortar el grupo `pre-files`: el error ya no ocurre, así que el grupo sigue como con
+  cualquier otra escritura. Un bloqueo también detiene los guards que vienen después (`executeAll`), pero eso es un
+  bloqueo funcionando, no el defecto.
+- **Fix propuesto**: se hizo tal cual. La prueba manda las formas 2, 3 y 4, no sólo la 2 y la 4: la 3 es la que el
+  primer tradeoff pedía comprobar.
+- **Tradeoffs, la forma 3 sin contenido.** Frena con `SELF`: sin líneas y sin cuerpo, `unnamed` no tiene qué anotar y
+  frena (`self-approval.js:110`). Se comprobó corriendo, en la prueba y en el banco de abajo.
+- **Tradeoffs, otro guard con el mismo supuesto.** Se buscó en `engine/hooks/` y `automatization/` toda lectura de
+  `input.tool_input` sin `&&` ni `|| {}` delante: la de `resulting` era la única. Las demás pasan por `fileOf`,
+  `patchOf`, `contentOf` o `rawCommandOf`, que ya lo toleran.
+- **Quién manda esas formas.** Lo de Codex y Gemini sigue sin comprobarse, y no hace falta para cerrar: el arreglo
+  vale para cualquier forma, venga de quien venga.
+- **Prioridad.** No traía condición de escalada.
+
+**Lo que se corrió para saber que funciona.**
+
+- La prueba nueva, en `test/hooks/chat-effects.test.js` («una escritura a la aprobación sin tool_input se frena como
+  cualquier otra»). Vista en rojo antes del arreglo: `workspace-boundary lanzó algo que no es un bloqueo: Cannot read
+  properties of undefined (reading 'old_string')`.
+- Una mutación en una copia fuera del árbol: con la copia en verde, volver a `input.tool_input` sin respaldo puso la
+  prueba en rojo con el mismo error.
+- La reproducción del caso sobre `ops bench suelto`, con el motor arreglado. El control y las formas 2, 3 y 4 dan las
+  cuatro `BLOQUEADO: …/planning/.ops-approval es la aprobación de una persona, y escribírsela es aprobarse solo. …` con
+  `exit=2`. Una escritura sin `tool_input` a `README.md` sigue pasando con `exit=0`.
