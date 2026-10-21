@@ -213,6 +213,84 @@ test('un árbol borrado a mano se vuelve a armar, y la línea pedida por un enla
   assert.ok(fs.existsSync(path.join(tree('b', 'pagos'), 'a.js')))
 })
 
+// Caso 408. Una línea crece sumando repositorios, y el que se suma casi siempre ya estaba enlazado como hermano: ese
+// enlace lo puso la línea y se reemplaza por el árbol. Cualquier otra cosa en esa ruta se sigue negando.
+test('sumar a una línea un repositorio que ella misma enlazó reemplaza el enlace por su árbol', () => {
+  const { base, ops, tree } = session('cauce-line-suma-')
+  assert.ok(json(['line', ops, 'w', 'pagos', '--json']).linked.includes('auth'))
+  assert.equal(fs.lstatSync(tree('w', 'auth')).isSymbolicLink(), true)
+  const grown = run(['line', ops, 'w', 'auth', '--json'])
+  assert.equal(grown.status, 0, grown.stderr)
+  assert.deepEqual(JSON.parse(grown.stdout).trees.map((one) => [one.repo, one.reused]),
+    [['pagos', true], ['auth', false]])
+  assert.equal(fs.lstatSync(tree('w', 'auth')).isSymbolicLink(), false, 'quedó el enlace')
+  assert.equal(ok(tree('w', 'auth'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'line/w')
+  assert.ok(fs.existsSync(path.join(base, 'auth', 'a.js')), 'se llevó el repositorio al que apuntaba el enlace')
+  assert.deepEqual(configOf(ops).lines.w, ['pagos', 'auth'])
+
+  // Un enlace a otra cosa no es el que puso la línea, y una carpeta real tampoco: los dos se siguen negando.
+  json(['line', ops, 'z', 'pagos', '--json'])
+  fs.unlinkSync(tree('z', 'auth'))
+  fs.symlinkSync(path.join(base, 'shared-lib'), tree('z', 'auth'), 'dir')
+  const other = run(['line', ops, 'z', 'auth'])
+  assert.notEqual(other.status, 0)
+  assert.match(other.stderr, /ya existe y no es un worktree de auth/)
+  assert.equal(fs.lstatSync(tree('z', 'auth')).isSymbolicLink(), true, 'se sacó un enlace que no era de la línea')
+  fs.mkdirSync(tree('y', 'auth'), { recursive: true })
+  assert.match(run(['line', ops, 'y', 'auth']).stderr, /ya existe y no es un worktree de auth/)
+  // Un enlace roto también ocupa la ruta: el error dice eso, no el de git.
+  fs.mkdirSync(path.dirname(tree('x', 'auth')), { recursive: true })
+  fs.symlinkSync(path.join(base, 'no-existe'), tree('x', 'auth'), 'dir')
+  assert.match(run(['line', ops, 'x', 'auth']).stderr, /ya existe y no es un worktree de auth/)
+
+  // Con la rama ocupada el árbol no se arma, y el enlace tiene que quedar.
+  json(['line', ops, 'v', 'pagos', '--json'])
+  ok(path.join(base, 'auth'), 'switch', '-q', '-c', 'line/v')
+  const failed = run(['line', ops, 'v', 'auth'])
+  assert.notEqual(failed.status, 0)
+  assert.match(failed.stderr, /git worktree add falló en auth/)
+  assert.equal(fs.lstatSync(tree('v', 'auth')).isSymbolicLink(), true, 'el árbol falló y el enlace no volvió')
+
+  // El árbol que git armó aunque saliera con error se deja, y repetir lo reusa. El porqué, en `plant`.
+  ok(path.join(base, 'auth'), 'switch', '-q', 'main')
+  const hook = path.join(base, 'auth', '.git', 'hooks', 'post-checkout')
+  fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 })
+  const built = run(['line', ops, 'v', 'auth'])
+  assert.notEqual(built.status, 0)
+  assert.match(built.stderr, /El árbol quedó armado en .*auth: repetí el comando para reusarlo/)
+  assert.equal(fs.lstatSync(tree('v', 'auth')).isSymbolicLink(), false, 'se tocó un árbol registrado')
+  assert.ok(fs.existsSync(path.join(tree('v', 'auth'), 'a.js')))
+  fs.unlinkSync(hook)
+  assert.equal(run(['line', ops, 'v', 'auth']).status, 0, 'repetir no lo reusó')
+})
+
+// Caso 408, un nivel más abajo: el nivel enlazado deja lugar al árbol y conserva a sus hermanos, y la falla lo deja
+// enlazado. El porqué, en `linkOnTheWay`.
+test('sumar un repositorio anidado reemplaza el enlace de la carpeta que lo contiene', () => {
+  const { base, ops, tree } = session('cauce-line-suma-anidado-')
+  const web = path.join(base, 'grupo', 'web')
+  fs.mkdirSync(path.join(base, 'grupo', 'docs'), { recursive: true })
+  fs.mkdirSync(web)
+  ok(web, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(web, 'a.js'), '\n')
+  ok(web, 'add', 'a.js'); ok(web, 'commit', '-qm', 'init')
+  assert.ok(json(['line', ops, 'w', 'pagos', '--json']).linked.includes('grupo'))
+  const level = path.join(base, 'lines', 'w', 'grupo')
+
+  ok(web, 'switch', '-q', '-c', 'line/w')
+  assert.match(run(['line', ops, 'w', path.join('grupo', 'web')]).stderr, /git worktree add falló en grupo\/web/)
+  assert.equal(fs.lstatSync(level).isSymbolicLink(), true, 'el árbol falló y el enlace del nivel no volvió')
+  ok(web, 'switch', '-q', 'main')
+
+  const grown = run(['line', ops, 'w', path.join('grupo', 'web'), '--json'])
+  assert.equal(grown.status, 0, grown.stderr)
+  assert.equal(fs.lstatSync(level).isSymbolicLink(), false)
+  assert.equal(ok(tree('w', path.join('grupo', 'web')), 'rev-parse', '--abbrev-ref', 'HEAD'), 'line/w')
+  assert.equal(fs.realpathSync(path.join(level, 'docs')), path.join(base, 'grupo', 'docs'),
+    'el nivel perdió a sus hermanos')
+  assert.ok(fs.existsSync(path.join(web, 'a.js')), 'se llevó el repositorio')
+})
+
 test('dos líneas sobre el mismo repositorio se permiten, se avisan y muestran qué archivos tocaron las dos', () => {
   const { ops, tree } = session('cauce-line-overlap-')
   assert.deepEqual(json(['line', ops, 'pagos', 'pagos', '--json']).warnings, [])
