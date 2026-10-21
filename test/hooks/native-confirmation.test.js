@@ -35,12 +35,12 @@ test('en Claude Code un push frenado pide el diálogo, y un mensaje sobre otra c
   } finally { chat.close() }
 })
 
-// Caso 257. Donde no está medido que una persona contesta el diálogo, pedirlo puede dejar pasar lo que el
+// Casos 257 y 416. Donde no está medido que una persona contesta el diálogo, pedirlo puede dejar pasar lo que el
 // guard frenaba: en esos modos —y en cualquiera que todavía no exista— el guard bloquea y la salida vuelve a
 // ser el chat. Qué se midió de cada uno está en `confirm.js`.
 test('donde nadie contesta el diálogo, el guard bloquea en vez de pedirlo', () => {
   const root = pushRoot('cauce-native-auto-')
-  for (const mode of ['plan', 'dontAsk', 'un-modo-que-todavia-no-existe', undefined]) {
+  for (const mode of ['plan', 'dontAsk', 'bypassPermissions', 'un-modo-que-todavia-no-existe', undefined]) {
     const chat = chatSession()
     try {
       const call = chat.says('implementá la tarea de alta de clientes')
@@ -50,7 +50,7 @@ test('donde nadie contesta el diálogo, el guard bloquea en vez de pedirlo', () 
         (error) => error.blocked && !error.ask && /publica cambios/.test(error.message), `${mode} tiene que bloquear`)
     } finally { chat.close() }
   }
-  for (const mode of ['default', 'acceptEdits', 'bypassPermissions', 'auto']) {
+  for (const mode of ['default', 'acceptEdits', 'auto']) {
     assert.equal(CF.native({ hook_event_name: 'PreToolUse', prompt_id: 'm1', permission_mode: mode }), true, mode)
   }
 })
@@ -161,7 +161,7 @@ test('el diálogo es para lo que pide autoridad y en la conversación directa; e
     }
   }
   try {
-    for (const mode of ['default', 'acceptEdits', 'bypassPermissions', 'auto']) {
+    for (const mode of ['default', 'acceptEdits', 'auto']) {
       const direct = (command) => ({ hook_event_name: 'PreToolUse', permission_mode: mode,
         ...chat.says('seguí con la tarea')({ cwd: root, tool_input: { command } }) })
       // De autoridad, con una persona del otro lado: un clic.

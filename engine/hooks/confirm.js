@@ -8,7 +8,8 @@
 //
 // Medido el 2026-10-01 con Claude Code: el diálogo aparece también en `bypassPermissions` y para la llamada
 // de un subagente —donde desde el caso 285 ya no se pide—; rechazado, la herramienta no corre; en `claude -p`
-// cuenta como rechazo y el agente recibe el motivo como error. Codex y Gemini no tienen diálogo y siguen con
+// cuenta como rechazo y el agente recibe el motivo como error, salvo en `bypassPermissions`, donde se aprueba solo
+// (medido el 2026-10-20, junto a `ANSWERED`). Codex y Gemini no tienen diálogo y siguen con
 // la confirmación por chat.
 
 const ASK = Symbol('cauce.ask')
@@ -29,7 +30,13 @@ const ASK = Symbol('cauce.ask')
 // tres sesiones en `auto` —dos con Read, una con Bash—: el diálogo apareció a los cinco segundos y esperó más
 // de siete minutos sin resolverse. Ahí también lo contesta una persona. Los siete pedidos que en otra sesión
 // corrieron sin que conste quién los aprobó siguen sin explicación; ninguna de estas tres lo reprodujo.
-const ANSWERED = new Set(['default', 'acceptEdits', 'bypassPermissions', 'auto'])
+//
+// `bypassPermissions` salió el 2026-10-20 (caso 416). Interactivo el diálogo aparece, pero en `claude -p` no, y lo
+// pedido se aprueba solo: medido con Claude Code 2.1.305, un `echo … > app/.npmrc` frenado por `secrets-shell` se
+// escribió, mientras con `-p` en `default` y en `acceptEdits` contó como rechazo. El hook no recibe nada que distinga
+// `-p` de una sesión con alguien mirando, así que el modo entero vuelve a la confirmación por chat: lo que pierde quien
+// trabaja interactivo en ese modo es el clic, no una protección.
+const ANSWERED = new Set(['default', 'acceptEdits', 'auto'])
 // Y sólo en la conversación directa. El diálogo también se abre para la llamada de un subagente o de un
 // recorrido, pero ahí nadie lo está mirando: en una corrida real dos lecturas quedaron 590 y 1446 segundos
 // esperando un clic, mientras seis bloqueos de la misma corrida los resolvió el agente solo, sin espera
