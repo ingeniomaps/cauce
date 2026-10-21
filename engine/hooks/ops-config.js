@@ -21,7 +21,9 @@
 // cubre a cada guard una vez, mientras que lo que deciden —cuáles son los archivos, qué cambió y cómo se
 // dice— es uno solo y copiarlo dejaría dos mitades que dejan de coincidir.
 
+const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const { block, commandOf, configOf, contentOf, cwdOf, filesOf, opsRoot } = require('./input')
 const CHAT = require('./chat')
 const AP = require('./approval')
@@ -200,4 +202,39 @@ function opsConfigShell(input) {
   for (const { root, file } of targets(input)) judgeCommand(input, root, file)
 }
 
-module.exports = { opsConfig, opsConfigShell }
+// Con `ops.config.json` ilegible ningún guard decide, y frenar todo dejaba la sesión sin herramientas, también sin la
+// que lo repara: la salida quedaba del lado de la persona y nada la nombraba (caso 419). Pasa sólo volver al contenido
+// del último commit, que no ensancha nada que no haya pasado ya por uno. Desde otra rama o desde el índice sigue
+// frenando: ahí puede venir un permiso que nadie aprobó en ésta. El comando va solo y sin nada que el shell expanda,
+// porque lo que se cuelgue detrás correría sin un guard que lo mire. Y no pasa si restaurar corre código del
+// repositorio: git 2.43 corre el `post-checkout` también al restaurar un archivo, con `checkout` y con `restore`
+// (medido), y lo mismo vale para un filtro de `.gitattributes` sobre el archivo y para `core.fsmonitor`. Ahí la salida
+// es la de la persona, que el bloqueo ya nombra.
+const RESTORE = new RegExp(String.raw`^git(?:\s+-C\s+(?:"([^"]+)"|([^\s"]+)))?\s+(?:checkout\s+HEAD\s+--|restore`
+  + String.raw`(?:\s+(?:--source(?:=|\s+)HEAD|--staged|--worktree|-S|-W))*(?:\s+--)?)\s+([^\s"]+)$`)
+function restoresConfig(input) {
+  const command = commandOf(input).trim()
+  const hit = !/[$`;|&<>()\\'\n]/.test(command) && command.match(RESTORE)
+  if (!hit || !/\s--source(?:=|\s)HEAD\b|\scheckout\s/.test(command)) return false
+  const root = opsRoot(input)
+  if (!root) return false
+  try { configOf(root); return false } catch { /* ilegible: es el único caso en que esto decide */ }
+  const dir = path.resolve(cwdOf(input), hit[1] || hit[2] || '.')
+  return path.resolve(dir, hit[3]) === path.join(root, INSTANCE_CONFIG) && !runsCode(root)
+}
+
+// Si restaurar el archivo correría código del repositorio: un `post-checkout` —contando `core.hooksPath`—, un filtro
+// sobre el archivo o un `core.fsmonitor`. Sin poder preguntarlo, se supone que sí: es la dirección que frena.
+function runsCode(root) {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')))
+  const git = (...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', env })
+  const hook = git('rev-parse', '--path-format=absolute', '--git-path', 'hooks/post-checkout')
+  const filter = git('check-attr', 'filter', '--', INSTANCE_CONFIG)
+  if (hook.status !== 0 || filter.status !== 0) return true
+  if (!/: unspecified$/.test(filter.stdout.trim())) return true
+  const monitor = git('config', '--get', 'core.fsmonitor').stdout.trim()
+  if (monitor && monitor !== 'false') return true
+  try { fs.accessSync(hook.stdout.trim(), fs.constants.X_OK); return true } catch { return false }
+}
+
+module.exports = { opsConfig, opsConfigShell, restoresConfig }

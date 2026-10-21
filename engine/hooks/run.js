@@ -19,7 +19,7 @@ const chat = require('./chat')
 const { rulesNotice } = require('./rules-notice')
 const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
-const { opsConfig, opsConfigShell } = require('./ops-config')
+const { opsConfig, opsConfigShell, restoresConfig } = require('./ops-config')
 const { jiraAdf } = require('./jira')
 const { testWorkers } = require('./workers')
 const { comments } = require('./comments')
@@ -273,6 +273,8 @@ function resolve(names) {
 // junta, los demás corren, y si alguno bloquea de verdad gana el bloqueo; si no, va un solo diálogo con
 // todos los motivos (caso 221).
 function executeAll(names, input) {
+  // Antes que cualquier guard, porque todos frenan sin la configuración: es la salida de cuando no se puede leer.
+  if (restoresConfig(input)) return
   const asked = []
   for (const name of resolve(names)) {
     // Una marca que quedó de un guard que no llegó a bloquear no puede convertir en pregunta el bloqueo de
