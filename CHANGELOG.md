@@ -14,6 +14,43 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.113.0] - 2026-10-21
+
+### Cambiado
+
+- **Una línea ya no enlaza los repositorios que no trabaja.** `lines/<línea>/` tiene sólo sus árboles: los enlaces a
+  cada vecino casi nunca los usaba nadie, y se leían como repositorios metidos en la línea. Si un repositorio nombra a
+  otro por ruta relativa (`../shared-lib`), ése se suma a la línea con su árbol. `ops line` saca los enlaces que dejaron
+  las versiones de antes —sólo los suyos, sin tocar adonde llevan— y lo dice (caso 420). `teamwork.md` explica la
+  línea desde el frente: sus hitos, y un árbol por repositorio porque eso es lo que la aísla de la principal (caso 421).
+- **Una línea puede nacer sin repositorios.** El frente se decide antes que el repositorio: `ops line . piloto` declara
+  la línea sin armar nada en disco, y su sesión ya puede escribir y planificar sus hitos. El repositorio de la primera
+  tarea que pide su árbol —`ops worktree --line`, que es lo que corre `/autobuild`— se suma a la línea en ese momento, y
+  la salida lo dice; antes se negaba y mandaba a correr `ops line` a mano. Un árbol de la línea que falta se vuelve a
+  armar ahí mismo (caso 421).
+
+### Corregido
+
+- **La sesión de una línea ya no escribe en el checkout de la principal.** Con su plan escrito, nada la frenaba en
+  `app/` ni en un repositorio que la línea no trabaja: lo que escribía ahí no viajaba en su rama y le aparecía a la otra
+  sesión como cambio propio. Ahora los guards de límites —de archivos y de shell— le dejan sus árboles y la instancia, y
+  frenan lo demás de la carpeta de sesión diciendo en qué árbol va. Qué línea lleva la sesión lo leen de lo que ella
+  dice —`/autobuild <línea>`, el `--line` de `claim` o `worktree`— o de `CAUCE_RUNNER`: no hace falta exportar nada. Pasa
+  lo que la persona nombra o confirma en el chat, y la sesión principal no cambia. `ops worktree --line` se niega con una
+  tarea que no es de la línea, como ya hacía `claim` (caso 422). Y tampoco cambia ese checkout con git —`switch`,
+  `checkout`, `stash`, `restore`, `pull`…—, ni la rama o el stash de la instancia, que es una sola para las dos: lo que
+  sólo lee, como `status`, `log` o `diff`, pasa, y en la instancia también `add` y `commit` (caso 423).
+- **El bloqueo que el agente corrige solo ya no le habla a un subagente de una confirmación que no ofreció.** Decía
+  «devolvele el bloqueo a quien te lanzó» y seguía con «esa confirmación cubre lo que se frenó»; ahora dice que quien lo
+  lanzó se lo pregunta a la persona, y que su confirmación vale para el reintento. Vale para los diez bloqueos que el
+  agente corrige solo, de `verify` a `plan-first` (caso 424).
+- **Con `ops.config.json` ilegible, volver al último commit ya no se frena.** Un conflicto sin resolver dentro del archivo
+  dejaba la sesión sin ninguna herramienta, ni siquiera un `ls`, y tampoco la que lo repara. Ahora pasa
+  `git checkout HEAD -- ops.config.json` (o `git restore --source=HEAD`), solo y sin nada que el shell expanda, y el
+  bloqueo lo nombra con la ruta de la instancia. Desde otra rama o desde el índice sigue frenando: ahí puede venir un
+  permiso que nadie aprobó. Y si restaurar corre código del repositorio —un hook `post-checkout`, un filtro de
+  `.gitattributes`, `core.fsmonitor`—, también: correría sin guards, y la salida queda de la persona (caso 419).
+
 ## [0.112.0] - 2026-10-20
 
 ### Corregido
