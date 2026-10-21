@@ -87,7 +87,8 @@ test('el id de una línea no depende de la carpeta desde donde se corre ops', ()
     const planning = path.join(ops, 'planning')
     fs.writeFileSync(path.join(planning, 'backlog', 'hp.md'), '---\norder: 10\nline: pagos\n---\n\n'
       + '## Hito hp — Pagos\n\n- [ ] **t-pagos** — Cobrar. _Aceptación: se cobra._ (service: pagos)\n')
-    const unset = { CAUCE_RUNNER: '' }
+    // El reclamo pide un dueño, y en CI no hay `git config user.email` del que sacarlo.
+    const unset = { CAUCE_RUNNER: '', CAUCE_OWNER: 'prueba@ejemplo' }
     const claimed = run(['claim', planning, 't-pagos', '--line', 'pagos'], base, unset)
     assert.equal(claimed.status, 0, claimed.stderr)
     const expected = wipName(`${fs.realpathSync(ops)}#line/pagos`)
