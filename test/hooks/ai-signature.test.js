@@ -8,7 +8,6 @@ const { blocked, git, initRepo, chatSession } = require('../support/hooks-harnes
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 const { execute } = require('../../engine/hooks/run')
 const { signatureIn, ordersSignature } = require('../../engine/hooks/ai-signature')
@@ -113,7 +112,7 @@ test('el proyecto que quiere la firma lo declara, y un repositorio ajeno no se j
     assert.doesNotThrow(() => execute('ai-signature', at(signed)), 'el proyecto lo declaró')
     config({})
 
-    const foreign = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-firma-ajeno-'))
+    const foreign = tempRoot('ops-hook-firma-ajeno-')
     initRepo(foreign)
     const elsewhere = signed.replace('git commit', `git -C ${foreign} commit`)
     assert.doesNotThrow(() => execute('ai-signature', at(elsewhere)), 'ajeno')

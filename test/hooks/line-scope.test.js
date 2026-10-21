@@ -11,6 +11,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { execute, executeAll } = require('../../engine/hooks/run')
+const LS = require('../../engine/hooks/line-scope')
+const CHAT = require('../../engine/hooks/chat')
 
 const ok = (cwd, ...args) => {
   const result = spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, encoding: 'utf8' })
@@ -57,8 +59,18 @@ function withRoot(ops, body) {
   }
 }
 
-let count = 0
-const sessionId = () => `linea-${process.pid}-${Date.now()}-${count++}`
+// Las sesiones de esta prueba se anotan donde el motor anota las reales —la línea y el chat—, así que se borran al
+// terminar: si no, cada corrida dejaba sus registros en el temporal del sistema.
+const sessions = []
+const sessionId = () => {
+  sessions.push(`linea-${process.pid}-${Date.now()}-${sessions.length}`)
+  return sessions[sessions.length - 1]
+}
+test.after(() => {
+  for (const id of sessions) {
+    for (const dir of [LS.DIR, CHAT.DIR]) fs.rmSync(path.join(dir, `${id}.json`), { force: true })
+  }
+})
 const prompt = (id, text, cwd) => executeAll(['prompt'], { session_id: id, cwd, prompt: text })
 const write = (id, cwd, file, extra = {}) => ({ session_id: id, cwd, tool_input: { file_path: file }, ...extra })
 const shell = (id, cwd, command, extra = {}) => ({ session_id: id, cwd, tool_input: { command }, ...extra })
