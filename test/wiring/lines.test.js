@@ -76,6 +76,7 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
   assert.equal(text.status, 0, text.stderr)
   assert.doesNotMatch(text.stdout, /Abrí la sesión|runners:/, 'la salida manda a otra sesión')
   assert.match(text.stdout, /^= .*lines\/pagos\/pagos {2}\(line\/pagos\)\n/)
+  assert.doesNotMatch(text.stdout, /enlaza/, 'la salida habla de enlaces')
   assert.match(text.stdout, /desde esta misma sesión.*\/autobuild pagos/s)
   // Sin compose no hay nada de compose que decir (caso 399).
   assert.doesNotMatch(text.stdout, /compose|COMPOSE_PROJECT_NAME/i)
@@ -83,7 +84,6 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
   // La segunda vez reusa lo que ya está, y no vuelve a escribir la declaración.
   const again = json(['line', ops, 'pagos', '--json'])
   assert.deepEqual([again.trees[0].reused, again.unlinked, again.declared], [true, [], false])
-  assert.doesNotMatch(text.stdout, /enlaza/, 'la salida habla de enlaces')
   assert.equal(run(['check', path.join(ops, 'planning')]).status, 0, 'check acepta la declaración')
 })
 
