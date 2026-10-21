@@ -136,7 +136,10 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false, fixab
   const fix = 'Esto lo corregís vos, con lo que dice arriba: no hace falta preguntarle a nadie. '
   const lead = fixable
     ? fix + (input.agent_id
-      ? 'Si no hay forma de hacerlo así, devolvele el bloqueo a quien te lanzó. '
+      // Lo mismo que la rama del subagente de abajo: sin decir quién confirma, la frase siguiente —«esa confirmación
+      // cubre…»— hablaba de una confirmación que el texto nunca ofreció (caso 424).
+      ? 'Si no hay forma de hacerlo así, devolvele el bloqueo a quien te lanzó, para que se lo pregunte a la persona: '
+        + 'si ella lo confirma, el mismo cambio pasa aunque lo reintente un subagente. '
       : 'Si la persona quiere dejarlo pasar igual, alcanza con que lo confirme con sus palabras. ')
     : input.agent_id
     ? 'Sos un subagente y no podés esperar la respuesta: devolvele a quien te lanzó qué se frenó y por qué, '
