@@ -7,7 +7,11 @@
     "a toda empresa en su próximo upgrade. La razón por la que existe es que `gh` a secas NO falla —cae",
     "al keyring, resuelve a otra cuenta y las lecturas devuelven resultados igual—, así que la identidad",
     "equivocada no deja rastro hasta que algo escribe y da 403. Sin escape: `gh --version` y `gh --help`",
-    "pasan por inocuos, todo lo demás lleva la credencial. Los nombres están en .env.example.",
+    "pasan por inocuos, todo lo demás lleva la credencial. Los nombres están en .env.example. También frena",
+    "`gh auth` que cambie cuenta o helper, y un remoto o un push por SSH: la clave SSH es de otra cuenta.",
+    "",
+    "El navegador está negado (`permissions.deny`): aprobar una corrida o mergear es la API con GH_TOKEN, y",
+    "el navegador abre la sesión de quien esté logueado ahí, que no es `ingeniomaps`.",
     "",
     "`git-add` bloquea `git add -A/--all/.` y no tiene escape: se stagea por nombre.",
     "",
@@ -17,6 +21,9 @@
     "documentación no se verifica. Antes de esa condición bloquea igual si cambió una fuente OpenAPI o",
     "SQL sin su regenerado, haya código o no. Para saltarlo con intención: OPS_SKIP_VERIFY=1."
   ],
+  "permissions": {
+    "deny": ["mcp__claude-in-chrome"]
+  },
   "hooks": {
     "PreToolUse": [
       {

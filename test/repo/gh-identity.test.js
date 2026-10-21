@@ -127,3 +127,54 @@ test('un archivo .sh nombrado no convierte el texto en un comando', () => {
     assert.equal(hecho.bloqueado, false, `no debería bloquear: ${command}`)
   }
 })
+
+// Subir por SSH es subir como otra cuenta, que no tiene permiso acá: el push se rechaza y lo que sigue es
+// buscar otra vía. Pasó con el caso 425, porque la regla global de los workflows manda SSH.
+test('cambiar el remoto a SSH o empujar a una URL SSH se bloquea', () => {
+  for (const command of [
+    'git remote set-url origin git@github.com:ingeniomaps/cauce.git',
+    'git remote add ssh ssh://git@github.com/ingeniomaps/cauce.git',
+    'git push git@github.com:ingeniomaps/cauce.git fix/x',
+    'cd /tmp && git -C repo push "git@github.com:ingeniomaps/cauce.git" main',
+    'bash -c "git remote set-url origin git@github.com:ingeniomaps/cauce.git"',
+  ]) {
+    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+  }
+})
+
+test('empujar por el remoto de siempre, o nombrar una URL SSH en un texto, pasa', () => {
+  for (const command of [
+    'git push -u origin fix/x',
+    'git remote get-url origin',
+    'git remote set-url origin https://github.com/ingeniomaps/cauce.git',
+    'git commit -m "docs: ssh is git@github.com:ingeniomaps/cauce.git" && git push origin fix/x',
+    'grep -n "git@github.com" docs/README.md',
+  ]) {
+    const hecho = correr(command)
+    assert.equal(hecho.bloqueado, false, `no debería bloquear: ${command}\n${hecho.stderr}`)
+  }
+})
+
+// Cambiar la cuenta de `gh` o su helper es cambiar de identidad, y el scope `workflow` no se consigue nunca: la
+// credencial va en `GH_TOKEN`, también para estos.
+test('cambiar la identidad o la credencial de gh se bloquea aunque lleve GH_TOKEN', () => {
+  for (const command of [
+    'GH_TOKEN="$GITHUB_PAT_CAUCE" gh auth refresh -s workflow',
+    'GH_TOKEN=x gh auth login --web',
+    'GH_TOKEN=x gh auth switch -u otra',
+    'GH_TOKEN=x gh auth setup-git',
+    'GH_TOKEN=x gh auth logout',
+  ]) {
+    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+  }
+  assert.equal(correr('GH_TOKEN="$GITHUB_PAT_CAUCE" gh api user -q .login').bloqueado, false)
+})
+
+// Aprobar una corrida o una review es la API con la credencial del proyecto, nunca un botón: el navegador abre la
+// sesión de quien esté logueado ahí. Lo sostiene el permiso, no este guard, y se comprueba que siga declarado.
+test('el navegador está negado en este repositorio', () => {
+  const settings = JSON.parse(require('node:fs').readFileSync(
+    path.resolve(__dirname, '..', '..', '.claude', 'settings.json'), 'utf8'))
+  assert.ok(((settings.permissions || {}).deny || []).includes('mcp__claude-in-chrome'),
+    'settings.json tiene que negar mcp__claude-in-chrome')
+})
