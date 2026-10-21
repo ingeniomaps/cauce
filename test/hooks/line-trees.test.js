@@ -77,6 +77,49 @@ test('plan-first encuentra el plan de la sesión que lleva la línea por la ruta
   }
 })
 
+// Caso 411: el id de la línea es el mismo desde cualquier carpeta, y es el que `plan-first` busca. El porqué, en el
+// comentario de `runner` en `engine/planning/claims.js`.
+test('el id de una línea no depende de la carpeta desde donde se corre ops', () => {
+  const { base, ops, tree } = session('cauce-hook-linea-id-')
+  const previous = process.env.CAUCE_RUNNER
+  delete process.env.CAUCE_RUNNER
+  try {
+    const planning = path.join(ops, 'planning')
+    fs.writeFileSync(path.join(planning, 'backlog', 'hp.md'), '---\norder: 10\nline: pagos\n---\n\n'
+      + '## Hito hp — Pagos\n\n- [ ] **t-pagos** — Cobrar. _Aceptación: se cobra._ (service: pagos)\n')
+    const unset = { CAUCE_RUNNER: '' }
+    const claimed = run(['claim', planning, 't-pagos', '--line', 'pagos'], base, unset)
+    assert.equal(claimed.status, 0, claimed.stderr)
+    const expected = wipName(`${fs.realpathSync(ops)}#line/pagos`)
+    for (const cwd of [base, tree, ops]) {
+      const seen = run(['context', planning, '--line', 'pagos', '--json'], cwd, unset)
+      assert.equal(seen.status, 0, seen.stderr)
+      assert.equal(JSON.parse(seen.stdout).wipFile, `wip/${expected}.md`, cwd)
+    }
+    fs.writeFileSync(path.join(planning, 'wip', `${expected}.md`),
+      '---\ntask: t-pagos\nphase: Build\n---\n\n## Plan aprobado\n1. [ ] Cobrar\n')
+    // El guard, desde la carpeta de sesión —donde se abre la sesión— y desde el árbol, ve el plan de la línea. La raíz
+    // se la da `OPS_ROOT`, como el shim instalado (`run-hook.sh`): sin ella, desde esas carpetas no juzga nada.
+    const root = process.env.OPS_ROOT
+    process.env.OPS_ROOT = ops
+    try {
+      for (const cwd of [base, tree]) {
+        assert.doesNotThrow(() => execute('plan-first', { ...writing(ops, path.join(tree, 'a.js')), cwd }), cwd)
+      }
+      blocked('plan-first', { ...writing(ops, path.join(tree, 'a.js')), cwd: base, tool_input: {
+        file_path: path.join(base, 'pagos', 'a.js') } }, /sin plan/)
+    } finally {
+      if (root === undefined) delete process.env.OPS_ROOT
+      else process.env.OPS_ROOT = root
+    }
+    const released = run(['release', planning, 't-pagos', '--line', 'pagos'], tree, unset)
+    assert.equal(released.status, 0, released.stderr)
+  } finally {
+    if (previous === undefined) delete process.env.CAUCE_RUNNER
+    else process.env.CAUCE_RUNNER = previous
+  }
+})
+
 // Caso 414: los guards de commit juzgan el árbol de una línea declarada, y no un repositorio ajeno. El porqué, en
 // `owns`.
 test('los guards de commit juzgan el árbol de una línea declarada', () => {

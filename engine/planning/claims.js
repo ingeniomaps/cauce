@@ -53,10 +53,15 @@ function owner(root) {
 // manda a poner la variable.
 //
 // `line` es la línea que la sesión dijo llevar con `--line` (caso 394), y le da un id propio.
-function runner(line = '') {
+// Con línea, la base es el repositorio de la instancia (`root`, su raíz ops), venga de donde venga el comando: la
+// salida de `ops line` manda a correr `--line` sin decir desde dónde, y desde la carpeta de sesión el id salía otro que
+// el que `plan-first` busca, así que la sesión que escribió el plan no podía tocar el producto (caso 411). Sin línea
+// sigue saliendo del árbol donde corre el proceso, que es lo que distingue a dos worktrees de la misma instancia.
+function runner(line = '', root = '') {
   if (process.env.CAUCE_RUNNER) return process.env.CAUCE_RUNNER.trim()
-  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' })
-  return runnerOf(result.status === 0 ? (result.stdout || '').trim() : process.cwd(), line)
+  const at = line && root ? root : process.cwd()
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: at, encoding: 'utf8' })
+  return runnerOf(result.status === 0 ? (result.stdout || '').trim() : at, line)
 }
 
 // La rama donde vive el trabajo de una tarea. La escriben `worktree` al crearla y `check` al buscar si

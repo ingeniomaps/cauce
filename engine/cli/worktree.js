@@ -47,7 +47,7 @@ function worktree(dir, slug, cli) {
   const asked = LN.sessionLine(root, cli.value('--line'))
   if (asked.error) return fail(asked.error, USAGE)
   const taken = state.claims.find((one) => one.slug === slug)
-  if (taken && taken.runner !== CL.runner(asked.id)) {
+  if (taken && taken.runner !== CL.runner(asked.id, path.join(root, '..'))) {
     return fail(`${slug} la tomó ${taken.owner}; preparar un árbol para su tarea no ayuda a nadie.`, REFUSED)
   }
 
@@ -147,7 +147,7 @@ function lineWork(root, task, repo, name, cli) {
     .find((dir) => !path.relative(repo, dir).startsWith('..')) || repo
   const work = path.join(own.tree, path.relative(repo, seen))
   const branch = git(own.tree, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
-  const report = { path: own.tree, work, branch, repo, line: name, runner: CL.runner(name), reused: true }
+  const report = { path: own.tree, work, branch, repo, line: name, runner: CL.runner(name, ops), reused: true }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   console.log(`= ${own.tree}  (${branch || 'sin rama'})`)
   console.log(`  ${task.slug} se construye en el árbol de la línea ${name}, en ${work}`)
