@@ -121,8 +121,10 @@ dentro de la carpeta de sesión, un worktree de cada repositorio en `lines/pagos
 `line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. En disco la línea
 aparece como un árbol por repositorio porque eso es lo que la aísla: la principal sigue en `backend-pagos/` y la
 línea trabaja en `lines/pagos/backend-pagos/`, cada una en su rama. Que el frente viva en un repositorio que la
-principal también trabaja es lo normal, no un caso aparte. Que la sesión de la línea escriba sólo en su árbol lo
-sostiene hoy la sesión, no un guard: el checkout de la principal le queda al alcance. En la carpeta de la línea está
+principal también trabaja es lo normal, no un caso aparte. La sesión de la línea escribe sólo en sus árboles y en
+la instancia: los guards de límites frenan lo demás de la carpeta de sesión —el checkout de la principal, el árbol de
+otra línea, un repositorio que la línea no trabaja—, también lo que un `git` cambiaría ahí —su rama, su árbol, su
+stash—, y dicen dónde va, salvo lo que la persona nombre o confirme en el chat. En la carpeta de la línea está
 sólo lo que trabaja; si un repositorio nombra a otro por ruta relativa —un `../shared-lib`—, ése también se suma a
 la línea, con su árbol. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
 adentro. Aparte son los archivos, no lo que el repositorio nombra fuera de git. Docker Compose toma el nombre del
@@ -146,7 +148,8 @@ acme/                         la carpeta de sesión: una sola, con un solo CLAUD
 La sesión de la línea se abre **en la misma carpeta** que la principal, con las mismas reglas, los mismos
 permisos y la misma instancia, y dice qué línea lleva: `/autobuild pagos`, o `--line pagos` en `context`, `claim`
 y `release`. Sin argumento la sesión es la principal: ve los hitos sin `line:` y nunca toma uno de una línea, así
-que olvidarlo no pisa a nadie. Con la línea, cada tarea se construye y se verifica en el árbol de la línea y se
+que olvidarlo no pisa a nadie. Eso mismo es lo que los guards leen para saber qué línea lleva la sesión —el
+`/autobuild`, el `--line` de `claim` o de `worktree`—: no hace falta exportar nada. Con la línea, cada tarea se construye y se verifica en el árbol de la línea y se
 commitea en su rama, que junta las tareas de la línea y se lleva a un PR entera. El id del runner de la sesión
 lleva la línea, así que las dos sesiones tienen cada una su WIP y sus reclamos aunque corran `ops` desde la misma
 instancia.

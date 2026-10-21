@@ -27,6 +27,7 @@ const { liveCommit } = require('./live-commit')
 const { aiSignature } = require('./ai-signature')
 const { testEvidenceShell } = require('./test-evidence-shell')
 const { governance } = require('./governance')
+const LS = require('./line-scope')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -149,7 +150,7 @@ const hookMetadata = [
     name: 'shell-boundary',
     event: 'PreToolUse · shell',
     purpose: 'Frena el destino evidente de un comando que escribe o borra fuera de las raíces declaradas, o en la '
-      + 'aprobación de la persona.',
+      + 'aprobación de la persona; en la sesión de una línea, también fuera de sus árboles.',
   },
   {
     name: 'secrets',
@@ -201,8 +202,8 @@ const hookMetadata = [
   {
     name: 'workspace-boundary',
     event: 'PreToolUse · files',
-    purpose: 'Limita escrituras a las raíces declaradas en ops.config.json, y no deja al agente escribirse '
-      + 'la aprobación de la persona.',
+    purpose: 'Limita escrituras a las raíces declaradas en ops.config.json —y en la sesión de una línea, a sus '
+      + 'árboles y la instancia—, y no deja al agente escribirse la aprobación de la persona.',
   },
   {
     name: 'engine',
@@ -275,6 +276,8 @@ function resolve(names) {
 function executeAll(names, input) {
   // Antes que cualquier guard, porque todos frenan sin la configuración: es la salida de cuando no se puede leer.
   if (restoresConfig(input)) return
+  // La línea que la sesión dice llevar, antes de que los guards de límites la lean (caso 422).
+  LS.remember(input)
   const asked = []
   for (const name of resolve(names)) {
     // Una marca que quedó de un guard que no llegó a bloquear no puede convertir en pregunta el bloqueo de
