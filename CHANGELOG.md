@@ -14,6 +14,100 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.112.0] - 2026-10-20
+
+### Corregido
+
+- **En Antigravity vuelven a correr los guards de archivos.** agy 1.4 escribe con `write_file` y `edit_file`, y el
+  puente sólo escuchaba los nombres de antes: ningún guard de archivos —`secrets`, `plan-first`, `engine`— corría cuando
+  agy creaba o editaba un archivo, y nada lo decía. Ahora los escucha, y `automation doctor antigravity` avisa cuando agy
+  cambia de versión respecto de la que se midió. **Reinstalá el runner** (`automation install . antigravity`) para que el
+  puente nuevo llegue (caso 410). Y la lectura con su herramienta de leer archivos pasa ahora por `secrets-read`: un `.env`
+  ya no entra al contexto de la sesión sin que la persona lo apruebe (caso 413).
+- **El id de una línea es el mismo desde cualquier carpeta.** `ops context`, `claim`, `release` y `worktree` con `--line`
+  lo arman con la instancia, y es el que busca `plan-first`. Antes, corridos desde la carpeta de sesión —donde se abre la
+  sesión— dejaban el plan bajo otro id, y la escritura en el árbol de la línea se frenaba con «hay plan escrito, pero bajo
+  otro id». Un reclamo tomado así antes de actualizar queda con su id viejo: `ops context` lo muestra con el
+  `export CAUCE_RUNNER=…` que lo retoma (caso 411).
+- **Una tarea se puede repartir entre quien la construye y quien la revisa.** `teamwork.md` explica el traspaso por el
+  WIP: quien construye se detiene en Commit con `phase: Review`, y quien revisa juzga con lo que está en disco y cierra o
+  devuelve. Dentro de una línea los dos comparten el id. Y `ops release` suelta el reclamo de una tarea que ya está en
+  DONE aunque lo haya tomado otro: el revisor que cierra ya no queda con el reclamo que `check` le manda soltar (caso 412).
+- **`teamwork.md` dice qué runner puede tomar qué rol.** Los cuatro pueden ser líder, programador o revisor: se midió con
+  sesiones reales. La tabla dice lo que necesita cada uno: Codex, acceso total para commitear en el árbol de una línea;
+  Gemini, la terminal permitida en la política del usuario (caso 406).
+- **Los guards de commit juzgan también el árbol de una línea.** En `lines/<línea>/<repo>` pasaban `git add -A`, el commit en
+  la rama viva, la firma de IA y el commit sin la puerta, porque esos guards no lo contaban entre los repositorios de la
+  sesión (caso 414).
+- **Un rol que lanza otro agente se lanza con `CAUCE_DELEGATED=1`.** Cauce no frena lo que la persona pide en el chat, y el
+  pedido con que un coordinador lanza a otro agente (`claude -p "…"`, `codex exec "…"`, `gemini -p "…"`) contaba como de ella:
+  esa sesión entera quedaba sin `plan-first`. Con la variable, ningún mensaje de la sesión cuenta como de la persona
+  (caso 415).
+- **Con pnpm, cambiar sólo la versión de `package.json` ya no pide aprobación por el lockfile.** La lista de claves
+  que no mueven el lock es ahora una por gestor: con pnpm suma `name`, `version`, `license`, `engines`, `bin`,
+  `funding`, `workspaces`, `os` y `cpu`, que su lock no registra. Con npm sigue igual (caso 403).
+- **`ops line` avisa cuando un árbol nace sin los hooks de git de su repositorio.** `core.hooksPath` lo comparten
+  todos los worktrees, y la carpeta a la que apunta husky (`.husky/_`) la genera la instalación: en el árbol nuevo no
+  está, y git commitea sin hooks sin decir nada. El aviso se repite al volver a pedir la línea hasta que la
+  instalación la genere (caso 398).
+- **El commit de cada tarea del autobuild ata su mensaje al id de la tarea.** Si el mensaje va en un archivo, se
+  llama `commit-<id>.txt` y su pie se comprueba antes de commitear. Antes, el reintento de un commit frenado podía
+  tomar el archivo que había dejado la tarea anterior, y el commit salía con el asunto y el `Task:` de otra (caso 400).
+- **`decisions:` dice cómo se escriben ahí los registros de R14.** Lo verificado o documentado va como
+  `[fuente: ...]` y una hipótesis como `[supuesto: ...]`: lo dice `PROTOCOL.md` y lo repite el error de `check`. Antes,
+  quien rotulaba a la R14 (`Verificado — …`) recibía un error con un formato que no mencionaba lo que había escrito
+  (caso 401).
+- **Escribir una credencial desde el shell se frena como con las herramientas de edición.** `echo … > .npmrc`,
+  `tee ~/.netrc` o `cp clave id_ed25519` pasaban; ahora `secrets-shell` los frena con la misma regla y la misma
+  aprobación por archivo que `secrets`. La familia `.env` queda afuera, para que `cp .env.example .env` siga
+  pasando. Y `cat > .npmrc` ya no se frena como si leyera el archivo: lo que va después de `>` es una escritura
+  (casos 405 y 402).
+- **`ops lines migrate` avisa si la instancia no está en su rama viva.** El planning de la línea queda en la rama en
+  que esté la instancia, que suele ser la de un upgrade. Avisa y no frena (caso 397).
+- **`ops line` avisa cuando el árbol de un repositorio con compose es el mismo proyecto que el checkout de siempre.**
+  Compose nombra el proyecto por la carpeta, y el árbol se llama como el repositorio: comparten volúmenes y
+  contenedores. El aviso da el valor que lo separa —`COMPOSE_PROJECT_NAME=<repo>-<línea>` en el `.env` del árbol—, y
+  `teamwork.md` explica lo que el compose fija a mano (caso 399).
+- **A una línea se le puede sumar un repositorio que ya tenía enlazado.** `ops line` enlaza en la carpeta de la línea los
+  repositorios que no trabaja, y sumar después uno de ellos fallaba con «ya existe y no es un worktree». Ahora el enlace se
+  reemplaza por el árbol (caso 408).
+- **El Mapa real de `workspace.md` llega a las fases de autobuild que trabajan el código.** El preámbulo de cada fase
+  prohíbe releer ese archivo, y el contrato no lo llevaba: lo que `onboard` pide escribir ahí —qué servicio vive dónde— no
+  le llegaba a ningún agente. Viaja sólo si el proyecto lo escribió (caso 409).
+- **En una sesión delegada, un guard frena en vez de pedir el diálogo de Claude Code.** Con `CAUCE_DELEGATED=1` no hay quién
+  lo conteste, y en `claude -p --permission-mode bypassPermissions` lo pedido se aprobaba solo: una escritura de `.npmrc`
+  frenada por `secrets-shell` se hizo (caso 415).
+- **En `bypassPermissions`, un guard frena y la confirmación va por el chat, en vez del diálogo de Claude Code.** En
+  `claude -p` ese diálogo no aparece y lo pedido se aprobaba solo, también sin la variable, y el hook no tiene cómo
+  distinguir `-p` de una sesión con alguien mirando. Quien trabaja interactivo en ese modo aprueba con un sí en el chat, en
+  vez de con un clic (caso 416).
+- **`echo $T >&.npmrc` es una escritura, y el cuerpo de un heredoc con un delimitador como `END-1` no se lee como
+  comandos.** El primero pasaba los guards que miran lo que escribe un comando, y el segundo frenaba crear un script que
+  nombraba una credencial (caso 405).
+- **`cd && rm -rf <x>` se juzga en la carpeta personal**, que es donde deja un `cd` solo. `destructive` lo juzgaba en el
+  directorio de antes (caso 418).
+- **`teamwork.md` dice que Gemini tiene que confiar en la carpeta**: con `--skip-trust` no carga la configuración del
+  proyecto y ningún guard corre (caso 406).
+- **Por el shell, la excepción del `.env` cubre sólo `.env` y `.env.local`.** Eximía la familia entera, también `.env.keys`
+  —la clave privada de dotenvx— y `.env.production`, que la herramienta de edición frena (caso 417).
+- **Escribir una credencial por el shell frena también con un commit en el mismo comando, con el `>` pegado y bajo un `cd`
+  que no se resuelve.** `git commit -m wip && echo … > .npmrc` y `echo x>.npmrc` pasaban. `cd "$HOME/x"` ahora se resuelve, y
+  bajo un `cd` que no se resuelve se pide la ruta, o que la persona lo pida en el chat (caso 405).
+- **Sumar a una línea un repositorio anidado, o uno cuyo árbol no se puede armar, deja la línea como estaba.** El enlace de
+  la carpeta de arriba también se reemplaza, y si `git worktree add` falla el enlace vuelve (caso 408).
+- **El aviso de compose calla cuando el árbol tiene su propio nombre de proyecto**, distinto del checkout de siempre, y el
+  nombre que sugiere es uno que Compose acepta (caso 399).
+- **`ops lines migrate --apply` avisa antes de traer la línea, y también cuando se niega** (caso 397).
+- **`automation doctor` no se cuelga si `agy --version` no termina**: lo corta a los 5 s, con lo que haya lanzado, y lee
+  también la versión de stderr (caso 410).
+
+### Cambiado
+
+- **`engine/hooks/shell.js` y `engine/planning/contracts.js` se partieron por propósito.** Estaban a una y a tres líneas
+  del límite de 500. El guard `dependencies` pasó a `engine/hooks/dependencies.js`, la lectura de lo que escribe un comando
+  a `engine/hooks/shell-writes.js` y la validación de las entradas de DONE a `engine/planning/done-entry.js`. Los guards
+  responden igual: se comprobó comparando la salida de antes y la de después sobre los mismos casos (caso 407).
+
 ## [0.111.0] - 2026-10-19
 
 ### Cambiado
