@@ -224,6 +224,31 @@ el de los dos, así que **no trabajan la misma línea a la vez**: el revisor ent
 `phase: Review`, y el programador vuelve cuando el revisor la devolvió. Si hace falta que trabajen en paralelo, cada
 uno declara su propio id con `CAUCE_RUNNER`, y entonces el revisor lee el plan del otro con `ops runners`.
 
+**Un rol que lanza otro agente se lanza con `CAUCE_DELEGATED=1`.** Cauce no frena lo que la persona pide en el chat, y el
+pedido con que un coordinador lanza a un programador —`claude -p "…"`, `codex exec "…"`, `gemini -p "…"`— le llega al runner
+como si fuera de ella. Sin la variable, esa sesión entera queda sin `plan-first` ni la gobernanza. Con ella, ningún mensaje de
+la sesión cuenta como de la persona, y lo que el guard frena se aprueba por archivo. El comando del recorrido
+(`/autobuild <línea>`) no necesita la variable: un comando de Cauce nunca contó como pedido de la persona.
+
+### Qué runner puede tomar qué rol
+
+Cualquiera de los cuatro que Cauce soporta puede ser líder —escribe la aceptación—, programador o revisor, con los guards
+de Cauce corriendo y el traspaso de arriba. Se midió con sesiones reales, cada rol con un pedido que sólo nombraba el rol
+(Claude 2.1, agy 1.4, Gemini 0.63 y Codex 0.162, en octubre de 2026). Lo que cambia entre ellos es qué hay que darle al
+runner para que el rol ande, y eso es configuración del runner, no de Cauce:
+
+| Runner | Líder | Programador | Revisor | Lo que el runner necesita |
+|---|---|---|---|---|
+| Claude | ✓ | ✓ | ✓ | Nada. Es el único donde `/autobuild` es un recorrido con fases; en los otros es un skill que el agente sigue. |
+| Antigravity (`agy`) | ✓ | ✓ | ✓ | Nada. No tiene hook de mensaje, así que lo que se le pide nunca exime de un guard. |
+| Codex | ✓ | ✓ | ✓ | Para commitear en el árbol de una línea, `-s danger-full-access`: con `workspace-write` su sandbox deja el `.git` de sólo lectura, también con el `.git` en `writable_roots`. Ahí lo contienen los guards de Cauce. La otra salida es que commitee otro rol. |
+| Gemini | ✓ | ✓ | ✓ | Que la persona le permita la terminal en `~/.gemini/policies/` (`toolName = "run_shell_command"`, `decision = "allow"`): sin interfaz, lo que pediría confirmación se niega, y la carpeta de políticas del proyecto todavía no la lee. Y que confíe en la carpeta —en su lista de carpetas de confianza o con `GEMINI_CLI_TRUST_WORKSPACE=true`—: con `--skip-trust` corre sin la configuración del proyecto, que es donde están los hooks, y ningún guard de Cauce corre. |
+
+Un runner que no está en la tabla necesita su adaptador antes de tomar cualquier rol: cómo se registran sus hooks, cómo se
+llaman sus herramientas de leer, escribir y correr comandos, y dónde lee sus reglas. Con el nombre de una herramienta mal
+alcanza para que un guard deje de correr sin que nada lo diga. Por eso, para Antigravity, que se actualiza solo,
+`automation doctor` avisa cuando su versión no es la que se midió.
+
 ## Cuando el equipo crece o se achica
 
 **No se escala por archivo: se escala por instancia.** Los umbrales no son leyes; son el momento de mirar.
