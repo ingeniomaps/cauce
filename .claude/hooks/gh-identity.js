@@ -1,6 +1,7 @@
 'use strict'
 
-// Bloquea cualquier `gh` que no lleve la credencial en la misma invocación.
+// Que todo lo que sube o aprueba vaya como `ingeniomaps`, con la credencial del `.env`: bloquea cualquier `gh` que no
+// la lleve en la misma invocación, un `gh auth` que cambie la cuenta o el helper, y un remoto o un push por SSH.
 //
 // `gh` a secas no falla: cae a la auth del keyring, que en esta máquina resuelve a otra cuenta sin
 // admin sobre ingeniomaps/cauce. Y no avisa —las lecturas (`gh run list`, `gh pr list`) devuelven
@@ -80,6 +81,25 @@ const INVOKES_GH = /(?:^|[\n;&|("']|&&|\|\|)\s*(?:[A-Za-z_][A-Za-z0-9_]*=[^\s;&|
 const CARRIES_TOKEN = /\b(?:GH_TOKEN|GITHUB_TOKEN)\s*=/
 // Lo que no toca la red ni la identidad. R14 pide poder comprobar una versión sin ceremonia.
 const HARMLESS = /(?:^|[\n;&|(]|&&|\|\|)\s*gh\s+(?:--version|--help|help|version)(?:\s|$)/
+
+// Cambiar la cuenta de `gh` o el helper de git es cambiar de identidad, y el scope `workflow` no se pide nunca: con
+// o sin `GH_TOKEN`, estos no pasan.
+const SWITCHES_IDENTITY = new RegExp(String.raw`(?:^|[\n;&|("']|&&|\|\|)\s*(?:[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]*\s+)*`
+  + String.raw`gh\s+auth\s+(?:login|refresh|switch|setup-git|logout)\b`)
+if (SWITCHES_IDENTITY.test(analyzed)) {
+  block('`gh auth` cambia la cuenta o la credencial, y en cauce la identidad es `ingeniomaps` con el `.env`: '
+    + 'usá `GH_TOKEN="$GITHUB_PAT_CAUCE" gh <subcomando>`. Si eso falla, se para y se dice; no se busca otra vía.')
+}
+
+// La clave SSH de esta máquina autentica como otra cuenta, sin permiso en `ingeniomaps/cauce`: el push se
+// rechaza (caso 425). Se mira tramo por tramo, con las comillas, porque la URL suele ir entrecomillada; un tramo que
+// no empieza a escribir un remoto —el mensaje de un commit que la cita— no cuenta.
+const SSH_URL = /git@github\.com:|ssh:\/\/[^\s"']*github\.com/
+const WRITES_REMOTE = /(?:^|[\s"'(])git\s(?:[^\n"']*?\s)?(?:remote\s+(?:set-url|add)|push)\b/
+if (body.split(/\n|;|&&|\|\||\|/).some((part) => WRITES_REMOTE.test(part) && SSH_URL.test(part))) {
+  block('en cauce no se sube por SSH: la clave autentica como otra cuenta, sin permiso. Empujá por el remoto HTTPS '
+    + 'de siempre (`git push origin <rama>`), cuyo helper lee el `.env`; también con workflows.')
+}
 
 if (INVOKES_GH.test(analyzed) && !CARRIES_TOKEN.test(command) && !HARMLESS.test(analyzed)) {
   block(
