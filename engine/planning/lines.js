@@ -181,16 +181,21 @@ function measure(source, from, branch) {
 // tienen sin commitear, y su parte del planning —que es uno solo, el de la instancia—. Y el solape: dos líneas
 // sobre el mismo repositorio no se pisan, pero lo que cambien las dos choca al mergear, y eso se ve antes
 // comparando los archivos que tocó cada rama.
+//
+// Las líneas salen de su declaración y no de sus árboles: una que todavía no trabaja ningún repositorio (caso 421) no
+// tiene ninguno, y partiendo de ellos desaparecía del panorama con toda su cola (caso 426). Fuera de sidecar no hay
+// árboles que armar —`ops line` se niega—, y una línea ahí no tiene nada que mostrar.
 function declaredStatus(root, instance) {
   const ops = path.join(root, '..')
+  const names = LT.sessionOf(ops) ? Object.keys(LT.declared(ops)) : []
+  if (!names.length) return { declared: [], overlaps: [] }
   const trees = LT.trees(ops)
-  if (!trees.length) return { declared: [], overlaps: [] }
   const ST = require('./state')
   const CK = require('./checkpoints')
   const P = require('./parser')
   const state = ST.snapshot(root)
   const byRepo = new Map()
-  const declared = [...new Set(trees.map((one) => one.line))].map((name) => {
+  const declared = names.map((name) => {
     const repos = trees.filter((one) => one.line === name).map(({ repo, source, tree }) => {
       const branch = `${BRANCH}${name}`
       const exists = fs.existsSync(tree)

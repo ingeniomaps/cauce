@@ -234,6 +234,11 @@ function line(dir, name, given, cli) {
   print(report)
 }
 
+// Lo que se dice de una línea que todavía no trabaja ningún repositorio, al declararla y en el panorama.
+const unworked = (name) => `la línea ${name} todavía no trabaja ningún repositorio: el árbol de cada uno se arma `
+  + `cuando una tarea de la línea lo pide (ops worktree --line ${name}), o se suma con `
+  + `ops line <ops-root> ${name} <repo>`
+
 function print({ line: name, trees, unlinked, warnings, declared }) {
   for (const one of trees) {
     console.log(`${one.reused ? '=' : '✓'} ${one.tree}  (${one.branch})`)
@@ -242,10 +247,7 @@ function print({ line: name, trees, unlinked, warnings, declared }) {
   if (unlinked.length) {
     console.log(`  sin los enlaces de antes: ${unlinked.join(', ')} (una línea ya no enlaza lo que no trabaja)`)
   }
-  if (!trees.length) {
-    console.log(`  la línea ${name} todavía no trabaja ningún repositorio: el árbol de cada uno se arma cuando una `
-      + `tarea de la línea lo pide (ops worktree --line ${name}), o se suma con ops line <ops-root> ${name} <repo>`)
-  }
+  if (!trees.length) console.log(`  ${unworked(name)}`)
   if (declared) console.log('  ops.config.json declara la línea: commitealo, que es de donde la lee el equipo')
   console.log(`La línea ${name} se lleva desde esta misma sesión, en otra conversación: /autobuild ${name}, o `
     + `--line ${name} en context y claim. Cada árbol es un checkout aparte: sus dependencias se instalan adentro.`)
@@ -279,6 +281,7 @@ function lines(dir, cli) {
   }
   for (const one of report.declared || []) {
     console.log(`\n${one.name}  (línea declarada)`)
+    if (!one.repos.length) console.log(`  ${unworked(one.name)}`)
     for (const repo of one.repos) {
       const moved = !repo.exists ? '  falta el árbol: ops line lo vuelve a armar'
         : repo.ahead === null ? '  sin rama viva contra qué contar'

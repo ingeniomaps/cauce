@@ -1,7 +1,8 @@
 'use strict'
 
-// `ops worktree` en una línea de trabajo (casos 394, 421 y 422): la tarea se construye en el árbol de la línea, una
-// línea vacía recibe el repositorio de su primera tarea, y sólo con una tarea suya.
+// `ops worktree` en una línea de trabajo (casos 394, 421, 422 y 426): la tarea se construye en el árbol de la línea,
+// una línea vacía recibe el repositorio de su primera tarea, y sólo con una tarea suya. Y mientras no tiene ninguno,
+// `ops lines` la muestra igual, con su cola.
 
 const { tempRoot, run, discard } = require('../support/environment')
 const { montar, git } = require('../support/worktree-bench')
@@ -66,6 +67,12 @@ test('una línea vacía no arma nada, y la primera tarea que pide su árbol le s
   assert.match(foreign.stderr, /alta no es de ninguna línea: se toma sin --line/)
   assert.deepEqual(declared(), { piloto: [] })
   lineMilestone(planning, 'piloto')
+  // Caso 426: el panorama, antes de que tenga repositorios.
+  const panorama = () => JSON.parse(run(['lines', ops, '--json']).stdout).declared
+    .find((one) => one.name === 'piloto')
+  assert.deepEqual([panorama().repos, panorama().milestones], [[], [{ slug: 'hl', tasks: 1 }]])
+  const empty = /\npiloto {2}\(línea declarada\)\n {2}la línea piloto todavía no trabaja ningún repositorio: .*\n/
+  assert.match(run(['lines', ops]).stdout, new RegExp(`${empty.source} {2}cola: hl \\(1\\)`))
   // Y la principal no le arma un árbol por tarea a una tarea de la línea, como `claim` no se la deja tomar.
   assert.match(run(['worktree', planning, 'cobro']).stderr, /cobro es de la línea piloto: se toma con --line piloto/)
   assert.equal(run(['line', ops, 'otra', 'producto']).status, 0)
@@ -75,6 +82,8 @@ test('una línea vacía no arma nada, y la primera tarea que pide su árbol le s
   assert.match(asked.stdout, /⚠ producto también es de la línea otra/, 'lo que ops line avisaría al armarlo')
   assert.match(asked.stdout, /producto se sumó a la línea piloto: ops\.config\.json la declara con él/)
   assert.deepEqual(declared(), { piloto: ['producto'], otra: ['producto'] })
+  assert.deepEqual(panorama().repos.map((one) => one.repo), ['producto'],
+    'y con el repositorio, su árbol')
   assert.equal(git(tree, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'line/piloto')
   const reused = JSON.parse(run(['worktree', planning, 'cobro', '--line', 'piloto', '--json']).stdout)
   assert.deepEqual([reused.path, reused.reused, reused.joined], [tree, true, false])
@@ -111,4 +120,8 @@ test('una línea declarada fuera de sidecar se niega con su motivo al pedir su �
   const asked = run(['worktree', planning, 'cobro', '--line', 'piloto'])
   assert.equal(asked.status, 1, asked.stderr)
   assert.match(asked.stderr, /una línea de trabajo necesita una instancia sidecar/)
+  // Y el panorama no la ofrece como una línea a la que se le puede sumar un repositorio (caso 426).
+  const shown = run(['lines', ops, '--json'])
+  assert.equal(shown.status, 0, shown.stderr)
+  assert.equal(JSON.parse(shown.stdout).declared, undefined)
 })
