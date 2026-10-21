@@ -155,6 +155,34 @@ test('el puente de Antigravity juzga las lecturas de agy con secrets-read', () =
   assert.match(unnamed.reason, /no trae TargetFile, AbsolutePath ni Path/)
 })
 
+// Caso 410: `doctor` avisa cuando agy no es la versión en que se midieron sus herramientas. El porqué, en `toolsDrift`.
+test('doctor de Antigravity avisa cuando agy no es la versión en que se midieron sus herramientas', () => {
+  const { base, target, env } = installedProject('cauce-agy-version-', 'antigravity')
+  const bin = path.join(base, 'bin')
+  fs.mkdirSync(bin)
+  const doctor = (version, body = `echo ${version}`) => {
+    fs.writeFileSync(path.join(bin, 'agy'), `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+    const result = spawnSync(process.execPath, [path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js'),
+      'automation', 'doctor', target, 'antigravity'], { encoding: 'utf8', env: { ...env, PATH: `${bin}:${env.PATH}` },
+      timeout: 20000 })
+    assert.equal(result.error, undefined, 'doctor se colgó esperando a agy --version')
+    return `${result.stdout}${result.stderr}`
+  }
+  const manifest = path.join(root, 'antigravity', 'manifest.json')
+  const measured = JSON.parse(fs.readFileSync(manifest, 'utf8')).toolsMeasuredWith
+  assert.equal(measured, '1.4', 'la versión en que se midieron write_file y edit_file')
+  assert.doesNotMatch(doctor('1.4.3'), /se midieron/, 'un parche de la misma versión no avisa')
+  const newer = doctor('agy 1.5.0')
+  assert.match(newer, /agy 1\.5\.0: las herramientas que escriben archivos se midieron con agy 1\.4/)
+  assert.match(newer, /hooks\.json/)
+  assert.match(doctor('algo sin versión'), /no se pudo leer la versión de agy/)
+  assert.match(doctor('', 'echo agy 1.5.0 >&2'), /agy 1\.5\.0: las herramientas/, 'la versión que sale por stderr')
+  // Un wrapper que no termina: doctor vuelve, lo dice y no deja procesos vivos. El porqué, en `toolsDrift`.
+  const nap = `${60 + (process.pid % 9)}.25`
+  assert.match(doctor('', `sleep ${nap}; echo 1.4.3`), /no se pudo leer la versión de agy/)
+  assert.notEqual(spawnSync('pgrep', ['-f', `^sleep ${nap}$`]).status, 0, 'quedó vivo el hijo del wrapper')
+})
+
 // Los dos errores en el mismo evento `stop`, porque separados los dos dan `continue` y cualquiera de
 // las dos mitades pasa sola. Qué distingue a uno del otro, en el `catch` del puente.
 test('el puente de Antigravity separa el guard que bloquea del puente que no arrancó', () => {

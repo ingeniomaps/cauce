@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "name": "antigravity",
   "command": "agy",
+  "toolsMeasuredWith": "1.4",
   "config": {
     "source": "hooks.json",
     "target": ".agents/plugins/cauce/hooks.json",

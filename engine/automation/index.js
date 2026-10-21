@@ -11,7 +11,7 @@ const M = require('../core/manifest')
 const RL = require('./rules')
 const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
-  runnerPaths, resolveItem, inline, render, runnerConfig,
+  runnerPaths, resolveItem, inline, render, runnerConfig, toolsDrift,
 } = require('./runners')
 const { roleCatalog, roleSkill, installRoleSkills, uninstallRoleSkills } = require('./roles')
 const {
@@ -177,6 +177,7 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
     ['-c', 'command -v "$1" >/dev/null 2>&1', 'runner-doctor', runner.command],
   )
   if (executable.status !== 0) warnings.push(`${runner.command}: CLI no encontrado en PATH`)
+  else if (runner.toolsMeasuredWith) warnings.push(...toolsDrift(runner))
   for (const warning of warnings) output.warn(`⚠ ${name}: ${warning}`)
   for (const error of errors) output.error(`✗ ${name}: ${error}`)
   return { runner, errors, warnings }
