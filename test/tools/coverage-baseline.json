@@ -564,6 +564,16 @@
     "branches": 96,
     "functions": 100
   },
+  "engine/hooks/shell-writes.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
+  "engine/hooks/dependencies.js": {
+    "lines": 97,
+    "branches": 92,
+    "functions": 100
+  },
   "engine/planning/done-entry.js": {
     "lines": 100,
     "branches": 100,

@@ -4,14 +4,12 @@
 // `~`, `..`— y R23 dice que la comprobación es del destino y no de la intención: `rm -rf .` es el cwd, y
 // `cd $X && rm -rf .` con `X` vacío es el cwd también (caso 337). Vive aparte de `shell.js` por lo mismo que
 // `mktemp.js`: es una sola pregunta —a dónde cae un borrado— y la contesta siguiendo el `cd` tramo a tramo.
-//
-// Lo que `shell.js` presta —`cdTarget`, `positional`, `QUOTED_CD`— se pide al usarlo y no al cargar, porque
-// `shell.js` carga este archivo: pedirlo arriba dejaría los tres sin definir.
 
 const os = require('node:os')
 const path = require('node:path')
 const { cwdOf, opsRoot, configOf, expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
+const { cdTarget, positional, QUOTED_CD } = require('./shell-writes')
 
 // Un `cd $(mktemp -d)` cae en un temporal que no contiene nada de lo que se cuida; un `cd` a una ruta absoluta
 // vuelve a dar base aunque la anterior no se haya resuelto. El verbo se busca detrás de lo que un shell admite
@@ -20,7 +18,6 @@ const { MKTEMP } = require('./mktemp')
 const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
 const home = (raw) => raw.replace(/^~(?=$|\/)/, os.homedir())
 function removedDirectories(command, cwd) {
-  const { cdTarget, positional, QUOTED_CD } = require('./shell')
   const found = []
   let base = cwd
   for (const segment of expandAssigned(command).replace(QUOTED_CD, '$1$3').split(/[;&\n]+|(?<!>)\|+/)) {

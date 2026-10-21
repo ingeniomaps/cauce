@@ -25,7 +25,7 @@ const path = require('node:path')
 const { block, commandOf, configOf, contentOf, cwdOf, filesOf, opsRoot } = require('./input')
 const CHAT = require('./chat')
 const AP = require('./approval')
-const { writesWithBase } = require('./shell')
+const { writesWithBase } = require('./shell-writes')
 const { confirmedOnly, real } = require('./boundary')
 const { writableOutsideRoots, resolvePath, LOCAL_CONFIG } = require('../config/paths')
 

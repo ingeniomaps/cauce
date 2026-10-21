@@ -11,6 +11,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { readInput, block, opsRoot } = require('./input')
 const shell = require('./shell')
+const { dependencies } = require('./dependencies')
 const { verify } = require('./verify')
 const files = require('./files')
 const { migrations } = require('./migrations')
@@ -66,7 +67,7 @@ function repairable(output, root) {
 const guards = {
   destructive: shell.destructive,
   'git-add': shell.gitAdd,
-  dependencies: shell.dependencies,
+  dependencies,
   governance,
   'live-commit': liveCommit,
   'ai-signature': aiSignature,

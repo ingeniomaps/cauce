@@ -17,6 +17,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
+const { cdTarget, QUOTED_CD } = require('./shell-writes')
 
 // Lo que un shell admite delante del verbo: asignaciones, `sudo` con sus banderas, `time`, un paréntesis, y
 // las palabras de un `if` o de un bucle escritos en una línea.
@@ -172,7 +173,6 @@ function unwrapped(text) {
   return open.slice(0, end).trimEnd()
 }
 function steps(command, cwd) {
-  const { cdTarget, QUOTED_CD } = require('./shell')
   const found = []
   const outer = []
   let base = cwd
