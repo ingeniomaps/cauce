@@ -49,8 +49,7 @@ function safeRepo(repo) {
 const treeOf = (session, line, repo) => path.join(session, DIR, line, path.normalize(repo))
 
 // Todos los árboles declarados de la instancia, con su línea y su repositorio de origen.
-function trees(root) {
-  const read = config(root)
+function trees(root, read = config(root)) {
   const session = sessionOf(root, read)
   if (!session) return []
   return Object.entries(declared(root, read)).flatMap(([line, repos]) => repos.map((repo) => ({

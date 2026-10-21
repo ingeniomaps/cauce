@@ -61,9 +61,9 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
   assert.deepEqual(configOf(ops).lines, { pagos: ['pagos'] }, 'la pertenencia se declara')
   assert.equal(report.declared, true)
 
-  // Lo que la línea no trabaja se enlaza donde estaba, para que `../auth` resuelva igual desde su repositorio.
-  assert.deepEqual(report.linked, ['auth', 'shared-lib'])
-  assert.equal(fs.realpathSync(path.join(base, 'lines', 'pagos', 'auth')), path.join(base, 'auth'))
+  // Lo que la línea no trabaja no aparece en su carpeta, ni enlazado ni de ninguna otra forma (caso 420).
+  assert.deepEqual(fs.readdirSync(path.join(base, 'lines', 'pagos')), ['pagos'])
+  assert.deepEqual(report.unlinked, [])
 
   // Lo que se quitó (R9). La línea no tiene carpeta de sesión al lado, ni configuración de runner, ni las
   // instrucciones, ni su propia instancia, ni el motor enlazado: la sesión que la lleva es la de siempre.
@@ -82,7 +82,8 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
 
   // La segunda vez reusa lo que ya está, y no vuelve a escribir la declaración.
   const again = json(['line', ops, 'pagos', '--json'])
-  assert.deepEqual([again.trees[0].reused, again.linked, again.declared], [true, [], false])
+  assert.deepEqual([again.trees[0].reused, again.unlinked, again.declared], [true, [], false])
+  assert.doesNotMatch(text.stdout, /enlaza/, 'la salida habla de enlaces')
   assert.equal(run(['check', path.join(ops, 'planning')]).status, 0, 'check acepta la declaración')
 })
 
@@ -175,7 +176,7 @@ test('el árbol de un repositorio con compose avisa que es el mismo proyecto, co
   }
 })
 
-test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un repositorio y en embebido', () => {
+test('una línea se niega sin nombre, sobre lo que no es un repositorio y en embebido', () => {
   const { ops, tree } = session('cauce-line-refuse-')
   const refused = (args, pattern) => {
     const result = run(['line', ops, ...args])
@@ -183,7 +184,6 @@ test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un re
     assert.match(result.stderr, pattern)
   }
   refused(['Mal Nombre', 'pagos'], /en minúsculas y con guiones/)
-  refused(['x'], /Falta qué repositorios trabaja la línea x/)
   refused(['x', 'shared-lib'], /shared-lib no es la raíz de un repositorio git/)
   refused(['x', '../afuera'], /no es la raíz de un repositorio git/)
   refused(['x', 'ops'], /ops es la instancia/)
@@ -213,25 +213,33 @@ test('un árbol borrado a mano se vuelve a armar, y la línea pedida por un enla
   assert.ok(fs.existsSync(path.join(tree('b', 'pagos'), 'a.js')))
 })
 
-// Caso 408. Una línea crece sumando repositorios, y el que se suma casi siempre ya estaba enlazado como hermano: ese
-// enlace lo puso la línea y se reemplaza por el árbol. Cualquier otra cosa en esa ruta se sigue negando.
-test('sumar a una línea un repositorio que ella misma enlazó reemplaza el enlace por su árbol', () => {
+// Casos 420 y 408. Una línea armada antes de 0.113.0 tiene enlaces a los repositorios que no trabaja: `ops line` los
+// saca, y así sumarle uno de ellos le arma su árbol. Qué saca y qué no, en `unlinkSiblings`.
+test('ops line saca los enlaces de antes, y sumar un repositorio que estaba enlazado le arma su árbol', () => {
   const { base, ops, tree } = session('cauce-line-suma-')
-  assert.ok(json(['line', ops, 'w', 'pagos', '--json']).linked.includes('auth'))
-  assert.equal(fs.lstatSync(tree('w', 'auth')).isSymbolicLink(), true)
+  const old = (line, repo, to = path.join(base, repo)) => fs.symlinkSync(to, tree(line, repo), 'dir')
+  json(['line', ops, 'w', 'pagos', '--json'])
+  old('w', 'auth'); old('w', 'shared-lib')
+  const cleaned = run(['line', ops, 'w'])
+  assert.equal(cleaned.status, 0, cleaned.stderr)
+  assert.match(cleaned.stdout,
+    /sin los enlaces de antes: auth, shared-lib \(una línea ya no enlaza lo que no trabaja\)/)
+  assert.deepEqual(fs.readdirSync(path.join(base, 'lines', 'w')), ['pagos'])
+  assert.ok(fs.existsSync(path.join(base, 'auth', 'a.js')) && fs.existsSync(path.join(base, 'shared-lib')),
+    'se llevó lo que enlazaba')
+
+  old('w', 'auth')
   const grown = run(['line', ops, 'w', 'auth', '--json'])
   assert.equal(grown.status, 0, grown.stderr)
   assert.deepEqual(JSON.parse(grown.stdout).trees.map((one) => [one.repo, one.reused]),
     [['pagos', true], ['auth', false]])
   assert.equal(fs.lstatSync(tree('w', 'auth')).isSymbolicLink(), false, 'quedó el enlace')
   assert.equal(ok(tree('w', 'auth'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'line/w')
-  assert.ok(fs.existsSync(path.join(base, 'auth', 'a.js')), 'se llevó el repositorio al que apuntaba el enlace')
   assert.deepEqual(configOf(ops).lines.w, ['pagos', 'auth'])
 
-  // Un enlace a otra cosa no es el que puso la línea, y una carpeta real tampoco: los dos se siguen negando.
+  // Un enlace a otra cosa no es de una versión de antes, y una carpeta real tampoco: los dos se siguen negando.
   json(['line', ops, 'z', 'pagos', '--json'])
-  fs.unlinkSync(tree('z', 'auth'))
-  fs.symlinkSync(path.join(base, 'shared-lib'), tree('z', 'auth'), 'dir')
+  old('z', 'auth', path.join(base, 'shared-lib'))
   const other = run(['line', ops, 'z', 'auth'])
   assert.notEqual(other.status, 0)
   assert.match(other.stderr, /ya existe y no es un worktree de auth/)
@@ -240,16 +248,16 @@ test('sumar a una línea un repositorio que ella misma enlazó reemplaza el enla
   assert.match(run(['line', ops, 'y', 'auth']).stderr, /ya existe y no es un worktree de auth/)
   // Un enlace roto también ocupa la ruta: el error dice eso, no el de git.
   fs.mkdirSync(path.dirname(tree('x', 'auth')), { recursive: true })
-  fs.symlinkSync(path.join(base, 'no-existe'), tree('x', 'auth'), 'dir')
+  old('x', 'auth', path.join(base, 'no-existe'))
   assert.match(run(['line', ops, 'x', 'auth']).stderr, /ya existe y no es un worktree de auth/)
 
-  // Con la rama ocupada el árbol no se arma, y el enlace tiene que quedar.
+  // Con la rama ocupada el árbol no se arma, y en su lugar no aparece un enlace.
   json(['line', ops, 'v', 'pagos', '--json'])
   ok(path.join(base, 'auth'), 'switch', '-q', '-c', 'line/v')
   const failed = run(['line', ops, 'v', 'auth'])
   assert.notEqual(failed.status, 0)
   assert.match(failed.stderr, /git worktree add falló en auth/)
-  assert.equal(fs.lstatSync(tree('v', 'auth')).isSymbolicLink(), true, 'el árbol falló y el enlace no volvió')
+  assert.equal(fs.existsSync(tree('v', 'auth')), false, 'el árbol falló y dejó algo en su lugar')
 
   // El árbol que git armó aunque saliera con error se deja, y repetir lo reusa. El porqué, en `plant`.
   ok(path.join(base, 'auth'), 'switch', '-q', 'main')
@@ -258,15 +266,14 @@ test('sumar a una línea un repositorio que ella misma enlazó reemplaza el enla
   const built = run(['line', ops, 'v', 'auth'])
   assert.notEqual(built.status, 0)
   assert.match(built.stderr, /El árbol quedó armado en .*auth: repetí el comando para reusarlo/)
-  assert.equal(fs.lstatSync(tree('v', 'auth')).isSymbolicLink(), false, 'se tocó un árbol registrado')
   assert.ok(fs.existsSync(path.join(tree('v', 'auth'), 'a.js')))
   fs.unlinkSync(hook)
   assert.equal(run(['line', ops, 'v', 'auth']).status, 0, 'repetir no lo reusó')
 })
 
-// Caso 408, un nivel más abajo: el nivel enlazado deja lugar al árbol y conserva a sus hermanos, y la falla lo deja
-// enlazado. El porqué, en `linkOnTheWay`.
-test('sumar un repositorio anidado reemplaza el enlace de la carpeta que lo contiene', () => {
+// Lo mismo un nivel más abajo: la versión de antes enlazaba la carpeta que contiene a un repositorio anidado. Se saca
+// ese enlace, el árbol se arma en su ruta, y los hermanos del nivel no vuelven como enlaces.
+test('sumar un repositorio anidado saca el enlace de antes de la carpeta que lo contiene', () => {
   const { base, ops, tree } = session('cauce-line-suma-anidado-')
   const web = path.join(base, 'grupo', 'web')
   fs.mkdirSync(path.join(base, 'grupo', 'docs'), { recursive: true })
@@ -274,21 +281,18 @@ test('sumar un repositorio anidado reemplaza el enlace de la carpeta que lo cont
   ok(web, 'init', '-q', '-b', 'main')
   fs.writeFileSync(path.join(web, 'a.js'), '\n')
   ok(web, 'add', 'a.js'); ok(web, 'commit', '-qm', 'init')
-  assert.ok(json(['line', ops, 'w', 'pagos', '--json']).linked.includes('grupo'))
+  json(['line', ops, 'w', 'pagos', '--json'])
   const level = path.join(base, 'lines', 'w', 'grupo')
-
-  ok(web, 'switch', '-q', '-c', 'line/w')
-  assert.match(run(['line', ops, 'w', path.join('grupo', 'web')]).stderr, /git worktree add falló en grupo\/web/)
-  assert.equal(fs.lstatSync(level).isSymbolicLink(), true, 'el árbol falló y el enlace del nivel no volvió')
-  ok(web, 'switch', '-q', 'main')
+  fs.symlinkSync(path.join(base, 'grupo'), level, 'dir')
 
   const grown = run(['line', ops, 'w', path.join('grupo', 'web'), '--json'])
   assert.equal(grown.status, 0, grown.stderr)
+  assert.deepEqual(JSON.parse(grown.stdout).unlinked, ['grupo'])
   assert.equal(fs.lstatSync(level).isSymbolicLink(), false)
   assert.equal(ok(tree('w', path.join('grupo', 'web')), 'rev-parse', '--abbrev-ref', 'HEAD'), 'line/w')
-  assert.equal(fs.realpathSync(path.join(level, 'docs')), path.join(base, 'grupo', 'docs'),
-    'el nivel perdió a sus hermanos')
-  assert.ok(fs.existsSync(path.join(web, 'a.js')), 'se llevó el repositorio')
+  assert.deepEqual(fs.readdirSync(level), ['web'], 'un hermano del nivel volvió a la línea')
+  assert.ok(fs.existsSync(path.join(base, 'grupo', 'docs')) && fs.existsSync(path.join(web, 'a.js')),
+    'se llevó lo que enlazaba')
 })
 
 test('dos líneas sobre el mismo repositorio se permiten, se avisan y muestran qué archivos tocaron las dos', () => {
@@ -345,7 +349,7 @@ test('retirar una línea espera a que su rama llegue a la viva, y saca sólo lo 
   assert.equal(fs.existsSync(path.join(base, 'lines', 'pagos')), false, 'quedó la carpeta de la línea')
   assert.equal(git(path.join(base, 'pagos'), 'rev-parse', '--verify', '--quiet', 'refs/heads/line/pagos').status, 1)
   assert.deepEqual(configOf(ops).lines, { otra: ['auth'] }, 'la declaración de la otra línea se queda')
-  // Los enlaces se fueron sin llevarse lo que enlazaban, y la otra línea sigue entera.
+  // Lo de afuera de la línea sigue donde estaba, y la otra línea sigue entera.
   assert.ok(fs.existsSync(path.join(base, 'shared-lib')) && fs.existsSync(path.join(base, 'auth', 'a.js')))
   assert.ok(fs.existsSync(path.join(tree('otra', 'auth'), 'a.js')))
   json(['lines', 'join', ops, 'otra', '--apply', '--json'])
@@ -432,10 +436,9 @@ test('migrar avisa si la instancia no está en su rama viva, y no por una línea
   assert.equal(applied.stdout.split('⚠ la instancia está en').length, 2, 'avisa dos veces')
 })
 
-// Un repositorio anidado en la carpeta de sesión: lo que se enlaza es cada nivel que lleva a él, para que `../`
-// resuelva igual a cualquier profundidad. Y una carpeta de sesión que es ella misma un repositorio no ve
-// `lines/` como trabajo suyo.
-test('un repositorio anidado se enlaza por niveles, y lines/ no ensucia una carpeta de sesión con git', () => {
+// Un repositorio anidado en la carpeta de sesión se arma en su misma ruta, sin sus hermanos al lado. Y una carpeta de
+// sesión que es ella misma un repositorio no ve `lines/` como trabajo suyo.
+test('un repositorio anidado se arma en su ruta, y lines/ no ensucia una carpeta de sesión con git', () => {
   const { base, ops, tree } = session('cauce-line-nested-')
   const web = path.join(base, 'servicios', 'web')
   fs.mkdirSync(path.join(base, 'servicios', 'docs'), { recursive: true })
@@ -447,15 +450,14 @@ test('un repositorio anidado se enlaza por niveles, y lines/ no ensucia una carp
 
   const report = json(['line', ops, 'web', 'servicios/web', '--json'])
   assert.equal(report.trees[0].tree, tree('web', path.join('servicios', 'web')))
-  assert.deepEqual(report.linked, ['auth', 'pagos', 'shared-lib', path.join('servicios', 'docs')])
-  assert.equal(fs.realpathSync(path.join(base, 'lines', 'web', 'servicios', 'docs')),
-    path.join(base, 'servicios', 'docs'))
+  assert.deepEqual(fs.readdirSync(path.join(base, 'lines', 'web', 'servicios')), ['web'])
   assert.match(fs.readFileSync(path.join(base, '.git', 'info', 'exclude'), 'utf8'), /^\/lines\/$/m)
   assert.equal(ok(base, 'status', '--porcelain').includes('lines'), false, 'lines/ aparece como trabajo')
   json(['line', ops, 'web', '--json'])
   assert.equal(fs.readFileSync(path.join(base, '.git', 'info', 'exclude'), 'utf8').match(/\/lines\//g).length, 1)
 
-  // Retirarla saca también los enlaces de adentro de cada nivel, y las carpetas que quedan vacías.
+  // Y con un enlace de antes adentro. Qué saca `join` y qué deja, en `unlinkOnly`.
+  fs.symlinkSync(path.join(base, 'servicios', 'docs'), path.join(base, 'lines', 'web', 'servicios', 'docs'), 'dir')
   const text = run(['lines', 'join', ops, 'web'])
   assert.match(text.stdout, /^RETIRAR la línea web {2}\(1 repositorio\(s\)\)\n {2}servicios\/web {2}llegó a main\n/)
   assert.match(text.stdout, /Para hacerlo: ops lines join <ops-root> web --apply/)

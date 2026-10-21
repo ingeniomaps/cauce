@@ -578,5 +578,15 @@
     "lines": 100,
     "branches": 100,
     "functions": 100
+  },
+  "engine/hooks/line-scope.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
+  "engine/hooks/unreadable-config.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
   }
 }

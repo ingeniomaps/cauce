@@ -417,8 +417,8 @@ test('lines declara cada línea con sus repositorios, y lo que no tiene la forma
   assert.deepEqual(errorsOf(undefined), [], 'sin líneas es lo de siempre')
   assert.match(errorsOf(['pagos']).join('\n'), /lines debe ser un objeto/)
   assert.match(errorsOf({ Pagos: ['x'] }).join('\n'), /lines\.Pagos no es un nombre de línea/)
-  assert.match(errorsOf({ pagos: [] }).join('\n'), /lines\.pagos debe ser una lista no vacía/)
-  assert.match(errorsOf({ pagos: 'x' }).join('\n'), /lines\.pagos debe ser una lista no vacía/)
+  assert.deepEqual(errorsOf({ pagos: [] }), [], 'una línea que todavía no trabaja ningún repositorio (caso 421)')
+  assert.match(errorsOf({ pagos: 'x' }).join('\n'), /lines\.pagos debe ser una lista de repositorios/)
   for (const repo of ['../afuera', '/abs', '.', 'lines/otra', '', 3]) {
     assert.match(errorsOf({ pagos: [repo] }).join('\n'), /no es un repositorio de la carpeta de sesión/, String(repo))
   }

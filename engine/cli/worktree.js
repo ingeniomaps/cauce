@@ -18,6 +18,7 @@ const O = require('../core/ownership')
 const { treeOf } = require('../core/task-trees')
 const LT = require('../core/line-trees')
 const LN = require('../planning/lines')
+const LN_CLI = require('./lines')
 const { fail, planningRoot, USAGE, REFUSED } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -49,6 +50,13 @@ function worktree(dir, slug, cli) {
   const taken = state.claims.find((one) => one.slug === slug)
   if (taken && taken.runner !== CL.runner(asked.id, path.join(root, '..'))) {
     return fail(`${slug} la tomó ${taken.owner}; preparar un árbol para su tarea no ayuda a nadie.`, REFUSED)
+  }
+  // Sólo para las tareas que esta sesión puede tomar, con el mismo filtro que `claim`. En una línea además importa más:
+  // armar el árbol le suma el repositorio de la tarea (caso 421), y con una tarea ajena eso le ensanchaba al agente
+  // dónde puede escribir (caso 422) sin que nadie lo aprobara.
+  const milestone = state.milestones.find((one) => one.tasks.includes(task))
+  if (LN.scope([milestone], asked.line).hidden.length) {
+    return fail(`${slug} ${LN.whereToTake(milestone)}.`, REFUSED)
   }
 
   const candidatos = R.reposFor(path.join(root, '..'), task.service)
@@ -131,26 +139,50 @@ function worktree(dir, slug, cli) {
 // repositorio que trabaja, así que adentro no hay con quién pisarse, y un árbol más por tarea la dejaría sin
 // lo que ya acumuló en su rama. Se entrega con la misma forma que el de una tarea, más `line`: quien lo recibe
 // commitea ahí, en la rama de la línea, y no lo retira.
+//
+// Un repositorio que la línea todavía no trabaja se le suma acá, con su árbol (caso 421): la tarea es de la línea
+// —su hito lo dice—, así que pedirle a la persona que corra `ops line` antes era sólo el viaje de ida y vuelta. Lo
+// mismo con un árbol que falta. Lo que `ops line` se niega a armar se niega igual, con su motivo.
 function lineWork(root, task, repo, name, cli) {
   const ops = path.join(root, '..')
-  const own = LT.trees(ops).find((one) => one.line === name && fs.existsSync(one.source)
+  const find = () => LT.trees(ops).find((one) => one.line === name && fs.existsSync(one.source)
     && fs.realpathSync(one.source) === repo)
-  if (!own) {
-    return fail(`${task.service || '.'} vive en ${repo}, que no es de la línea ${name}. Si le toca, se suma con `
-      + `\`ops line <ops-root> ${name} <repo>\`; si no, el hito no es de esta línea.`, REFUSED)
-  }
-  if (!fs.existsSync(own.tree)) {
-    return fail(`falta el árbol de ${own.repo} en la línea ${name} (${own.tree}): \`ops line <ops-root> ${name}\` `
-      + 'lo vuelve a armar.', REFUSED)
+  let own = find()
+  let joined = null
+  if (!own || !fs.existsSync(own.tree)) {
+    joined = LN_CLI.assemble(LN_CLI.real(ops), name, [own ? own.repo : seenFrom(LT.sessionOf(ops), repo)])
+    const why = `armar la línea ${name} para ${task.service || '.'}, que vive en ${repo}: ${joined.error}`
+    if (joined.error) return joined.code === USAGE ? fail(why, USAGE) : fail(why, REFUSED)
+    own = find()
   }
   const seen = R.serviceDirs(ops, task.service).filter((dir) => fs.existsSync(dir)).map((dir) => fs.realpathSync(dir))
     .find((dir) => !path.relative(repo, dir).startsWith('..')) || repo
   const work = path.join(own.tree, path.relative(repo, seen))
   const branch = git(own.tree, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
-  const report = { path: own.tree, work, branch, repo, line: name, runner: CL.runner(name, ops), reused: true }
+  // Lo que `ops line` diría al armarlo —otra línea en el mismo repositorio, los hooks que el árbol no encuentra, los
+  // enlaces de antes que sacó— lo dice también acá: si no, se armaba en silencio.
+  const warnings = joined ? joined.warnings : []
+  const report = { path: own.tree, work, branch, repo, line: name, runner: CL.runner(name, ops), reused: !joined,
+    joined: Boolean(joined && joined.declared), warnings }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
-  console.log(`= ${own.tree}  (${branch || 'sin rama'})`)
+  console.log(`${joined ? '✓' : '='} ${own.tree}  (${branch || 'sin rama'})`)
+  if (report.joined) {
+    console.log(`  ${own.repo} se sumó a la línea ${name}: ops.config.json la declara con él, commitealo`)
+  }
+  if (joined && joined.unlinked.length) console.log(`  sin los enlaces de antes: ${joined.unlinked.join(', ')}`)
+  for (const warning of warnings) console.log(`⚠ ${warning}`)
   console.log(`  ${task.slug} se construye en el árbol de la línea ${name}, en ${work}`)
+}
+
+// Cómo se nombra el repositorio desde la carpeta de sesión. `repo` es su ruta real, y la carpeta puede alcanzarlo por
+// un enlace: la ruta relativa saldría con `..`, que `ops line` rechaza, cuando la persona lo nombraría por el enlace.
+function seenFrom(session, repo) {
+  // Sin carpeta de sesión no es sidecar, y `ops line` lo rechaza con su motivo.
+  if (!session) return path.basename(repo)
+  const relative = path.relative(LN_CLI.real(session), repo)
+  if (!relative.startsWith('..')) return relative
+  const entries = fs.readdirSync(session, { withFileTypes: true }).filter((one) => one.isSymbolicLink())
+  return entries.map((one) => one.name).find((name) => LN_CLI.real(path.join(session, name)) === repo) || relative
 }
 
 module.exports = { worktree }

@@ -179,6 +179,9 @@ test('el diálogo es para lo que pide autoridad y en la conversación directa; e
         assert.notEqual(outcome(['destructive'], delegated), 'diálogo', `${mode} ${type}`)
         const fixed = outcome(['test-workers'], { ...direct('npx jest'), agent_id: 'a1', agent_type: type })
         assert.match(fixed, /Esto lo corregís vos.*devolvele el bloqueo a quien te lanzó/s, `${mode} ${type}`)
+        // Caso 424: «esa confirmación» tiene que tener a qué referirse, y para un subagente no lo tenía.
+        assert.match(fixed, /para que se lo pregunte a la persona: si ella lo confirma[^]*Esa confirmación cubre/,
+          `${mode} ${type}`)
       }
     }
   } finally { chat.close() }

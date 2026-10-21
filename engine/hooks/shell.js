@@ -21,6 +21,7 @@ const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead } = require('./shell-changes')
 const { landing } = require('../core/files')
 const { beyond, reached, real, removed, refusal } = require('./boundary')
+const LS = require('./line-scope')
 const AP = require('./approval')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
@@ -220,6 +221,7 @@ const TEMP = new RegExp(`^${real(os.tmpdir())}(?:/|$)`)
 function shellBoundary(input) {
   const allowed = writableRoots(input)
   const found = []
+  const strayed = []
   // Sin el cuerpo de los heredocs, también con un delimitador como `END-1`, por lo que dice `writtenCredentials`.
   for (const { raw, base } of writesWithBase(asRead(commandOf(input)), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
@@ -239,6 +241,8 @@ function shellBoundary(input) {
     if (!allowed || DEVICES.test(file) || TEMP.test(lands)) continue
     const out = beyond(input, base || '/', raw, allowed)
     if (out) found.push({ verb: 'escribe', out })
+    const off = !out && LS.strayed(input, file, lands)
+    if (off) strayed.push(off)
   }
   // Borrar afuera es cambiar lo de afuera, y crear una carpeta o un archivo vacío también (caso 365). Lo que
   // no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga: `cd "$DIR" && rm -rf
@@ -260,10 +264,19 @@ function shellBoundary(input) {
     if (TEMP.test(at)) continue
     const out = beyond(input, base || '/', named, allowed, at)
     if (out) found.push({ verb, out })
+    const off = !out && LS.strayed(input, path.resolve(base || '/', named), at)
+    if (off) strayed.push(off)
+  }
+  // Un `git` que cambia el checkout de otra sesión no escribe en ningún destino de los de arriba (caso 423).
+  for (const { dir, sub } of LS.gitTargets(ran)) {
+    const off = LS.strayed(input, dir, landing(path.sep, dir), sub)
+    if (off) strayed.push(off)
   }
   const why = refusal(input, found, (all) => 'el comando '
     + all.map(({ verb, out }) => `${verb === 'escribe' ? 'escribe en' : verb} ${reached(out)}`).join(' y '))
   if (why) block(why)
+  const off = LS.refusal(input, strayed)
+  if (off) block(off)
 }
 
 function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {

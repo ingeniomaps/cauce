@@ -196,9 +196,9 @@ const heldWhy = (one, named = true) => `${named ? `${one.repo}: ` : ''}${one.mer
   : one.live ? `${one.branch} no llegó a ${one.live}`
     : `no tiene rama viva contra qué comprobar que ${one.branch} llegó`}`
 
-// Lo que queda de la carpeta de una línea después de sacar sus árboles son enlaces. Se borran ésos y las carpetas
-// que quedan vacías, nada más: un enlace se quita sin tocar adonde lleva, y una carpeta con algo adentro que no es
-// de la línea se queda, y se dice (R23).
+// Lo que puede quedar de la carpeta de una línea después de sacar sus árboles son los enlaces que dejaban las
+// versiones de antes de 0.113.0 (caso 420). Se borran ésos y las carpetas que quedan vacías, nada más: un enlace se
+// quita sin tocar adonde lleva, y una carpeta con algo adentro que no es de la línea se queda, y se dice (R23).
 function unlinkOnly(dir) {
   for (const entry of fs.readdirSync(dir)) {
     const at = path.join(dir, entry)

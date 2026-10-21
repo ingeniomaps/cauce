@@ -23,6 +23,7 @@ const { runner } = require('../planning/claims')
 const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
 const LT = require('../core/line-trees')
+const LS = require('./line-scope')
 
 // Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
 // angosta: vale para esa ruta y para ninguna otra, a diferencia de la variable, que apaga el guard hasta
@@ -307,6 +308,7 @@ function workspaceBoundary(input) {
   const allowed = writableRoots(input)
   const deleted = new Set([...patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)].map((one) => one[1].trim()))
   const found = []
+  const strayed = []
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
     if (runnerOwn(file)) continue
@@ -315,10 +317,14 @@ function workspaceBoundary(input) {
     if (own) block(own)
     const out = allowed && beyond(input, cwdOf(input), raw, allowed)
     if (out) found.push({ verb: deleted.has(raw) ? 'borra' : 'escribe', out })
+    const off = !out && LS.strayed(input, file, landing(cwdOf(input), raw))
+    if (off) strayed.push(off)
   }
   const why = refusal(input, found, (all) => `${all.map(({ out }) => reached(out)).join(' y ')} `
     + (all.length > 1 ? 'están' : 'está'))
   if (why) block(why)
+  const off = LS.refusal(input, strayed)
+  if (off) block(off)
 }
 
 // Hace falta un guard aparte porque `workspace-boundary` no lo cubre: `node_modules/` cae dentro de

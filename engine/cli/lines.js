@@ -8,9 +8,8 @@
 // y todo lo que vivía en la carpeta original había que replicarlo o enlazarlo: cada cosa que faltaba era un
 // caso nuevo, y las que faltaban al final eran las que hacen la gobernanza.
 //
-// Los repositorios que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` escrito en un
-// repositorio resuelva igual que desde la carpeta de sesión. Las dependencias no se enlazan: un árbol es un
-// checkout aparte, y que cada línea pruebe lo suyo es la razón de tenerlo.
+// La carpeta de una línea tiene sus árboles y nada más: ni enlaces a los repositorios que no trabaja, ni a sus
+// dependencias. Un árbol es un checkout aparte, y que cada línea pruebe lo suyo es la razón de tenerlo.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -26,37 +25,35 @@ const isDir = (dir) => {
   try { return fs.statSync(dir).isDirectory() } catch { return false }
 }
 
-function linkIfMissing(link, target) {
-  if (fs.existsSync(link) || !fs.existsSync(target)) return false
-  fs.mkdirSync(path.dirname(link), { recursive: true })
-  fs.symlinkSync(fs.realpathSync(target), link, 'dir')
-  return true
-}
-
 // El worktree de la instancia que una línea de antes tenía en `line/<nombre>`, o null.
 const legacyTree = (root, name) => LNP.worktrees(root).find((one) => one.branch === `${BRANCH}${name}`) || null
 
-// Los repositorios que la línea no trabaja, enlazados en su carpeta en el mismo lugar que en la de sesión. Se
-// enlaza en cada nivel que lleva a un repositorio propio, para que `../` resuelva igual a cualquier
-// profundidad. Quedan afuera los archivos sueltos y lo oculto —`CLAUDE.md`, `.claude/`: la configuración de la
-// sesión, que la línea no tiene—, `lines/` y la instancia, que es una sola.
-function linkSiblings(session, name, repos, instance) {
-  const owned = new Set(repos.map((one) => path.normalize(one)))
-  const levels = new Set([''])
-  for (const repo of owned) {
-    for (let dir = path.dirname(repo); dir !== '.'; dir = path.dirname(dir)) levels.add(dir)
-  }
-  const linked = []
-  for (const level of [...levels].sort()) {
-    for (const entry of fs.readdirSync(path.join(session, level)).sort()) {
-      const relative = path.join(level, entry)
-      const original = path.join(session, relative)
-      if (entry.startsWith('.') || (!level && entry === LT.DIR) || owned.has(relative) || levels.has(relative)) continue
-      if (!isDir(original) || real(original) === instance) continue
-      if (linkIfMissing(path.join(session, LT.DIR, name, relative), original)) linked.push(relative)
+// Hasta 0.112.0 una línea enlazaba en su carpeta cada repositorio que no trabajaba, para que un `../shared-lib`
+// resolviera igual que desde la carpeta de sesión (caso 394). Casi ningún repositorio lo nombraba, y la carpeta se leía
+// como una línea con repositorios que no eran suyos (caso 420): el vecino que un repositorio sí nombra se suma a la
+// línea con su propio árbol. Esto saca lo que dejó aquella versión, que es un enlace al mismo lugar de la carpeta de
+// sesión, y nada más: ni adonde lleva, ni un enlace que puso otro (R23). Las carpetas que quedan vacías se van con él.
+function unlinkSiblings(session, name) {
+  const removed = []
+  const walk = (relative) => {
+    const at = path.join(session, LT.DIR, name, relative)
+    for (const entry of (isDir(at) ? fs.readdirSync(at) : []).sort()) {
+      const inner = path.join(relative, entry)
+      const here = path.join(at, entry)
+      const stat = fs.lstatSync(here)
+      const before = removed.length
+      if (stat.isSymbolicLink() && real(here) === real(path.join(session, inner))) {
+        fs.unlinkSync(here)
+        removed.push(inner)
+      } else if (stat.isDirectory() && !fs.existsSync(path.join(here, '.git'))) {
+        walk(inner)
+        // Sólo la carpeta que vació esto: una vacía que ya estaba no es de aquella versión.
+        if (removed.length > before) try { fs.rmdirSync(here) } catch { /* tiene algo más */ }
+      }
     }
   }
-  return linked
+  walk('')
+  return removed
 }
 
 // `lines/` no es del proyecto: si la carpeta de sesión es un repositorio, se anota en su `exclude`, que no
@@ -84,43 +81,19 @@ function plant(session, name, repo, warnings) {
   const reused = registered(source, tree)
   let from = ''
   if (!reused) {
-    // El enlace que `linkSiblings` puso cuando el repositorio todavía no era de la línea se reemplaza por su árbol: así
-    // crece una línea, y negarse obligaba a borrarlo a mano (caso 408). Se saca el enlace, nunca lo que apunta.
-    const unlinked = linkOnTheWay(session, name, repo)
-    if (unlinked) fs.unlinkSync(unlinked.at)
     // `occupied` y no `existsSync`: un enlace roto también ocupa la ruta, y sin verlo el error era el de git, opaco.
     if (occupied(tree)) return { error: `${tree} ya existe y no es un worktree de ${repo}.` }
-    // Sin el árbol, el enlace vuelve: los `../${repo}` de los otros repositorios de la línea lo necesitan. Lo que
-    // quedó entre el árbol y el enlace se saca sólo si está vacío; un checkout a medias no se borra (R23).
-    const restore = () => {
-      for (let dir = tree; dir.startsWith(unlinked.at); dir = path.dirname(dir)) {
-        try { fs.rmdirSync(dir) } catch (error) { if (error.code !== 'ENOENT') break }
-      }
-      return linkIfMissing(unlinked.at, unlinked.source)
-    }
     const hasBranch = git(source, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
     if (!hasBranch) from = LNP.startPoint(source)
     const args = hasBranch ? [tree, branch] : ['-b', branch, tree, ...(from ? [from] : [])]
-    let added
-    try {
-      fs.mkdirSync(path.dirname(tree), { recursive: true })
-      added = git(source, 'worktree', 'add', ...args)
-    } catch (error) {
-      // Lo que se relanza es lo que falló; si reponer el enlace también falla, ese error taparía al primero.
-      try { if (unlinked) restore() } catch { /* el enlace queda sin reponer; el error que vale es el de arriba */ }
-      throw error
-    }
+    fs.mkdirSync(path.dirname(tree), { recursive: true })
+    const added = git(source, 'worktree', 'add', ...args)
     if (added.status !== 0) {
       const error = `git worktree add falló en ${repo}: ${(added.stderr || '').trim()}`
       // Git puede dejar el árbol armado y salir con error: un `post-checkout` que falla le pasa su código. Ese árbol
       // está registrado, así que no se toca —borrarlo a mano deja el registro colgado— y repetir lo reusa.
-      if (registered(source, tree)) {
-        return { error: `${error}\nEl árbol quedó armado en ${tree}: repetí el comando para reusarlo.` }
-      }
-      if (!unlinked) return { error }
-      return restore() ? { error }
-        : { error: `${error}\nEl enlace a ${unlinked.source} no se pudo reponer: ${unlinked.at} quedó con lo que git `
-          + 'dejó. Mirá qué tiene y, si no es nada, borralo y repetí.' }
+      return registered(source, tree)
+        ? { error: `${error}\nEl árbol quedó armado en ${tree}: repetí el comando para reusarlo.` } : { error }
     }
     const head = git(source, 'symbolic-ref', '--short', '-q', 'HEAD').stdout.trim()
     if (!hasBranch && head && from && head !== LNP.branchOf(from)) {
@@ -170,22 +143,6 @@ const occupied = (at) => {
 const registered = (source, tree) => (git(source, 'worktree', 'list', '--porcelain').stdout || '').split('\n')
   .some((entry) => entry.trim() === `worktree ${tree}`)
 
-// El enlace que deja `linkSiblings` en el camino al árbol: el del propio repositorio, o el de una carpeta de arriba si
-// es anidado, cuyo nivel `linkSiblings` rearma con sus hermanos. Sólo decide: cualquier otra cosa —una carpeta, un
-// enlace a otro lado— no es de la línea y la decide quien la puso (R23).
-function linkOnTheWay(session, name, repo) {
-  const parts = path.normalize(repo).split(path.sep)
-  for (let i = 1; i <= parts.length; i += 1) {
-    const relative = path.join(...parts.slice(0, i))
-    const at = LT.treeOf(session, name, relative)
-    const source = path.join(session, relative)
-    try {
-      if (fs.lstatSync(at).isSymbolicLink()) return real(at) === real(source) ? { at, source } : null
-    } catch { return null }
-  }
-  return null
-}
-
 // `core.hooksPath` vive en la configuración del repositorio y la comparten todos sus worktrees, pero la carpeta
 // a la que suele apuntar —`.husky/_`— la genera la instalación y git la ignora: un árbol nuevo no la trae, y
 // git no corre ningún hook ni avisa (caso 398). Se dice y no se copia: lo que va adentro es de la herramienta.
@@ -202,7 +159,7 @@ const no = (error, code) => ({ error, code })
 // `ops lines migrate`, que imprime lo suyo.
 function assemble(root, name, given) {
   if (!name || !NAME.test(name)) {
-    return no('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre> <repo>...`', USAGE)
+    return no('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre> [<repo>...]`', USAGE)
   }
   const config = LT.config(root)
   if (!config.mode) return no(`${root} (ruta resuelta) no es una raíz ops: falta ops.config.json.`, USAGE)
@@ -220,10 +177,6 @@ function assemble(root, name, given) {
   const instance = real(top.stdout.trim())
   const lines = LT.declared(root, config)
   const repos = [...new Set([...(lines[name] || []), ...given.map((one) => path.normalize(one).replace(/\/+$/, ''))])]
-  if (!repos.length) {
-    return no(`Falta qué repositorios trabaja la línea ${name}: \`ops line <ops-root> ${name} <repo>...\`, cada `
-      + `uno nombrado desde ${session}.`, USAGE)
-  }
   for (const repo of repos) {
     const source = path.join(session, repo)
     const its = LT.safeRepo(repo) && isDir(source) ? git(source, 'rev-parse', '--show-toplevel') : null
@@ -248,6 +201,8 @@ function assemble(root, name, given) {
         + 'al mergear. `ops lines` muestra qué archivos tocaron.')
     }
   }
+  // Antes de armar: un enlace de antes puede estar justo donde va el árbol de un repositorio que se suma (caso 408).
+  const unlinked = unlinkSiblings(session, name)
   const trees = []
   for (const repo of repos) {
     const planted = plant(session, name, repo, warnings)
@@ -258,16 +213,17 @@ function assemble(root, name, given) {
     }
     trees.push(planted)
   }
-  const linked = linkSiblings(session, name, repos, instance)
-  ignoreLines(session)
+  if (trees.length) ignoreLines(session)
   // La pertenencia se escribe al final: con un árbol que no se pudo armar, la línea no queda declarada a medias.
-  const wrote = JSON.stringify(lines[name] || []) !== JSON.stringify(repos)
+  // Sin repositorios se declara igual: el frente se decide antes que el repositorio, y su sesión ya puede llevar
+  // la planificación (caso 421). Los árboles se arman cuando una tarea de la línea los pide, en `ops worktree`.
+  const wrote = JSON.stringify(lines[name]) !== JSON.stringify(repos)
   if (wrote) {
     config.lines = { ...(config.lines || {}), [name]: repos }
     fs.writeFileSync(path.join(root, 'ops.config.json'), `${JSON.stringify(config, null, 2)}\n`)
   }
 
-  return { line: name, session, trees, linked, warnings, declared: wrote }
+  return { line: name, session, trees, unlinked, warnings, declared: wrote }
 }
 
 function line(dir, name, given, cli) {
@@ -278,12 +234,18 @@ function line(dir, name, given, cli) {
   print(report)
 }
 
-function print({ line: name, trees, linked, warnings, declared }) {
+function print({ line: name, trees, unlinked, warnings, declared }) {
   for (const one of trees) {
     console.log(`${one.reused ? '=' : '✓'} ${one.tree}  (${one.branch})`)
     if (one.from) console.log(`  sale de: ${one.from}`)
   }
-  if (linked.length) console.log(`  enlazados: ${linked.join(', ')}`)
+  if (unlinked.length) {
+    console.log(`  sin los enlaces de antes: ${unlinked.join(', ')} (una línea ya no enlaza lo que no trabaja)`)
+  }
+  if (!trees.length) {
+    console.log(`  la línea ${name} todavía no trabaja ningún repositorio: el árbol de cada uno se arma cuando una `
+      + `tarea de la línea lo pide (ops worktree --line ${name}), o se suma con ops line <ops-root> ${name} <repo>`)
+  }
   if (declared) console.log('  ops.config.json declara la línea: commitealo, que es de donde la lee el equipo')
   console.log(`La línea ${name} se lleva desde esta misma sesión, en otra conversación: /autobuild ${name}, o `
     + `--line ${name} en context y claim. Cada árbol es un checkout aparte: sus dependencias se instalan adentro.`)

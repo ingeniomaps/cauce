@@ -105,7 +105,12 @@ la carpeta de siempre, los checkouts de siempre. Una línea existe sólo para qu
 trabajo que la principal no toma —un frente aparte, como pagos mientras vos seguís con lo tuyo—. Quien trabaja
 concentrado en lo suyo no tiene líneas, y nada de esto le aparece.
 
-Una línea es un nombre y los repositorios del producto que trabaja:
+Una línea es un **frente de trabajo**: un nombre, los hitos que lleva —los que dicen `line: <nombre>`— y los
+repositorios del producto donde vive ese trabajo. El frente se decide antes que el repositorio, así que una línea
+puede nacer sin ninguno —`node tools/ops.js line . pagos`—: queda declarada, sin nada en disco, y su sesión ya puede
+escribir sus hitos y planificarlos. El repositorio de la primera tarea que pide su árbol —`ops worktree --line`, que
+es lo que corre `/autobuild`— se suma a la línea en ese momento, con su árbol, y la salida lo dice. Si ya se sabe,
+se nombra al armarla:
 
 ```bash
 node tools/ops.js line . pagos backend-pagos
@@ -113,9 +118,15 @@ node tools/ops.js line . pagos backend-pagos
 
 Declara la línea en `ops.config.json` —`"lines": { "pagos": ["backend-pagos"] }`, que se commitea— y arma,
 dentro de la carpeta de sesión, un worktree de cada repositorio en `lines/pagos/<repo>/`, en la rama
-`line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. Los repositorios
-que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` resuelva igual que desde la carpeta
-de sesión. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
+`line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. En disco la línea
+aparece como un árbol por repositorio porque eso es lo que la aísla: la principal sigue en `backend-pagos/` y la
+línea trabaja en `lines/pagos/backend-pagos/`, cada una en su rama. Que el frente viva en un repositorio que la
+principal también trabaja es lo normal, no un caso aparte. La sesión de la línea escribe sólo en sus árboles y en
+la instancia: los guards de límites frenan lo demás de la carpeta de sesión —el checkout de la principal, el árbol de
+otra línea, un repositorio que la línea no trabaja—, también lo que un `git` cambiaría ahí —su rama, su árbol, su
+stash—, y dicen dónde va, salvo lo que la persona nombre o confirme en el chat. En la carpeta de la línea está
+sólo lo que trabaja; si un repositorio nombra a otro por ruta relativa —un `../shared-lib`—, ése también se suma a
+la línea, con su árbol. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
 adentro. Aparte son los archivos, no lo que el repositorio nombra fuera de git. Docker Compose toma el nombre del
 proyecto de la carpeta, y el árbol se llama como el repositorio —para que `../` resuelva igual—, así que desde
 `lines/pagos/backend-pagos/` un `docker compose up` es el mismo proyecto que desde `backend-pagos/`: los mismos
@@ -131,14 +142,14 @@ acme/                         la carpeta de sesión: una sola, con un solo CLAUD
 ├── shared-lib/
 └── lines/
     └── pagos/
-        ├── backend-pagos/    worktree en line/pagos
-        └── shared-lib -> ../../shared-lib
+        └── backend-pagos/    worktree en line/pagos: lo único de la línea
 ```
 
 La sesión de la línea se abre **en la misma carpeta** que la principal, con las mismas reglas, los mismos
 permisos y la misma instancia, y dice qué línea lleva: `/autobuild pagos`, o `--line pagos` en `context`, `claim`
 y `release`. Sin argumento la sesión es la principal: ve los hitos sin `line:` y nunca toma uno de una línea, así
-que olvidarlo no pisa a nadie. Con la línea, cada tarea se construye y se verifica en el árbol de la línea y se
+que olvidarlo no pisa a nadie. Eso mismo es lo que los guards leen para saber qué línea lleva la sesión —el
+`/autobuild`, el `--line` de `claim` o de `worktree`—: no hace falta exportar nada. Con la línea, cada tarea se construye y se verifica en el árbol de la línea y se
 commitea en su rama, que junta las tareas de la línea y se lleva a un PR entera. El id del runner de la sesión
 lleva la línea, así que las dos sesiones tienen cada una su WIP y sus reclamos aunque corran `ops` desde la misma
 instancia.

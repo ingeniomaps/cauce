@@ -14,6 +14,7 @@ const { spawnSync } = require('node:child_process')
 const { writableOutsideRoots } = require('../config/paths')
 const { withTaskTrees } = require('../core/task-trees')
 const LT = require('../core/line-trees')
+const { unreadableConfig } = require('./unreadable-config')
 
 // Cuánto se espera el primer byte de stdin. El runner escribe su JSON al lanzar el hook, así que en el
 // camino real ya está en el búfer cuando Node termina de arrancar: el plazo sólo cubre una máquina
@@ -170,13 +171,11 @@ function block(message) {
   throw blocked(message)
 }
 
-// La configuración de la raíz ops. Un guard que no puede leerla bloquea: `findOpsRoot` sólo devuelve
-// una raíz donde estén `ops.config.json` y `planning/`, así que llegar acá significa roto o ilegible,
-// no ausente.
-// Dejarlo pasar convertía una coma de más en «sin límite de escritura».
+// La configuración de la raíz ops. Un guard que no puede leerla bloquea: `findOpsRoot` sólo da una raíz con el archivo,
+// así que es roto y no ausente, y dejarlo pasar convertía una coma de más en «sin límite de escritura».
 function configOf(root) {
   try { return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')) } catch (error) {
-    block(`ops.config.json no se puede leer (${error.message}). Un guard no decide sin él.`)
+    block(unreadableConfig(root, error))
   }
 }
 
