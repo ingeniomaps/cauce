@@ -9,7 +9,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { cwdOf, opsRoot, configOf, expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
-const { cdTarget, positional, QUOTED_CD } = require('./shell-writes')
+const { cdTarget, positional, QUOTED_CD, REDIRECTIONS } = require('./shell-writes')
 
 // Un `cd $(mktemp -d)` cae en un temporal que no contiene nada de lo que se cuida; un `cd` a una ruta absoluta
 // vuelve a dar base aunque la anterior no se haya resuelto. El verbo se busca detrás de lo que un shell admite
@@ -17,16 +17,25 @@ const { cdTarget, positional, QUOTED_CD } = require('./shell-writes')
 // el mismo borrado (revisión del 337). Un glob se juzga por su carpeta: `rm -rf *` vacía el cwd como `rm -rf .`.
 const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
 const home = (raw) => raw.replace(/^~(?=$|\/)/, os.homedir())
+// Un `cd` con una redirección —`cd /otra 2>/dev/null`— es un `cd`, pero quien lo escribió espera que pueda fallar, y
+// entonces lo que sigue corre donde se estaba: el borrado se juzga en las dos carpetas. Leerlo sólo como `cd` dejaba
+// pasar `cd /tmp/x 2>/dev/null; rm -rf <raíz>`, y no leerlo dejaba pasar `cd / 2>/dev/null && rm -rf home`.
 function removedDirectories(command, cwd) {
   const found = []
-  let base = cwd
+  let bases = [cwd]
   for (const segment of expandAssigned(command).replace(QUOTED_CD, '$1$3').split(/[;&\n]+|(?<!>)\|+/)) {
-    const cd = segment.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
+    const bare = segment.replace(REDIRECTIONS, ' ')
+    const cd = bare.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
     if (cd) {
       const to = cd[1] || ''
-      if (MKTEMP.test(to)) base = path.join(os.tmpdir(), 'mktemp')
-      else if (path.isAbsolute(home(to))) base = home(to)
-      else base = base === null ? null : cdTarget(to, base)
+      const next = (base) => {
+        if (MKTEMP.test(to)) return path.join(os.tmpdir(), 'mktemp')
+        if (path.isAbsolute(home(to))) return home(to)
+        // El argumento va tal cual: un `cd` solo deja en la carpeta personal, y con `''` se resolvía contra la base.
+        return cdTarget(cd[1], base)
+      }
+      const moved = bases.map(next)
+      bases = [...new Set(bare === segment ? moved : [...bases, ...moved])]
       continue
     }
     const words = segment.trim().replace(/^[({]+\s*|\s*[)}]+$/g, '').replace(/(["'])([^"'\n]*)\1/g, '$2')
@@ -35,7 +44,9 @@ function removedDirectories(command, cwd) {
     if (path.basename(words[0] || '') !== 'rm') continue
     const flags = words.slice(1).filter((word) => word.startsWith('-') && word !== '--')
     if (!flags.some((flag) => /^-[^-]*r/i.test(flag) || flag === '--recursive')) continue
-    for (const raw of positional(words.slice(1).join(' '))) found.push({ raw: raw.replace(/\/?\*$/, '') || '.', base })
+    for (const raw of positional(words.slice(1).join(' '))) {
+      for (const base of bases) found.push({ raw: raw.replace(/\/?\*$/, '') || '.', base })
+    }
   }
   return found
 }

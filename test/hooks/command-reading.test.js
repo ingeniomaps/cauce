@@ -222,3 +222,13 @@ test('los destinos y los cd se leen como los lee el shell', () => {
   assert.deepEqual(at('cd a 2>/dev/null && echo > b'), ['b@/w', 'b@/w/a'])
   assert.deepEqual(at('cd a && echo > b'), ['b@/w/a'])
 })
+
+// Un `cd` solo deja en la carpeta personal: `removal` lo resolvía contra el directorio de antes, y un borrado ahí se
+// juzgaba en otro lugar (revisión de 0.112.0).
+test('destructive juzga un rm después de un cd solo en la carpeta personal', () => {
+  const root = tempRoot('ops-hook-cd-solo-')
+  blocked('destructive', { cwd: root, tool_input: { command: 'cd && rm -rf .' } }, /se lleva la carpeta personal/)
+  // Y con una redirección el `cd` se sigue igual: sin seguirlo, `rm -rf home` se juzgaba en el directorio de antes.
+  blocked('destructive', { cwd: root, tool_input: { command: 'cd / 2>/dev/null && rm -rf home' } },
+    /se lleva la carpeta personal/)
+})
