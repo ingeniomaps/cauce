@@ -55,6 +55,24 @@ test('donde nadie contesta el diálogo, el guard bloquea en vez de pedirlo', () 
   }
 })
 
+// Caso 415: con la variable el guard bloquea sin pedir el diálogo, y sin ella lo sigue pidiendo. El porqué y lo
+// medido, en `native`.
+test('en una sesión delegada el guard bloquea en vez de pedir el diálogo', () => {
+  const root = pushRoot('cauce-native-delegada-')
+  const input = { hook_event_name: 'PreToolUse', prompt_id: 'm1', permission_mode: 'default', ...push(root) }
+  const previous = process.env.CAUCE_DELEGATED
+  process.env.CAUCE_DELEGATED = '1'
+  try {
+    assert.equal(CF.native(input), false)
+    assert.throws(() => executeAll(['destructive'], input),
+      (error) => error.blocked && !error.ask && /publica cambios/.test(error.message), 'pidió el diálogo')
+  } finally {
+    if (previous === undefined) delete process.env.CAUCE_DELEGATED
+    else process.env.CAUCE_DELEGATED = previous
+  }
+  assert.equal(CF.native(input), true, 'sin la variable, la sesión con alguien mirando sigue con el diálogo')
+})
+
 test('Codex no tiene diálogo y sigue con la confirmación por chat', () => {
   const root = pushRoot('cauce-native-codex-')
   const chat = chatSession()

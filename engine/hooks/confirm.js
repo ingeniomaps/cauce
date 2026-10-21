@@ -38,9 +38,11 @@ const ANSWERED = new Set(['default', 'acceptEdits', 'bypassPermissions', 'auto']
 // Medido el 2026-10-06 con Claude Code 2.1.290: la llamada de la sesión principal no trae `agent_id`; la de un
 // subagente lo trae con `agent_type: "general-purpose"`, y la del agente de un recorrido con
 // `agent_type: "workflow-subagent"`.
+//
+// Y nunca en una sesión delegada (caso 415): ahí no hay persona que lo conteste, en el modo que sea.
 function native(input) {
   return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id && !input.agent_id
-    && ANSWERED.has(input.permission_mode))
+    && ANSWERED.has(input.permission_mode) && process.env.CAUCE_DELEGATED !== '1')
 }
 
 // Marca la llamada para que `run.js` responda con el diálogo en vez de bloquear. Va en la entrada y no en

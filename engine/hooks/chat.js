@@ -260,9 +260,15 @@ function record(input) {
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
 
-// El mensaje de la persona que originó esta llamada, o nada. Nada cuando no hay persona, cuando lo que
-// pidió es un recorrido de Cauce, cuando la llamada la hace un subagente —trabajo que el agente delegó,
-// y Claude lo marca con `agent_id`— o cuando el registro es de otro mensaje.
+// Un rol que otro agente lanza con un pedido en texto libre no tiene detrás a la persona, aunque el runner lo registre
+// como su mensaje: quien lo lanza exporta `CAUCE_DELEGATED=1` y ningún mensaje de esa sesión cuenta como de ella. Sólo
+// quita permisos. Sin la variable, un coordinador que lanzaba a un programador así le apagaba `plan-first` a toda la
+// sesión (caso 415). `CI` ya lo decía de hecho, pero es una variable con otro significado.
+const delegated = () => process.env.CAUCE_DELEGATED === '1'
+
+// El mensaje de la persona que originó esta llamada, o nada. Nada cuando no hay persona, cuando la sesión es
+// delegada, cuando lo que pidió es un recorrido de Cauce, cuando la llamada la hace un subagente —trabajo que el
+// agente delegó, y Claude lo marca con `agent_id`— o cuando el registro es de otro mensaje.
 //
 // Un aviso del runner en el medio no corta el turno de la persona. «Cuando el CI quede verde mergeá el #7» se
 // cumple después, y el aviso de que el CI terminó entra por el mismo hook como un mensaje que no escribió
@@ -270,7 +276,7 @@ function record(input) {
 // último que **ella** dijo —`spoken`—, nunca el texto del aviso, que es contenido que llega de afuera y no
 // ordena nada (R19). Por eso quien lee una orden pregunta por `wordsOf` y no por `text`.
 function said(input) {
-  if (process.env.CI || input.agent_id || !input.session_id) return null
+  if (process.env.CI || delegated() || input.agent_id || !input.session_id) return null
   const saved = load(input.session_id)
   if (!saved || saved.flow) return null
   const current = idOf(input)
@@ -294,7 +300,7 @@ const wordsOf = (saved) => (saved.human ? saved.text : String(saved.spoken || ''
 // subagente hereda la sesión. Excluirlo acá cerraba la salida por chat en todo trabajo delegado —Build en
 // cada `autobuild`— y la persona decía que sí sin que llegara a ningún lado (caso 186).
 function present(input) {
-  if (process.env.CI || !input.session_id) return null
+  if (process.env.CI || delegated() || !input.session_id) return null
   const saved = load(input.session_id)
   return saved && saved.askable ? saved : null
 }
