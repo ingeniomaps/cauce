@@ -77,6 +77,8 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
   assert.doesNotMatch(text.stdout, /Abrí la sesión|runners:/, 'la salida manda a otra sesión')
   assert.match(text.stdout, /^= .*lines\/pagos\/pagos {2}\(line\/pagos\)\n/)
   assert.match(text.stdout, /desde esta misma sesión.*\/autobuild pagos/s)
+  // Sin compose no hay nada de compose que decir (caso 399).
+  assert.doesNotMatch(text.stdout, /compose|COMPOSE_PROJECT_NAME/i)
 
   // La segunda vez reusa lo que ya está, y no vuelve a escribir la declaración.
   const again = json(['line', ops, 'pagos', '--json'])
@@ -130,6 +132,47 @@ test('el árbol de una línea avisa cuando su core.hooksPath apunta a una carpet
   ok(repo, 'config', 'core.hooksPath', path.join(repo, '.husky', '_'))
   assert.deepEqual(warned(json(['line', ops, 'otra', 'pagos', '--json'])), [])
   assert.deepEqual(warned(json(['line', ops, 'sin', 'auth', '--json'])), [])
+})
+
+// Caso 399: el aviso sale sólo donde hay compose, y trae el valor que separa los proyectos. El porqué, junto a
+// `COMPOSE` en `lines.js`.
+test('el árbol de un repositorio con compose avisa que es el mismo proyecto, con el nombre que lo separa', () => {
+  const { base, ops } = session('cauce-line-compose-')
+  const front = path.join(base, 'Front.App')
+  fs.mkdirSync(front)
+  ok(front, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(front, 'compose.yaml'), 'services:\n  web:\n    image: node:24\n')
+  ok(front, 'add', 'compose.yaml'); ok(front, 'commit', '-qm', 'compose')
+  const compose = (report) => report.warnings.filter((one) => /compose/.test(one))
+  const report = json(['line', ops, 'web', 'Front.App', 'auth', '--json'])
+  assert.equal(compose(report).length, 1, 'avisa por el repositorio que tiene compose, y sólo por ése')
+  assert.match(compose(report)[0], /^Front\.App: su compose, desde este árbol, es el mismo proyecto que desde el /)
+  assert.match(compose(report)[0], /COMPOSE_PROJECT_NAME=front-app-web en el \.env del árbol/)
+  // El aviso calla con un nombre propio y no con el del original. El porqué, en `composeNamed`.
+  fs.writeFileSync(path.join(front, '.env'), 'COMPOSE_PROJECT_NAME=front\n')
+  const treeEnv = path.join(base, 'lines', 'web', 'Front.App', '.env')
+  fs.writeFileSync(treeEnv, 'COMPOSE_PROJECT_NAME=front\n')
+  assert.equal(compose(json(['line', ops, 'web', '--json'])).length, 1, 'calla con el nombre del original')
+  fs.writeFileSync(treeEnv, 'COMPOSE_PROJECT_NAME=\nDB_PORT=5432\n')
+  assert.equal(compose(json(['line', ops, 'web', '--json'])).length, 1, 'calla con un nombre vacío')
+  fs.writeFileSync(treeEnv, 'PORT=3000\nCOMPOSE_PROJECT_NAME=front-app-web\n')
+  assert.deepEqual(compose(json(['line', ops, 'web', '--json'])), [], 'avisa aunque ya se hizo lo que pide')
+  // El nombre que sugiere empieza como Compose exige: con una letra o un dígito.
+  const infra = path.join(base, '_infra')
+  fs.mkdirSync(infra)
+  ok(infra, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(infra, 'compose.yml'), 'services: {}\n')
+  ok(infra, 'add', 'compose.yml'); ok(infra, 'commit', '-qm', 'compose')
+  assert.match(compose(json(['line', ops, 'ops-infra', '_infra', '--json'])).join('\n'),
+    /COMPOSE_PROJECT_NAME=infra-ops-infra /)
+  // Lo que se mira es el árbol, que es desde donde corre el compose; los cuatro nombres que Compose busca.
+  const tree = path.join(base, 'lines', 'api', 'pagos')
+  assert.deepEqual(compose(json(['line', ops, 'api', 'pagos', '--json'])), [])
+  for (const name of ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml']) {
+    fs.writeFileSync(path.join(tree, name), 'services: {}\n')
+    assert.match(compose(json(['line', ops, 'api', '--json'])).join('\n'), /^pagos: su compose/m, name)
+    fs.unlinkSync(path.join(tree, name))
+  }
 })
 
 test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un repositorio y en embebido', () => {

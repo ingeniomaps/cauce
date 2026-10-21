@@ -116,7 +116,13 @@ dentro de la carpeta de sesión, un worktree de cada repositorio en `lines/pagos
 `line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. Los repositorios
 que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` resuelva igual que desde la carpeta
 de sesión. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
-adentro.
+adentro. Aparte son los archivos, no lo que el repositorio nombra fuera de git. Docker Compose toma el nombre del
+proyecto de la carpeta, y el árbol se llama como el repositorio —para que `../` resuelva igual—, así que desde
+`lines/pagos/backend-pagos/` un `docker compose up` es el mismo proyecto que desde `backend-pagos/`: los mismos
+volúmenes, aunque no tengan nombre, y los mismos contenedores. Lo que el compose fija a mano —un volumen con `name:`,
+un `container_name`, una IP, un puerto— choca además con cualquier nombre de proyecto. Las dos cosas se separan del
+lado del producto: `COMPOSE_PROJECT_NAME` en el `.env` del árbol para lo primero, y el nombre de la línea en lo fijo
+para lo segundo. Cauce no reescribe el compose.
 
 ```
 acme/                         la carpeta de sesión: una sola, con un solo CLAUDE.md y un solo .claude/

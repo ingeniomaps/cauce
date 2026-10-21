@@ -103,7 +103,34 @@ function plant(session, name, repo, warnings) {
     warnings.push(`${repo}: core.hooksPath apunta a ${hooks}, que este árbol no tiene; hasta que la instalación del `
       + 'repositorio la genere, git commitea sin hooks y no lo dice.')
   }
+  if (COMPOSE.some((file) => fs.existsSync(path.join(tree, file))) && !composeNamed(tree, source)) {
+    const project = `${path.basename(repo)}-${name}`.toLowerCase().replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^[^a-z0-9]+/, '')
+    warnings.push(`${repo}: su compose, desde este árbol, es el mismo proyecto que desde el checkout de siempre, con `
+      + `los mismos volúmenes y contenedores. Poné COMPOSE_PROJECT_NAME=${project} en el .env del árbol, sin copiar `
+      + 'el del original; lo que el compose fija a mano —name:, container_name, una IP— se separa del lado del '
+      + 'producto.')
+  }
   return { repo, tree, branch, from, reused }
+}
+
+// Compose nombra el proyecto por la carpeta, y el árbol se llama como el repositorio para que `../` resuelva igual:
+// desde el árbol es el mismo proyecto (caso 399). Se dice sólo donde hay compose, con los nombres que él busca, y sin
+// leerlo: lo que choca primero es ese nombre, que no está escrito en el archivo.
+const COMPOSE = ['compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml']
+// Con un nombre propio en el `.env` del árbol el aviso calla: es lo que pide hacer, y uno que no se apaga se deja de
+// leer. Propio es distinto del que tiene el checkout de siempre: un `.env` versionado que fija el nombre lo trae igual
+// al árbol, y ahí el choque sigue.
+const composeName = (dir) => {
+  try {
+    // Un valor vacío no es un nombre: con `\s*` el `=` sin nada tomaba la línea de abajo.
+    const text = fs.readFileSync(path.join(dir, '.env'), 'utf8')
+    return (text.match(/^[ \t]*COMPOSE_PROJECT_NAME[ \t]*=[ \t]*(\S+)/m) || [])[1]
+  } catch { return undefined }
+}
+const composeNamed = (tree, source) => {
+  const own = composeName(tree)
+  return Boolean(own) && own !== composeName(source)
 }
 
 // `core.hooksPath` vive en la configuración del repositorio y la comparten todos sus worktrees, pero la carpeta
