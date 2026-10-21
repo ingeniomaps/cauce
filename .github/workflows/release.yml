@@ -16,8 +16,9 @@ on:
     # Sólo cuando cambia la versión: cualquier otro push a `main` no tiene nada que publicar, y correr
     # igual para descubrirlo gastaría CI en cada merge.
     paths: [package.json]
-  # Para reintentar una publicación que falló después del merge. Es idempotente: lo ya publicado o
-  # tagueado se reconoce y no se repite —lo que npm todavía no muestra, al rechazarlo (`Publish to npm`)—.
+  # Para reintentar una publicación que falló después del merge. Lo ya publicado o tagueado se reconoce y
+  # no se repite; lo que npm todavía no muestra se reintenta, y su rechazo se lee como ya publicado
+  # (`Publish to npm`).
   workflow_dispatch:
 
 permissions:
