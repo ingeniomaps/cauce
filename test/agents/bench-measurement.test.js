@@ -38,22 +38,22 @@ const TOOLKIT = path.resolve(__dirname, '..', '..')
 // Y lo que arma se retira al cierre, escenario por escenario y nada más —el porqué, en `bench.test.js`
 // (caso 372)—. La línea que una prueba arma al lado del banco se la lleva ella misma.
 const BENCHES = path.join(TOOLKIT, '.cauce-eval', '_medicion')
-const armados = new Set()
-const armar = (escenario) => { armados.add(escenario); return run(['bench', escenario, '--force'], TOOLKIT) }
+const built = new Set()
+const build = (scenario) => { built.add(scenario); return run(['bench', scenario, '--force'], TOOLKIT) }
 
 test.after(() => {
-  for (const escenario of armados) {
-    const dir = path.join(BENCHES, escenario)
+  for (const scenario of built) {
+    const dir = path.join(BENCHES, scenario)
     if (fs.existsSync(dir)) discard(dir)
   }
   if (fs.existsSync(BENCHES) && !fs.readdirSync(BENCHES).length) fs.rmdirSync(BENCHES)
-  for (const escenario of armados) {
-    assert.equal(fs.existsSync(path.join(BENCHES, escenario)), false, `${escenario} quedó en el repositorio`)
+  for (const scenario of built) {
+    assert.equal(fs.existsSync(path.join(BENCHES, scenario)), false, `${scenario} quedó en el repositorio`)
   }
 })
 
 test('bench suelto es una instancia de verdad, no un directorio vacío', () => {
-  const hecho = armar('suelto')
+  const hecho = build('suelto')
   assert.equal(hecho.status, 0, hecho.stderr)
   const dir = benchDir(hecho, TOOLKIT)
 
@@ -69,7 +69,7 @@ test('bench suelto es una instancia de verdad, no un directorio vacío', () => {
 // el motor, no una línea que se le parece. Se comprueba con `context`, que es quien la ofrece, y no
 // leyendo el archivo — el archivo se ve bien en los dos casos.
 test('bench tarea deja una tarea que el motor reconoce, reclamada y con plan', () => {
-  const hecho = armar('tarea')
+  const hecho = build('tarea')
   assert.equal(hecho.status, 0, hecho.stderr)
   const dir = benchDir(hecho, TOOLKIT)
 
@@ -90,7 +90,7 @@ test('bench tarea deja una tarea que el motor reconoce, reclamada y con plan', (
 // `sidecar` se escribe igual sin que el segundo repositorio exista, y ahí el banco miente sin fallar.
 // Por qué van como hermanos también está en `populate` (caso 352).
 test('bench sidecar deja instancia y producto como repositorios hermanos', () => {
-  const hecho = armar('sidecar')
+  const hecho = build('sidecar')
   assert.equal(hecho.status, 0, hecho.stderr)
   const dir = benchDir(hecho, TOOLKIT)
   const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).stdout.trim()
@@ -118,7 +118,7 @@ test('bench sidecar deja instancia y producto como repositorios hermanos', () =>
 // evidencia de una medición hecha a mano: rehacer el banco encima la borra, y quien la perdió no tiene
 // de dónde sacarla. Sin este caso, la única cobertura de la negativa era que nadie la ejerciera.
 test('un banco con trabajo sin recoger no se rehace sin que alguien lo diga', () => {
-  const dir = benchDir(armar('suelto'), TOOLKIT)
+  const dir = benchDir(build('suelto'), TOOLKIT)
   fs.writeFileSync(path.join(dir, 'planning', 'MEDICION.md'), 'lo que devolvió la corrida\n')
 
   const sinForce = run(['bench', 'suelto'], TOOLKIT)
@@ -130,7 +130,7 @@ test('un banco con trabajo sin recoger no se rehace sin que alguien lo diga', ()
 })
 
 test('un escenario que no existe se niega nombrando los que hay', () => {
-  const hecho = armar('no-existe')
+  const hecho = build('no-existe')
   assert.notEqual(hecho.status, 0)
   for (const nombre of ['suelto', 'tarea', 'sidecar']) {
     assert.match(hecho.stderr, new RegExp(nombre), `nombra ${nombre}`)
@@ -141,11 +141,11 @@ test('un escenario que no existe se niega nombrando los que hay', () => {
 // Es la misma premisa que en el de evaluación, y acá pesa igual — una medición sobre restos de otra se
 // lee igual que una limpia.
 test('cada corrida recibe un banco nuevo', () => {
-  const primero = armar('suelto')
+  const primero = build('suelto')
   const dir = benchDir(primero, TOOLKIT)
   fs.writeFileSync(path.join(dir, 'planning', 'INBOX.md'), 'lo que dejó la corrida anterior\n')
 
-  const segundo = armar('suelto')
+  const segundo = build('suelto')
   assert.equal(benchDir(segundo, TOOLKIT), dir, 'el mismo escenario usa el mismo lugar')
   assert.doesNotMatch(fs.readFileSync(path.join(dir, 'planning', 'INBOX.md'), 'utf8'),
     /corrida anterior/, 'y nace limpio')
@@ -169,7 +169,7 @@ test('bench es del toolkit; una instancia recibe la salida que le corresponde', 
 // el producto viejo siguiera ahí, así que mirarla devolvía verde. La aserción empieza por dónde cuelga el
 // producto porque es la precondición de todo lo demás — fuera del banco, el borrado no lo alcanza.
 test('el producto del sidecar también nace limpio, no sólo la instancia', () => {
-  const dir = benchDir(armar('sidecar'), TOOLKIT)
+  const dir = benchDir(build('sidecar'), TOOLKIT)
   // El banco es la carpeta que contiene a los dos, y es lo que se borra entero.
   const bench = path.dirname(dir)
   const app = path.join(bench, 'app')
@@ -178,7 +178,7 @@ test('el producto del sidecar también nace limpio, no sólo la instancia', () =
 
   fs.writeFileSync(path.join(app, 'marca.txt'), 'lo que dejó la corrida anterior\n')
   assert.match(run(['bench', 'sidecar'], TOOLKIT).stderr, /sin recoger/, 'el trabajo en el producto también cuenta')
-  const rehecho = benchDir(armar('sidecar'), TOOLKIT)
+  const rehecho = benchDir(build('sidecar'), TOOLKIT)
   assert.equal(fs.existsSync(path.join(path.dirname(rehecho), 'app', 'marca.txt')), false,
     'el producto se rehace con el banco')
 
@@ -207,24 +207,23 @@ test('el producto del sidecar también nace limpio, no sólo la instancia', () =
 // contra un destino que no existe—, que es la forma del caso 080. El consejo del escenario `tarea` viaja
 // por `stderr` justamente por eso, y esto lo fija.
 test('la ruta sale sola por stdout, aunque el escenario tenga algo más que decir', () => {
-  for (const escenario of ['suelto', 'tarea', 'sidecar']) {
-    const hecho = armar(escenario)
+  for (const scenario of ['suelto', 'tarea', 'sidecar']) {
+    const hecho = build(scenario)
     assert.equal(hecho.status, 0, hecho.stderr)
     assert.equal(hecho.stdout.trim().split('\n').length, 1,
-      `${escenario} imprimió más de una línea: ${JSON.stringify(hecho.stdout)}`)
+      `${scenario} imprimió más de una línea: ${JSON.stringify(hecho.stdout)}`)
   }
   // Y el dato auxiliar no se pierde: sigue estando, en el canal que no contamina la ruta.
-  assert.match(armar('tarea').stderr, /export CAUCE_RUNNER=/)
+  assert.match(build('tarea').stderr, /export CAUCE_RUNNER=/)
 })
 
-// Caso 357. Una línea de antes de 0.111.0 se armaba al lado de la instancia, que en el banco es al lado de lo
-// que se borra: sobrevivía a rehacerlo, sin repositorio y con el estado de la corrida anterior. `ops line` ya no
-// la arma así —se arma a mano, con lo que hacía—, pero la que quedó se sigue llevando.
+// Caso 357; el porqué, en `benchLines`. `ops line` ya no arma una línea de antes de 0.111.0 —se arma a mano, con lo
+// que hacía—, pero la que quedó se sigue llevando.
 const legacyLine = (dir, tree) => assert.equal(spawnSync('git', ['-C', dir, 'worktree', 'add', '-q', '-b',
   'line/medida', tree], { encoding: 'utf8' }).status, 0)
 
 test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () => {
-  const dir = benchDir(armar('sidecar'), TOOLKIT)
+  const dir = benchDir(build('sidecar'), TOOLKIT)
   const bench = path.dirname(dir)
   const home = `${bench}-medida`
   const tree = path.join(home, 'ops')
@@ -242,7 +241,7 @@ test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () =>
   assert.match(refused.stderr, /sidecar-medida.*sin recoger/s, 'nombra la línea')
   assert.equal(fs.existsSync(path.join(tree, 'planning', 'MEDICION.md')), true, 'y no la borró antes de negarse')
 
-  assert.equal(armar('sidecar').status, 0)
+  assert.equal(build('sidecar').status, 0)
   assert.equal(fs.existsSync(home), false, 'con --force, la línea se va con el banco')
   assert.equal(fs.existsSync(path.join(neighbour, 'nota.md')), true, 'y la vecina que no es una línea, no')
   legacyLine(dir, tree)
@@ -253,7 +252,7 @@ test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () =>
   const orphan = run(['bench', 'sidecar'], TOOLKIT)
   assert.notEqual(orphan.status, 0)
   assert.match(orphan.stderr, /sidecar-medida.*sin recoger/s)
-  assert.equal(armar('sidecar').status, 0)
+  assert.equal(build('sidecar').status, 0)
   assert.equal(fs.existsSync(home), false)
   fs.unlinkSync(path.join(neighbour, 'nota.md'))
   fs.rmdirSync(neighbour)
@@ -263,6 +262,6 @@ test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () =>
   assert.equal(now.status, 0, now.stderr)
   assert.ok(fs.existsSync(path.join(bench, 'lines', 'actual', 'app')))
   assert.equal(fs.existsSync(`${bench}-actual`), false, 'quedó una carpeta al lado')
-  assert.equal(armar('sidecar').status, 0)
+  assert.equal(build('sidecar').status, 0)
   assert.equal(fs.existsSync(path.join(bench, 'lines')), false)
 })

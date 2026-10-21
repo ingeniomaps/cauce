@@ -29,7 +29,6 @@ test('un plan que toca gobernanza sin aprobar para antes de construir, y dice qu
   assert.match(block.prompt, /chore\(planning\): await governance approval for T-1/)
 })
 
-// La pregunta adelanta un aviso que el guard da igual al commitear: si no se pudo hacer, no hay razón para parar.
 test('si la pregunta no se pudo hacer, o nada pide aprobación, la corrida sigue', async () => {
   ranToEnd((await runFlow(asking({ readOk: false, pending: ['planning/FLOW.md'] }))).result)
   ranToEnd((await runFlow(asking({ readOk: true, pending: [] }))).result)

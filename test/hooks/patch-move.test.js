@@ -109,8 +109,7 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
   write('ok.sql', 'CREATE TABLE t (id int);', '')
   blocked('migrations', move('ok.sql', '006_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)
   assert.doesNotThrow(() => execute('migrations', move('ok.sql', '007_ok.sql', '+CREATE INDEX i ON t (id);')))
-  // Lo que traía se juzga entero, también su reversión: el mismo parche puede sacarle el marcador, y entonces
-  // lo que era reversión pasa a aplicarse.
+  // Lo que traía se juzga entero, también su reversión (caso 367; el porqué, en `migrations.js`).
   write('marcada.sql', '-- +goose Up', 'CREATE TABLE t (id int);', '-- +goose Down', 'DROP TABLE t;', '')
   blocked('migrations', move('marcada.sql', '008_m.sql', '+-- nota'), /DROP TABLE/)
   blocked('migrations', move('marcada.sql', '011_m.sql', ' CREATE TABLE t (id int);', '--- +goose Down',

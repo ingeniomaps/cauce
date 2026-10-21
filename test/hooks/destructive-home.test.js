@@ -1,7 +1,7 @@
 'use strict'
 
-// Caso 368. `destructive` cuidaba el directorio actual, la raíz ops y las raíces declaradas. La carpeta
-// personal quedaba cuidada sólo por contenerlos: con el proyecto fuera de ella, un `cd ~ && rm -rf .` pasaba.
+// Caso 368: `destructive` cuida la carpeta personal por nombre, también con el proyecto fuera de ella. El
+// porqué, en `removesTheTree`.
 //
 // El guard sólo lee el texto del comando: acá no se ejecuta ningún borrado.
 

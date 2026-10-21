@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.113.3] - 2026-10-21
+
+### Corregido
+
+- **Una escritura a `planning/.ops-approval` que no llega en `tool_input` se frena como cualquier otra.** Con el
+  archivo de primer nivel, en un parche suelto o invocando el guard a mano con `OPS_HOOK_FILE`, el guard de archivos
+  se caía con un error y salía en 1 en vez de bloquear con 2, que es lo único que el runner lee como «no». Ningún
+  runner instalado manda hoy esas formas para Claude Code ni Antigravity; al actualizar no hay nada que hacer
+  (caso 427).
+
 ## [0.113.2] - 2026-10-21
 
 ### Cambiado

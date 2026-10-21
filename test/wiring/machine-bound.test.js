@@ -1,7 +1,7 @@
 'use strict'
 
 // Lo que la revisión del 364 encontró en el aviso de `check` sobre lo que un runner instala con la ruta de
-// la carpeta escrita. El caso de base —qué entra a git y qué no— está en `lines.test.js`.
+// la carpeta escrita. El caso de base —qué entra a git y qué no— está en `install-shared-folder.test.js`.
 
 const { tempRoot, run, linkEngine } = require('../support/environment')
 const test = require('node:test')
@@ -87,7 +87,7 @@ test('un recorrido propio que lleva la ruta entra en el aviso, y la carpeta se d
   assert.match(warning, /^10 archivo\(s\)/, 'los nueve de Cauce y el propio que lleva la ruta')
   // El propio que no la lleva también es generado, así que no impide dictar la carpeta.
   assert.match(warning, /\(\.claude\/workflows\/\)/)
-  // Un archivo que no generó nadie sí impide dictar la carpeta: ignorarla lo sacaría de git a él.
+  // Un archivo que no generó nadie sí impide dictar la carpeta (`patterns`).
   fs.writeFileSync(path.join(repo, '.claude', 'workflows', 'a-mano.js'), 'return 2\n')
   assert.match(warningsAt(path.join(repo, 'planning'), BOUND)[0], /workflows\/autobuild\.js.*workflows\/mine\.js/s)
 })

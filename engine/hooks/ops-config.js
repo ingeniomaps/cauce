@@ -7,8 +7,8 @@
 //
 // **Protege esos campos y no el archivo.** Protegerlo entero repondría el candado que el 090 sacó: el
 // límite de raíces manda a declarar la ruta en `writableOutsideRoots`, de este mismo archivo, así que
-// frenar esa edición dejaría al agente sin la salida que el otro guard le acaba de indicar. Todo lo demás
-// —migraciones, lo que sea— sigue pasando como trabajo normal.
+// frenarlo entero dejaría sin salida lo que angosta o reescribe; lo que ensancha lo confirma una persona
+// (abajo). Todo lo demás —migraciones, lo que sea— sigue pasando como trabajo normal.
 //
 // Lo que el límite lee es la otra mitad, y hasta 0.106.1 era la misma puerta con otra forma: el agente
 // agregaba una ruta a `writableOutsideRoots` —o una raíz a `workspaceRoots`, o cualquiera de las dos en
@@ -17,7 +17,7 @@
 // una persona, por la misma salida angosta del 370 y con la entrada resuelta a la vista; lo que angosta,
 // reordena o reescribe igual no se pregunta, y así el archivo sigue siendo la salida del límite.
 //
-// Son dos guards y dos archivos, como `secrets` y `secrets-shell`: corren en eventos distintos y cada grupo
+// Son dos guards en un solo fuente, como `secrets` y `secrets-shell`: corren en eventos distintos y cada grupo
 // cubre a cada guard una vez, mientras que lo que deciden —cuáles son los archivos, qué cambió y cómo se
 // dice— es uno solo y copiarlo dejaría dos mitades que dejan de coincidir.
 
@@ -79,7 +79,8 @@ function unreadableMessage(root, file) {
 // comparar quedan dos conductas posibles y ninguna intermedia, y se elige la que cierra la vía que el 114
 // midió.
 //
-// Lo que sí se ofrece es que la persona lo confirme a ciegas, por la salida angosta del 370: Codex escribe
+// Lo que sí se ofrece es que la persona lo confirme a ciegas, en este turno y sin nada que pegar (`judgeCommand`),
+// una salida más angosta que la del 370: Codex escribe
 // sólo por `apply_patch`, que llega como parche y no como archivo, así que sin esto no le quedaba ninguna vía
 // para el cambio que ella pidió (revisión del 373). Quien confirma no ve con qué queda el archivo, y el
 // bloqueo se lo dice; la herramienta de edición, donde la hay, sigue siendo la que muestra la entrada.

@@ -52,7 +52,8 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
   // no para decir cómo volver a ella. Eso lo dice el id desde el que se tomó, que vive en el mismo archivo.
   const others = new Map(claims.filter((one) => !mine.has(one.slug)).map((one) => [one.slug, one]))
   // Lo que es de la sesión no se le ofrece a un runner: tomarla es lanzar el recorrido que `manual` existe
-  // para evitar (caso 380). Sale de la cola antes que nada, así que tampoco se cuenta como tomada ni en espera.
+  // para evitar (caso 380). Queda fuera de `pending`, así que tampoco se cuenta como tomada ni en espera; un WIP
+  // sobre ella sigue mandando.
   const open = queue.filter((task) => !done.set.has(task.slug))
   const manual = open.filter((task) => task.tier === 'manual').map((task) => task.slug)
   // Y la que este runner tiene reclamada igual —la sesión trabajándola, o una corrida que murió antes de

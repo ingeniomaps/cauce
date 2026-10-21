@@ -89,16 +89,16 @@ test('el reclamo de una tarea cerrada lo suelta quien la cerró, aunque la haya 
   const checked = () => { const out = run(['check', dir]); return `${out.stdout}${out.stderr}` }
   assert.match(checked(), /dashboard ya está en DONE; soltala con `ops release`/)
 
-  const revisor = como('luis@acme.com', () => run(['release', dir, 'dashboard']))
-  assert.equal(revisor.status, 0, revisor.stderr)
-  assert.match(revisor.stdout, /✓ dashboard soltada: ya estaba en DONE, el reclamo no reservaba nada/)
-  assert.doesNotMatch(revisor.stdout, /volvió a la cola/, 'no vuelve a ninguna cola')
+  const reviewer = como('luis@acme.com', () => run(['release', dir, 'dashboard']))
+  assert.equal(reviewer.status, 0, reviewer.stderr)
+  assert.match(reviewer.stdout, /✓ dashboard soltada: ya estaba en DONE, el reclamo no reservaba nada/)
+  assert.doesNotMatch(reviewer.stdout, /volvió a la cola/, 'no vuelve a ninguna cola')
   assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false)
   assert.doesNotMatch(checked(), /ya está en DONE/)
   // La que sigue en curso es de otro, y eso no cambió.
-  const ajena = como('luis@acme.com', () => run(['release', dir, 'boton']))
-  assert.equal(ajena.status, 1)
-  assert.match(ajena.stderr, /boton es de ana@acme\.com/)
+  const foreign = como('luis@acme.com', () => run(['release', dir, 'boton']))
+  assert.equal(foreign.status, 1)
+  assert.match(foreign.stderr, /boton es de ana@acme\.com/)
 })
 
 test('la cola tomada entera no se anuncia como cola vacía', () => {

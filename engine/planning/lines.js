@@ -125,6 +125,7 @@ function claimsElsewhere(root) {
 // checkpoint la frena, más los commits que la separan de la base y lo que todavía no commiteó. Es lo que una
 // persona miraba abriendo una carpeta por línea, y lo que un recorrido necesita para proponer un reparto
 // entre líneas que existen. Un árbol sin planning —una rama que nunca lo trajo— sale con `planning: false`.
+// Aparte, las líneas declaradas y sus solapes, que salen del planning de la instancia (`declaredStatus`).
 function status(root) {
   const where = placement(root)
   if (!where) return null

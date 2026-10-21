@@ -172,9 +172,8 @@ test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async (
     'soltó una reserva sobre una tarea que sigue en la cola')
 })
 
-// La partida no puede prestarle su slug a una parte: R25 dice que las partes son unidades nuevas, y la guarda de
-// arriba lee «la cola sigue ofreciéndola» como que la escritura no ocurrió. Un agente real lo hizo citando
-// justamente R25, y la corrida paró con el partido escrito y commiteado (caso 385).
+// Caso 385: partir pide slugs nuevos, y si una parte reusó el de la partida la parada lo dice. El porqué, en
+// `autobuild.js`, junto a la relectura de la cola después de partir.
 test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada lo dice', async () => {
   const grande = { ...baseScript()[KEY.context], claimed: true }
   const { result, prompts } = await runFlow(
@@ -420,9 +419,8 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   assert.match(done, /Si marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
 })
 
-// Las reglas de la empresa pueden reescribir el asunto que el recorrido dicta, y al reescribirlo el escriba a veces
-// se comía el scope: tres de cinco commits de una corrida lo conservaron y dos no (caso 377). Todo pedido que dicta
-// un `chore(planning)` dice qué parte del asunto no es de la regla.
+// Caso 377: todo pedido que dicta un `chore(planning)` dice qué parte del asunto no es de la regla. El porqué,
+// junto a `KEEP_SUBJECT` en `autobuild.js`.
 test('todo commit de planning conserva el scope y el slug aunque la regla cambie el asunto', async () => {
   const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
     concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }

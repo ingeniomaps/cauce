@@ -19,8 +19,9 @@ const { expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
 const { cdTarget, QUOTED_CD, REDIRECTIONS } = require('./shell-writes')
 
-// Lo que un shell admite delante del verbo: asignaciones, `sudo` con sus banderas, `time`, un paréntesis, y
-// las palabras de un `if` o de un bucle escritos en una línea.
+// Las palabras que un shell admite delante del verbo —`sudo` y sus banderas, `env`, `time`, `xargs`…— y las de
+// un `if` o de un bucle escritos en una línea. Las asignaciones se saltean aparte, y el paréntesis lo saca
+// `unwrapped`.
 const LEADING = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs', 'if', 'elif', 'then',
   'else', 'while', 'until', 'do', '!'])
 const home = (raw) => raw.replace(/^~(?=$|\/)/, os.homedir()).replace(/^\$\{?HOME\}?(?=$|\/)/, os.homedir())
@@ -111,8 +112,8 @@ function withoutSubstitutions(text) {
   return last
 }
 
-// Dos lecturas que el resto de los guards no hace, y que por eso se quedan acá en vez de cambiar lo que
-// comparten todos: cada una, puesta en la lectura común, le cambiaba el veredicto a `destructive`.
+// Dos lecturas que no van en la común, `commandOf`: puestas ahí, cada una le cambiaba el veredicto a
+// `destructive`. Quien las quiere las pide con `asRead`.
 //
 // El cuerpo de un heredoc es dato también cuando su delimitador no son sólo letras —`END-1`, `E.O.F`, `1`,
 // `\EOF`—: la lectura común deja ese cuerpo, y acá una línea suya con `rm` o `mkdir` se leía como comando.
@@ -220,12 +221,12 @@ const expanded = (raw) => {
   return all.map((one) => one.replace(/\*$/, '') || '.')
 }
 
-// De `find` salen las rutas donde busca, que van entre sus opciones globales y la primera expresión, y sólo
-// si trae `-delete`.
 const REMOVERS = new Set(['rm', 'unlink', 'rmdir'])
 // Las palabras llegan armadas por `shellWords` y se usan así: unirlas con un espacio para volver a partirlas
 // desarmaba la ruta entre comillas que traía uno.
 const targets = (words) => words.filter((word) => word && !word.startsWith('-'))
+// De `find` salen las rutas donde busca, que van entre sus opciones globales y la primera expresión, y sólo
+// si trae `-delete`.
 function removals(ran) {
   const found = []
   for (const { verb, rest, base } of ran) {

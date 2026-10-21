@@ -7,7 +7,7 @@
 // runner hecho, que es el dato cuyo olvido deja a dos agentes indistinguibles.
 
 const { run } = require('../support/environment')
-const { montar, git } = require('../support/worktree-bench')
+const { mount, git } = require('../support/worktree-bench')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -16,7 +16,7 @@ const R = require('../../engine/core/repos')
 
 // Fija las dos identidades y no sólo el runner. Sin el owner, `ops claim` lo deduce de `git config
 // user.email` — y ahí la prueba pasa a depender de cómo esté configurada la máquina: verde en una con
-// identidad global y roja en CI, que no tiene ninguna. Es el mismo tropiezo por el que `montar` fija la
+// identidad global y roja en CI, que no tiene ninguna. Es el mismo tropiezo por el que `mount` fija la
 // identidad en el repositorio (`test/support/worktree-bench.js`).
 function como(runner, fn, owner = 'prueba@acme.com') {
   const previo = { runner: process.env.CAUCE_RUNNER, owner: process.env.CAUCE_OWNER }
@@ -31,7 +31,7 @@ function como(runner, fn, owner = 'prueba@acme.com') {
 }
 
 test('prepara un árbol por tarea sin clonar, y entrega el id del runner', () => {
-  const { repo, planning } = montar('cauce-wt-')
+  const { repo, planning } = mount('cauce-wt-')
   const hecho = como('/w/otro', () => run(['worktree', planning, 'alta']))
   assert.equal(hecho.status, 0, hecho.stderr)
 
@@ -66,7 +66,7 @@ test('prepara un árbol por tarea sin clonar, y entrega el id del runner', () =>
 })
 
 test('vuelve a montar sobre la rama que quedó, y lo dice en JSON para un workflow', () => {
-  const { repo, planning } = montar('cauce-wt-rehacer-')
+  const { repo, planning } = mount('cauce-wt-rehacer-')
   assert.equal(como('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
   const arbol = `${repo}-alta`
   // Sacar el árbol no borra la rama, y ahí está el trabajo: rehacerlo tiene que retomar esa rama y no
@@ -85,7 +85,7 @@ test('vuelve a montar sobre la rama que quedó, y lo dice en JSON para un workfl
 })
 
 test('no prepara un árbol para la tarea que tomó otro', () => {
-  const { planning } = montar('cauce-wt-ajeno-')
+  const { planning } = mount('cauce-wt-ajeno-')
   const tomada = como('/w/ana', () => run(['claim', planning, 'alta']))
   assert.equal(tomada.status, 0, tomada.stderr)
 
@@ -95,7 +95,7 @@ test('no prepara un árbol para la tarea que tomó otro', () => {
 })
 
 test('sin repositorio para el servicio, lo dice en vez de adivinar', () => {
-  const { planning } = montar('cauce-wt-sin-repo-')
+  const { planning } = mount('cauce-wt-sin-repo-')
   fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
 
 ## Hito uno — Primero
@@ -112,7 +112,7 @@ test('sin repositorio para el servicio, lo dice en vez de adivinar', () => {
 // reclamo y git — el mapa de actividad lo arma `check`, y sin este caso la única prueba sería la que le
 // pasa el mapa ya hecho.
 test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () => {
-  const { repo, planning } = montar('cauce-vivo-')
+  const { repo, planning } = mount('cauce-vivo-')
   const viejo = '2020-01-01'
   fs.mkdirSync(path.join(planning, 'claims'), { recursive: true })
   fs.writeFileSync(path.join(planning, 'claims', 'alta.md'),
@@ -141,7 +141,7 @@ test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () =
 // rama parece haber avanzado el día que se creó. Es la señal que separa una tarea larga de una abandonada,
 // y sin excluir el tronco no separaba nada — no avisaba nunca sobre una tarea que ya tiene worktree.
 test('un commit del tronco no cuenta como avance de la tarea', () => {
-  const { repo, planning } = montar('cauce-avance-')
+  const { repo, planning } = mount('cauce-avance-')
   assert.equal(como('/w/ana', () => run(['worktree', planning, 'alta'])).status, 0)
   const arbol = `${repo}-alta`
 
@@ -163,7 +163,7 @@ test('un commit del tronco no cuenta como avance de la tarea', () => {
 // porque un modo que rompe la coordinación en silencio es indistinguible de uno que funciona. El porqué
 // vive en `worktree.js`, donde se decide.
 test('preparar un árbol en modo embedded avisa que la instancia se duplica', () => {
-  const { planning } = montar('cauce-wt-embedded-')
+  const { planning } = mount('cauce-wt-embedded-')
   const config = path.join(planning, '..', 'ops.config.json')
   const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
   fs.writeFileSync(config, JSON.stringify({ ...leido, mode: 'embedded' }, null, 2))
@@ -177,7 +177,7 @@ test('preparar un árbol en modo embedded avisa que la instancia se duplica', ()
 // Las dos mitades de la ambigüedad, que `reposFor` explica: que se nombre en vez de elegirse, y que no
 // quede un árbol a medio crear del que después nadie sepa el origen.
 test('un servicio que existe en dos repositorios se nombra en vez de elegirse', () => {
-  const { base, repo, planning } = montar('cauce-wt-multi-')
+  const { base, repo, planning } = mount('cauce-wt-multi-')
   // Un segundo repositorio con el mismo nombre de servicio adentro.
   const otro = path.join(base, 'segundo')
   fs.mkdirSync(path.join(otro, 'api'), { recursive: true })
@@ -206,7 +206,7 @@ test('un servicio que existe en dos repositorios se nombra en vez de elegirse', 
 // Caso 254. La raíz declarada ya es el repositorio y la tarea lo nombra por su nombre: es como una
 // instancia con un repo por raíz escribe sus tareas, y buscando sólo `<raíz>/<service>` no se encontraba.
 test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
-  const { base, repo, planning } = montar('cauce-wt-raiz-')
+  const { base, repo, planning } = mount('cauce-wt-raiz-')
   const ops = path.join(planning, '..')
   const config = path.join(ops, 'ops.config.json')
   const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
@@ -238,7 +238,7 @@ test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
 // Caso 263. La tercera forma: la raíz declarada es una carpeta que no es un repositorio, con un
 // repositorio por servicio adentro. El repositorio es el del servicio, no el de la raíz.
 test('con una raíz que es una carpeta de repositorios, el servicio resuelve a su propio repositorio', () => {
-  const { base, repo, planning } = montar('cauce-wt-contenedor-')
+  const { base, repo, planning } = mount('cauce-wt-contenedor-')
   const ops = path.join(planning, '..')
   const config = path.join(ops, 'ops.config.json')
   const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
@@ -262,13 +262,13 @@ test('con una raíz que es una carpeta de repositorios, el servicio resuelve a s
 // Caso 274: las dos formas de llegar al repositorio, derecho y por el enlace de una línea. El porqué de
 // dónde queda el árbol está junto a `target`, en el comando.
 test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónde trabajar adentro', () => {
-  const { repo, planning } = montar('cauce-wt-work-')
+  const { repo, planning } = mount('cauce-wt-work-')
   const plain = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
   assert.equal(plain.path, `${repo}-alta`)
   assert.equal(plain.work, path.join(`${repo}-alta`, 'api'), 'el servicio vive en api/, adentro del repo')
   assert.ok(fs.existsSync(path.join(plain.work, 'main.go')))
 
-  const linked = montar('cauce-wt-linea-')
+  const linked = mount('cauce-wt-linea-')
   const home = path.join(linked.base, 'linea')
   fs.mkdirSync(home)
   fs.cpSync(path.join(linked.planning, '..'), path.join(home, 'producto-ops'), { recursive: true })
@@ -284,7 +284,7 @@ test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónd
 
 // Armado a mano o movido. El porqué de negarse está en `worktree`; acá se mide la negativa y la salida.
 test('si la rama ya tiene un árbol en otro lado, se niega en vez de entregarlo', () => {
-  const { base, repo, planning } = montar('cauce-wt-en-otro-lado-')
+  const { base, repo, planning } = mount('cauce-wt-en-otro-lado-')
   const elsewhere = path.join(base, 'en-cualquier-lado')
   assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'task/alta', elsewhere).status, 0)
   const negado = como('/w/uno', () => run(['worktree', planning, 'alta']))
@@ -301,7 +301,7 @@ test('si la rama ya tiene un árbol en otro lado, se niega en vez de entregarlo'
 // Con la rama de la tarea puesta en el checkout principal, «el árbol» es el repositorio mismo: está dentro
 // de lo declarado, y se entrega.
 test('la rama de la tarea puesta en el checkout principal se entrega', () => {
-  const { repo, planning } = montar('cauce-wt-principal-')
+  const { repo, planning } = mount('cauce-wt-principal-')
   git(repo, 'checkout', '-q', '-b', 'task/alta')
   const json = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
   assert.equal(fs.realpathSync(json.path), fs.realpathSync(repo))
@@ -310,7 +310,7 @@ test('la rama de la tarea puesta en el checkout principal se entrega', () => {
 
 // Borrado a mano, git lo sigue listando hasta que se poda. No es un árbol que retomar: se arma de nuevo.
 test('un árbol borrado a mano se vuelve a armar en vez de romper', () => {
-  const { repo, planning } = montar('cauce-wt-borrado-')
+  const { repo, planning } = mount('cauce-wt-borrado-')
   assert.equal(como('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
   const arbol = `${repo}-alta`
   for (const name of fs.readdirSync(path.join(arbol, 'api'))) fs.unlinkSync(path.join(arbol, 'api', name))
@@ -331,7 +331,7 @@ test('un árbol borrado a mano se vuelve a armar en vez de romper', () => {
 // Con la raíz en una carpeta del repositorio, el checkout principal con la rama puesta contiene a la raíz:
 // es escribible ahí adentro, y se entrega. Y una raíz que no está en esta máquina no rompe el comando.
 test('el checkout principal vale aunque la raíz sea una carpeta suya, y una raíz ausente no rompe', () => {
-  const { repo, planning } = montar('cauce-wt-raiz-carpeta-')
+  const { repo, planning } = mount('cauce-wt-raiz-carpeta-')
   const file = path.join(path.dirname(planning), 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(file, 'utf8'))
   // La segunda se llama como el servicio de otra tarea y no está: tampoco rompe al buscar dónde vive.
@@ -352,7 +352,7 @@ test('el checkout principal vale aunque la raíz sea una carpeta suya, y una ra�
 // Un enlace puesto donde va el árbol, hacia uno armado en otro lado: los guards no lo abren, así que no
 // se entrega.
 test('un enlace donde va el árbol no lo vuelve el árbol de la tarea', () => {
-  const { base, repo, planning } = montar('cauce-wt-enlace-')
+  const { base, repo, planning } = mount('cauce-wt-enlace-')
   const far = path.join(base, 'lejos')
   assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'task/alta', far).status, 0)
   fs.symlinkSync(far, `${repo}-alta`, 'dir')
@@ -364,7 +364,7 @@ test('un enlace donde va el árbol no lo vuelve el árbol de la tarea', () => {
 // Una raíz vecina cuyo nombre empieza igual que el repositorio no es el repositorio: comparar por el
 // comienzo del texto la tomaba por él, y `work` mandaba a trabajar a esa otra carpeta.
 test('una raíz vecina con el nombre parecido no se toma por el repositorio del servicio', () => {
-  const { base, repo, planning } = montar('cauce-wt-vecina-')
+  const { base, repo, planning } = mount('cauce-wt-vecina-')
   fs.mkdirSync(path.join(base, 'producto-docs', 'api'), { recursive: true })
   const file = path.join(path.dirname(planning), 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(file, 'utf8'))

@@ -255,7 +255,8 @@ function print({ line: name, trees, unlinked, warnings, declared }) {
 }
 
 // El estado de todas las líneas de la instancia, desde cualquiera de sus árboles. Lo que calcula está en
-// `status`; acá sólo se decide cómo se lee: un bloque por árbol, con la base contra la que se cuentan los commits.
+// `status`; acá sólo se decide cómo se lee: un bloque por árbol, con la base contra la que se cuentan los commits,
+// y después uno por línea declarada y los solapes.
 function lines(dir, cli) {
   const root = opsRoot(dir)
   const planning = path.join(root, 'planning')

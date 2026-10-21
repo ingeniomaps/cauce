@@ -230,8 +230,8 @@ function instancePlan(root, planning) {
   return readWip(planning, top.status === 0 ? top.stdout.trim() : root)
 }
 
-// La línea en cuyo árbol cae un archivo (caso 394), por la ruta: es lo único que el guard puede saber de ella,
-// porque el `--line` lo recibe `ops` y no la sesión.
+// La línea en cuyo árbol cae un archivo (caso 394), por la ruta y no por la línea que la sesión dice llevar
+// (`line-scope`): el plan que cuenta es el de la línea dueña del árbol.
 const lineAt = (root, file) => LT.trees(root).find(({ tree }) => [tree, landing(path.sep, tree)]
   .some((one) => !path.relative(one, file).startsWith('..')))
 

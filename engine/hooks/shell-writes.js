@@ -13,19 +13,10 @@ const { unquoted, expandAssigned } = require('./input')
 
 // **Esto no puede ser completo y no se presenta como si lo fuera.** `eval`, una variable armada dos
 // líneas antes, un heredoc dentro de `bash -c`, un `python -c "open(...)"` o un script propio escriben
-// igual y ningún patrón los ve. Frena la forma habitual, como el resto de `destructive`; quien quiera
-// pasar, pasa. Presentarlo como un límite invitaría a confiar en él más de lo que aguanta.
-// Tres familias, porque los comandos no nombran su destino igual: `tee` y `truncate` escriben en cada
-// argumento, `cp` y sus hermanos en el último, y `sed` sólo escribe con `-i` —sin él lee y manda a
-// stdout, y esa redirección la ve REDIRECT—.
+// igual y ningún patrón los ve. Lee la forma habitual; presentarlo como un límite invitaría a confiar en él
+// más de lo que aguanta.
 //
-// El salto de línea termina una lista de argumentos igual que `;`. Sin excluirlo, la de un `cp` seguía
-// leyendo la línea de abajo y el destino terminaba siendo el comando siguiente: un bloqueo que nombraba
-// `…/python3`, una ruta que no aparecía en el comando. Se veía con un heredoc debajo, pero el heredoc no
-// era la causa —sólo hacía que la lectura frenara en un token que sobrevive—: sin él la lista cruzaba
-// igual y el último token era la marca de lo entrecomillado, que el filtro final descarta. O sea que
-// pasaba de casualidad, y aserciar que pasa no fijaba nada.
-// Y el `|` después de `>` es el override de `noclobber`, no una tubería: `>| destino` escribe igual que
+// El `|` después de `>` es el override de `noclobber`, no una tubería: `>| destino` escribe igual que
 // `> destino` aunque el shell esté configurado para no pisar. Sin admitirlo acá el guard no veía ese
 // destino —el `|` está fuera de la clase que captura la ruta, así que la coincidencia moría—, y con él
 // se perdían los tres guards que salen de `writesWithBase` a la vez. Lo que un agente se escribía por
@@ -43,6 +34,17 @@ const REDIRECT = new RegExp(String.raw`(?<![<>])(?:(?<=^|[\s(;|&])\d+|&)?>>?\|?(
 // no se leía como uno y la base seguía siendo la de antes. Es la lectura que `shell-changes.js` ya hacía; vive acá
 // para que `removal.js` y `writesWithBase` la usen sin copiarla.
 const REDIRECTIONS = /(?:^|\s)\d*&?[<>]{1,2}&?\d*\s*\S*/g
+
+// Tres familias, porque los comandos no nombran su destino igual: `tee` y `truncate` escriben en cada
+// argumento, `cp` y sus hermanos en el último, y `sed` sólo escribe con `-i` —sin él lee y manda a
+// stdout, y esa redirección la ve REDIRECT—.
+//
+// El salto de línea termina una lista de argumentos igual que `;`. Sin excluirlo, la de un `cp` seguía
+// leyendo la línea de abajo y el destino terminaba siendo el comando siguiente: un bloqueo que nombraba
+// `…/python3`, una ruta que no aparecía en el comando. Se veía con un heredoc debajo, pero el heredoc no
+// era la causa —sólo hacía que la lectura frenara en un token que sobrevive—: sin él la lista cruzaba
+// igual y el último token era la marca de lo entrecomillado, que el filtro final descarta. O sea que
+// pasaba de casualidad, y aserciar que pasa no fijaba nada.
 const EVERY_ARG = /(?:^|[\s;|&(])(tee|truncate)\s+([^;|&<>()\n]+)/g
 const LAST_ARG = /(?:^|[\s;|&(])(cp|mv|install|rsync)\s+([^;|&<>()\n]+)/g
 const SED = /(?:^|[\s;|&(])sed\s+([^;|&<>()\n]+)/g

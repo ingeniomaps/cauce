@@ -243,8 +243,7 @@ test('join --apply se niega sobre un árbol sucio, y sin conflictos mergea y cor
   const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
   assert.equal(claim(trees.line, 'r-line', 'admin-consulta').status, 0)
   commitIn(ops.line, 'claim', 'planning')
-  // Sucio es un cambio sobre lo trackeado. Un archivo suelto no frena: el merge no lo toca, y en un
-  // repositorio de trabajo casi siempre hay alguno.
+  // Sucio es un cambio sobre lo trackeado; un archivo suelto no frena.
   fs.appendFileSync(path.join(trees.main, 'BACKLOG.md'), '\n')
   fs.writeFileSync(path.join(trees.main, 'suelto.md'), 'x\n')
   const dirty = run(['lines', 'join', ops.main, 'admin', '--apply'])
@@ -264,7 +263,7 @@ test('join --apply se niega sobre un árbol sucio, y sin conflictos mergea y cor
   assert.equal(again.status, 0)
   assert.match(again.stdout, /nada que traer/)
 
-  // Un reclamo que ya está de los dos lados no viene con la línea: sólo cuenta lo que el merge trae.
+  // Un reclamo que ya está de los dos lados no viene con la línea.
   checkpoint(trees.line, 'admin', 'admin')
   commitIn(ops.line, 'checkpoint', 'planning')
   const next = JSON.parse(run(['lines', 'join', ops.main, 'admin', '--json']).stdout)

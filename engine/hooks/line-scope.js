@@ -6,8 +6,9 @@
 // trabajen a la vez sin pisarse, y hasta acá eso lo sostenía sólo que el agente se acordara de dónde estaba.
 //
 // Afuera de la carpeta de sesión no decide nada: eso lo juzgan las raíces, como siempre. La sesión principal no lleva
-// línea, así que para ella no cambia nada. Pasa lo que la persona nombra o confirma en el chat, y nada más: un «seguí»
-// no es pedir que la línea escriba en el checkout de otra sesión, que es lo que esto cuida.
+// línea, así que para ella no cambia nada. Pasa lo que la persona nombra o confirma en el chat, o pega en el archivo de
+// aprobación, y nada más: un «seguí» no es pedir que la línea escriba en el checkout de otra sesión, que es lo que
+// esto cuida.
 //
 // Qué línea lleva una sesión no está en el entorno: las dos se abren en la misma carpeta y `/autobuild <línea>` no
 // exporta nada. Se anota por sesión lo que ella misma dice —el `/autobuild` que escribe la persona, el `--line` de un

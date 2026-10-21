@@ -1,7 +1,7 @@
 'use strict'
 
-// Caso 409. El Mapa real de `workspace.md` llega a las fases que trabajan el código por el contrato, porque el
-// preámbulo les dice que no relean ese archivo. Sin mapa en el contrato, el preámbulo es el de siempre.
+// Caso 409: el Mapa real de `workspace.md` llega a las fases que trabajan el código por el contrato (el porqué, en
+// `workspaceMap`, de `engine/cli/contract.js`). Sin mapa en el contrato, el preámbulo es el de siempre.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')

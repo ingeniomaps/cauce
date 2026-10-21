@@ -115,9 +115,7 @@ test('flow-eval no juzga el caso en el que el recorrido reventó', async () => {
   assert.match(record, /Sin medir[^\n]*02-dos/)
 })
 
-// La lista de casos la trae un agente, y dos corridas de la misma sesión comparten el scratchpad: una
-// leyó la de otro cargo (caso 387). Con filtro se frenaba por accidente, porque el id no estaba; sin
-// filtro, o con un id que comparten 32 cargos, juzgaba los casos ajenos contra el SKILL.md propio.
+// Caso 387: una lista de casos de otro sujeto no se corre. El porqué, junto a `casos-ajenos` en `agent-eval`.
 for (const [name, label, args] of [['agent-eval', 'cases', { agent: 'x' }], ['flow-eval', 'casos', { flow: 'x' }]]) {
   test(`${name} no corre una lista de casos que es de otro sujeto`, async () => {
     const { result, asked } = await run(name, {
@@ -140,8 +138,7 @@ test('evaluate --cases --json dice de quién son los casos', () => {
   assert.equal(read('intake', '--flow', '--cases', '--json').subject, 'intake')
 })
 
-// El banco copia los fixtures del caso, y `flow-eval` no se los nombraba a nadie (caso 389): el recorrido
-// pidió «la épica, o dónde está» con la épica en la raíz de su instancia, y el juez no sabía que estaba.
+// Caso 389: `flow-eval` le nombra los fixtures del caso al recorrido y al juez. El porqué, en `intentOf`.
 test('flow-eval le nombra los fixtures del caso al recorrido y al juez', async () => {
   const intents = {}
   const withFixture = {

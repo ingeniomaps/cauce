@@ -3,7 +3,7 @@
 // Traer una línea de trabajo a la rama del árbol donde se corre. En seco dice qué pasaría: cuántos commits
 // trae, qué archivos chocan y qué hacer con cada uno, qué épicas repiten número y qué reclamos en vuelo
 // vienen con ella. Con `--apply` hace el merge y corre `check` sobre lo que quedó, que es donde se ve la fila
-// de acciones humanas que volvió a pendiente. Nunca empuja.
+// de acciones humanas que volvió a pendiente. Nunca empuja. Una línea declarada no se trae: se retira (`retire`).
 //
 // Qué pasaría se calcula con `git merge-tree --write-tree`, que fusiona de verdad sin tocar el worktree:
 // verificado con git 2.43, sale 1 con conflictos y lista sus rutas después del árbol resultante.
@@ -196,9 +196,9 @@ const heldWhy = (one, named = true) => `${named ? `${one.repo}: ` : ''}${one.mer
   : one.live ? `${one.branch} no llegó a ${one.live}`
     : `no tiene rama viva contra qué comprobar que ${one.branch} llegó`}`
 
-// Lo que puede quedar de la carpeta de una línea después de sacar sus árboles son los enlaces que dejaban las
-// versiones de antes de 0.113.0 (caso 420). Se borran ésos y las carpetas que quedan vacías, nada más: un enlace se
-// quita sin tocar adonde lleva, y una carpeta con algo adentro que no es de la línea se queda, y se dice (R23).
+// Lo que puede quedar de la carpeta de una línea después de sacar sus árboles: los enlaces de antes de 0.113.0, que
+// se borran como en `unlinkSiblings`, y las carpetas que quedan vacías. Una carpeta con algo adentro que no es de la
+// línea se queda, y se dice (R23).
 function unlinkOnly(dir) {
   for (const entry of fs.readdirSync(dir)) {
     const at = path.join(dir, entry)
@@ -230,7 +230,7 @@ function arrival(root, branch, into, commits) {
 
 // Pasar una línea de antes a la disposición nueva (caso 394). La de antes es un worktree de la instancia en
 // `line/<nombre>` con su carpeta de sesión al lado, y lo que commiteó ahí es planning: llega a la instancia
-// mergeando esa rama en la que tiene el árbol principal, que es lo que hacía `join`. Después se retiran ese
+// mergeando esa rama en la que tiene el árbol principal, que es lo que hace `join`. Después se retiran ese
 // worktree y su rama, y se arma la línea nueva. Lo del producto no se mueve: sus ramas de tarea siguen donde
 // estaban. Sobre lo que no se puede traer —un reclamo en vuelo, que tiene el id del árbol que se va— se niega.
 //

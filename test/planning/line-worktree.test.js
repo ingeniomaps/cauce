@@ -5,7 +5,7 @@
 // `ops lines` la muestra igual, con su cola.
 
 const { tempRoot, run, discard } = require('../support/environment')
-const { montar, git } = require('../support/worktree-bench')
+const { mount, git } = require('../support/worktree-bench')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -17,10 +17,9 @@ function lineMilestone(planning, line) {
     + `## Hito hl — De la línea\n\n- [ ] **cobro** [lite] — Cobrar. _Aceptación: cobra._ (service: api)\n`)
 }
 
-// Caso 394. En una línea declarada la tarea se construye en el árbol de la línea, que ya existe: no se arma
-// otro por tarea, y lo que se entrega dice que es de la línea para que se commitee ahí sin retirarlo.
+// Caso 394: en una línea declarada se entrega el árbol de la línea, marcado como suyo. El porqué, en `lineWork`.
 test('con --line entrega el árbol de la línea, con dónde trabajar adentro', () => {
-  const { base, repo, planning } = montar('cauce-wt-linea-')
+  const { base, repo, planning } = mount('cauce-wt-linea-')
   const ops = path.dirname(planning)
   git(ops, 'init', '-q', '-b', 'main')
   const made = run(['line', ops, 'pagos', 'producto'])
@@ -48,9 +47,9 @@ test('con --line entrega el árbol de la línea, con dónde trabajar adentro', (
   assert.equal(bad.status, 2, 'con el código de uso que da ops line')
 })
 
-// Caso 421. El porqué, en `lineWork` y en `assemble` (`engine/cli/lines.js`).
+// Caso 421. El porqué, en `lineWork` (`engine/cli/worktree.js`) y en `assemble` (`engine/cli/lines.js`).
 test('una línea vacía no arma nada, y la primera tarea que pide su árbol le suma el repositorio', () => {
-  const { base, repo, planning } = montar('cauce-wt-linea-vacia-')
+  const { base, repo, planning } = mount('cauce-wt-linea-vacia-')
   const ops = path.dirname(planning)
   git(ops, 'init', '-q', '-b', 'main')
   const made = run(['line', ops, 'piloto'])
@@ -62,7 +61,7 @@ test('una línea vacía no arma nada, y la primera tarea que pide su árbol le s
   // El banco de este archivo no pasa `check` entero —le falta lo que `init` arma—: lo que se mira es la línea.
   assert.doesNotMatch(run(['check', planning]).stderr, /lines/, 'y check la acepta')
 
-  // Una tarea que no es de la línea no le suma su repositorio: ensancharía dónde escribe la sesión (caso 422).
+  // Una tarea que no es de la línea no le suma su repositorio (caso 422).
   const foreign = run(['worktree', planning, 'alta', '--line', 'piloto'])
   assert.match(foreign.stderr, /alta no es de ninguna línea: se toma sin --line/)
   assert.deepEqual(declared(), { piloto: [] })
@@ -92,7 +91,7 @@ test('una línea vacía no arma nada, y la primera tarea que pide su árbol le s
 
 // El porqué, en `seenFrom` (`engine/cli/worktree.js`).
 test('la línea suma por su nombre un repositorio que la carpeta de sesión alcanza por un enlace', () => {
-  const { base, repo, planning } = montar('cauce-wt-linea-enlace-')
+  const { base, repo, planning } = mount('cauce-wt-linea-enlace-')
   const far = path.join(tempRoot('cauce-wt-afuera-'), 'producto')
   fs.renameSync(repo, far)
   fs.symlinkSync(far, repo, 'dir')
@@ -107,10 +106,9 @@ test('la línea suma por su nombre un repositorio que la carpeta de sesión alca
   assert.ok(fs.existsSync(path.join(base, 'lines', 'piloto', 'producto', 'api', 'main.go')))
 })
 
-// Fuera de sidecar no hay carpeta de sesión de la que nombrar el repositorio: se niega con el motivo de `ops line`, y
-// no con un error sin atrapar.
+// Fuera de sidecar se niega con el motivo de `ops line` (`seenFrom`), y no con un error sin atrapar.
 test('una línea declarada fuera de sidecar se niega con su motivo al pedir su árbol', () => {
-  const { planning } = montar('cauce-wt-linea-embebida-')
+  const { planning } = mount('cauce-wt-linea-embebida-')
   const ops = path.dirname(planning)
   git(ops, 'init', '-q', '-b', 'main')
   const file = path.join(ops, 'ops.config.json')

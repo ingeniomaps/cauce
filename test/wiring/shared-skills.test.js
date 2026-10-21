@@ -1,9 +1,8 @@
 'use strict'
 
-// Caso 371. Gemini CLI lee `.agents/skills/` como alias de `.gemini/skills/`, con precedencia, así que con
-// Codex y Gemini instalados cada cargo estaba dos veces y Gemini lo avisaba uno por uno al abrir la sesión.
-// Los dos runners escriben ahora el mismo puntero en la misma carpeta; lo que eso obliga a cuidar es que
-// desinstalar uno no deje al otro sin cargos, y que una instalación vieja no conserve la copia que sobra.
+// Caso 371 (el porqué, en `retireRoleSkills`). Los dos runners escriben el mismo puntero en la misma carpeta; lo
+// que eso obliga a cuidar es que desinstalar uno no deje al otro sin cargos, y que una instalación vieja no conserve
+// la copia que sobra.
 
 const { installedProject, tempRoot } = require('../support/environment')
 
@@ -26,8 +25,7 @@ test('Codex y Gemini comparten los punteros, y desinstalar uno no deja al otro s
   // nuestro de un cargo que ya no está en el catálogo.
   fs.mkdirSync(path.dirname(pointer(workspace, '.gemini/skills', first.slug)), { recursive: true })
   fs.writeFileSync(pointer(workspace, '.gemini/skills', first.slug), roleSkill(first))
-  // La descripción termina en comilla a propósito: el parser de frontmatter la quitaba y el puntero dejaba de
-  // reconocerse como nuestro (segunda revisión).
+  // La descripción termina en comilla a propósito (el porqué, en `generated`).
   const gone = { slug: 'cargo-que-ya-no-esta', description: 'Un cargo que dice "no"',
     reference: 'ops/agents/roles/cargo-que-ya-no-esta' }
   fs.mkdirSync(path.dirname(pointer(workspace, '.gemini/skills', gone.slug)), { recursive: true })

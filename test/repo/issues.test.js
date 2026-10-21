@@ -113,9 +113,9 @@ const GLIFOS = {
 // Aplazar es decir cuándo se hace, no dejarlo para nunca: sin la condición escrita, un aplazado es un abierto que dejó
 // de aparecer, y no vuelve el día que hace falta. El porqué del estado, en `docs/issues/README.md`.
 test('un caso aplazado dice cuándo se reabre', () => {
-  const sinCondicion = cases().filter((one) => one.estado === 'aplazado' && one.reabrirSi.length < 20)
+  const unconditional = cases().filter((one) => one.estado === 'aplazado' && one.reabrirSi.length < 20)
     .map((one) => `${one.name}: aplazado sin «reabrir-si» que diga cuándo`)
-  assert.deepEqual(sinCondicion, [], `aplazados que no vuelven solos:\n  ${sinCondicion.join('\n  ')}`)
+  assert.deepEqual(unconditional, [], `aplazados que no vuelven solos:\n  ${unconditional.join('\n  ')}`)
 })
 
 // Un caso dice su estado en dos lugares —el frontmatter y el encabezado que se lee primero— y quien

@@ -215,7 +215,7 @@ service: api
 // con su línea y sus historias; que `check` exija que cada historia esté en exactamente un hito, que las
 // historias existan y que la línea tenga nombre de línea; y que sin la sección nada de esto se exija.
 const EM = require('../../engine/planning/epic-milestones')
-const withMilestones = (hitos) => `---
+const withMilestones = (milestones) => `---
 epic: 004
 title: Pedidos
 status: open
@@ -236,7 +236,7 @@ service: app
 - [ ] **validar-stock** (→ C1) — Rechazar sin stock. _Aceptación: 409._ (service: api)
 - [ ] **crear-pedido** (→ C2) — Crear. _Aceptación: 201._ (service: api)
 - [ ] **ver-pedido** (→ C2) — Ver. _Aceptación: 200._ (service: admin)
-${hitos}`
+${milestones}`
 
 test('el parser lee los hitos de una épica con su línea y sus historias', () => {
   const root = tempRoot('ops-epic-hitos-')

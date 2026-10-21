@@ -276,9 +276,8 @@ test('las dos llaves del push no se escriben desde una herramienta, y el resto d
     cwd: root, tool_input: { file_path: target, content: JSON.stringify(content, null, 2) },
   })
   // Lo que proteger sólo los dos campos conserva: el archivo sigue siendo la salida que el límite de
-  // raíces recomienda, y frenarlo entero repondría el candado que el 090 sacó. Una raíz nueva no pasa sola
-  // desde el 373 —la confirma la persona, con la entrada a la vista— y eso no es el candado: el resto del
-  // archivo sigue pasando, y la entrada confirmada también.
+  // raíces recomienda, y frenarlo entero repondría el candado que el 090 sacó. Una raíz nueva frena (caso 373,
+  // en el encabezado de `ops-config.js`); el resto del archivo pasa, y la entrada confirmada también.
   const roots = { ...config, workspaceRoots: [{ name: 'app', path: '../app' }] }
   const outsideRoots = { ...config, writableOutsideRoots: ['../notas'] }
   assert.doesNotThrow(() => execute('ops-config', write(config)))
@@ -329,8 +328,8 @@ test('por shell se frena toda escritura sobre ops.config.json, que es lo único 
   assert.doesNotThrow(() => execute('ops-config-shell', sh('echo hola')))
 })
 
-// Por la herramienta de edición, que trae el contenido. Por shell pasaba también hasta 0.106.1, y desde la
-// revisión del 373 no: un comando no dice con qué queda el archivo, así que nombrarlo no dice qué se pidió.
+// Por la herramienta de edición, que trae el contenido; por shell, desde la revisión del 373, no. El porqué, en
+// `asked` (`engine/hooks/ops-config.js`).
 test('lo que la persona pide nombrando ops.config.json pasa por la herramienta de edición, no por shell', () => {
   const { root, file, config } = configRoot('ops-hook-config-chat-')
   const withKey = JSON.stringify({ ...config, runner: { ...config.runner, allowPush: true } }, null, 2)

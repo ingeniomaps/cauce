@@ -81,8 +81,9 @@ const chatRecord = (file) => file === CHAT.DIR || file.startsWith(`${CHAT.DIR}${
 // que comentaba, y el fragmento nuevo —vacío— no la nombra. Se simula el reemplazo sobre lo que hay en disco
 // y se comparan las líneas resultantes; lo que `Write` o un parche traen entero se lee como siempre.
 function resulting(input, root) {
-  // Sin respaldo: acá se llega con un archivo que salió de `tool_input`, así que siempre está.
-  const fields = input.tool_input
+  // El archivo puede haber llegado sin `tool_input` —de primer nivel, en un parche suelto o por `OPS_HOOK_FILE`—, y
+  // sin `old_string` se lee entero como siempre (caso 427).
+  const fields = input.tool_input || {}
   if (typeof fields.old_string !== 'string') return contentOf(input)
   let disk = ''
   try { disk = fs.readFileSync(path.join(root, 'planning', AP.APPROVAL), 'utf8') } catch { disk = '' }
@@ -121,11 +122,10 @@ const isPush = (line) => /^push\s+\S+\s+\S+$/.test(line)
 
 // Por qué no se puede escribir este contenido, o vacío.
 //
-// **Un fragmento sí se juzga, al revés que en `ops.config.json`.** Allá el archivo entrante se compara
-// entero porque una llave cambia de sentido según lo que la rodea, y un `Edit` manda un pedazo; acá cada
-// línea vale por sí sola, así que el pedazo que llega es exactamente lo que se agrega. Lo que no se puede
-// leer como líneas —un parche con sus encabezados— no coincide con nada pedido y se frena, que es el lado
-// correcto para equivocarse.
+// Cada línea vale por sí sola, al revés que en `ops.config.json`, donde una llave cambia de sentido según lo
+// que la rodea: acá alcanza con las líneas que el archivo gana (`resulting`). Lo que no se puede leer como
+// líneas —un parche con sus encabezados— no coincide con nada pedido y se frena, que es el lado correcto para
+// equivocarse.
 //
 // Y se pregunta sin heredar lo que la sesión concedió antes: una línea acá la leen todos los guards y llega
 // hasta la rama viva, así que tiene que ser la que la persona dijo en el mensaje en curso.

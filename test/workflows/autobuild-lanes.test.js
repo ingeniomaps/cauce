@@ -93,9 +93,8 @@ test('una tarea sin clasificar se clasifica y la clasificación se escribe donde
   assert.match(orden, /\(cast:/, 'con el reparto en la línea, no sólo el carril')
 })
 
-// Lo que es más barato hecho por la sesión no se construye con agentes (caso 380). El clasificador lo
-// devuelve después de que la tarea se reclamó, así que soltarla es parte de devolverla: si no, la tarea
-// queda reservada a nombre de una corrida que ya no la va a hacer.
+// Caso 380: lo que es más barato hecho por la sesión no se construye con agentes, y devolverlo suelta la reserva
+// (el porqué, en `autobuild.js`, junto al release de la tarea manual).
 test('el clasificador puede devolver la tarea a la sesión, y la corrida no la construye', async () => {
   const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
   const handedBack = { ...NO_TASK, queued: 1, manual: ['T-1'] }
@@ -127,7 +126,7 @@ test('una cola con sólo tareas manuales termina sin construir y las nombra', as
 })
 
 // Lo que se devuelve lo dice la cola y no el reporte del clasificador: con la línea sin escribir, la tarea es de la
-// corrida. Y la tarea manual que este runner tiene tomada la está haciendo la sesión: no se suelta ni se construye.
+// corrida. Y la tarea manual que este runner tiene tomada no se suelta ni se construye (`sessionHolds`).
 test('devolver se lee en la cola, y una tarea manual tomada por este runner frena la corrida', async () => {
   const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
   const said = { [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'manual', build: '', review: [] }] } }
@@ -145,8 +144,8 @@ test('devolver se lee en la cola, y una tarea manual tomada por este runner fren
   assert.ok(!inWip.phases.includes('Build'))
 })
 
-// El piso de la superficie crítica lo aplica el recorrido, como con express (caso 205), y sobre todas las que la
-// pasada dejó manual: `context` no vuelve a ofrecer ninguna, así que es la única vez que se las mira.
+// El piso de la superficie crítica lo aplica el recorrido, como con express (caso 205), sobre todas las que la
+// pasada dejó manual (el porqué, en `CRITICAL_MANY`).
 test('una tarea manual sobre una superficie crítica no vuelve a la sesión: corre por directo', async () => {
   const surfaces = { surfaces: ['Alta de pedido (api/orders)'] }
   const unclassified = { ...baseScript()[KEY.context], ...surfaces, lane: '', cast: { build: '', review: [] } }

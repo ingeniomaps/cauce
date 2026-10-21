@@ -6,7 +6,7 @@
 // persona lo corrige en la épica, y `ops promote` lo escribe. La sección es optativa, y sin ella la épica se
 // promueve como un solo hito.
 //
-// Vive aparte porque `parser.js` y `contracts.js` están en el umbral de las 500 líneas, y porque es una sola
+// Vive aparte porque `parser.js` está en el umbral de las 500 líneas, y porque es una sola
 // cosa —leer y juzgar la misma sección— con un ciclo de vida propio: nace en la épica y muere al promoverla.
 
 const HEADING = /Hitos/i
