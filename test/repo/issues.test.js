@@ -26,7 +26,8 @@ function cases() {
   return fs.readdirSync(ISSUES).filter((name) => /^\d{3}-.*\.md$/.test(name)).sort().map((name) => {
     const text = fs.readFileSync(path.join(ISSUES, name), 'utf8')
     const field = (key) => ((text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm')) || [])[1] || '').trim()
-    return { name, text, caso: field('caso'), estado: field('estado'), resueltoEn: field('resuelto-en') }
+    return { name, text, caso: field('caso'), estado: field('estado'), resueltoEn: field('resuelto-en'),
+      reabrirSi: field('reabrir-si') }
   })
 }
 
@@ -99,14 +100,23 @@ test('un caso resuelto dice qué se corrió para saber que funciona', () => {
   assert.deepEqual(faltan, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${faltan.join('\n  ')}`)
 })
 
-// La tabla de `docs/issues/README.md`: los tres estados con el glifo que a cada uno le toca en el
+// La tabla de `docs/issues/README.md`: los cuatro estados con el glifo que a cada uno le toca en el
 // encabezado. Por qué uno fuera de ella se rechaza en vez de ignorarse está escrito allá, al pie de la
 // tabla; acá sólo se comprueba.
 const GLIFOS = {
   abierto: /^\*\*🔴 abierto\*\*/m,
   resuelto: /^\*\*🟢 resuelto en ([0-9.]+)\*\*/m,
   descartado: /^\*\*⚪ descartado\*\*/m,
+  aplazado: /^\*\*⏸ aplazado\*\*/m,
 }
+
+// Aplazar es decir cuándo se hace, no dejarlo para nunca: sin la condición escrita, un aplazado es un abierto que dejó
+// de aparecer, y no vuelve el día que hace falta. El porqué del estado, en `docs/issues/README.md`.
+test('un caso aplazado dice cuándo se reabre', () => {
+  const sinCondicion = cases().filter((one) => one.estado === 'aplazado' && one.reabrirSi.length < 20)
+    .map((one) => `${one.name}: aplazado sin «reabrir-si» que diga cuándo`)
+  assert.deepEqual(sinCondicion, [], `aplazados que no vuelven solos:\n  ${sinCondicion.join('\n  ')}`)
+})
 
 // Un caso dice su estado en dos lugares —el frontmatter y el encabezado que se lee primero— y quien
 // cierra toca uno de los dos. Desincronizados, el que miente es el que se lee sin abrir el archivo.

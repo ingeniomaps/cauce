@@ -1,15 +1,16 @@
 ---
 caso: 391
 titulo: reanudar tras una aprobación de gobernanza repite las fases ya pagadas
-estado: abierto
+estado: aplazado
+reabrir-si: varias reanudaciones por commit-needs-approval en un mes en las instancias, o una sola en full con un costo que pese, contadas en los journal.jsonl de las corridas
 prioridad: baja
 version-detectada: 0.109.0
 ---
 
 # 391 — Una tarea que paró en el Commit por `commit-needs-approval` vuelve a pasar por Verify, y en `full` por Review y QA, al reanudarla con la aprobación escrita
 
-**🔴 abierto** · detectado en 0.109.0 · prioridad **baja** — limitación aceptada a propósito al cerrar el caso 383. Se
-registra con su costo medido para decidir con números si aparece seguido.
+**⏸ aplazado** · detectado en 0.109.0 · prioridad **baja** — limitación aceptada a propósito al cerrar el caso 383. Se
+hace cuando se cumpla lo de «Qué lo reabriría»; hasta entonces no se lista entre lo que queda.
 
 ## Resumen
 
@@ -67,3 +68,25 @@ seguido de una corrida de la misma tarea que retoma desde el WIP.
 
 - [383](./383-un-guard-de-gobernanza-frena-el-commit-del-subagente-y-la-corrida-termina.md) — de donde sale, y donde
   están las corridas reales.
+
+## Por qué se aplaza
+
+El 2026-10-21 el dueño pidió sacarlo de la lista de lo que queda —«o lo hacemos o si lo dejamos pendiente seria un estado
+que diga cuando realmente tengamos que hacerlo»—, y se midió primero si ya tocaba. No toca. En los registros de corridas
+de esta máquina desde el 2026-10-16, cuando el 383 creó la parada, hay dos paradas reales con `"reason":
+"commit-needs-approval"`, y las dos son las corridas de prueba del propio 383. Las instancias con corridas de `/autobuild`
+en esos días —tres, con 27, 37 y 44 registros de workflow— no tienen ninguna; los otros archivos que nombran la parada la
+traen dentro del script del recorrido, no como resultado.
+
+El arreglo, además, le saca verificación al recorrido para ahorrar una vuelta, y R9 pide probarlo al revés. Hacerlo para
+algo que no ocurrió ninguna vez en uso real es pagar ese riesgo por nada. Por eso `aplazado` y no `abierto`: la decisión ya
+está y la condición también, y lo que falta es que se cumpla.
+
+Cómo se mira, para reabrirlo con el número:
+
+```bash
+grep -rlo '"reason":"commit-needs-approval"' ~/.claude/projects/ | grep -v cauce
+```
+
+Cada archivo es una parada real; si se cuentan varias en un mes, o una en `full`, el caso vuelve a `abierto` con ese
+conteo en «Contexto de descubrimiento» y se toma con el «Fix propuesto» de arriba.

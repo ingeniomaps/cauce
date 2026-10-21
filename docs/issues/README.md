@@ -45,11 +45,19 @@ archivo y sin parsearlo:
 | `abierto` | `**🔴 abierto**` | Reproducido y sin arreglar. |
 | `resuelto` | `**🟢 resuelto en <versión>**` | Arreglado y publicado. `resuelto-en` dice en qué versión. |
 | `descartado` | `**⚪ descartado**` | Se decidió no arreglarlo. El cuerpo dice por qué; no se borra. |
+| `aplazado` | `**⏸ aplazado**` | Se hace cuando se cumpla una condición, y todavía no. `reabrir-si` dice cuál. |
 
-Son los tres que hay, y la columna del medio es parte del contrato y no una sugerencia de formato:
+`aplazado` no es un `abierto` con otro nombre ni un `descartado` blando. Un abierto se lista cada vez que alguien
+pregunta qué queda, y uno que se decidió no hacer todavía es ruido en esa lista: aparece en cada conversación sin que
+haya nada que decidir. Un descartado dice que no, y éste dice que sí, pero no ahora. Lo que lo separa de los dos es la
+condición: `reabrir-si` en el frontmatter, con el hecho que lo reabre y cómo se mira —un número en los diarios de las
+corridas, un caso que llega de una instancia—. `issues.test.js` la exige. Cuando la condición se cumple, el caso vuelve
+a `abierto` con lo que se midió; mientras no, no se lista entre lo que queda.
+
+Son los cuatro que hay, y la columna del medio es parte del contrato y no una sugerencia de formato:
 `test/repo/issues.test.js` la comprueba, y rechaza además un `estado` que no esté en esta tabla. Sin
 eso, inventar uno dejaba al caso afuera de todas las comprobaciones —las demás preguntan por
-`resuelto`— sin que nada avisara. El glifo de `descartado` nació en el 046 pidiendo que se declarara
+`resuelto`— sin que nada avisara. El cuarto, `aplazado`, entró en 0.113.0 con el 391. El glifo de `descartado` nació en el 046 pidiendo que se declarara
 acá; hasta 0.87.0 no estaba, y era convención de hecho.
 
 Un caso se marca `resuelto` **cuando la versión que lo arregla está publicada**, no cuando el PR
