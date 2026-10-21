@@ -402,7 +402,18 @@ test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo 
   // Con pnpm, lo mismo que con npm: medido clave por clave con pnpm 10.30.2 (caso 375). Y lo que sí mueve su
   // lock —`pnpm.overrides`, `resolutions`— no está en la lista inerte, así que sigue frenando.
   assert.doesNotThrow(() => execute('dependencies', commit(repo('pnpm-lock.yaml', (p) => { p.scripts.cov = 'x' }))))
+  // Las claves que npm registra y pnpm no: el bump de versión de cada release es la que más se cruza (caso 403).
+  for (const [what, change] of [
+    ['la versión', (p) => { p.version = '1.0.1' }],
+    ['el nombre', (p) => { p.name = 'otra-app' }],
+    ['engines', (p) => { p.engines = { node: '>=24' } }],
+    ['bin y license a la vez', (p) => { p.bin = { app: 'cli.js' }; p.license = 'MIT' }],
+  ]) {
+    assert.doesNotThrow(() => execute('dependencies', commit(repo('pnpm-lock.yaml', change))), what)
+  }
   for (const [, change] of [
+    ['una dependencia', (p) => { p.dependencies.a = '2.0.0' }],
+    ['la versión y una dependencia a la vez', (p) => { p.version = '1.0.1'; p.dependencies.b = '1.0.0' }],
     ['pnpm.overrides', (p) => { p.pnpm = { overrides: { example: '1.0.1' } } }],
     ['resolutions', (p) => { p.resolutions = { example: '1.0.1' } }],
   ]) {

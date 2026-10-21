@@ -23,16 +23,17 @@ const { run, MISMO } = require('./shell')
 // registra—, y lo que mueve su lock es `pnpm.overrides`, `resolutions` y `pnpm.patchedDependencies`, que no
 // están en la lista y por eso no aflojan (caso 375). Los scripts de instalación se siguen tratando como en
 // npm: es más estricto que lo medido y cuesta un rechazo raro, no un lock viejo. yarn y bun siguen sin medir.
-const INERT_KEYS = new Set([
-  'scripts', 'description', 'keywords', 'author', 'repository', 'homepage', 'bugs', 'private', 'type',
-  'main', 'files', 'exports', 'config', 'jest', 'eslintConfig', 'prettier',
-])
+//
+// Por gestor: con una sola lista, lo que npm registra frenaba también con pnpm, como cada bump de versión (caso 403).
+const NPM_INERT = ['scripts', 'description', 'keywords', 'author', 'repository', 'homepage', 'bugs', 'private',
+  'type', 'main', 'files', 'exports', 'config', 'jest', 'eslintConfig', 'prettier']
+const INERT_KEYS = { 'package-lock.json': new Set(NPM_INERT), 'pnpm-lock.yaml': new Set([...NPM_INERT, 'name',
+  'version', 'license', 'engines', 'bin', 'funding', 'workspaces', 'os', 'cpu']) }
 const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall']
-// Un solo lockfile, de un gestor medido. Dos a la vez no aflojan: cuál manda lo decide el gestor que corra.
-const MEASURED_LOCKS = new Set(['package-lock.json', 'pnpm-lock.yaml'])
 
+// Un solo lockfile, de un gestor medido. Dos a la vez no aflojan: cuál manda lo decide el gestor que corra.
 function lockUnaffected(dir, file, lockfiles) {
-  if (path.basename(file) !== 'package.json' || !MEASURED_LOCKS.has(lockfiles.join())) return false
+  if (path.basename(file) !== 'package.json' || !Object.hasOwn(INERT_KEYS, lockfiles.join())) return false
   const read = (ref) => {
     const shown = run('git', ['-C', dir, 'show', `${ref}:${file}`], dir)
     if (!shown.ok) return null
@@ -44,7 +45,7 @@ function lockUnaffected(dir, file, lockfiles) {
   const same = (one, other) => JSON.stringify(one) === JSON.stringify(other)
   const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .filter((key) => !same(before[key], after[key]))
-  if (changed.some((key) => !INERT_KEYS.has(key))) return false
+  if (changed.some((key) => !INERT_KEYS[lockfiles[0]].has(key))) return false
   const scripts = (one) => (one && typeof one.scripts === 'object' ? one.scripts : {}) || {}
   return INSTALL_SCRIPTS.every((name) => same(scripts(before)[name], scripts(after)[name]))
 }
