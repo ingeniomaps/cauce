@@ -17,7 +17,7 @@ on:
     # igual para descubrirlo gastaría CI en cada merge.
     paths: [package.json]
   # Para reintentar una publicación que falló después del merge. Es idempotente: lo ya publicado o
-  # tagueado se reconoce y no se repite.
+  # tagueado se reconoce y no se repite —lo que npm todavía no muestra, al rechazarlo (`Publish to npm`)—.
   workflow_dispatch:
 
 permissions:
@@ -49,6 +49,9 @@ jobs:
       # Una versión se publica una sola vez, y la marca de que ya salió es su tag. Sin tag puede faltar todo
       # o sólo la mitad —npm aceptó y la release falló—, y npm no republica una versión: por eso se pregunta
       # a los dos antes de decidir qué falta.
+      #
+      # De npm, «no está» es sólo su E404. Cualquier otra falla deja la pregunta sin contestar, y leerla como
+      # «no está» publicaba sobre una suposición (caso 425).
       - name: Decide what this version still needs
         id: version
         run: |
@@ -61,11 +64,16 @@ jobs:
             exit 0
           fi
           echo "release=true" >> "$GITHUB_OUTPUT"
-          if [ "$(npm view "$name@$version" version 2>/dev/null)" = "$version" ]; then
+          asked="$(mktemp)"
+          if seen="$(npm view "$name@$version" version 2>"$asked")" && [ "$seen" = "$version" ]; then
             echo "$version ya está en npm: falta sólo la release y su tag."
             echo "published=true" >> "$GITHUB_OUTPUT"
-          else
+          elif grep -q E404 "$asked"; then
             echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            cat "$asked" >&2
+            echo "No se pudo preguntarle a npm si $version ya salió, y sin saberlo no se publica." >&2
+            exit 1
           fi
 
       # `upgrade` reemplaza `system/` sin pedir confirmación, y esta entrada es lo que hace que esa
@@ -94,9 +102,36 @@ jobs:
       # `--provenance` es intención, no mecanismo: el trusted publishing ya genera y publica las
       # attestations por su cuenta —docs.npmjs.com, «Trusted publishers»—. Escrito acá, el archivo
       # dice que una publicación sin attestation no es la que se pidió.
+      #
+      # El registro tarda en mostrar una versión recién publicada —unos 80 segundos al publicar 0.113.0—, y un
+      # reintento lanzado en ese intervalo llega acá con `published=false`: npm la rechaza con «cannot publish
+      # over the previously published versions» (caso 425). Ese rechazo dice que ya salió, y se confirma
+      # contra el registro antes de seguir a la release, que era lo que faltaba. Si npm cambia la frase, el
+      # paso vuelve a caer en rojo como antes: la dirección segura. Que antes corra la puerta entera no se
+      # evita: hasta que el registro la muestra, nada distingue esta versión de una que nunca salió.
       - name: Publish to npm
+        id: publish
         if: steps.version.outputs.release == 'true' && steps.version.outputs.published != 'true'
-        run: npm publish --provenance
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          said="$(mktemp)"
+          set +e
+          npm publish --provenance 2>&1 | tee "$said"
+          status="${PIPESTATUS[0]}"
+          set -e
+          [ "$status" -eq 0 ] && exit 0
+          grep -q 'cannot publish over the previously published versions' "$said" || exit "$status"
+          name="$(node -p 'require("./package.json").name')"
+          for try in 1 2 3 4 5 6; do
+            if [ "$(npm view "$name@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+              echo "$VERSION ya estaba en npm: lo publicó una corrida anterior, sigue la release."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "npm dice que $VERSION ya salió y el registro no la muestra: no se anuncia todavía." >&2
+          exit 1
 
       # Después del publish y no antes: una release que anuncia una versión que npm rechazó es peor
       # que no anunciarla. Al revés sólo cuesta volver a correr el job. `--target` es el commit del merge:

@@ -460,7 +460,9 @@ tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archi
   versión de `package.json` en `main` y eso dispara `release.yml`, que publica con `npm publish
   --provenance` y crea el tag con la release: no hay tag que empujar a mano, y ninguna credencial de npm
   guardada en el repositorio —no guardarla es la mitad del punto—. Si falla después del merge, se
-  reintenta con `gh workflow run release.yml`: reconoce lo que ya salió y no lo repite.
+  reintenta con `gh workflow run release.yml`: reconoce lo que ya salió y no lo repite. En el minuto y pico
+  en que npm todavía no muestra una versión recién publicada, la reconoce recién cuando npm la rechaza, después
+  de correr la puerta (caso 425).
   Lo que abre ese PR es una entrada nueva en el CHANGELOG, y la de los cargos la escribe el motor: al
   sellar la propuesta que `agent-promote` aplicó, la anota en la versión que todavía no salió —la minor
   siguiente si no hay una abierta—. El resto de las entradas se siguen escribiendo a mano.
