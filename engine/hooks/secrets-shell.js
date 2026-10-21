@@ -1,6 +1,6 @@
 'use strict'
 
-// Leer una credencial por shell. `secrets-read` mira la herramienta de lectura del runner, y un `cat .env`
+// Leer o escribir una credencial por shell. `secrets-read` mira la herramienta de lectura del runner, y un `cat .env`
 // no pasa por ella: en Claude lo tapaba una regla nativa `permissions.deny`, que además frenaba lo que la
 // persona pedía, y en los otros runners no lo tapaba nada (caso 104). Esto lo mira donde pasan todos los
 // comandos, con la misma salida que el resto: lo que la persona pidió en el chat pasa.
@@ -12,7 +12,10 @@ const os = require('node:os')
 const path = require('node:path')
 const { commandOf, cwdOf, block, isCommit, unquoted, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
+const { REDIRECT, writesWithBase } = require('./shell-writes')
+const { asRead } = require('./shell-changes')
 const AP = require('./approval')
+const CHAT = require('./chat')
 
 // Lo que muestra el contenido de un archivo. Queda afuera lo que sólo lo nombra —`ls`, `test -f`, `rm`,
 // `git add`—, que no deja nada en la sesión, y `cp` y `mv`, cuyo último argumento es un destino: `cp
@@ -95,14 +98,53 @@ function readTokens(command) {
     const words = segment.trim().replace(/^[({]+\s*/, '').split(/\s+/).filter(Boolean)
     const verb = verbOf(words)
     const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(segment)
-    if (reads) found.push(...(withoutPattern(segment, verb).match(/[^\s'"`\\;|&<>(){}=,]+/g) || []))
+    // Lo que va después de `>` es el destino, no lo que se lee: `cat > .npmrc` escribe, y eso lo juzga
+    // `writtenCredentials` como escritura (caso 402).
+    const read = withoutPattern(segment, verb).replace(REDIRECT, ' ')
+    if (reads) found.push(...(read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || []))
   }
   return [...new Set(found)]
 }
 
+// Escribir una credencial desde el shell, con la misma regla y la misma aprobación que el guard `secrets` aplica a
+// las herramientas de edición. Hasta 0.111.0 ese guard era el único: `echo … > .npmrc` pasaba, y `cat > .npmrc`
+// frenaba sólo porque se lo leía como lectura (caso 405). La variable de la lectura no lo apaga: la pregunta es
+// otra.
+//
+// `.env` y `.env.local` quedan afuera, y son la única excepción: armarlos desde su plantilla —`cp .env.example
+// .env`— es el paso de setup de casi todo repositorio, y frenarlo frenaría a todos. Leerlos sigue frenando. El resto
+// de la familia frena como en la edición: la excepción eximía `.env.*` entera, y con ella `.env.keys`, donde dotenvx
+// guarda la clave privada, que ningún setup arma (caso 417).
+const SETUP_ENV = /^\.env(?:\.local)?$/
+function writtenCredentials(input, command) {
+  const found = new Map()
+  // Sin el cuerpo de los heredocs, que es dato: `commandOf` ya saca el de un delimitador de letras, y `asRead` también
+  // el de `END-1` o `E.O.F`, que si no se leía como comandos y frenaba crear un script que nombra una credencial.
+  for (const { raw, base } of writesWithBase(asRead(command), cwdOf(input))) {
+    if (SETUP_ENV.test(path.basename(raw))) continue
+    // Bajo un `cd` que no se resuelve no se sabe dónde cae, y una aprobación por archivo no tendría qué ruta nombrar:
+    // se juzga por el nombre, que es lo que decide, y pasa sólo si la persona lo pidió en el chat nombrándolo.
+    if (base === null && !path.isAbsolute(raw)) {
+      const reason = credential(input, raw)
+      if (reason && CHAT.unauthorized(input, [raw]).length) {
+        block(`${raw} ${reason}\nEl comando hace \`cd\` a un destino que no se puede resolver acá: escribí la ruta `
+          + 'absoluta, o hacé el `cd` en un comando aparte.')
+      }
+      continue
+    }
+    const file = path.resolve(base || cwdOf(input), raw)
+    const reason = credential(input, file)
+    if (reason) found.set(file, reason)
+  }
+  const left = AP.pending(opsRoot(input), [...found.keys()], input)
+  if (!left.length) return
+  block(`${left.map((file) => `${file} ${found.get(file)}`).join('\n')}\n${AP.HOW(null, left, input)}`)
+}
+
 function secretsShell(input) {
-  if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
   const raw = commandOf(input)
+  writtenCredentials(input, raw)
+  if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
   // El mensaje de un commit es dato, como en `destructive`: nombrar el archivo ahí no lo lee.
   const command = isCommit(raw) ? unquoted(raw) : raw
   const cwd = cwdOf(input)

@@ -220,7 +220,8 @@ const TEMP = new RegExp(`^${real(os.tmpdir())}(?:/|$)`)
 function shellBoundary(input) {
   const allowed = writableRoots(input)
   const found = []
-  for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
+  // Sin el cuerpo de los heredocs, también con un delimitador como `END-1`, por lo que dice `writtenCredentials`.
+  for (const { raw, base } of writesWithBase(asRead(commandOf(input)), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
     // no puede verificar no autoriza —el criterio que fijó el 031 para el índice—.

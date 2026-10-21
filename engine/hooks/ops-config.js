@@ -26,6 +26,7 @@ const { block, commandOf, configOf, contentOf, cwdOf, filesOf, opsRoot } = requi
 const CHAT = require('./chat')
 const AP = require('./approval')
 const { writesWithBase } = require('./shell-writes')
+const { asRead } = require('./shell-changes')
 const { confirmedOnly, real } = require('./boundary')
 const { writableOutsideRoots, resolvePath, LOCAL_CONFIG } = require('../config/paths')
 
@@ -169,7 +170,7 @@ function judgeWrite(input, root, file) {
 }
 
 function judgeCommand(input, root, file) {
-  for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
+  for (const { raw, base } of writesWithBase(asRead(commandOf(input)), cwdOf(input))) {
     // Una ruta relativa sin base contra la que resolverla no se puede juzgar, y esa pregunta es de
     // `shell-boundary`, que ya la contesta para todo destino.
     if (!path.isAbsolute(raw) && base === null) continue

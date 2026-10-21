@@ -180,8 +180,8 @@ const hookMetadata = [
   {
     name: 'secrets-shell',
     event: 'PreToolUse · shell',
-    purpose: 'Bloquea leer por shell una credencial conocida o declarada; lo que la persona pidió en el chat '
-      + 'pasa.',
+    purpose: 'Bloquea leer o escribir por shell una credencial conocida o declarada; lo que la persona pidió en '
+      + 'el chat pasa.',
   },
   {
     name: 'ops-config',
