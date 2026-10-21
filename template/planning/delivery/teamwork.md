@@ -105,7 +105,8 @@ la carpeta de siempre, los checkouts de siempre. Una línea existe sólo para qu
 trabajo que la principal no toma —un frente aparte, como pagos mientras vos seguís con lo tuyo—. Quien trabaja
 concentrado en lo suyo no tiene líneas, y nada de esto le aparece.
 
-Una línea es un nombre y los repositorios del producto que trabaja:
+Una línea es un **frente de trabajo**: un nombre, los hitos que lleva —los que dicen `line: <nombre>`— y los
+repositorios del producto donde vive ese trabajo:
 
 ```bash
 node tools/ops.js line . pagos backend-pagos
@@ -113,9 +114,13 @@ node tools/ops.js line . pagos backend-pagos
 
 Declara la línea en `ops.config.json` —`"lines": { "pagos": ["backend-pagos"] }`, que se commitea— y arma,
 dentro de la carpeta de sesión, un worktree de cada repositorio en `lines/pagos/<repo>/`, en la rama
-`line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. Los repositorios
-que la línea no trabaja se enlazan en su carpeta, para que un `../shared-lib` resuelva igual que desde la carpeta
-de sesión. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
+`line/pagos`. La rama sale de la rama viva del repositorio, no de donde esté parado su checkout. En disco la línea
+aparece como un árbol por repositorio porque eso es lo que la aísla: la principal sigue en `backend-pagos/` y la
+línea trabaja en `lines/pagos/backend-pagos/`, cada una en su rama. Que el frente viva en un repositorio que la
+principal también trabaja es lo normal, no un caso aparte. Que la sesión de la línea escriba sólo en su árbol lo
+sostiene hoy la sesión, no un guard: el checkout de la principal le queda al alcance. En la carpeta de la línea está
+sólo lo que trabaja; si un repositorio nombra a otro por ruta relativa —un `../shared-lib`—, ése también se suma a
+la línea, con su árbol. Cada árbol es un checkout aparte, con sus propias dependencias y sus propias pruebas: se instalan
 adentro. Aparte son los archivos, no lo que el repositorio nombra fuera de git. Docker Compose toma el nombre del
 proyecto de la carpeta, y el árbol se llama como el repositorio —para que `../` resuelva igual—, así que desde
 `lines/pagos/backend-pagos/` un `docker compose up` es el mismo proyecto que desde `backend-pagos/`: los mismos
@@ -131,8 +136,7 @@ acme/                         la carpeta de sesión: una sola, con un solo CLAUD
 ├── shared-lib/
 └── lines/
     └── pagos/
-        ├── backend-pagos/    worktree en line/pagos
-        └── shared-lib -> ../../shared-lib
+        └── backend-pagos/    worktree en line/pagos: lo único de la línea
 ```
 
 La sesión de la línea se abre **en la misma carpeta** que la principal, con las mismas reglas, los mismos
