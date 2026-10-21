@@ -69,7 +69,7 @@ El enunciado, ítem por ítem:
 - Mutación en una copia fuera del árbol, con `cdTarget(to, base)` de vuelta: roja («destructive bloqueó, pero por otro
   motivo»).
 - El grupo `pre-shell` como proceso, antes y después, sobre un banco en `/var/tmp`: `cd && rm -rf .` pasa de «'rm -r' sobre
-  …/repo se lleva el directorio actual» a «'rm -r' sobre /home/… se lleva la carpeta personal». No se corrió con un runner
+  …/repo se lleva el directorio actual» a «'rm -r' sobre $HOME se lleva la carpeta personal». No se corrió con un runner
   real: si el guard fallara, el comando borraría de verdad (R23), y la decisión se ve entera en el proceso.
 
 **Lo que encontró la cuarta revisión, y se arregló acá: un `cd` con una redirección no se leía como `cd`.** El tramo
