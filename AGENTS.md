@@ -456,6 +456,12 @@ tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archi
   Para el bump de versión no hace falta ir a `main`: `release-pr.yml` abre solo el PR que sincroniza
   `package.json` con el encabezado más nuevo del CHANGELOG.
 
+- **GitHub se opera como `ingeniomaps`, con la credencial del `.env`, y por ninguna otra vía.** El push va por el
+  remoto HTTPS, cuyo helper lee el `.env`, también con workflows: la clave SSH de esta máquina es de otra cuenta y no
+  tiene permiso acá. PR, merge y aprobar corridas, con `GH_TOKEN="$GITHUB_PAT_CAUCE" gh …`. Nunca el navegador, que
+  abre la sesión de quien esté logueado ahí. `.claude/hooks/gh-identity.js` frena lo que tiene forma —`gh` sin
+  credencial, `gh auth`, un remoto o un push por SSH— y `.claude/settings.json` niega el navegador. Si algo de esto
+  falla, se para y se dice: probar otra vía es lo que pasó varias veces el 2026-10-21, y lo que esta línea evita.
 - **Se publica mergeando el PR de release, por OIDC; el `NPM_TOKEN` es el respaldo.** El merge cambia la
   versión de `package.json` en `main` y eso dispara `release.yml`, que publica con `npm publish
   --provenance` y crea el tag con la release: no hay tag que empujar a mano, y ninguna credencial de npm
