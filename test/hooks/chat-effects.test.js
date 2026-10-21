@@ -328,6 +328,24 @@ test('un sí al bloqueo de la aprobación aprueba las líneas que mostró', () =
   } finally { chat.close() }
 })
 
+// Caso 427: la aprobación que llega sin `tool_input` —el archivo de primer nivel, un parche suelto o la invocación a
+// mano con `OPS_HOOK_FILE`— se frena como cualquier otra, y no tira el guard con un error que no es un bloqueo.
+test('una escritura a la aprobación sin tool_input se frena como cualquier otra', () => {
+  const root = planFirstRoot('ops-hook-aprobacion-sin-tool-input-', WIP_CON_PLAN)
+  const approval = path.join(root, 'planning', '.ops-approval')
+  blocked('workspace-boundary', { cwd: root, file_path: approval, content: 'src/x.js\n' }, /aprobarse solo/)
+  const patch = '*** Begin Patch\n*** Add File: planning/.ops-approval\n+src/x.js\n*** End Patch\n'
+  blocked('workspace-boundary', { cwd: root, patch }, /aprobarse solo/)
+  const previous = process.env.OPS_HOOK_FILE
+  process.env.OPS_HOOK_FILE = approval
+  try {
+    blocked('workspace-boundary', { cwd: root }, /aprobarse solo/)
+  } finally {
+    if (previous === undefined) delete process.env.OPS_HOOK_FILE
+    else process.env.OPS_HOOK_FILE = previous
+  }
+})
+
 // Una edición que no agrega ninguna línea que un guard lea —sólo comentarios— no es aprobarse nada, y frenarla
 // sin nada que confirmar dejaba a la persona editando a mano lo que le había pedido al agente (caso 374). La
 // otra vía, con el archivo nombrado, ya la dejaba pasar; ésta es la que no.

@@ -81,8 +81,9 @@ const chatRecord = (file) => file === CHAT.DIR || file.startsWith(`${CHAT.DIR}${
 // que comentaba, y el fragmento nuevo —vacío— no la nombra. Se simula el reemplazo sobre lo que hay en disco
 // y se comparan las líneas resultantes; lo que `Write` o un parche traen entero se lee como siempre.
 function resulting(input, root) {
-  // Sin respaldo: acá se llega con un archivo que salió de `tool_input`, así que siempre está.
-  const fields = input.tool_input
+  // El archivo puede haber llegado sin `tool_input` —de primer nivel, en un parche suelto o por `OPS_HOOK_FILE`—, y
+  // sin `old_string` se lee entero como siempre (caso 427).
+  const fields = input.tool_input || {}
   if (typeof fields.old_string !== 'string') return contentOf(input)
   let disk = ''
   try { disk = fs.readFileSync(path.join(root, 'planning', AP.APPROVAL), 'utf8') } catch { disk = '' }
