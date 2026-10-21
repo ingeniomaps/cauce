@@ -109,6 +109,29 @@ test('la rama de una línea nueva sale de la rama viva y no del HEAD del checkou
   assert.match(run(['line', ops, 'e', 'pagos']).stdout, /\(line\/e\)\n {2}sale de: origin\/trunk\n/)
 })
 
+// Caso 398: el árbol avisa cuando su `core.hooksPath` apunta a una carpeta que no tiene. El porqué, en `missingHooks`.
+test('el árbol de una línea avisa cuando su core.hooksPath apunta a una carpeta que no tiene', () => {
+  const { base, ops, tree } = session('cauce-line-hooks-')
+  const repo = path.join(base, 'pagos')
+  fs.mkdirSync(path.join(repo, '.husky', '_'), { recursive: true })
+  fs.writeFileSync(path.join(repo, '.husky', '.gitignore'), '_\n')
+  ok(repo, 'add', '.husky/.gitignore'); ok(repo, 'commit', '-qm', 'husky')
+  ok(repo, 'config', 'core.hooksPath', '.husky/_')
+  const warned = (report) => report.warnings.filter((one) => /hooksPath/.test(one))
+  const report = json(['line', ops, 'pagos', 'pagos', '--json'])
+  assert.equal(fs.existsSync(path.join(tree('pagos', 'pagos'), '.husky', '_')), false)
+  assert.match(warned(report).join('\n'), /pagos: core\.hooksPath apunta a \.husky\/_, que este árbol no tiene/)
+  assert.equal(fs.existsSync(path.join(tree('pagos', 'pagos'), '.husky', '_')), false, 'el aviso no la copia')
+  // Mientras falte se repite al volver a pedir la línea, y deja de decirse cuando la instalación la genera.
+  assert.equal(warned(json(['line', ops, 'pagos', '--json'])).length, 1)
+  fs.mkdirSync(path.join(tree('pagos', 'pagos'), '.husky', '_'))
+  assert.deepEqual(warned(json(['line', ops, 'pagos', '--json'])), [])
+  // Una ruta absoluta que existe, o un repositorio sin hooksPath, no dicen nada.
+  ok(repo, 'config', 'core.hooksPath', path.join(repo, '.husky', '_'))
+  assert.deepEqual(warned(json(['line', ops, 'otra', 'pagos', '--json'])), [])
+  assert.deepEqual(warned(json(['line', ops, 'sin', 'auth', '--json'])), [])
+})
+
 test('una línea se niega sin nombre, sin repositorios, sobre lo que no es un repositorio y en embebido', () => {
   const { ops, tree } = session('cauce-line-refuse-')
   const refused = (args, pattern) => {

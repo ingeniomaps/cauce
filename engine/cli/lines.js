@@ -98,7 +98,22 @@ function plant(session, name, repo, warnings) {
         + `borrá el árbol, creá la rama con \`git -C ${source} branch ${branch} ${head}\` y repetí.`)
     }
   }
+  const hooks = missingHooks(tree)
+  if (hooks) {
+    warnings.push(`${repo}: core.hooksPath apunta a ${hooks}, que este árbol no tiene; hasta que la instalación del `
+      + 'repositorio la genere, git commitea sin hooks y no lo dice.')
+  }
   return { repo, tree, branch, from, reused }
+}
+
+// `core.hooksPath` vive en la configuración del repositorio y la comparten todos sus worktrees, pero la carpeta
+// a la que suele apuntar —`.husky/_`— la genera la instalación y git la ignora: un árbol nuevo no la trae, y
+// git no corre ningún hook ni avisa (caso 398). Se dice y no se copia: lo que va adentro es de la herramienta.
+// Relativa, git la resuelve desde la raíz del árbol.
+function missingHooks(tree) {
+  const value = git(tree, 'config', '--path', 'core.hooksPath').stdout.trim()
+  if (!value || path.isAbsolute(value)) return ''
+  return isDir(path.join(tree, value)) ? '' : value
 }
 
 const no = (error, code) => ({ error, code })
