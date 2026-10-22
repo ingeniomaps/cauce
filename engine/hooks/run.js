@@ -28,6 +28,7 @@ const { aiSignature } = require('./ai-signature')
 const { testEvidenceShell } = require('./test-evidence-shell')
 const { governance } = require('./governance')
 const LS = require('./line-scope')
+const PG = require('./project-guards')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -290,6 +291,8 @@ function executeAll(names, input) {
       asked.push(error.message)
     }
   }
+  // Los del proyecto, después de los de Cauce y antes de cualquier diálogo: si uno frena, frena (caso 428).
+  PG.runProjectGuards(names, input, hookGroups)
   if (asked.length) {
     const error = new Error(asked.join('\n\n'))
     error.ask = true

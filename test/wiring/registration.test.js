@@ -70,3 +70,67 @@ test('un plugin ajeno que se llama cauce no es asunto de doctor', () => {
   fs.writeFileSync(path.join(foreign, 'hook.js'), 'process.stdout.write("{}")\n')
   assert.deepEqual(doctorWithHome(project.home, project.target).errors, [])
 })
+
+// Los hooks de Codex que nadie confió (caso 434). `CODEX_HOME` va a un temporal: la confianza vive bajo el home, y una
+// prueba no lee la de quien la corre (R23). Qué cuenta como confiado, en `trustProblems`.
+test('doctor da error con los hooks de Codex sin confiar, y calla cuando están confiados', () => {
+  const base = tempRoot('cauce-codex-trust-')
+  const codexHome = path.join(base, 'codex-home')
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(codexHome)
+  fs.mkdirSync(workspace)
+  const env = { ...process.env, CODEX_HOME: codexHome }
+  for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[key]
+  const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env })
+  assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  assert.equal(runCli(['automation', 'install', target, 'codex']).status, 0)
+  const hooks = path.join(workspace, '.codex', 'hooks.json')
+
+  const untrusted = runCli(['automation', 'doctor', target, 'codex'])
+  assert.notEqual(untrusted.status, 0)
+  assert.match(`${untrusted.stdout}${untrusted.stderr}`, /4 hook\(s\) de .*hooks\.json sin confiar en .*config\.toml/)
+
+  // Confiados los cuatro como los anota Codex —una entrada por hook, con su evento en snake_case—, calla. Con uno
+  // de menos, lo cuenta.
+  const keys = ['pre_tool_use:0:0', 'pre_tool_use:1:0', 'user_prompt_submit:0:0', 'session_end:0:0']
+  const entry = (key) => `[hooks.state."${hooks}:${key}"]\ntrusted_hash = "sha256:x"\n`
+  fs.writeFileSync(path.join(codexHome, 'config.toml'), keys.map(entry).join('\n'))
+  const trusted = runCli(['automation', 'doctor', target, 'codex'])
+  assert.doesNotMatch(`${trusted.stdout}${trusted.stderr}`, /sin confiar/)
+  fs.writeFileSync(path.join(codexHome, 'config.toml'), keys.slice(1).map(entry).join('\n'))
+  const one = runCli(['automation', 'doctor', target, 'codex'])
+  assert.match(`${one.stdout}${one.stderr}`, /1 hook\(s\) de .* sin confiar/)
+})
+
+// Lo que `trustProblems` hace con lo que no tiene la forma esperada: sin `CODEX_HOME` busca en el home —un temporal
+// acá, nunca el de quien corre la prueba—, y un `hooks.json` ilegible o con otra forma no inventa hooks que faltan.
+test('la confianza de Codex sin CODEX_HOME se busca en el home, y un hooks.json raro no cuenta hooks', () => {
+  const { registrationProblems } = require('../../engine/automation/registration')
+  const runner = require('../../automatization/runners/codex/manifest.json')
+  const base = tempRoot('cauce-codex-trust-forma-')
+  const file = path.join(base, 'hooks.json')
+  const previous = { CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME }
+  delete process.env.CODEX_HOME
+  process.env.HOME = base
+  try {
+    fs.writeFileSync(file, JSON.stringify({ hooks: { PreToolUse: [{ hooks: [{ command: 'x' }] }] } }))
+    assert.match(registrationProblems({ configTarget: file }, runner).join('\n'),
+      new RegExp(`1 hook\\(s\\) .* sin confiar en ${path.join(base, '.codex', 'config.toml')}`))
+    fs.mkdirSync(path.join(base, '.codex'))
+    fs.writeFileSync(path.join(base, '.codex', 'config.toml'), `[hooks.state."${file}:pre_tool_use:0:0"]\n`)
+    assert.deepEqual(registrationProblems({ configTarget: file }, runner), [])
+    const shapes = ['{', '{}', JSON.stringify({ hooks: { PreToolUse: 'x' } }),
+      JSON.stringify({ hooks: { Stop: [{}] } })]
+    for (const shape of shapes) {
+      fs.writeFileSync(file, shape)
+      assert.deepEqual(registrationProblems({ configTarget: file }, runner), [], shape)
+    }
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
+})

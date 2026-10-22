@@ -10,8 +10,9 @@ const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
 const LN = require('../planning/lines')
+const LT = require('../core/line-trees')
 const P = require('../planning/parser')
-const { fail, planningRoot, TODAY, USAGE, REFUSED } = require('./io')
+const { fail, planningRoot, shellWord, TODAY, USAGE, REFUSED } = require('./io')
 
 function claim(dir, slug, cli) {
   const root = planningRoot(dir)
@@ -89,7 +90,7 @@ function claim(dir, slug, cli) {
     if (holder.owner === me) {
       return fail(`${slug} la tenés vos, tomada el ${holder.started} desde el runner ${holder.runner}. `
         + 'Preguntá si se retoma esa sesión —y entonces corré con ese id— o si es otro agente en '
-        + `paralelo, que toma otra tarea. \`ops runners ${path.relative(process.cwd(), root) || '.'}\` `
+        + `paralelo, que toma otra tarea. \`ops runners ${shellWord(path.relative(process.cwd(), root) || '.')}\` `
         + 'lista lo que hay abierto.', REFUSED)
     }
     return fail(`${slug} la tomó ${holder.owner} el ${holder.started}. Si se abandonó, borrá `
@@ -103,7 +104,7 @@ function claim(dir, slug, cli) {
     // Y con qué id volver. Este dato lo imprimía `ops worktree` al crear el árbol; en sidecar no se crea
     // ninguno, así que ese comando no corre nunca y el id no quedaba escrito en el único momento en que
     // alguien lo tiene delante: ahora, que se acaba de guardar en el reclamo.
-    console.log(`  export CAUCE_RUNNER=${from}`)
+    console.log(`  export CAUCE_RUNNER=${shellWord(from)}`)
   }
 }
 
@@ -120,6 +121,23 @@ function release(dir, slug, cli) {
   // `check` manda a soltar con este mismo comando (caso 412). La de una tarea en curso sigue siendo del que la tomó.
   const closed = P.readDone(root).set.has(slug)
   if (taken.runner !== from && !closed) {
+    // La misma persona desde otro id no es «de otro»: es la forma en que `claim` la nombra, y la salida es su id, no
+    // borrar el archivo (caso 432). Sin `--line`, que le volvería a agregar la línea al id viejo.
+    // Un dueño vacío no es nadie: sin identidad de git los dos lados son '', y eso no hace tuya la tarea de otra
+    // sesión.
+    if (taken.owner && taken.owner === CL.owner(root)) {
+      // Salvo que la tenga la sesión de otra línea, o la principal: se suelta desde ella, y darle su id a ésta saltaría
+      // la separación entre sesiones. Un id sin marca sobre una tarea de una línea es de esa línea, tomado antes de que
+      // el id la llevara (caso 429): ésa sí se suelta con su id.
+      const milestone = ST.snapshot(root).milestones.find((one) => one.tasks.some((task) => task.slug === slug))
+      const held = LT.lineOfRunner(taken.runner) || (milestone && milestone.line) || ''
+      if (held !== asked.line) {
+        return fail(`${slug} la tomó la sesión ${held ? `de la línea ${held}` : 'principal'}: se suelta desde ella, `
+          + `${held ? `con --line ${held}` : 'sin --line'}.`, REFUSED)
+      }
+      return fail(`${slug} la tenés vos, tomada el ${taken.started} desde el runner ${taken.runner}. Si esa sesión no `
+        + `la retoma, soltala con su id: ${CL.releaseCommand(taken.runner, root, slug)}`, REFUSED)
+    }
     return fail(`${slug} es de ${taken.owner}. Si se abandonó, borrá ${taken.at} a mano.`, REFUSED)
   }
   fs.rmSync(CL.file(root, slug))

@@ -275,8 +275,9 @@ proyecto decide distinto va donde sí es suyo —una ADR propia, una regla propi
 inbox, acciones humanas, informes y `organization/`.
 
 `automatization/hooks/` no tiene `system/`: es runtime que se reemplaza entero. Un guard propio convive
-y sobrevive, desactivar uno del toolkit es quitarlo de la configuración del runner, y editar uno
-existente detiene el `upgrade` antes de pisarlo.
+y sobrevive, y se declara en `guards` de `ops.config.json` para que el motor lo corra en todos los runners;
+desactivar uno del toolkit es quitarlo de la configuración del runner, y editar uno existente detiene el
+`upgrade` antes de pisarlo.
 
 ### Actualizar
 

@@ -221,9 +221,9 @@ function isProduct(root, file) {
 // sidecar eso frenaba la primera edición de Build en toda sesión que no hubiera montado un árbol por
 // tarea: una corrida real paró ahí con el plan aprobado y escrito, después de once agentes (caso 260).
 //
-// No afloja lo que fija «el plan de un runner no le sirve a otro»: con `CAUCE_RUNNER` el id es explícito y
-// se respeta tal cual, y eso es lo que tiene cada agente que trabaja en su árbol. Sin la variable, `ops` ya
-// le da a toda la sesión el id de la instancia; acá el guard deja de contestar distinto que él.
+// No afloja lo que fija «el plan de un runner no le sirve a otro»: con `CAUCE_RUNNER` el id es explícito —con la
+// línea de la sesión, si lleva una— y se respeta, y eso es lo que tiene cada agente que trabaja en su árbol. Sin la
+// variable, `ops` ya le da a toda la sesión el id de la instancia; acá el guard deja de contestar distinto que él.
 function instancePlan(root, planning) {
   if (process.env.CAUCE_RUNNER) return null
   const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' })
@@ -237,7 +237,8 @@ const lineAt = (root, file) => LT.trees(root).find(({ tree }) => [tree, landing(
 
 // El plan de esa línea. Su sesión corre `ops` con `--line`, así que su WIP queda bajo el id de la instancia con
 // la línea, y el guard deducía el de la principal: la primera edición de cada tarea de una línea se frenaba
-// con el plan escrito. Con `CAUCE_RUNNER` el id es el declarado y no hay nada que deducir.
+// con el plan escrito. Con `CAUCE_RUNNER` no se deduce por la ruta: el id es el declarado, con la línea que la sesión
+// dijo llevar, y lo lee la primera búsqueda de `planFirst`.
 function linePlan(root, planning, file) {
   const hit = !process.env.CAUCE_RUNNER && lineAt(root, file)
   if (!hit) return null
@@ -253,7 +254,9 @@ function planFirst(input) {
   const root = opsRoot(input)
   if (!root) return
   const planning = path.join(root, 'planning')
-  const wip = readWip(planning, runner())
+  // Con la línea que la sesión dijo llevar: con `CAUCE_RUNNER` fijado para el proyecto, sin ella el guard leía el plan
+  // de la principal y la línea editaba con un plan ajeno (caso 429).
+  const wip = readWip(planning, runner(LS.lineOf(input, root), root))
   if (wip && wip.complete + wip.pending > 0) return
   const own = instancePlan(root, planning)
   if (own && own.complete + own.pending > 0) return

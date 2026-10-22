@@ -33,8 +33,9 @@ function adviceFor(changed) {
   if (runtime.length) {
     advice.push(
       'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
-      + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
-      + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
+      + 'guard propio sobrevive a cada actualización— y declaralo en `guards` de ops.config.json, que\n'
+      + 'lo corre en todos los runners. Para desactivar uno de Cauce alcanza con quitarlo de la\n'
+      + 'configuración de tu runner, que sí es del proyecto.',
     )
   }
   if (docs.length) {

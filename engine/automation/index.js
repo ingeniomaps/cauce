@@ -27,6 +27,7 @@ const {
 // escriben. Se reexporta para que sus consumidores sigan pidiéndoselo a este módulo.
 const { check } = require('./check')
 const { registrationProblems } = require('./registration')
+const PG = require('./project-guards')
 
 // Ejecuta el puente del runner tal como él lo invoca, y desde otra carpeta. Instalado no es lo mismo que
 // operativo: un bridge que el runner no puede lanzar —porque su ruta es relativa y el cwd es otro, o
@@ -103,6 +104,7 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
       warnings.push(`${runner.config.target}: ${legacy.join(', ')} siguen registrados sueltos junto al grupo; `
         + 'cada uno se ejecuta dos veces. Borrá esas entradas del archivo para quedarte sólo con el grupo')
     }
+    PG.guardProblems(root, installed, runner.config.target, paths.install, { errors, warnings })
   } catch (error) {
     errors.push(`${runner.config.target}: ${error.message}`)
   }

@@ -16,6 +16,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const C = require('./claims')
 const LT = require('../core/line-trees')
+const { shellWord } = require('../core/files')
 
 const { BRANCH, NAME } = LT
 const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' })
@@ -36,16 +37,59 @@ function currentLine(root) {
 // `id` es la línea que va en el id del runner, y la de antes no lleva: su árbol ya le daba uno propio, y
 // cambiárselo dejaría sin dueño los reclamos que tiene en vuelo.
 function sessionLine(root, asked) {
-  if (asked) {
-    if (!NAME.test(asked)) return { error: `--line ${asked} no es un nombre de línea (minúsculas y guiones)` }
-    if (!LT.declared(path.join(root, '..'))[asked]) {
-      return { error: `la línea ${asked} no está declarada en ops.config.json. Se arma con `
-        + `\`ops line <ops-root> ${asked} <repo>...\`` }
+  // Un id que ya trae una línea manda sobre `--line` (`runner()`, caso 429): pedida otra, la sesión leería y escribiría
+  // el WIP y los reclamos de ésa sin enterarse, así que se dice. Sin `--line`, la sesión es la de esa línea, que es lo
+  // que también lee `line-scope`: contestarle como la principal con el id de una línea mezclaba las dos.
+  const declared = String(process.env.CAUCE_RUNNER || '').trim()
+  const held = LT.lineOfRunner(declared)
+  if (held && asked && held !== asked) {
+    const own = LT.runnerOf(declared.slice(0, declared.lastIndexOf(`#${LT.BRANCH}`)), asked)
+    return { error: `CAUCE_RUNNER=${shellWord(declared)} es el id de la línea ${held}, y pediste --line ${asked}: `
+      + `sacá la variable, o exportá el de ${asked}: export CAUCE_RUNNER=${shellWord(own)}` }
+  }
+  const line = asked || held
+  if (line) {
+    if (!NAME.test(line)) return { error: `--line ${line} no es un nombre de línea (minúsculas y guiones)` }
+    if (!LT.declared(path.join(root, '..'))[line]) {
+      // Si la trajo la variable y no `--line`, el arreglo es otro: la sesión tiene exportado el id de una línea vieja.
+      if (!asked) {
+        return { error: `CAUCE_RUNNER=${shellWord(declared)} trae la línea ${line}, que no está declarada en `
+          + `ops.config.json: sacá la variable, o exportá el id de una línea que exista.` }
+      }
+      return { error: `la línea ${line} no está declarada en ops.config.json. Se arma con `
+        + `\`ops line <ops-root> ${line} <repo>...\`` }
     }
-    return { line: asked, id: asked, legacy: false }
+    return { line, id: line, legacy: false }
   }
   const legacy = currentLine(root)
   return { line: legacy, id: '', legacy: Boolean(legacy) }
+}
+
+// Cómo se retoma un plan propio que quedó bajo otro id. Casi siempre es exportar ese id, salvo en dos casos, porque
+// exportarlo no los reproduce. Un id de otra línea frena contra el `--line` de ésta, así que se retoma desde la sesión
+// de esa línea. Uno sin marca, visto desde una línea nueva, es de antes del 429: `runner()` le vuelve a agregar la
+// línea. La salida ahí es la migración del CHANGELOG de 0.114.0, con el plan movido al WIP que esta sesión va a leer, y
+// sólo si esa sesión no tiene ya el de otra tarea, que moverlo pisaría; si el que tiene es el de ésta, ya se movió.
+// Una línea de antes de 0.111.0 lleva ids sin marca a propósito, y ahí el `export` sirve. En la prosa el WIP se nombra
+// como en el resto de `context`, relativo al planning; en los comandos, relativo a donde se corre, para pegarlos.
+function resumeAdvice(claim, session, root) {
+  const held = LT.lineOfRunner(claim.runner)
+  if (held && held !== session.line) return ` — es de la línea ${held}: se retoma desde esa sesión, con --line ${held}`
+  if (held || !session.line || session.legacy) {
+    return ` — retomalo con \`export CAUCE_RUNNER=${shellWord(claim.runner)}\``
+  }
+  const here = (file) => path.relative(process.cwd(), path.join(root, file)) || '.'
+  const release = `\`${C.releaseCommand(claim.runner, root, claim.slug)}\``
+  if (session.moved) {
+    return `, de antes de que el id llevara la línea, y su plan ya está en ${session.wipFile}: falta soltarla `
+      + `con ${release} y tomarla con --line ${session.line}`
+  }
+  if (session.busy) {
+    return `, de antes de que el id llevara la línea, y esta sesión ya tiene su plan en ${session.wipFile}: `
+      + 'cerrá ése antes de migrar éste, que moverlo lo pisaría'
+  }
+  return `, de antes de que el id llevara la línea: soltala con ${release}, tomala con --line ${session.line}, y mové `
+    + `el plan con \`mv ${shellWord(here(`wip/${claim.wip}`))} ${shellWord(here(session.wipFile))}\``
 }
 
 // El aviso de una sesión que corre en una línea de antes, que sigue andando hasta que se la migre.
@@ -279,6 +323,6 @@ function mergeWarnings(root, milestones, tableRows) {
 
 module.exports = {
   BRANCH, NAME, currentLine, sessionLine, LEGACY, startPoint, branchOf, scope, whereToTake, lineErrors, worktrees,
-  placement, claimsElsewhere, status,
+  placement, claimsElsewhere, status, resumeAdvice,
   classifyConflicts, duplicateEpics, mergeWarnings,
 }

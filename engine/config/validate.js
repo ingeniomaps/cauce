@@ -7,6 +7,10 @@ const { LOCAL_CONFIG } = require('./paths')
 const LT = require('../core/line-trees')
 
 const MODES = ['embedded', 'sidecar', 'toolkit']
+// Los eventos en que un proyecto puede declarar guards propios (caso 428). `test/hooks/project-guards.test.js` compara
+// la lista con `hookGroups` y dice por qué quedan afuera los que quedan, así que un evento nuevo nace en rojo hasta que
+// alguien lo clasifica.
+const GUARD_EVENTS = ['pre-shell', 'pre-files', 'pre-read', 'pre-mcp', 'stop']
 
 // Campos que existieron y se retiraron. Se nombran en vez de caer en «propiedad desconocida» porque
 // quien actualiza merece saber qué hacer con la línea, no sólo que sobra.
@@ -52,7 +56,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines',
+    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -87,7 +91,27 @@ function validateOpsConfig(config) {
   validateInbox(config.inbox, errors)
   validateComments(config.comments, errors)
   validateLines(config.lines, errors)
+  validateGuards(config.guards, errors)
   return errors
+}
+
+// Los guards del proyecto, por evento. Una ruta que no es texto, o absoluta, no viaja con el repositorio: en otra
+// máquina el guard no estaría y el evento frenaría todo, que es como el motor trata al que no contesta.
+function validateGuards(guards, errors) {
+  if (guards === undefined) return
+  if (!guards || typeof guards !== 'object' || Array.isArray(guards)) {
+    errors.push('ops.config.json: guards debe ser un objeto { "<evento>": ["<ruta>", ...] }')
+    return
+  }
+  for (const [event, files] of Object.entries(guards)) {
+    if (!GUARD_EVENTS.includes(event)) {
+      errors.push(`ops.config.json: guards.${event} no es un evento con guards: ${GUARD_EVENTS.join(', ')}`)
+      continue
+    }
+    if (!Array.isArray(files) || files.some((one) => typeof one !== 'string' || !one.trim() || path.isAbsolute(one))) {
+      errors.push(`ops.config.json: guards.${event} debe ser una lista de rutas relativas a la raíz ops`)
+    }
+  }
 }
 
 // Las líneas de trabajo (caso 394). Una entrada que no tiene la forma no es de ninguna línea, y el motor la
@@ -327,4 +351,4 @@ function localConfigWarnings(dir) {
   ]
 }
 
-module.exports = { configWarnings, validateOpsConfig, localConfigWarnings, validZone }
+module.exports = { configWarnings, validateOpsConfig, localConfigWarnings, validZone, GUARD_EVENTS, validateGuards }

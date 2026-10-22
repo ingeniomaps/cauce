@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { validZone } = require('../config/validate')
+const { shellWord } = require('../core/files')
 
 // Los dos códigos con que termina el CLI, y el corte entre ellos. Están nombrados porque el número suelto
 // no dice de qué lado cae: un «2» y un argumento ausente se leen igual de arbitrarios, así que cada sitio
@@ -113,4 +114,4 @@ function planningRoot(dir) {
   return root
 }
 
-module.exports = { fail, opsRoot, planningRoot, TODAY, useRoot, USAGE, REFUSED }
+module.exports = { fail, opsRoot, planningRoot, shellWord, TODAY, useRoot, USAGE, REFUSED }

@@ -324,20 +324,25 @@ const named = (text, item) => mentions(text, item).named
 //
 // Sin instancia resoluble no hay WIP contra el cual comparar, y eso no es lo mismo: el alcance se respeta,
 // porque revocar ahí sería castigar a quien trabaja fuera de una instancia por algo que no dijo.
-function scopeAlive(saved, item) {
+//
+// El WIP es el de la línea que la sesión lleva: con el de la principal, una concesión de la línea vencía o seguía viva
+// por una tarea que no era la suya (caso 429). `line-scope` se pide acá y no arriba porque llega a este archivo por
+// `approval`, y cargarlo al principio cerraría el ciclo con este módulo a medio exportar.
+function scopeAlive(input, saved, item) {
   const scope = (saved.scopes || {})[item]
   if (!scope) return true
   if (!saved.root) return true
-  const wip = readWip(path.join(saved.root, 'planning'), runner())
+  const line = require('./line-scope').lineOf(input, saved.root)
+  const wip = readWip(path.join(saved.root, 'planning'), runner(line, saved.root))
   return Boolean(wip && String(wip.task).toLowerCase() === String(scope).toLowerCase())
 }
 
-function why(saved, item, asked, inherit) {
+function why(input, saved, item, asked, inherit) {
   if (asked(wordsOf(saved), item, { relayed: !saved.human })) return 'orden'
   if (saved.approved.includes(item)) return 'dale'
   if (!inherit) return ''
   if (!(saved.granted || []).includes(item)) return ''
-  return scopeAlive(saved, item) ? 'concedido' : ''
+  return scopeAlive(input, saved, item) ? 'concedido' : ''
 }
 
 // Lo que un guard dejó pasar queda anotado, que es la contracara de `hold`: hasta 0.82.0 sólo se anotaba
@@ -377,7 +382,7 @@ function grant(input, saved, entries) {
 function authorized(input, items, { asked = named, inherit = true } = {}) {
   const saved = said(input)
   if (!saved) return confirmed(input, items).map(({ item, via }) => ({ item, via }))
-  return items.map((item) => ({ item, via: why(saved, item, asked, inherit) })).filter((one) => one.via)
+  return items.map((item) => ({ item, via: why(input, saved, item, asked, inherit) })).filter((one) => one.via)
 }
 
 // Lo que la persona confirmó y un subagente puede usar: eso y nada más. Una orden no, porque la da el mensaje
@@ -404,7 +409,7 @@ function unauthorized(input, items, asked = named) {
     const cleared = new Set(passed.map((one) => one.item))
     return items.filter((item) => !cleared.has(item))
   }
-  const passed = items.map((item) => ({ item, via: why(saved, item, asked, true) })).filter((one) => one.via)
+  const passed = items.map((item) => ({ item, via: why(input, saved, item, asked, true) })).filter((one) => one.via)
   // El alcance sale del mensaje cuando es éste el que lo concede, y del registro cuando se hereda: una
   // orden vieja no se reinterpreta contra un texto que no la nombraba.
   grant(input, saved, passed.map((one) => ({

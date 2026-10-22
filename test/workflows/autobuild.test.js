@@ -30,7 +30,7 @@ test('el carril con el que corre la tarea viaja al WIP y al cierre', async () =>
   const wip = prompts.find((one) => one.key === KEY.wip).prompt
   assert.match(wip, /lane=lite/, 'el plan en vuelo lo conserva para quien reanude')
   const cierre = prompts.find((one) => one.key.startsWith('Done|')).prompt
-  assert.match(cierre, /tests, commit, lane y review/,
+  assert.match(cierre, /tests, commit, lane, review y critique/,
     'y el cierre lo pide como un campo más de la evidencia')
 })
 
@@ -483,4 +483,12 @@ test('lo que se pide al lanzar la corrida llega a Plan, Build y Commit', async (
   }
   const plain = await runFlow()
   assert.ok(!said(plain.prompts, KEY.plan).includes('Quien lanzó esta corrida'), 'sin pedido no se agrega nada')
+})
+
+// Los campos obligatorios del contexto se copian del comando y ninguno se deduce; lo que pasó sin esto, junto al
+// pedido.
+test('el pedido de contexto copia blocked y queued del comando, sin deducirlos', async () => {
+  const { prompts } = await runFlow()
+  const asked = prompts.find((one) => one.key === KEY.context).prompt
+  assert.match(asked, /blocked y queued de sus campos, tal cual: no los deduzcas del WIP ni de su phase/)
 })

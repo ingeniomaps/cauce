@@ -128,9 +128,10 @@ test('las dos pasadas de Review reciben la aceptación que rige', async () => {
 
 // Caso 211. El prompt de Done traía el hecho de revisión y el agente lo resumía al escribirlo: lo que mide
 // esta prueba es el pedido de copia textual; que se cumpla lo midió la corrida real que el caso cita.
-test('Done pide lane y review textuales', async () => {
+test('Done pide lane, review y critique textuales', async () => {
   const run = await flow([])
-  assert.match(prompt(run, 'Done|done'), /lane y review van textuales, copiados de estos hechos sin resumir/)
+  assert.match(prompt(run, 'Done|done'),
+    /lane, review y critique van textuales, copiados de estos hechos sin resumir/)
 })
 
 // Revisión de la tanda: una sospecha de la primera pasada se perdía si la re-revisión no la repetía.

@@ -19,7 +19,7 @@ const { treeOf } = require('../core/task-trees')
 const LT = require('../core/line-trees')
 const LN = require('../planning/lines')
 const LN_CLI = require('./lines')
-const { fail, planningRoot, USAGE, REFUSED } = require('./io')
+const { fail, planningRoot, shellWord, USAGE, REFUSED } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
@@ -131,8 +131,8 @@ function worktree(dir, slug, cli) {
   }
   // El id del runner y la ruta son la misma cosa a propósito: el árbol es lo que distingue a un agente
   // de otro en una máquina, así que darlo hecho evita el modo de fallo que deja a los dos con el mismo.
-  console.log(`  export CAUCE_RUNNER=${target}`)
-  console.log(`  node tools/ops.js claim ${path.relative(process.cwd(), root) || '.'} ${slug}`)
+  console.log(`  export CAUCE_RUNNER=${shellWord(target)}`)
+  console.log(`  node tools/ops.js claim ${shellWord(path.relative(process.cwd(), root) || '.')} ${slug}`)
 }
 
 // En una línea la tarea se construye en el árbol de la línea (caso 394). Cada línea tiene su checkout de cada

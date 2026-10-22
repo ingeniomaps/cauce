@@ -18,6 +18,9 @@ lane: full
 ## Plan aprobado
 1. [ ] Paso verificable
 
+## Crítica
+n/a — todavía no corrió
+
 ## Decisiones tomadas
 - (ninguna)
 
@@ -28,6 +31,11 @@ lane: full
 `lane:` viaja acá por la misma razón por la que existe en DONE: la línea del BACKLOG se borra al
 cerrar, y una corrida que se reanuda arma la tarea desde este archivo. Sin el campo, el cierre de una
 corrida reanudada escribe `sin clasificar` sobre una tarea que sí tenía carril.
+
+`## Crítica` está acá y no sólo en DONE porque quien cierra la tarea puede no ser quien la criticó —la
+sesión que revisa, una corrida que se reanudó—, y Done la copia de este archivo a `critique:`. La crítica
+reemplaza el `n/a` con lo que objetó y qué cambió en el plan por eso. Si no lo reemplaza, Done copia el
+`n/a`, y en una tarea `full` eso es lo que `check` nombra.
 
 Sin archivo, el runner está en IDLE: un clon nuevo no trae ninguno y eso no es un error.
 

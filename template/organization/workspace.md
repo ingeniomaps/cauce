@@ -34,8 +34,9 @@ Una fila por variable. El valor no va nunca acá: va dónde se carga y quién lo
 
 ## Guards propios
 
-Los guards que este proyecto agregó al lado de los de Cauce, en `automatization/hooks/`. Una fila por guard:
-qué frena y qué prueba lo sostiene, para que quien lo encuentre bloqueando sepa de dónde salió.
+Los guards que este proyecto agregó al lado de los de Cauce, en `automatization/hooks/` y declarados en `guards` de
+`ops.config.json`. Una fila por guard: qué frena y qué prueba lo sostiene, para que quien lo encuentre bloqueando sepa
+de dónde salió.
 
 | Guard | Qué frena | Prueba |
 |---|---|---|

@@ -9,14 +9,16 @@
 // recorrido paraba con cuarenta: cada parada nueva nacía en `autobuild` y nada la comparaba con esta lista
 // (caso 390). La compara ahora `autobuild-stops.test.js`, en los dos sentidos.
 const STOP_FAMILIES = {
-  Arranque: ['adapter-stale', 'agent-unavailable', 'contract-unavailable', 'context-unavailable', 'root-unreadable'],
-  Cola: ['queue-unavailable', 'claim-stuck', 'manual-held', 'manual-critical', 'worktree-failed'],
-  Persona: ['awaiting-review', 'blocked-on-human', 'governance-approval-needed', 'commit-needs-approval'],
+  Arranque: ['adapter-stale', 'agent-unavailable', 'contract-unavailable', 'context-unavailable', 'root-unreadable',
+    'role-unknown'],
+  Cola: ['queue-unavailable', 'claim-stuck', 'manual-held', 'manual-critical', 'worktree-failed', 'review-not-ready'],
+  Persona: ['awaiting-review', 'blocked-on-human', 'governance-approval-needed', 'commit-needs-approval',
+    'review-pending'],
   Preparación: ['not-ready', 'refine-not-applied', 'refine-unwritable', 'split-not-applied',
     'split-left-dependents'],
   Plan: ['plan-rejected', 'plan-blocked', 'critique-unbacked', 'wip-malformed', 'wip-not-persisted'],
   Construcción: ['build-blocked', 'build-closed-task', 'build-unproven', 'edge-unproven'],
-  Revisión: ['review-blocked', 'review-failed', 'review-unbacked', 'review-unverified'],
+  Revisión: ['review-blocked', 'review-failed', 'review-unbacked', 'review-unverified', 'review-returned'],
   Verificación: ['verify-failed', 'verify-hollow', 'verify-untested', 'acceptance-ambiguous', 'qa-failed'],
   Cierre: ['commit-failed', 'planning-check-failed', 'milestone-too-long'],
 }

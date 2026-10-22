@@ -86,7 +86,15 @@ function removeFile(file, boundary) {
   }
 }
 
+// Un valor listo para pegar en una terminal. Un id de runner o una raíz son rutas, y una ruta con un espacio partía el
+// comando que el motor imprime en dos palabras: lo que corría era otro comando.
+function shellWord(value) {
+  const text = String(value)
+  return /^[\w./#:@%+=,-]+$/.test(text) ? text : `'${text.replace(/'/g, "'\\''")}'`
+}
+
 module.exports = {
+  shellWord,
   removeFile,
   assertNoSymlinkPath,
   assertWithin,

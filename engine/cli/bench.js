@@ -18,7 +18,7 @@ const CL = require('../planning/claims')
 const P = require('../planning/parser')
 const IN = require('./instance')
 const O = require('../core/ownership')
-const { fail, opsRoot, TODAY, USAGE } = require('./io')
+const { fail, opsRoot, shellWord, TODAY, USAGE } = require('./io')
 
 // Qué decir cuando el banco sobrevivió a su propio borrado, que es lo único que va a permitir
 // establecer la causa. Devuelve el mensaje en vez de escribirlo donde ocurre, y eso es lo que lo hace
@@ -362,7 +362,7 @@ function bench(scenario, cli) {
   // una persona, y **esta salida es entrada de otra cosa**. Puesto en `stdout` el comando pasó a imprimir
   // dos líneas, y quien resolvía la ruta se quedó con las dos concatenadas — la misma forma del caso 080,
   // donde una salida que no era la ruta se trató como ruta.
-  if (scenario === 'tarea') console.error(`  export CAUCE_RUNNER=${dir}`)
+  if (scenario === 'tarea') console.error(`  export CAUCE_RUNNER=${shellWord(dir)}`)
 }
 
 // Sólo lo que otro módulo consume. `measurementBench`, `populate` y `SCENARIOS` se quedan adentro: los

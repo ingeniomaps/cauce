@@ -49,11 +49,12 @@ const flagOf = (args) => {
   const at = args.findIndex((one) => one === '--line' || one.startsWith('--line='))
   return at < 0 ? '' : args[at] === '--line' ? args[at + 1] || '' : args[at].slice('--line='.length)
 }
-// En el mensaje, las mismas reglas con que lo lee `autobuild` (`LINE_FLAG` y `MAX_FLAG`): si leyeran distinto, la
-// corrida sería la principal y el guard la frenaría como línea.
+// En el mensaje, las mismas reglas con que lo lee `autobuild` (`LINE_FLAG`, `MAX_FLAG` y `ROLE_FLAG`): si leyeran
+// distinto, la corrida sería la principal y el guard la frenaría como línea.
 const FLOW = /^\s*[/$](?:cauce:)?autobuild(?![\w-])(.*)$/s
 const ASKED_LINE = new RegExp(String.raw`(?:^|\s)--line(?:=|\s+)${NAMED}(?=\s|$)`)
 const ASKED_MAX = /(?:^|\s)--max(?:=|\s+)(\d+)(?=\s|$)/
+const ASKED_ROLE = /(?:^|\s)--role(?:=|\s+)(\S+)(?=\s|$)/
 
 // La línea que dice un pedido, '' si dice que es la principal, o null si no dice nada. Un `--line` que no está
 // declarado no cambia nada, porque `ops` y `/autobuild` lo rechazan; el nombre suelto que no es una línea es un pedido
@@ -71,7 +72,7 @@ function told(input, root) {
   const flag = flow ? (flow[1].match(ASKED_LINE) || [])[1] : ran.map(flagOf).find(Boolean)
   if (flag) return lines[flag] ? { line: flag, flow } : null
   if (!flow) return null
-  const word = flow[1].replace(ASKED_MAX, ' ').replace(ASKED_LINE, ' ').trim()
+  const word = flow[1].replace(ASKED_MAX, ' ').replace(ASKED_LINE, ' ').replace(ASKED_ROLE, ' ').trim()
   return { line: lines[word] ? word : '', flow }
 }
 
@@ -91,9 +92,8 @@ function remember(input) {
 
 // La línea de esta sesión, o ''. La de `CAUCE_RUNNER` —recortada, como la lee `runner()`—, o la anotada.
 function lineOf(input, root) {
-  const id = String(process.env.CAUCE_RUNNER || '').trim()
-  const mark = `#${LT.BRANCH}`
-  if (id.includes(mark)) return id.slice(id.lastIndexOf(mark) + mark.length)
+  const marked = LT.lineOfRunner(process.env.CAUCE_RUNNER)
+  if (marked) return marked
   let saved = null
   try { saved = sessionOf(input) && JSON.parse(fs.readFileSync(recordOf(sessionOf(input)), 'utf8')) } catch { /* */ }
   return saved && saved.root === root ? saved.line : ''
@@ -222,4 +222,4 @@ function refusal(input, found) {
     + AP.HOW(null, held, input, held, { fixable: true, turn: true })
 }
 
-module.exports = { DIR, remember, strayed, refusal, gitTargets }
+module.exports = { DIR, remember, lineOf, strayed, refusal, gitTargets }

@@ -30,6 +30,11 @@ const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), `cauce-test-${process.pid}-`)
 
 process.on('exit', () => fs.rmSync(ROOT, { recursive: true, force: true }))
 
+// La confianza de los hooks de Codex vive bajo el home, y `doctor . codex` la lee (caso 434). Sin esto, toda prueba que
+// corre `doctor` leía el `~/.codex` de quien la corre (R23), y el resultado dependía de qué había confiado esa persona.
+// Un `CODEX_HOME` vacío es el de una instalación recién hecha, que es lo que las pruebas miden.
+process.env.CODEX_HOME = path.join(ROOT, 'codex-home')
+
 // El candado de verify, de esta corrida y no de la máquina: por qué, en `engine/hooks/machine-lock.js`.
 process.env.CAUCE_VERIFY_LOCK = path.join(ROOT, 'verify.lock')
 

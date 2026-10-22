@@ -12,8 +12,10 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const { execute } = require('../../engine/hooks/run')
+const { execute, executeAll } = require('../../engine/hooks/run')
 const { wipName } = require('../../engine/planning/parser')
+const CHAT = require('../../engine/hooks/chat')
+const LS = require('../../engine/hooks/line-scope')
 
 const ok = (cwd, ...args) => {
   const result = spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, encoding: 'utf8' })
@@ -140,4 +142,121 @@ test('los guards de commit juzgan el árbol de una línea declarada', () => {
     if (root === undefined) delete process.env.OPS_ROOT
     else process.env.OPS_ROOT = root
   }
+})
+
+// Caso 429: un proyecto que fija `CAUCE_RUNNER` para todas sus sesiones no le quita a la de una línea su id. El
+// porqué, en el comentario de `runner` en `engine/planning/claims.js`.
+test('con CAUCE_RUNNER fijado para el proyecto, la sesión de una línea tiene su WIP, sus reclamos y su plan', () => {
+  const { base, ops, repo, tree } = session('cauce-hook-linea-fijada-')
+  const planning = path.join(ops, 'planning')
+  fs.writeFileSync(path.join(planning, 'backlog', 'hp.md'), '---\norder: 10\nline: pagos\n---\n\n'
+    + '## Hito hp — Pagos\n\n- [ ] **t-pagos** — Cobrar. _Aceptación: se cobra._ (service: pagos)\n')
+  const fixed = { CAUCE_RUNNER: 'acme', CAUCE_OWNER: 'prueba@ejemplo' }
+  const own = wipName('acme#line/pagos')
+  const env = { CAUCE_RUNNER: process.env.CAUCE_RUNNER, OPS_ROOT: process.env.OPS_ROOT, CI: process.env.CI }
+  const id = `linea-fijada-${process.pid}`
+  Object.assign(process.env, { CAUCE_RUNNER: 'acme', OPS_ROOT: ops })
+  delete process.env.CI
+  try {
+    // La principal toma lo suyo con el id del proyecto, y la línea no lo recibe como propio.
+    assert.equal(run(['claim', planning, 'alta-de-cliente'], base, fixed).status, 0)
+    const seen = JSON.parse(run(['context', planning, '--line', 'pagos', '--json'], base, fixed).stdout)
+    assert.equal(seen.wipFile, `wip/${own}.md`)
+    assert.equal(seen.task && seen.task.slug, 't-pagos', 'la tarea de la principal no es de la línea')
+    assert.equal(seen.claimed, false)
+    // Un id que ya trae la línea, como el que se exporta desde la sesión de la línea, no se marca dos veces.
+    const marked = run(['context', planning, '--line', 'pagos', '--json'], base,
+      { ...fixed, CAUCE_RUNNER: 'acme#line/pagos' })
+    assert.equal(JSON.parse(marked.stdout).wipFile, `wip/${own}.md`)
+    // Y uno que trae otra línea no se usa para ésta: se dice.
+    const other = run(['context', planning, '--line', 'pagos', '--json'], base,
+      { ...fixed, CAUCE_RUNNER: 'acme#line/admin' })
+    assert.equal(other.status, 2)
+    assert.match(other.stderr, /CAUCE_RUNNER=acme#line\/admin es el id de la línea admin, y pediste --line pagos/)
+    assert.match(other.stderr, /export CAUCE_RUNNER=acme#line\/pagos$/m, 'con el id de la línea pedida ya hecho')
+    // Sin --line, un id marcado es la sesión de esa línea, como lo lee line-scope: no la principal con el id de otra.
+    const bare = JSON.parse(run(['context', planning, '--json'], base, { ...fixed, CAUCE_RUNNER: 'acme#line/pagos' })
+      .stdout)
+    assert.deepEqual([bare.line, bare.wipFile], ['pagos', `wip/${own}.md`])
+    const claimed = run(['claim', planning, 't-pagos', '--line', 'pagos'], base, fixed)
+    assert.equal(claimed.status, 0, claimed.stderr)
+    assert.match(fs.readFileSync(path.join(planning, 'claims', 't-pagos.md'), 'utf8'), /^runner: acme#line\/pagos$/m)
+
+    // La sesión dice su línea con el `claim` que corre, como en una sesión real. El plan de la principal no le sirve,
+    // y el suyo sí.
+    executeAll(['pre-shell'], { session_id: id, cwd: ops,
+      tool_input: { command: 'node tools/ops.js claim planning t-pagos --line pagos' } })
+    fs.writeFileSync(path.join(planning, 'wip', `${wipName('acme')}.md`),
+      '---\ntask: alta-de-cliente\nphase: Build\n---\n\n## Plan aprobado\n1. [ ] Montar el alta\n')
+    const edit = { session_id: id, cwd: base, tool_input: { file_path: path.join(tree, 'a.js') } }
+    blocked('plan-first', edit, /sin plan/)
+    fs.writeFileSync(path.join(planning, 'wip', `${own}.md`),
+      '---\ntask: t-pagos\nphase: Build\n---\n\n## Plan aprobado\n1. [ ] Cobrar\n')
+    assert.doesNotThrow(() => execute('plan-first', edit), 'la línea tiene su plan escrito')
+    // La principal, que no dijo ninguna línea, sigue con el suyo.
+    assert.doesNotThrow(() => execute('plan-first', { cwd: base, tool_input: { file_path: path.join(repo, 'a.js') } }))
+
+    // Lo que la persona concede mientras dure la tarea de la línea vence con el WIP de la línea, no con el de la
+    // principal.
+    const granted = (n, prompt) => {
+      const input = { session_id: id, prompt_id: `m${n}`, cwd: ops }
+      execute('chat', { ...input, prompt })
+      return CHAT.unauthorized(input, ['notas.md'])
+    }
+    assert.deepEqual(granted(1, 'escribí notas.md mientras dure la tarea t-pagos'), [])
+    assert.deepEqual(granted(2, 'seguí'), [], 'la tarea de la línea sigue en su WIP')
+    fs.writeFileSync(path.join(planning, 'wip', `${own}.md`), 'status: IDLE\n')
+    assert.deepEqual(granted(3, 'seguí'), ['notas.md'], 'cerrada en la línea, la concesión se terminó')
+  } finally {
+    for (const dir of [LS.DIR, CHAT.DIR]) fs.rmSync(path.join(dir, `${id}.json`), { force: true })
+    for (const [name, value] of Object.entries(env)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+})
+
+// Que un id lleva línea lo dice un solo parser: `runner()` le agrega la pedida sólo cuando `lineOfRunner` no ve
+// ninguna. Con dos, una marca vacía se leía como línea para uno y como principal para el otro (revisión del caso 429).
+test('runner y lineOfRunner contestan lo mismo sobre si un id ya lleva línea', () => {
+  const { runner } = require('../../engine/planning/claims')
+  const { lineOfRunner, runnerOf } = require('../../engine/core/line-trees')
+  const previous = process.env.CAUCE_RUNNER
+  try {
+    for (const id of ['acme', 'acme#line/admin', 'acme#line/']) {
+      process.env.CAUCE_RUNNER = id
+      assert.equal(runner('pagos'), lineOfRunner(id) ? id : runnerOf(id, 'pagos'), id)
+    }
+  } finally {
+    if (previous === undefined) delete process.env.CAUCE_RUNNER
+    else process.env.CAUCE_RUNNER = previous
+  }
+})
+
+// Lo que quedó de antes del 429 —un reclamo y un plan de la línea hechos con el id sin marca— no se retoma exportando
+// ese id, porque `runner()` le vuelve a agregar la línea: `context` dice la migración que sí se corre. Y una línea que
+// ya no está declarada, si la trae la variable y no `--line`, se dice desde la variable.
+test('el plan de una línea con el id de antes se migra, y una línea retirada en la variable se nombra', () => {
+  const { base, ops } = session('cauce-linea-migrar-')
+  const planning = path.join(ops, 'planning')
+  fs.writeFileSync(path.join(planning, 'backlog', 'hp.md'), '---\norder: 10\nline: pagos\n---\n\n'
+    + '## Hito hp — Pagos\n\n- [ ] **t-pagos** — Cobrar. _Aceptación: se cobra._ (service: pagos)\n')
+  const fixed = { CAUCE_RUNNER: 'acme', CAUCE_OWNER: 'prueba@ejemplo' }
+  fs.writeFileSync(path.join(planning, 'claims', 't-pagos.md'),
+    '---\ntask: t-pagos\nowner: prueba@ejemplo\nrunner: viejo\nstarted: 2026-10-01\n---\n')
+  fs.writeFileSync(path.join(planning, 'wip', `${wipName('viejo')}.md`),
+    '---\ntask: t-pagos\nphase: Build\n---\n\n## Plan aprobado\n1. [ ] Cobrar\n')
+  const seen = run(['context', planning, '--line', 'pagos'], base, fixed)
+  assert.doesNotMatch(seen.stdout, /retomalo con/, seen.stdout)
+  assert.match(seen.stdout,
+    /^PLAN {3}t-pagos: su plan está en wip\/viejo\.md, de antes de que el id llevara la línea: /m)
+  assert.match(seen.stdout, /CAUCE_RUNNER=viejo node tools\/ops\.js release \S+ t-pagos/)
+  // Al WIP que esta sesión va a leer al retomarla, que es el de su id y no el del reclamo viejo con la línea.
+  // Con las rutas relativas a donde se corrió, que es `base`.
+  assert.ok(seen.stdout.includes(`\`mv ops/planning/wip/viejo.md ops/planning/wip/${wipName('acme#line/pagos')}.md\``),
+    seen.stdout)
+
+  const retired = run(['context', planning, '--json'], base, { ...fixed, CAUCE_RUNNER: 'acme#line/retirada' })
+  assert.notEqual(retired.status, 0)
+  assert.match(retired.stderr, /CAUCE_RUNNER=acme#line\/retirada trae la línea retirada, que no está declarada/)
 })
