@@ -92,8 +92,10 @@ tu proyecto decida distinto sobre su entrega va en ese `project.md`, que es dond
 falta: lo que un proyecto necesita ya funciona sin editarlo. Los adaptadores de runner y los workflows ni
 siquiera están acá — los lee el motor desde el paquete.
 
-- **Agregar un guard propio**: creá `automatization/hooks/guard-<nombre>.sh` y registralo en la
-  configuración de tu runner. Sobrevive a cada actualización, porque el toolkit no lo conoce.
+- **Agregar un guard propio**: creá `automatization/hooks/guard-<nombre>.sh` y declaralo en `guards` de
+  `ops.config.json`, en su evento (`pre-shell`, `pre-files`, `pre-read`, `pre-mcp` o `stop`). El motor lo corre en
+  todos los runners; registrado en la configuración de uno solo, corre sólo en ése, y en Antigravity no hay dónde.
+  Sobrevive a cada actualización, porque el toolkit no lo conoce.
 - **Desactivar un guard**: quitalo de esa configuración, que es del proyecto. El archivo sigue ahí.
 - **Cambiar un comportamiento**: agregá el tuyo, no edites el del toolkit.
 

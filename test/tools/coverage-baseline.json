@@ -64,6 +64,11 @@
     "branches": 93,
     "functions": 100
   },
+  "engine/automation/project-guards.js": {
+    "lines": 96,
+    "branches": 88,
+    "functions": 100
+  },
   "engine/automation/registration.js": {
     "lines": 100,
     "branches": 100,
@@ -312,6 +317,11 @@
   "engine/hooks/ops-config.js": {
     "lines": 100,
     "branches": 96,
+    "functions": 100
+  },
+  "engine/hooks/project-guards.js": {
+    "lines": 100,
+    "branches": 97,
     "functions": 100
   },
   "engine/hooks/push.js": {

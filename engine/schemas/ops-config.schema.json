@@ -207,6 +207,48 @@
           "minLength": 1
         }
       }
+    },
+    "guards": {
+      "type": "object",
+      "description": "Los guards propios del proyecto, por evento, con rutas relativas a la raíz ops. El motor los corre después de los suyos en cualquier runner —Claude, Codex, Gemini y Antigravity—, así que no se registran también en la configuración de cada uno: correrían dos veces, y `automation doctor` lo avisa. Cada guard recibe por stdin el JSON de la llamada, y `OPS_ROOT` con la raíz ops; sale en 0 para dejar pasar y en 2 para frenar con lo que escribe en stderr. Cualquier otra salida, que no esté o que no se pueda ejecutar también frena, y lo mismo si los de un evento tardan más de 20 s entre todos.",
+      "properties": {
+        "pre-shell": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "pre-files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "pre-read": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "pre-mcp": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "stop": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
