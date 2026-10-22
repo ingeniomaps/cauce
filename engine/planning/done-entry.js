@@ -156,6 +156,24 @@ function doneCeremonyWarnings(done, adopted = new Set()) {
     warnings.push(`planning/done: ${skipped.map((entry) => entry.slug).join(', ')} declara(n) un carril `
       + 'que convoca revisor y una revisión que no corrió: el carril reduce ceremonia, nunca evidencia')
   }
+  // La crítica del plan, que en la tabla de PROTOCOL corre sólo `full` (caso 433). Desde cuándo se debe no lo dice una
+  // fecha del toolkit: la instancia recibe el campo cuando actualiza, y eso no queda escrito en ningún lado. Lo dice su
+  // propio registro, con la primera entrada que lo trae. Lo anterior se cuenta, como un campo nuevo; lo posterior sin
+  // el campo, o con `n/a`, se nombra, porque es una tarea que ya tenía dónde escribirla. Una instancia que todavía no
+  // escribió ninguna sólo cuenta.
+  const full = own.filter((entry) => entry.lane === 'full')
+  const since = own.filter((entry) => entry.critique).map((entry) => entry.fecha).sort()[0]
+  const owed = (entry) => since !== undefined && entry.fecha >= since
+  const before = full.filter((entry) => !entry.critique && !owed(entry))
+  if (before.length) {
+    warnings.push(`planning/done: ${before.length} entrada(s) full sin critique: cerradas antes de que esta instancia `
+      + 'escribiera el campo, así que no queda en el registro qué objetó la crítica del plan')
+  }
+  const uncritiqued = full.filter((entry) => (entry.critique ? NO_REVIEW.test(entry.critique) : owed(entry)))
+  if (uncritiqued.length) {
+    warnings.push(`planning/done: ${uncritiqued.map((entry) => entry.slug).join(', ')} declara(n) lane: full sin `
+      + 'crítica del plan en critique:, y full es el carril que la corre')
+  }
   return warnings
 }
 

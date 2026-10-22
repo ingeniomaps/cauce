@@ -1,7 +1,19 @@
 description = "Ejecuta el siguiente hito aprobado siguiendo Cauce"
 prompt = """
-Lee {{OPS_DIR}}AGENTS.md y {{OPS_DIR}}planning/PROTOCOL.md completos. Ejecuta el ciclo de autobuild fase por fase sobre la primera
-tarea aprobada, respetando el checkpoint pendiente que ops context nombre ({{OPS_DIR}}planning/checkpoints/ o AWAITING_REVIEW) y WIP como mutex. Antes de cada operación peligrosa invoca el
+Lee {{OPS_DIR}}AGENTS.md y {{OPS_DIR}}planning/PROTOCOL.md completos. Ejecuta el ciclo de autobuild sobre la primera
+tarea aprobada, con las fases que pide su carril —el lane de la tarea, en la tabla de «Lanes» de PROTOCOL.md—, respetando el checkpoint pendiente que ops context nombre ({{OPS_DIR}}planning/checkpoints/ o AWAITING_REVIEW) y WIP como mutex. Antes de cada operación peligrosa invoca el
 guard correspondiente de {{OPS_DIR}}automatization/hooks/ con el JSON de herramienta esperado. No hagas push ni deploy.
 Detente en el checkpoint entre hitos y deja evidencia real en DONE.
+
+El pedido de quien lanzó el comando: {{args}}
+Si trae --role, la tarea la construye una sesión y la revisa otra, como dice el paso 12 de PROTOCOL.md. Con --role build
+haces las fases de su carril hasta Commit, sin Review ni QA, dejas el WIP en phase: Review y te detienes sin escribir en DONE, sin
+sacar la tarea de la cola ni soltar la reserva; si tu WIP está en phase: Build con hallazgos en ## Bloqueos, te la
+devolvió quien revisa y los corriges antes de volver a entregar, y si está en phase: Review, ya la entregaste y te
+detienes. Con --role review tomas sólo la tarea cuyo WIP está en phase: Review —si
+no hay ninguna, te detienes y lo dices—, corres Review, Verify y QA, las que pida su carril, sobre lo commiteado —todos los commits de la tarea, también los
+de una vuelta anterior— y haces Done; si no apruebas, no
+corriges —tampoco escribes la prueba que falte—: anotas los hallazgos en ## Bloqueos del WIP, agregas al plan un paso
+sin tildar «Corregir los hallazgos de ## Bloqueos», lo dejas en phase: Build y te detienes. Con cualquier otro
+--role te detienes y lo dices.
 """

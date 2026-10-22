@@ -220,11 +220,13 @@ todos los días, para resolver algo que pasa una vez cada tanto.
 Una tarea se puede repartir entre quien la construye y quien la juzga: un programador —de cualquier runner— y un
 revisor que no fue quien la escribió. El traspaso es por los archivos de planning, y no hace falta nada más que esto:
 
-- **Quien construye** reclama, escribe su plan en el WIP, construye y commitea, y ahí se detiene: deja el WIP en
-  `phase: Review`, con los pasos tachados, y no escribe en `done/` ni saca la tarea de la cola.
-- **Quien revisa** toma la tarea por ese estado. Juzga con lo que está en disco —la aceptación, el WIP, el diff de la
-  rama y la mutación que la aceptación declara, corrida en una copia—, no con el informe de quien construyó. Si aprueba,
-  hace el cierre entero: `done/<tarea>.md`, la tarea fuera de la cola, el WIP limpio y `ops release` del reclamo, que
+- **Quien construye** reclama, escribe su plan en el WIP, construye, corre los gates del servicio y commitea —con las
+  fases que pide el carril de la tarea, la tabla de «Lanes» de `PROTOCOL.md`—, y ahí se detiene: deja el WIP en `phase: Review`, con los pasos tachados, y no escribe en `done/` ni saca la tarea de la
+  cola. No se revisa ni hace QA: eso es de quien revisa. Se lanza con `/autobuild <línea> --role build`.
+- **Quien revisa** toma la tarea por ese estado, con `/autobuild <línea> --role review`. Juzga con lo que está en
+  disco —la aceptación, el WIP, el diff de la rama, los gates vueltos a correr y la mutación que la aceptación declara,
+  corrida en una copia—, no con el informe de quien construyó, y revisa y hace QA con lo que pide el carril, el `lane:` del WIP. Si aprueba, hace
+  el cierre entero: `done/<tarea>.md`, la tarea fuera de la cola, el WIP limpio y `ops release` del reclamo, que
   suelta aunque lo haya tomado otro porque la tarea ya está en DONE. Si no aprueba, anota los hallazgos en
   `## Bloqueos` del WIP y lo devuelve a `phase: Build`, sin soltar el reclamo: la tarea sigue siendo de quien la
   construye, que la retoma desde los hallazgos.
@@ -233,7 +235,9 @@ Dentro de una línea los dos tienen el mismo id —el de la instancia con la lí
 revisor ve el WIP del programador como propio y lo continúa: no hay que pasarle nada. La contracara es que ese WIP es
 el de los dos, así que **no trabajan la misma línea a la vez**: el revisor entra cuando el programador dejó
 `phase: Review`, y el programador vuelve cuando el revisor la devolvió. Si hace falta que trabajen en paralelo, cada
-uno declara su propio id con `CAUCE_RUNNER`, y entonces el revisor lee el plan del otro con `ops runners`.
+uno declara su propio id con `CAUCE_RUNNER` y lleva su propia tarea. Para revisar la del otro, el revisor corre con
+el id del programador —`ops runners` lo lista—, porque `--role review` toma sólo el WIP de su propio id: con otro id,
+para con `review-not-ready`.
 
 **Un rol que lanza otro agente se lanza con `CAUCE_DELEGATED=1`.** Cauce no frena lo que la persona pide en el chat, y el
 pedido con que un coordinador lanza a un programador —`claude -p "…"`, `codex exec "…"`, `gemini -p "…"`— le llega al runner
@@ -251,8 +255,8 @@ runner para que el rol ande, y eso es configuración del runner, no de Cauce:
 | Runner | Líder | Programador | Revisor | Lo que el runner necesita |
 |---|---|---|---|---|
 | Claude | ✓ | ✓ | ✓ | Nada. Es el único donde `/autobuild` es un recorrido con fases; en los otros es un skill que el agente sigue. |
-| Antigravity (`agy`) | ✓ | ✓ | ✓ | Nada. No tiene hook de mensaje, así que lo que se le pide nunca exime de un guard. |
-| Codex | ✓ | ✓ | ✓ | Para commitear en el árbol de una línea, `-s danger-full-access`: con `workspace-write` su sandbox deja el `.git` de sólo lectura, también con el `.git` en `writable_roots`. Ahí lo contienen los guards de Cauce. La otra salida es que commitee otro rol. |
+| Antigravity (`agy`) | ✓ | ✓ | ✓ | Nada. No tiene hook de mensaje, así que lo que se le pide nunca exime de un guard. Los guards propios del proyecto le llegan sólo si están en `guards` de `ops.config.json`: no tiene otro lugar donde registrarlos. |
+| Codex | ✓ | ✓ | ✓ | Que la persona confíe sus hooks: abrir `codex` en la carpeta y usar `/hooks`, y repetirlo cada vez que `install` cambie `.codex/hooks.json`. Sin eso Codex no corre ninguno, y `codex exec` no avisa; `automation doctor . codex` sí lo dice. Para commitear en el árbol de una línea, `-s danger-full-access`: con `workspace-write` su sandbox deja el `.git` de sólo lectura, también con el `.git` en `writable_roots`. Ahí lo contienen los guards de Cauce. La otra salida es que commitee otro rol. |
 | Gemini | ✓ | ✓ | ✓ | Que la persona le permita la terminal en `~/.gemini/policies/` (`toolName = "run_shell_command"`, `decision = "allow"`): sin interfaz, lo que pediría confirmación se niega, y la carpeta de políticas del proyecto todavía no la lee. Y que confíe en la carpeta —en su lista de carpetas de confianza o con `GEMINI_CLI_TRUST_WORKSPACE=true`—: con `--skip-trust` corre sin la configuración del proyecto, que es donde están los hooks, y ningún guard de Cauce corre. |
 
 Un runner que no está en la tabla necesita su adaptador antes de tomar cualquier rol: cómo se registran sus hooks, cómo se

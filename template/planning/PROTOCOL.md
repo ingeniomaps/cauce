@@ -31,7 +31,10 @@ invariantes.
   `check` avisa cuántas entradas no lo traen y falla si trae un valor que no existe. `review:` dice qué
   pasó con la revisión —el veredicto y quién revisó— o `n/a — razón` cuando no corrió; es la dimensión con
   la que OPS-006 dice que se mide si el carril elegido fue el correcto, y `check` cruza los dos: un carril
-  que convoca revisor con una revisión que no corrió es la ADR incumplida, escrita en el propio registro. La fecha es la del cierre, y es lo que
+  que convoca revisor con una revisión que no corrió es la ADR incumplida, escrita en el propio registro.
+  `critique:` dice qué objetó la crítica del plan y qué cambió por eso, o `n/a — razón` en un carril que no la
+  corre. En `full`, `check` nombra la entrada sin crítica o con `n/a` cerrada desde la primera que trae el campo
+  en esa instancia, y cuenta las de antes. La fecha es la del cierre, y es lo que
   ordena una evidencia que ya no depende de su posición dentro de un archivo. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. Una prueba que vive en un archivo va como `archivo › «nombre» — aclaración`,
@@ -76,17 +79,24 @@ invariantes.
 3. Classify: si la tarea no declara lane y cast, decidirlos y escribirlos en su línea.
 4. Ready: exigir aceptación concreta y decisiones resueltas.
 5. Decompose: dividir trabajo mayor a `maxTaskHours` o con más de cinco condiciones de aceptación.
-6. Plan y Critique: entender contexto, escribir plan y atacarlo una vez.
+6. Plan: entender contexto y escribir el plan. Critique, aparte y antes de Build, en los carriles que la corren:
+   atacar el plan una vez —correctitud, alcance, pruebas— y dejar escrito lo que objetó —al menos la objeción
+   más fuerte— y qué cambió en el plan por eso. Va en la sección `## Crítica` del WIP que persiste el paso 7, y
+   Done la copia a `critique:` de `done/<slug>.md`.
 7. WIP: persistir el plan aprobado antes del primer cambio.
 8. Build: alcance exacto, progreso tildado, RED/GREEN/VERIFY aplicable.
 9. Review: calidad y seguridad según la superficie modificada. Cada hallazgo nombra la regla que lo
    sostiene o se declara criterio, y dice si se comprobó: lo que no se comprobó se registra y no manda a
-   corregir.
+   corregir. Si la tarea pasó por Critique, se comprueba sobre el diff lo que `## Crítica` del WIP dice que
+   cambió en el plan: un cambio anunciado que el diff no tiene es un hallazgo.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real, como dice `QA.md`.
 12. Commit: stage explícito y commits verificables, uno por naturaleza del diff. Si la tarea la revisa otra sesión,
-    quien construye se detiene acá con el WIP en `phase: Review`, y quien revisa la juzga sobre lo commiteado y hace
-    Done (`delivery/teamwork.md`, «Una sesión construye y otra revisa»).
+    eso lo dice el pedido —`/autobuild --role build` y `/autobuild --role review`, con la línea si la hay—, porque
+    ni la tarea ni el WIP lo saben. Quien construye saltea Review y QA, que son de quien revisa, y se detiene acá
+    con el WIP en `phase: Review`. Quien revisa toma la tarea por ese estado, corre Review, Verify y QA sobre lo
+    commiteado y hace Done; si no aprueba, no corrige: anota los hallazgos en `## Bloqueos` del WIP y lo devuelve a
+    `phase: Build` (`delivery/teamwork.md`, «Una sesión construye y otra revisa»).
 13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
     el reclamo y cerrar la épica si no le queda ninguna historia abierta. El estado de planning se
     commitea en la rama en la que está el repositorio de la instancia. Si ésa es una rama viva que no
@@ -110,14 +120,28 @@ vez por corrida. La tarea que llega sin ella se clasifica antes de ejecutarse.
   mano, ese piso lo cuida quien escribe la línea. Una tarea manual que el runner tiene reclamada o en su WIP frena la corrida
   con `manual-held`: la está haciendo la sesión, y la corrida no se la suelta.
 - `express`: la aceptación nombra un valor literal y el resultado no lo mira nadie —un typo, un umbral
-  interno, un renombre—; WIP, Build, Verify, Commit y Done. **Nunca sobre una superficie que
-  `organization/company.md` declara en «Qué no se puede romper»**: ahí el recorrido la sube a `directo`,
-  aunque la línea diga `express`, y lo que no puede determinar también lo sube.
-- `directo`: igual de mecánico, pero cambia una superficie que alguien ve; agrega el review del cargo
-  que nombra el cast.
-- `lite`: comportamiento nuevo dentro de un servicio con superficie conocida; agrega Ready, Plan y QA.
+  interno, un renombre—. **Nunca sobre una superficie que `organization/company.md` declara en «Qué no se
+  puede romper»**: ahí el recorrido la sube a `directo`, aunque la línea diga `express`, y lo que no puede
+  determinar también lo sube.
+- `directo`: igual de mecánico, pero cambia una superficie que alguien ve, y la mira el cargo que nombra el
+  cast.
+- `lite`: comportamiento nuevo dentro de un servicio con superficie conocida.
 - `full` o sin tag: cruza contratos entre servicios, datos, autenticación o permisos, o la aceptación
-  tiene un borde sin decidir; todas las fases.
+  tiene un borde sin decidir.
+
+Qué fases corre cada carril, de Ready a Done, en cualquier runner. En los que no tienen recorrido con fases
+—Antigravity, Codex, Gemini—, esta tabla es lo que gradúa la tarea; y cuando quien construye y quien revisa son
+sesiones distintas, quien arma el pedido de cada una lo saca de acá, con el `lane:` del WIP:
+
+| Carril | Fases | QA |
+|---|---|---|
+| `express` | WIP · Build · Verify · Commit · Done | no corre: la aceptación queda comprobada en Verify |
+| `directo` | WIP · Build · Review · Verify · Commit · Done | no corre: la aceptación queda comprobada en Verify |
+| `lite` | Ready · Plan · WIP · Build · Review · Verify · QA · Commit · Done | la comprobación de aceptación real más barata, sin crítica del plan ni estimación |
+| `full` | Ready · Decompose · Plan · Critique · WIP · Build · Review · Verify · QA · Commit · Done | el comportamiento real, ejercitado como lo ve quien lo usa |
+
+En `express` y `directo` Ready corre igual cuando el carril lo escribió una persona: se saltea sólo si lo puso
+el clasificador, que para ponerlo leyó la aceptación.
 
 El lane reduce ceremonia, nunca seguridad, aceptación ni evidencia: Verify y el WIP corren en los
 cuatro carriles del recorrido, y la tarea `manual` trae la misma evidencia hecha a mano. Lo que decide el carril es la superficie del cambio y no su tamaño en líneas — un `if` en el
@@ -156,20 +180,21 @@ saltar. Una tarea mal marcada `express` es justamente la que se salta la fase do
 Toda parada se nombra con una de éstas, en cualquier runner. Van agrupadas por familia, que es el tramo donde
 paró y lo primero que dice quién la destraba:
 
-- **Arranque** — no se pudo leer el contrato, el estado o el adaptador: `adapter-stale` · `agent-unavailable` ·
-  `contract-unavailable` · `context-unavailable` · `root-unreadable`
+- **Arranque** — no se pudo leer el contrato, el estado o el adaptador, o el pedido nombra un rol que no existe:
+  `adapter-stale` · `agent-unavailable` · `contract-unavailable` · `context-unavailable` · `root-unreadable` ·
+  `role-unknown`
 - **Cola** — hay trabajo y no se pudo tomar: `queue-unavailable` · `claim-stuck` · `manual-held` ·
-  `manual-critical` · `worktree-failed`
-- **Persona** — lo que sigue lo decide o lo aprueba alguien: `awaiting-review` · `blocked-on-human` ·
-  `governance-approval-needed` · `commit-needs-approval`
+  `manual-critical` · `worktree-failed` · `review-not-ready`
+- **Persona** — lo que sigue lo decide o lo aprueba alguien, o lo revisa otra sesión: `awaiting-review` ·
+  `blocked-on-human` · `governance-approval-needed` · `commit-needs-approval` · `review-pending`
 - **Preparación** — la tarea no está lista, o no se pudo reescribir o partir: `not-ready` · `refine-not-applied` ·
   `refine-unwritable` · `split-not-applied` · `split-left-dependents`
 - **Plan** — ningún plan sobrevivió a la crítica, o no quedó escrito: `plan-rejected` · `plan-blocked` ·
   `critique-unbacked` · `wip-malformed` · `wip-not-persisted`
 - **Construcción** — lo construido no se puede dar por bueno: `build-blocked` · `build-closed-task` ·
   `build-unproven` · `edge-unproven`
-- **Revisión** — la revisión no aprobó, o aprobó sin respaldo: `review-blocked` · `review-failed` ·
-  `review-unbacked` · `review-unverified`
+- **Revisión** — la revisión no aprobó, o aprobó sin respaldo, o quien revisa la devolvió: `review-blocked` ·
+  `review-failed` · `review-unbacked` · `review-unverified` · `review-returned`
 - **Verificación** — un criterio sin prueba, una prueba que no corrió o un QA en rojo: `verify-failed` ·
   `verify-hollow` · `verify-untested` · `acceptance-ambiguous` · `qa-failed`
 - **Cierre** — el trabajo está y no se pudo commitear o cerrar: `commit-failed` · `planning-check-failed` ·

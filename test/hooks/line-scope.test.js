@@ -122,6 +122,12 @@ test('la línea de una sesión sale de lo que ella dice o de CAUCE_RUNNER, y un 
     }
     prompt(id, '/autobuild piloto --max 1', base)
     blocked('workspace-boundary', write(id, base, main, agent), STRAYED)
+    // El rol no es parte del nombre de la línea (caso 430): con él la sesión sigue llevando piloto.
+    for (const role of ['--role build', '--role=review']) {
+      prompt(id, '/autobuild', base)
+      prompt(id, `/autobuild piloto ${role}`, base)
+      blocked('workspace-boundary', write(id, base, main, agent), STRAYED, role)
+    }
     prompt(id, '/autobuild', base)
     assert.doesNotThrow(() => execute('workspace-boundary', write(id, base, main, agent)))
     // Un comando no la cambia por otra, y un texto que cita `ops` no es `ops`.

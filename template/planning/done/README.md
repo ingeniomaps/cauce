@@ -14,6 +14,7 @@ tarea entregó y con qué se comprueba.
   commit: abc1234 feat(scope): subject (repo@branch)
   lane: full
   review: aprobado por tech-lead, sobre api/alta.go
+  critique: cambió el plan por: comprobar también el texto exacto del error
 ```
 
 El contrato completo de esos campos está en `../PROTOCOL.md`; acá va por qué el archivo es uno por tarea.
@@ -55,6 +56,19 @@ cierra la sesión—, así que ahí `n/a — razón` es lo correcto. En
 `directo`, `lite` y `full` una revisión que no corrió es la ADR incumplida, y `check` lo avisa nombrando
 la tarea. Avisa y no falla: es un hecho del pasado que no se arregla editando la entrada, y el único
 camino al verde sería reescribir el registro.
+
+## Por qué la crítica
+
+La crítica del plan es la fase que más fácil se saltea sin que nada lo muestre: no toca código ni deja un
+commit. Escrita junto con el plan en un mismo paso, dos de tres runners sin recorrido la leyeron como una sola
+fase y no criticaron (caso 433). `critique:` guarda lo que objetó la crítica —al menos la objeción más fuerte— y
+qué cambió en el plan por eso. En una tarea `full`, `check` lo exige desde la primera entrada de la instancia que lo
+trae: la cerrada después sin el campo, o con `n/a`, se nombra; la de antes se cuenta, como un campo nuevo, porque
+no tenía dónde escribirla. No hay una fecha fija porque cada instancia recibe el campo cuando actualiza, y eso no
+queda escrito en ningún lado salvo en su propio registro. Lo escribe el mismo agente que criticó, así que atrapa la
+crítica que falta y no la que se dice hecha sin hacerla. Para eso está Review, que comprueba sobre el diff lo que la
+crítica dice que cambió en el plan (caso 436). Que la objeción haya sido la que más importaba lo sigue juzgando una
+persona.
 
 ## Por qué la fecha
 

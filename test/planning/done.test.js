@@ -191,6 +191,34 @@ test('un carril que convoca revisor y no la tuvo se avisa; express no', () => {
   assert.deepEqual(salida.errors.filter((one) => /revisor/.test(one)), [])
 })
 
+// La crítica del plan, que `full` corre y los otros carriles no (caso 433). La instancia empieza a deberla desde su
+// primera entrada que trae el campo: lo de antes se cuenta, porque no tenía dónde escribirla, y lo de después se
+// nombra, igual que lo que dice `n/a`.
+test('una tarea full sin crítica del plan se nombra desde que la instancia escribe el campo, y lo de antes se cuenta',
+  () => {
+    const dir = planning('cauce-done-critica-')
+    const on = (slug, fecha, extra) => entrada(slug, extra).replace('fecha: 2026-09-08', `fecha: ${fecha}`)
+    fs.writeFileSync(path.join(dir, 'done', 'vieja.md'), on('vieja', '2026-10-01', '  lane: full'))
+    fs.writeFileSync(path.join(dir, 'done', 'criticada.md'), on('criticada', '2026-10-10',
+      '  lane: full\n  critique: cambió el plan por: comprobar también el texto exacto del error'))
+    fs.writeFileSync(path.join(dir, 'done', 'muda.md'), on('muda', '2026-10-12', '  lane: full'))
+    fs.writeFileSync(path.join(dir, 'done', 'vacia.md'),
+      on('vacia', '2026-10-12', '  lane: full\n  critique: n/a — no corrió'))
+    fs.writeFileSync(path.join(dir, 'done', 'liviana.md'), on('liviana', '2026-10-12', '  lane: lite'))
+    const criticada = P.readDone(dir).entries.find((one) => one.slug === 'criticada')
+    assert.equal(criticada.critique, 'cambió el plan por: comprobar también el texto exacto del error')
+
+    const salida = JSON.parse(run(['check', dir, '--json']).stdout)
+    const aviso = salida.warnings.filter((one) => /critique:|crítica del plan/.test(one))
+    assert.equal(aviso.length, 2, `uno por cada forma: ${JSON.stringify(salida.warnings)}`)
+    const contadas = aviso.find((one) => /entrada\(s\)/.test(one))
+    const nombradas = aviso.find((one) => /declara/.test(one))
+    assert.match(contadas, /1 entrada\(s\) full sin critique: cerradas antes de que esta instancia/)
+    assert.match(nombradas, /^planning\/done: muda, vacia declara\(n\) lane: full sin crítica del plan/)
+    for (const slug of ['vieja', 'criticada', 'liviana']) assert.doesNotMatch(nombradas, new RegExp(slug))
+    assert.deepEqual(salida.errors.filter((one) => /critique|crítica/.test(one)), [], 'avisa y no falla')
+  })
+
 // Cuánto del trabajo que entró al repositorio quedó registrado. Se mide sobre un repositorio de verdad
 // porque lo que se cruza son shas: un doble de git no probaría el cruce, que es lo único que puede
 // fallar. Las dos direcciones van juntas: sin la segunda, un aviso que saltara siempre pasaría la

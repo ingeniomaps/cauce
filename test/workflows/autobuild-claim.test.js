@@ -409,7 +409,7 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   // Caso 301. `done` y `qa` se escribieron con la tarea abierta: el cierre los acomoda, y lo dice el prompt
   // en vez de depender de que quien escribe la entrada lo haga por su cuenta.
   const done = seen.get('done')
-  assert.match(done, /lane y review van textuales/)
+  assert.match(done, /lane, review y critique van textuales/)
   assert.match(done, /done y qa no van textuales/)
   assert.match(done, /sin lo que build contaba de su momento: que no había commit/)
   assert.match(done, /las rutas van relativas, empezando en \S*api\/, nunca la ruta absoluta de esta máquina/)

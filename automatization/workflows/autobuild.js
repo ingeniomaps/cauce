@@ -526,7 +526,13 @@ const LIMIT = Number((typeof args === 'object' && args && args.max) || (RAW.matc
 // no lo es sigue siendo un pedido, como antes de que hubiera líneas. Sin línea la corrida es la principal.
 const LINE_FLAG = /(?:^|\s)--line(?:=|\s+)([a-z0-9]+(?:-[a-z0-9]+)*)(?=\s|$)/
 const NAMED_LINE = String((typeof args === 'object' && args && args.line) || (RAW.match(LINE_FLAG) || [])[1] || '')
-let ASKED = RAW.replace(MAX_FLAG, ' ').replace(LINE_FLAG, ' ').trim()
+// El rol de esta sesión cuando la tarea la construye una y la revisa otra (caso 430): `--role build` o `--role review`
+// en el texto, o `role` si `args` es un objeto. Sin rol, el recorrido entero. Qué corre cada uno lo dice el paso 12 de
+// PROTOCOL.md. Un rol que no es ninguno de los dos para en vez de correr entero: con `--role reveiw` el programador se
+// revisaba solo, que es justo lo que el rol existe para evitar.
+const ROLE_FLAG = /(?:^|\s)--role(?:=|\s+)(\S+)(?=\s|$)/
+const ROLE = String((typeof args === 'object' && args && args.role) || (RAW.match(ROLE_FLAG) || [])[1] || '')
+let ASKED = RAW.replace(MAX_FLAG, ' ').replace(LINE_FLAG, ' ').replace(ROLE_FLAG, ' ').trim()
 const OPERATOR = () => (ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo `
   + 'en lo que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y '
   + 'lo decís.' : '')
@@ -599,6 +605,16 @@ const carried = (verdict) => ({
   conditions: verdict.concerns.filter((one) => one.blocking && one.replan === false).map((one) => one.detail),
   noted: verdict.concerns.filter((one) => !one.blocking).map((one) => one.detail),
 })
+// Lo que la crítica objetó y qué hizo el plan con eso. Lo que pidió replan cambió el plan; lo demás quedó como
+// condición o anotado. Sin ninguna objeción, dice sobre qué miró: «aprobado» a secas no se distingue de no mirar.
+// Las objeciones se separan con « | », y un «;» dentro de una pasa a «,»: es el separador de los hechos del prompt de
+// Done, y la línea viaja ahí sin comillas porque Done la copia tal cual: en JSON podría copiar también las comillas.
+const unsplit = (items) => items.map((one) => String(one).replace(/\s*;\s*/g, ', ')).join(' | ')
+const critiqueLine = (changed, { conditions, noted }, consulted) => [
+  changed.length && `cambió el plan por: ${unsplit(changed)}`,
+  conditions.length && `condiciones: ${unsplit(conditions)}`,
+  noted.length && `anotó: ${unsplit(noted)}`,
+].filter(Boolean).join(' · ') || `aprobado sin objeciones, sobre ${unsplit(consulted).replace(/ \| /g, ', ')}`
 // El hallazgo con la regla que lo sostiene al lado: es lo que llega a quien corrige y a `done/`.
 const cite = (one) => (one.ref ? `${one.detail} [${one.ref}]` : one.detail)
 // Un `ref` que nombra una regla que no rige es una cita sin base. No se borra ni se corrige en silencio
@@ -672,6 +688,11 @@ phase = (name) => { ran.push(name); announce(name) }
 // commit— no, porque ahí rige lo que la empresa haya escrito, y este agente no lo carga. En 0.103.4 commiteó
 // el estado de planning y el asunto salió en inglés donde la regla de la empresa pedía otro idioma (caso 302).
 const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
+if (ROLE && !['build', 'review'].includes(ROLE)) {
+  return stop('role-unknown', `--role ${ROLE} no es un rol: los que hay son build —construye, verifica, commitea `
+    + 'y deja la tarea en phase: Review— y review —la juzga y la cierra o la devuelve—. Sin --role corre el recorrido '
+    + 'entero.')
+}
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
 // workspace.md, ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando
@@ -876,10 +897,12 @@ const halt = async (reason, detail = '', subject = '') => {
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => clerk(
   `Corré "node tools/ops.js context ${P}${ON_LINE} --json" desde ${ROOT} y reportá sólo lo que imprimió. ` +
-  `Derivá hasTask ` +
+  // Sin nombrarlos, un agente los dedujo: con el WIP en phase: Review contestó `awaiting-review` sobre un comando que
+  // había dicho `""`, y la corrida paró buscando un checkpoint que no existía (caso 430).
+  `Copiá blocked y queued de sus campos, tal cual: no los deduzcas del WIP ni de su phase. Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile, checkpoint y ` +
-  `line de sus campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
-  `pending tal cual si viene —y ` +
+  `line de sus campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete, ` +
+  `pending y phase tal cual si viene —y ` +
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
@@ -965,6 +988,25 @@ while (rounds++ < MAX_TASKS) {
   // completo, sin reparto. No se suelta sola: soltarla le quitaría la tarea a quien la está haciendo.
   const sessionHolds = [...new Set([...(planning.manualHeld || []),
     ...(planning.hasTask && planning.lane === 'manual' ? [planning.slug] : [])])]
+  // Quien revisa toma la tarea que quien construyó dejó en `phase: Review`, y sólo ésa (caso 430): reclamar otra de la
+  // cola sería construirla, que no es su rol. Una vez cerrada, la corrida termina.
+  // Y quien construye no retoma lo que ya entregó: Build se saltearía por los pasos tildados y el commit no tendría
+  // nada que grabar. Es de quien revisa hasta que la devuelva.
+  // Sin rol tampoco: la retomaría como una reanudación y revisaría un árbol limpio, sin el commit de quien la
+  // construyó.
+  if (ROLE !== 'review' && planning.wipActive && /^review$/i.test(unquoted((planning.wip || {}).phase))) {
+    return halt('review-pending', `${planning.slug} ya está entregada, con el WIP en phase: Review: la revisa otra `
+      + `sesión con /autobuild${LINE ? ` ${LINE}` : ''} --role review.`)
+  }
+  if (ROLE === 'review') {
+    if (completed.length) break
+    if (!planning.wipActive || !/^review$/i.test(unquoted((planning.wip || {}).phase))) {
+      return halt('review-not-ready', `esta sesión no tiene una tarea en phase: Review en `
+        + `${P}/${planning.wipFile || 'wip/'}: la deja ahí quien construye, con `
+        + `/autobuild${LINE ? ` ${LINE}` : ''} --role build. Quien revisa usa el mismo id que quien construyó: `
+        + `dentro de una línea, la misma línea; con ids propios, el de quien construyó, que lista "ops runners ${P}".`)
+    }
+  }
   if (sessionHolds.length) {
     return halt('manual-held', `${sessionHolds.join(', ')} es manual y este runner la tiene tomada: la hace la `
       + 'sesión. Terminala y cerrala en done/, o soltala con "ops release", y volvé a lanzar la corrida.')
@@ -1015,6 +1057,10 @@ while (rounds++ < MAX_TASKS) {
   // Lo que la crítica aprobó con condiciones y lo que anotó sin bloquear: salen de Critique y los leen WIP,
   // Build y Review. Hasta 0.100.0 no pasaban de la crítica (caso 249).
   let approved = { conditions: [], noted: [] }
+  // Y la crítica en una línea, que va al WIP y a `critique:` de `done/` (caso 433). Vacía si no corrió acá.
+  let critiqued = ''
+  // Lo que la crítica cambió del plan, que Review comprueba sobre el diff igual que las condiciones (caso 436).
+  let critiqueChanges = []
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
@@ -1495,7 +1541,8 @@ while (rounds++ < MAX_TASKS) {
       // Sólo lo que cambia el plan compra la corrección: una condición para quien construye no necesita
       // otro plan ni otra crítica, y pedirlos costaba dos llamadas para volver al mismo plan.
       let kept = []
-      if (replans(critique).length) {
+      const changed = replans(critique)
+      if (changed.length) {
         const first = carried(critique)
         kept = first.conditions
         // La corrección recibe también lo que no la pidió. La primera crítica de una corrida real resolvió
@@ -1531,6 +1578,8 @@ while (rounds++ < MAX_TASKS) {
       approved.conditions = [...kept, ...approved.conditions]
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return halt('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
+      critiqued = critiqueLine(changed, approved, critique.consulted)
+      critiqueChanges = changed
     }
     }
     // Lo que el guard de gobernanza va a frenar al commitear ya se sabe acá, con el plan aprobado. El commit de un
@@ -1591,6 +1640,8 @@ while (rounds++ < MAX_TASKS) {
         `aprobó el plan y que quien construye tiene que cumplir: ${JSON.stringify(approved.conditions)}. ` : '') +
       (approved.noted.length ? `Y aparte, como anotado por la crítica sin bloquear, que no manda a tocar ` +
         `código: ${JSON.stringify(approved.noted)}. ` : '') +
+      // De ahí la saca Done cuando cierra otra sesión: quien revisa, o una corrida que se reanudó.
+      (critiqued ? `Escribí en el WIP una sección ## Crítica con esto, tal cual: ${JSON.stringify(critiqued)}. ` : '') +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente. Al terminar corré ` +
       `"node tools/ops.js context ${P}${ON_LINE} --json" desde ${ROOT} y reportá con qué status quedó y, en steps, ` +
@@ -1630,9 +1681,58 @@ while (rounds++ < MAX_TASKS) {
   // reanudación en vez de suponerla— no se puede cumplir sobre este recorrido sin abrir el `.output` y
   // sumar tokens a mano. El nombre viaja por el mismo canal que las otras quince fases: entra en `ran`,
   // que va al resultado de la corrida y a la entrada de DONE.
-  const resumed = planning.wip && planning.wip.pending === 0 && planning.wip.complete > 0
+  // En el rol de revisión la construcción ya pasó en otra sesión, y reconstruir es justo lo que no le toca (caso 430).
+  const resumed = ROLE === 'review' || (planning.wip && planning.wip.pending === 0 && planning.wip.complete > 0)
+  // Lo que una sesión le pasa a la otra cuando la tarea se reparte (caso 430). La evidencia de Build —qué prueba se vio
+  // en rojo, qué mutación quedó declarada— vivía sólo en la memoria de la corrida, y las puertas que la leen no
+  // tenían nada que juzgar en la sesión que revisa: viaja en el WIP, que es lo único que las dos comparten.
+  const EVIDENCE = '## Evidencia de Build'
+  // Quien revisa devuelve con los hallazgos y un paso sin tildar que los nombra. Sin ese paso el plan quedaba
+  // completo, y la vuelta siguiente de quien construye se salteaba Build y no corregía nada.
+  const handBack = async (findings, label) => {
+    await scribe(`Anotá en la sección "## Bloqueos" de ${P}/${planning.wipFile} —al final, si no está— estos `
+      + `hallazgos de la revisión de ${task.id}, uno por renglón: ${JSON.stringify(findings)}. Agregá al final de `
+      + '"## Plan aprobado" un paso sin tildar, numerado como el siguiente: "Corregir los hallazgos de ## Bloqueos". '
+      + 'Dejá el phase de su frontmatter en Build. No toques el código, los otros pasos ni la reserva: la tarea '
+      + 'sigue siendo de quien la construye.', { label })
+    const returned = await readContext()
+    if (!returned || !/^build$/i.test(unquoted((returned.wip || {}).phase)) || !((returned.wip || {}).pending > 0)) {
+      return halt('wip-not-persisted', `la revisión devolvió ${task.id} y su WIP no quedó en phase: Build con un paso `
+        + 'pendiente')
+    }
+    return halt('review-returned', `${task.id} volvió a quien la construye, con los hallazgos en ## Bloqueos del `
+      + `WIP: ${findings.join('; ')}`, `return ${task.id} to build`)
+  }
   phase(resumed ? 'Build (reanudado)' : 'Build')
-  const build = resumed ? reusedBuild(planning.wip) : await run(
+  // El commit de quien construyó, que quien revisa juzga y que Done cita. Se busca antes de la revisión: lo que
+  // hay que mirar es ese commit, no el árbol, que está limpio.
+  let handed = null
+  if (ROLE === 'review') {
+    // Todos, del más viejo al más nuevo: después de una devolución la tarea tiene el commit original y el que corrige,
+    // y mirando sólo el último se revisaba la corrección sin lo corregido, y `done/` citaba la mitad (R8).
+    handed = contract.commitPerTask ? await clerk(`No commitees nada: ${task.id} la commiteó quien la construyó. `
+      + `Encontrá sus commits en el repositorio git dueño de ${task.service} con `
+      // Git filtra por texto fijo, con el slug citado para el shell, y lo exacto se compara sobre el valor de cada
+      // trailer. Un --grep de regex lee el slug como patrón —`Task: T-1` trae `T-10`, y `check` acepta `t-1.2`—, y sin
+      // filtro el log entero de un repositorio grande no entra en lo que el agente lee. Un commit con dos `Task:` trae
+      // los dos valores separados por coma.
+      + `"git log --reverse -F --grep=${`'${`Task: ${task.id}`.replace(/'/g, `'\\''`)}'`} `
+      + `--format='%h %(trailers:key=Task,valueonly,separator=%x2C)'" y su rama con "git branch --show-current".`
+      + `${WHERE} Del log quedate con los hashes que, entre sus valores separados por coma, uno es exactamente `
+      + `${task.id}: committed=true, en hash todos ésos en ese orden separados por "; ", y branch; si no hay `
+      + 'ninguno, committed=false y en reason lo que devolvió.',
+    { schema: COMMIT, label: 'commit-found' }) : { committed: true, reason: 'runner.commitPerTask está apagado' }
+    if (!handed) return halt('agent-unavailable', 'la búsqueda del commit de quien construyó no devolvió resultado')
+    if (!handed.committed || (contract.commitPerTask && !String(handed.hash || '').trim())) {
+      return halt('review-not-ready', `no encontré el commit de ${task.id} con "Task: ${task.id}": `
+        + `${handed.reason || ''}`)
+    }
+  }
+  const build = ROLE === 'review' ? await clerk(`Leé ${P}/${planning.wipFile} y copiá de su sección "${EVIDENCE}" `
+    + 'lo que dejó quien construyó, tal cual: redFirst y discovered, con sus campos. Si la sección no está, los dos '
+    + `vacíos. completed=true, closedTask=false y en summary «construida en otra sesión; ${planning.wip.complete} `
+    + 'paso(s) tildado(s)». No abras otro archivo ni corras nada.', { schema: BUILD, label: 'build-evidence' })
+    : resumed ? reusedBuild(planning.wip) : await run(
     `${asRole(cast.build)}Implementá sólo ${task.id} dentro de ${task.service}. Retomá en el primer paso ` +
     `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
     `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test, el fallo literal que dio ` +
@@ -1671,6 +1771,11 @@ while (rounds++ < MAX_TASKS) {
   }
   // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
   const unproven = build.redFirst.find((entry) => !entry.failure.trim())
+  // En el rol de revisión la evidencia es la que dejó quien construyó: la que no se sostiene es suya, y se le devuelve.
+  // Parar dejaba el WIP en phase: Review, que ninguno de los dos roles mueve (caso 430).
+  if (unproven && ROLE === 'review') {
+    return handBack([`${unproven.test} se declara en rojo sin el fallo que lo muestra`], 'build-return')
+  }
   if (unproven) return halt('build-unproven', `${unproven.test} se declara en rojo sin el fallo que lo muestra`)
   // Lo que queda abierto no lo cierra quien lo encuentra, pero tampoco frena lo que sí se pudo entregar.
   // Tres corridas reales terminaron acá y las tres traían `completed: true`: el hueco nunca fue «no puedo»
@@ -1765,6 +1870,9 @@ while (rounds++ < MAX_TASKS) {
   // build un «entró sin la prueba que lo fija» producía una parada que se contradecía sola cuando el
   // detalle contaba que la prueba sí estaba —la frase del agente y la de la puerta hablaban de cosas
   // distintas y se leían como una—.
+  if (loose && ROLE === 'review') {
+    return handBack([`${loose.detail}: su prueba no es ningún rojo declarado`], 'build-return')
+  }
   if (loose) {
     const reds = build.redFirst.map((red) => `${String(red.id || '').trim() ? `${red.id}: ` : ''}${red.test}`)
     return halt('edge-unproven', `${loose.detail} — su campo "red" (${loose.red || 'vacío'}) no es el id de `
@@ -1776,7 +1884,8 @@ while (rounds++ < MAX_TASKS) {
   // `express` no convoca a nadie, y ése es el caso que se escribió como si un cargo hubiera aprobado.
   let reviewFact = 'no corrió (el carril express no convoca revisor)'
   if (express && planning.surfacesPending) reviewFact += ' · «Qué no se puede romper» tiene filas sin declarar'
-  if (!express) {
+  // Con `--role build` la revisión es de otra sesión: correrla acá es revisarse solo (caso 430).
+  if (!express && ROLE !== 'build') {
     phase('Review')
     let review = await run(
       // La aceptación va en el prompt: es contra lo que se juzga el diff, y la del BACKLOG no trae lo que Ready
@@ -1789,9 +1898,16 @@ while (rounds++ < MAX_TASKS) {
         // Una corrida que retoma no pasó por la crítica, así que no las trae en memoria: están en el WIP,
         // que Build lee y Review no. Sin esto quien tenía que comprobarlas no se enteraba (caso 267).
         : resumedFromWip ? ` Esta corrida retomó desde el WIP. Abrí ${P}/${planning.wipFile}: si registra ` +
-          'condiciones con las que la crítica aprobó el plan, comprobá sobre el diff que cada una se ' +
-          'cumplió, y la que no, es un hallazgo.' : '') +
+          'condiciones con las que la crítica aprobó el plan, o su ## Crítica dice que el plan cambió por algo, ' +
+          'comprobá sobre el diff que cada una se cumplió, y la que no, es un hallazgo.' : '') +
+      (critiqueChanges.length ? ` La crítica cambió el plan por esto; comprobá sobre el diff que cada cambio ` +
+        `está, y el que no, es un hallazgo: ${critiqueChanges.join('; ')}.` : '') +
       `${MANIFEST}` +
+      (handed ? (handed.hash ? ` Quien construyó ya lo commiteó: el diff es el de ${handed.hash}` +
+        `${handed.branch ? ` en la rama ${handed.branch}` : ''} —git show de cada uno, en ese orden—, ` +
+        'no el del árbol, que está limpio.'
+        : ' Quien construyó lo dejó sin commitear, porque runner.commitPerTask está apagado: el diff es el del árbol.')
+        : '') +
       `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
     )
@@ -1809,9 +1925,19 @@ while (rounds++ < MAX_TASKS) {
     // `fixed`: si la re-revisión no lo repite, sin esto no llegaba a ningún lado.
     const suspected = review.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
     let decidedNote = ''
+    // Una revisión bloqueada no aprueba por algo que este cambio no resuelve (R3), así que no va a quien construye:
+    // llevaría decisiones y sospechas como cosas a corregir, vuelta tras vuelta. Para, en los dos caminos. En el rol de
+    // revisión el WIP queda en phase: Review, que es lo que `--role review` toma, y el mensaje dice cómo se retoma.
     if (review.verdict === 'bloqueado') {
-      return halt('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
+      return halt('review-blocked', (named(review).join('; ') || 'sin condiciones nombradas') + (ROLE === 'review'
+        ? '. El WIP queda en phase: Review: resuelto lo que la bloquea, volvé a correr '
+          + `/autobuild${LINE ? ` ${LINE}` : ''} --role review; si lo tiene que corregir quien la construyó, `
+          + 'anotalo en ## Bloqueos y pasá el WIP a phase: Build.' : ''))
     }
+    // Quien revisa no corrige: lo que hay que cambiar es de quien construye, que lo retoma desde el WIP (caso 430). Se
+    // devuelve sólo lo que manda a corregir; lo anotado o decidido sin bloquear sigue como en una sesión sola, porque
+    // devolverlo le dejaba a quien construye un paso sin nada que hacer.
+    if (ROLE === 'review' && blockers(review).length) return handBack(blockers(review), 'review-return')
     const unproven = await uncheckedOnCritical(review)
     if (unproven) return unproven
     if (blockers(review).length) {
@@ -2047,6 +2173,13 @@ while (rounds++ < MAX_TASKS) {
   const asked = []
   const askedAlready = () => lacking().some((entry) => asked.some((one) => sameWords(one, entry.criterion)))
   const writable = (round) => round === 1 || lacking().every((entry) => entry.cause === 'missing-test')
+  // Quien revisa no escribe pruebas ni arregla un gate: lo que falta es de quien construye, y escrito acá quedaba fuera
+  // de todo commit. Se pregunta antes del bucle que las escribe, con los gates en rojo o en verde.
+  if (ROLE === 'review' && (verified.passed === false || lacking().length)) {
+    const red = verified.passed === false ? [`los gates no pasan sobre lo commiteado: ${verified.details}`] : []
+    return handBack([...red,
+      ...lacking().map((entry) => `sin prueba que lo codifique: ${entry.criterion}`)], 'verify-return')
+  }
   for (let round = 1; round <= VERIFY_ROUNDS && lacking().length && !askedAlready() && writable(round); round += 1) {
     const missing = lacking().map((entry) => entry.criterion)
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
@@ -2066,6 +2199,9 @@ while (rounds++ < MAX_TASKS) {
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
   // code de lint o de build no dice nada del comportamiento, y la corrida cerraba igual.
   const ranTests = verified.commands.some((entry) => entry.ranTests || RUNS_TESTS.test(entry.cmd))
+  if (build.redFirst.length && !ranTests && ROLE === 'review') {
+    return handBack([`${task.id} declara pruebas en rojo y ningún gate corrió una`], 'verify-return')
+  }
   if (build.redFirst.length && !ranTests) {
     return halt('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
   }
@@ -2097,7 +2233,7 @@ while (rounds++ < MAX_TASKS) {
   // QA ejercita comportamiento, y lo mecánico no lo cambia: el valor literal que la aceptación nombra
   // ya lo comprobó Verify contra el test, y en `directo` además lo mira el revisor que nombra el cast.
   let qa = { passed: true, evidence: 'carril mecánico: la aceptación queda comprobada en Verify' }
-  if (!mechanical) {
+  if (!mechanical && ROLE !== 'build') {
     phase('QA')
     qa = await run(onlyDocument
       ? `${asRole(cast.qa)}${task.id} no tiene superficie ejecutable: comprobá que el documento existe y cubre ` +
@@ -2115,6 +2251,7 @@ while (rounds++ < MAX_TASKS) {
       { schema: QA, label: 'qa' },
     )
     if (!qa) return halt('agent-unavailable', 'QA no devolvió resultado')
+    if (ROLE === 'review' && !qa.passed) return handBack([`QA en rojo: ${qa.evidence}`], 'qa-return')
     if (!qa.passed) return halt('qa-failed', qa.evidence)
   }
 
@@ -2129,7 +2266,8 @@ while (rounds++ < MAX_TASKS) {
   ].join(' | ') : ''
 
   phase('Commit')
-  const commit = contract.commitPerTask ? await run(
+  // En el rol de revisión el commit ya existe, y es el de quien construyó: Done lo cita (caso 430).
+  const commit = handed || (contract.commitPerTask ? await run(
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
@@ -2137,7 +2275,7 @@ while (rounds++ < MAX_TASKS) {
     `esquives: committed en false, y en needsApproval las rutas que nombra.` +
     `${TWO_COMMANDS}${MESSAGE_OF(task.id)}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR()}`,
     { schema: COMMIT, label: 'commit' },
-  ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
+  ) : { committed: true, reason: 'runner.commitPerTask está apagado' })
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
   // Una aprobación pendiente no es un bloqueo: el trabajo está verificado y stageado, y lo único que falta es que
   // una persona apruebe. Es la única parada sin commit de planning, y a propósito: el índice tiene el trabajo de la
@@ -2157,6 +2295,26 @@ while (rounds++ < MAX_TASKS) {
       + `${commit.branch || ''}: movelo a una rama propia antes de reanudar`)
   }
 
+  // Quien construye entrega acá: verificado y commiteado, con el WIP en `phase: Review` para quien revisa (caso 430).
+  // La reserva no se suelta y nada va a `done/`: la tarea sigue siendo suya hasta que la otra sesión la cierre.
+  if (ROLE === 'build') {
+    const evidence = { redFirst: build.redFirst,
+      discovered: build.discovered.filter((one) => ['edge', 'mutation', 'note'].includes(one.kind)) }
+    await scribe(`Dejá en Review el phase del frontmatter de ${P}/${planning.wipFile}, y agregá al final del archivo `
+      + `una sección "${EVIDENCE}" con este JSON en un bloque de código, tal cual: ${JSON.stringify(evidence)}. Si ya `
+      + 'hay una —la de una entrega anterior, antes de una devolución—, queda una sola: un JSON con los redFirst y los '
+      + `discovered de la de antes seguidos de éstos. Nada más: ni los pasos, ni el plan, ni ${P}/done/, ni `
+      + `${queueFile()}, ni la reserva.`, { label: 'handoff' })
+    const delivered = await readContext()
+    if (!delivered || !/^review$/i.test(unquoted((delivered.wip || {}).phase))) {
+      return halt('wip-not-persisted', `${task.id} quedó commiteada y su WIP no quedó en phase: Review`)
+    }
+    return halt('review-pending', `${task.id} quedó construida, verificada y `
+      + `${commit.hash ? `commiteada (${commit.hash})` : `sin commit (${commit.reason || 'no devolvió hash'})`}, `
+      + `con el WIP en phase: Review. La revisa otra sesión con /autobuild${LINE ? ` ${LINE}` : ''} --role review.`,
+    `hand ${task.id} to review`)
+  }
+
   phase('Done')
   // El árbol de la tarea ya no existe y su rama se renombró al commitear, pero la revisión y la verificación
   // los citan como los vieron. A `done/` va lo que quedó: el servicio como lo nombra la tarea y la rama del
@@ -2164,20 +2322,23 @@ while (rounds++ < MAX_TASKS) {
   // (caso 277).
   const settled = (text) => (tree ? [[tree.work, declared], [tree.path, declared], [tree.branch, commit.branch]]
     .reduce((out, [from, to]) => (from && to ? out.split(from).join(to) : out), text) : text)
+  // La crítica corrió acá, o el carril no la corre, y entonces es un hecho. Si la corrió la sesión que construyó, está
+  // en el WIP, y eso va como pedido aparte: entre los hechos, que se copian textuales, se lee como el valor a copiar.
+  const critiqueFact = critiqued || (lite || mechanical ? `n/a — el carril ${lane} no corre Critique` : '')
   // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
   // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
   // las traía (caso 211).
   await scribe(settled(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
-    `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
-    `este preámbulo—; ` +
+    `fecha: ${planning.today}, done, qa, tests, commit, lane, review y critique, en el formato de entrada que ` +
+    `trae este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${queueFile()} —si es un archivo de ${P}/backlog/ y su hito queda ` +
     'sin tareas, borrá ese archivo—; cerrá su épica sólo si no queda ' +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE —una línea «status: IDLE» en su ` +
     // Dicho con su forma: sin eso quien cierra la buscaba en el fuente del motor, una llamada por tarea.
     `frontmatter es lo que lee el motor—; y soltá la reserva corriendo ` +
-    `"node tools/ops.js release ${P} ${task.id}${ON_LINE}". lane y review van textuales, copiados de estos ` +
-    `hechos sin ` +
+    `"node tools/ops.js release ${P} ${task.id}${ON_LINE}". lane, review y critique van textuales, copiados de ` +
+    `estos hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
     // `done` y `qa` no van textuales, y hay que decirlo: lo que llega se escribió con la tarea abierta. Sin
     // decirlo dependía de que quien escribe lo acomodara por su cuenta, y cuando en 0.103.4 cambió quién
@@ -2189,20 +2350,26 @@ while (rounds++ < MAX_TASKS) {
     'del WIP tildó o qué no tocó. En qa, el veredicto y lo observado, sin presentar al cargo ni citar su ' +
     `contrato. En done, qa, tests y decisions las rutas van relativas, empezando en ${declared}/, nunca la ruta ` +
     'absoluta de esta máquina. No agregues nada que no esté en estos hechos. ' +
+    (critiqueFact ? '' : 'critique es la sección ## Crítica del WIP, copiada sin cambiarle nada; si el WIP no la '
+      + 'tiene, n/a — no quedó registrada. ') +
     (buildNotes.length ? 'Cada entrada de notas-de-build va en decisions, con [supuesto: …]. ' : '') +
     `En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${lane}; ` +
-    `review=${reviewFact}; fases=${ran.join(' → ')}; build=${buildFact}; ` +
+    `review=${reviewFact}; ${critiqueFact ? `critique=${critiqueFact}; ` : ''}fases=${ran.join(' → ')}; ` +
+    `build=${buildFact}; ` +
     (buildNotes.length ? `notas-de-build=${JSON.stringify(buildNotes)}; ` : '') +
     `verify=${JSON.stringify(verified.commands)}; cubiertos=${JSON.stringify(covered)}; ` +
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({
       criterion, reason: reason || 'no se ejecuta' })))}; ` : '') +
     (outOfVerify.length ? `fuera-de-verify=${JSON.stringify(outOfVerify)}; ` : '') +
     `qa=${qa.evidence}${mutationFact ? ` · mutaciones: ${mutationFact}` : ''}; ` +
-    `commit=${commit.hash || commit.reason}` +
     // El sufijo es el del contrato de DONE, `(repo@rama)`: `check` saca de ahí en qué repositorio buscar el
-    // commit, y escrito en prosa lo leía como si no nombrara ninguno.
-    `${commit.branch ? ` (${declared}@${commit.branch}), con ese sufijo copiado tal cual` : ''}. ` +
+    // commit, y escrito en prosa lo leía como si no nombrara ninguno. Con varios —los de una tarea devuelta—, cada
+    // uno lleva el suyo, separados por «; » como pide R8.
+    `commit=${commit.hash && commit.branch ? String(commit.hash).split(/;\s*/).map((hash) =>
+      `${hash} (${declared}@${commit.branch})`).join('; ') : commit.hash || commit.reason}` +
+    `${commit.branch ? `, con ${String(commit.hash || '').includes(';') ? 'cada' : 'ese'} sufijo copiado tal cual`
+      : ''}. ` +
     `En tests rastreá cada criterio con lo que cubiertos le asigna: la etiqueta del criterio, « → » y su ` +
     `trace copiada tal cual, sin agregarle ni sacarle nada —ya trae el archivo, el nombre de la prueba y la ` +
     `aclaración—` +
