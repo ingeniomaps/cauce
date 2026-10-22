@@ -377,9 +377,28 @@ test('la sesión dice su línea con --line, y sin argumento es la principal', ()
   // Cada una toma sólo lo suyo, y lo dice como se toma lo otro.
   assert.match(as('claim', planning, 'auth-token', '--line', 'admin').stderr,
     /no es de ninguna línea: se toma sin --line, desde la sesión principal/)
-  assert.match(as('release', planning, 'admin-consulta').stderr, /admin-consulta es de t@t/,
-    'la principal no suelta lo de la línea')
+  const fromMain = as('release', planning, 'admin-consulta')
+  assert.equal(fromMain.status, 1, 'la principal no suelta lo de la línea')
+  // Y la manda a la sesión de la línea, no a exportar el id de la línea, que saltaría la separación (caso 432).
+  assert.match(fromMain.stderr,
+    /admin-consulta la tomó la sesión de la línea admin: se suelta desde ella, con --line admin/)
+  assert.doesNotMatch(fromMain.stderr, /CAUCE_RUNNER=/)
+  // Y al revés: la línea no suelta lo de la principal, ni recibe su id.
+  const fromLine = as('release', planning, 'auth-token', '--line', 'admin')
+  assert.equal(fromLine.status, 1)
+  assert.match(fromLine.stderr, /auth-token la tomó la sesión principal: se suelta desde ella, sin --line/)
+  assert.doesNotMatch(fromLine.stderr, /CAUCE_RUNNER=/)
   assert.equal(as('release', planning, 'admin-consulta', '--line', 'admin').status, 0)
+
+  // Un reclamo de la línea con un id sin marca, como los que dejó un `CAUCE_RUNNER` fijado antes de 0.114.0 (caso 429):
+  // la línea recibe el comando que lo suelta con ese id, y corrido tal cual, suelta.
+  const fixed = (...args) => run(args, ops, { CAUCE_RUNNER: 'acme', CAUCE_OWNER: 't@t' })
+  fs.writeFileSync(path.join(planning, 'claims', 'admin-consulta.md'),
+    '---\ntask: admin-consulta\nowner: t@t\nrunner: acme\nstarted: 2026-10-21\n---\n')
+  const old = fixed('release', planning, 'admin-consulta', '--line', 'admin')
+  assert.equal(old.status, 1)
+  assert.match(old.stderr, /desde el runner acme\. Si esa sesión no la retoma, soltala con su id: CAUCE_RUNNER=acme /)
+  assert.equal(fixed('release', planning, 'admin-consulta').status, 0, 'el comando que imprime, sin --line')
 
   // Una línea que no está declarada se dice, en vez de contestar como la principal.
   for (const command of [['context', planning, '--json'], ['claim', planning, 'auth-token'],
@@ -397,4 +416,36 @@ test('una línea de antes sigue saliendo de la rama de su árbol, y context avis
   assert.match(line.lineWarning, /disposición de antes de 0\.111\.0.*ops lines migrate <ops-root> admin/)
   assert.match(run(['context', trees.line], undefined, { CAUCE_RUNNER: 'r-line' }).stdout, /⚠ la línea admin sale/)
   assert.equal(context(trees.main, 'r-main').json.lineWarning, undefined, 'la principal no tiene nada que migrar')
+})
+
+// Cómo se retoma un plan propio tomado desde otro id, en cada caso que distingue `resumeAdvice`; el caso entero, por
+// `context`, en `test/hooks/line-trees.test.js`. Qué ruta va relativa a qué, en el encabezado de la función.
+test('el consejo para retomar un plan propio depende de la línea del id y de la sesión', () => {
+  const root = path.join(process.cwd(), 'planning')
+  const claim = { runner: 'acme', slug: 't-pagos', wip: 'acme.md' }
+  const session = { line: 'pagos', legacy: false, wipFile: 'wip/acme_line_pagos.md', busy: false, moved: false }
+  // Sin línea, o en una línea de antes de 0.111.0, que lleva ids sin marca a propósito: el `export` sirve.
+  for (const one of [{ ...session, line: '' }, { ...session, legacy: true }]) {
+    assert.equal(LN.resumeAdvice(claim, one, root), ' — retomalo con `export CAUCE_RUNNER=acme`')
+  }
+  // El id de esta misma línea, también.
+  assert.equal(LN.resumeAdvice({ ...claim, runner: 'acme#line/pagos' }, session, root),
+    ' — retomalo con `export CAUCE_RUNNER=acme#line/pagos`')
+  // El de otra línea se retoma desde ésa: exportarlo acá frena, porque el id trae otra línea que la pedida.
+  assert.equal(LN.resumeAdvice({ ...claim, runner: 'acme#line/otra' }, session, root),
+    ' — es de la línea otra: se retoma desde esa sesión, con --line otra')
+  // Uno sin marca desde una línea nueva es de antes del 429: la migración, con un `mv` que se pega desde acá.
+  assert.equal(LN.resumeAdvice(claim, session, root), ', de antes de que el id llevara la línea: soltala con '
+    + '`CAUCE_RUNNER=acme node tools/ops.js release planning t-pagos`, tomala con --line pagos, y mové el plan con '
+    + '`mv planning/wip/acme.md planning/wip/acme_line_pagos.md`')
+  // Con espacios en la ruta, el `mv` sale citado.
+  assert.match(LN.resumeAdvice(claim, session, path.join(process.cwd(), 'mis repos', 'planning')),
+    /`mv 'mis repos\/planning\/wip\/acme\.md' 'mis repos\/planning\/wip\/acme_line_pagos\.md'`$/)
+  // Si la sesión ya tiene el plan de otra tarea, mover éste encima lo pisaría.
+  assert.match(LN.resumeAdvice(claim, { ...session, busy: true }, root),
+    /esta sesión ya tiene su plan en wip\/acme_line_pagos\.md: cerrá ése antes de migrar éste/)
+  // Y si el que tiene es el de esta tarea, el plan ya se movió: falta soltarla y tomarla.
+  assert.equal(LN.resumeAdvice(claim, { ...session, moved: true }, root), ', de antes de que el id llevara la línea, '
+    + 'y su plan ya está en wip/acme_line_pagos.md: falta soltarla con '
+    + '`CAUCE_RUNNER=acme node tools/ops.js release planning t-pagos` y tomarla con --line pagos')
 })

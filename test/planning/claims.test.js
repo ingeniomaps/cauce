@@ -10,6 +10,9 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
+// El CLI que se le pega a un shell: lo que imprime el rechazo se corre como lo correría una persona.
+const CLI = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
 
 const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
@@ -66,6 +69,7 @@ test('dos personas no reciben la misma tarea, y la segunda no puede pisar a la p
 
   const ajeno = como('luis@acme.com', () => run(['release', dir, 'dashboard']))
   assert.equal(ajeno.status, 1, 'soltar lo de otro tampoco')
+  assert.match(ajeno.stderr, /dashboard es de ana@acme\.com\. Si se abandonó, borrá claims\/dashboard\.md a mano/)
 
   const propio = como('ana@acme.com', () => run(['release', dir, 'dashboard']))
   assert.equal(propio.status, 0, propio.stderr)
@@ -332,6 +336,25 @@ test('tu propio reclamo desde otro runner se reconoce, no se resuelve solo', () 
   assert.match(hoy.stderr, /o si es otro agente en paralelo, que toma otra tarea/)
   assert.match(hoy.stderr, /ops runners/, 'y dice dónde ver lo que hay abierto')
 
+  // Soltarla desde el id de hoy frena igual, y dice lo mismo que `claim`: es tuya, y con qué id se suelta (caso 432).
+  const suelta = como('ana@acme.com', () => run(['release', dir, 'dashboard']), '/w/hoy')
+  assert.equal(suelta.status, 1)
+  assert.match(suelta.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde el runner \/w\/ayer/)
+  assert.match(suelta.stderr, /CAUCE_RUNNER=\/w\/ayer/)
+  assert.doesNotMatch(suelta.stderr, /es de ana@acme\.com/)
+
+  // Un id con un espacio, y una instancia bajo una carpeta con otro: el comando que imprime sale citado y, pegado
+  // entero en un shell desde donde se corrió, suelta (caso 432).
+  const spaced = planning('cauce retomar espacio-')
+  assert.equal(como('ana@acme.com', () => run(['claim', spaced, 'boton']), '/w/mis repos').status, 0)
+  const refused = como('ana@acme.com', () => run(['release', spaced, 'boton']), '/w/hoy')
+  const printed = (refused.stderr.match(/soltala con su id: (.+)$/m) || [])[1] || ''
+  assert.match(printed, /^CAUCE_RUNNER='\/w\/mis repos' node tools\/ops\.js release '[^']+' boton$/)
+  const pasted = spawnSync('bash', ['-c', printed.replace('node tools/ops.js', `"${process.execPath}" "${CLI}"`)],
+    { cwd: path.dirname(CLI), encoding: 'utf8',
+      env: { ...process.env, CAUCE_OWNER: 'ana@acme.com', NODE_TEST_CONTEXT: '' } })
+  assert.equal(pasted.status, 0, pasted.stderr)
+
   const visto = como('ana@acme.com', () => run(['context', dir]), '/w/hoy')
   assert.match(visto.stdout, /^TAKEN {2}dashboard \(ana@acme\.com — vos, desde otro runner\)$/m)
 
@@ -458,4 +481,18 @@ lane: lite
   assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0,
     'y claim la deja retomar')
   assert.equal(como('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis').status, 1, 'otro runner no')
+})
+
+// Sin identidad de git los dos dueños son la cadena vacía, y la vacía no es nadie: un reclamo sin dueño no es «tuyo», y
+// tratarlo así invitaba a soltar la tarea de otra sesión prestándole su id. Pasa en un CI o una máquina sin
+// `user.email`, con un reclamo escrito a mano.
+test('sin identidad, un reclamo sin dueño no se toma por propio', () => {
+  const dir = planning('cauce-sin-dueno-')
+  fs.writeFileSync(path.join(dir, 'claims', 'dashboard.md'),
+    '---\ntask: dashboard\nowner: \nrunner: /w/otro\nstarted: 2026-10-01\nservice: web\n---\n')
+  const nadie = { CAUCE_OWNER: '', CAUCE_RUNNER: '/w/hoy', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+  const suelta = run(['release', dir, 'dashboard'], undefined, nadie)
+  assert.equal(suelta.status, 1)
+  assert.doesNotMatch(suelta.stderr, /la tenés vos|soltala con su id/, suelta.stderr)
+  assert.doesNotMatch(run(['context', dir], undefined, nadie).stdout, /vos, desde otro runner/)
 })

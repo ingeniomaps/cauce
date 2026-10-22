@@ -295,17 +295,19 @@ function context(dir, cli) {
   // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
   // Tu propio nombre en una tarea «ajena» es la señal de que sos vos desde otro runner, y sin decirlo se
   // lee como que alguien te ganó la tarea.
-  const ownerLabel = (one) => (one.owner === report.owner ? `${one.owner} — vos, desde otro runner` : one.owner)
+  // Un dueño vacío no es nadie: sin identidad de git los dos lados son '', y eso no hace tuyo un reclamo ajeno.
+  const mine = (one) => Boolean(one.owner) && one.owner === report.owner
+  const ownerLabel = (one) => (mine(one) ? `${one.owner} — vos, desde otro runner` : one.owner)
   // Que el reclamo sea tuyo desde otro id ya se decía; que además haya un **plan escrito** bajo ese id, no.
   // Esa es la mitad que cuesta la sesión: los pasos ya hechos están en un archivo que nadie nombra, y el id
   // que lo recupera es justo el que esta sesión no supo deducir. Los dos datos están en el reclamo.
   const tomadas = () => {
     for (const one of report.taken) {
       console.log(`TAKEN  ${one.slug} (${ownerLabel(one)})`)
-      if (one.owner === report.owner && one.wip) {
-        console.log(`PLAN   ${one.slug}: su plan está en wip/${one.wip} — retomalo con `
-          + `\`export CAUCE_RUNNER=${one.runner}\``)
-      }
+      if (!mine(one) || !one.wip) continue
+      const session = { line: report.line, legacy: asked.legacy, wipFile: report.wipFile,
+        busy: Boolean(mio) && mio.task !== one.slug, moved: Boolean(mio) && mio.task === one.slug }
+      console.log(`PLAN   ${one.slug}: su plan está en wip/${one.wip}${LN.resumeAdvice(one, session, root)}`)
     }
   }
   const espera = () => {

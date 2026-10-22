@@ -61,5 +61,11 @@ function trees(root, read = config(root)) {
 // así que el id que se deduce del árbol es el mismo para las dos: compartirían el WIP, y la segunda no podría
 // reclamar mientras la primera tuviera una tarea.
 const runnerOf = (base, line) => (line ? `${base}#${BRANCH}${line}` : base)
+// La línea de un id de runner, o '' si no lleva: lo inverso de `runnerOf`.
+const lineOfRunner = (id) => {
+  const mark = `#${BRANCH}`
+  const text = String(id || '').trim()
+  return text.includes(mark) ? text.slice(text.lastIndexOf(mark) + mark.length) : ''
+}
 
-module.exports = { DIR, BRANCH, NAME, config, sessionOf, declared, safeRepo, treeOf, trees, runnerOf }
+module.exports = { DIR, BRANCH, NAME, config, sessionOf, declared, safeRepo, treeOf, trees, runnerOf, lineOfRunner }

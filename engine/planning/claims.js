@@ -15,7 +15,8 @@ const fs = require('node:fs')
 const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const P = require('./parser')
-const { runnerOf } = require('../core/line-trees')
+const { lineOfRunner, runnerOf } = require('../core/line-trees')
+const { shellWord } = require('../core/files')
 
 const DIR = 'claims'
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -57,8 +58,13 @@ function owner(root) {
 // salida de `ops line` manda a correr `--line` sin decir desde dónde, y desde la carpeta de sesión el id salía otro que
 // el que `plan-first` busca, así que la sesión que escribió el plan no podía tocar el producto (caso 411). Sin línea
 // sigue saliendo del árbol donde corre el proceso, que es lo que distingue a dos worktrees de la misma instancia.
+//
+// La línea entra también en el id declarado. Un proyecto fija `CAUCE_RUNNER` para todas sus sesiones, y devuelto tal
+// cual la de una línea tenía el id de la principal: su WIP, sus reclamos y la tarea que la otra tenía tomada (caso
+// 429). Un id que ya trae una línea —el que se exporta desde una sesión de línea— se respeta.
 function runner(line = '', root = '') {
-  if (process.env.CAUCE_RUNNER) return process.env.CAUCE_RUNNER.trim()
+  const declared = String(process.env.CAUCE_RUNNER || '').trim()
+  if (declared) return line && !lineOfRunner(declared) ? runnerOf(declared, line) : declared
   const at = line && root ? root : process.cwd()
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: at, encoding: 'utf8' })
   return runnerOf(result.status === 0 ? (result.stdout || '').trim() : at, line)
@@ -158,4 +164,12 @@ function warnings({ claims, done, today, activity = new Map() }) {
   return lines
 }
 
-module.exports = { DIR, STALE_DAYS, owner, runner, branchOf, file, read, content, validate, warnings }
+// El comando que suelta una tarea con el id de quien la tomó, pegable desde donde se corrió: la raíz va relativa al
+// directorio actual y citada (caso 432). Lo imprimen `release`, cuando el reclamo es tuyo desde otro id, y `context`,
+// cuando hay que migrar el de una línea.
+function releaseCommand(id, root, slug) {
+  return `CAUCE_RUNNER=${shellWord(id)} node tools/ops.js release `
+    + `${shellWord(path.relative(process.cwd(), root) || '.')} ${slug}`
+}
+
+module.exports = { DIR, STALE_DAYS, owner, runner, branchOf, file, read, content, validate, warnings, releaseCommand }
