@@ -14,6 +14,75 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.114.0] - 2026-10-21
+
+### Agregado
+
+- **Los guards propios del proyecto corren en todos los runners.** Se declaran una vez, por evento, en `guards` de
+  `ops.config.json` —`{ "pre-shell": ["automatization/hooks/guard-acme.sh"] }`, con rutas relativas a la raíz ops—, y
+  el motor los corre después de los suyos en Claude, Codex, Gemini y Antigravity. Antes un guard registrado en
+  `.claude/settings.json` sólo corría en Claude, y Antigravity no tenía dónde registrarlo. El guard recibe la llamada
+  por stdin y `OPS_ROOT`, y sale en 0 o en 2 como un hook de Claude Code. Un 0 con la decisión en JSON
+  —`decision: block`, `continue: false`, o `permissionDecision` en `deny` o `ask`— también frena; el `ask` frena
+  porque estos guards no abren diálogo. Cualquier otra salida, que no esté, que `guards` no tenga la forma de un objeto
+  con una lista de rutas por evento, que nombre un evento que no existe, o que los de un evento tarden más de 20 s
+  entre todos, también frena. Con `guards` mal escrito pasa una sola cosa, la escritura que arregla `ops.config.json`,
+  para que la sesión no quede sin salida; esa escritura la siguen juzgando los guards de Cauce. **Al actualizar**, si tenés guards propios registrados en la configuración de un
+  runner, pasalos a `guards` y sacalos de ahí: `automation doctor` avisa los que quedan en los dos lugares, porque
+  corren dos veces, también con la variable entre comillas o detrás de un intérprete. En `stop` no se vuelven a
+  correr cuando la sesión ya sigue por un cierre frenado (`stop_hook_active`), para que uno roto no la encierre (caso
+  428).
+- **`/autobuild --role build` y `/autobuild --role review` reparten una tarea entre dos sesiones.** El traspaso de
+  0.112.0 estaba escrito y ningún recorrido lo seguía: el programador se revisaba y cerraba su propia tarea, en
+  cualquier runner. Con `--role build` corre las fases de su carril hasta Commit, salvo Review y QA, y para con
+  `review-pending` dejando el WIP en `phase: Review` y su evidencia en `## Evidencia de Build`. Con `--role review`
+  toma sólo esa tarea, revisa el commit de quien la construyó, la verifica, le hace QA y la cierra. Si no aprueba —o
+  falta una prueba, o un gate o el QA están en rojo— no corrige: anota los hallazgos en `## Bloqueos` del WIP, le
+  agrega al plan el paso que los corrige, lo devuelve a `phase: Build` y para con `review-returned`. Un rol que no existe para con `role-unknown` antes de gastar nada, y
+  revisar sin una tarea entregada, con `review-not-ready`. Vale para el recorrido de Claude, el skill de Antigravity
+  y Codex y el comando de Gemini (caso 430).
+
+- **`automation doctor . codex` avisa los hooks que Codex no corre porque nadie los confió.** Codex corre un hook del
+  proyecto sólo si alguien lo confió con `/hooks`, y en `codex exec` no avisa: la sesión trabaja sin ningún guard de
+  Cauce. `doctor` lo da como error, con cuántos faltan, y la tabla de runners de `teamwork.md` lo pide. **Al
+  actualizar**, si usás Codex: abrí `codex` en la carpeta de la instancia y confiá los hooks con `/hooks`; y de nuevo
+  cada vez que `install` cambie `.codex/hooks.json` (caso 434).
+
+### Cambiado
+
+- **`PROTOCOL.md` dice qué fases corre cada carril, en una tabla.** Decía que `lite` «agrega Ready, Plan y QA», y el
+  recorrido además le saltea la crítica del plan y le hace una QA más barata: en un runner sin recorrido con fases,
+  que gradúa la tarea por ese texto, una tarea `lite` recibía el trato completo. La tabla dice lo que hace el
+  recorrido, y una prueba de este repositorio las compara. El skill de `autobuild` y el comando de Gemini mandan a
+  esa tabla, y el traspaso entre sesiones de `teamwork.md` manda a revisar con el carril del WIP (caso 431).
+- **La crítica del plan es un paso propio y queda escrita.** El paso 6 de `PROTOCOL.md` decía «Plan y Critique» en
+  un renglón, y en `full` dos de tres runners sin recorrido planificaron sin criticar. Ahora la crítica va aparte,
+  deja lo que objetó —al menos la objeción más fuerte— en `## Crítica` del WIP, y Done lo copia a un campo nuevo de
+  `done/<slug>.md`, `critique:` —`n/a — razón` en un carril que no la corre—. En `full`, `check` nombra la entrada
+  sin crítica o con `n/a` cerrada desde la primera que trae el campo, y cuenta las de antes, que no tenían dónde
+  escribirla. El recorrido de Claude la escribe solo, también cuando la cierra la sesión que revisa (caso 433).
+  **Al actualizar**, una tarea `full` que ya estaba en curso no tiene `## Crítica` en su WIP: cierra con
+  `critique: n/a — no quedó registrada` y `check` la nombra. Es cierto, y no hace falta corregir nada.
+- **Review comprueba lo que la crítica dice que cambió en el plan.** Hasta ahora contrastaba con el diff sólo las
+  condiciones con que la crítica aprobaba. Ahora comprueba también lo que anuncia como cambio del plan, en
+  `## Crítica` del WIP: un cambio anunciado que el diff no tiene es un hallazgo, y vuelve a quien construyó como
+  cualquier otro. Lo dice el paso 9 de `PROTOCOL.md`, y el recorrido de Claude se lo pasa a Review (caso 436).
+
+### Corregido
+
+- **Con `CAUCE_RUNNER` fijado para todo el proyecto, la sesión de una línea tiene su propio id.** Antes la variable se
+  usaba tal cual y el `--line` no entraba: la línea compartía con la principal el WIP y los reclamos, y `context` le
+  ofrecía como suya la tarea que la principal tenía tomada. Ahora el id es `<CAUCE_RUNNER>#line/<línea>`, el mismo en
+  `ops` y en los guards —`plan-first` y el alcance de lo concedido en el chat leen el WIP de la línea—. Un
+  `CAUCE_RUNNER` que ya trae la línea se respeta, y uno que trae otra frena en vez de usarse para ésta. **Al
+  actualizar**, si una sesión de línea tiene trabajo en curso con
+  la variable fijada, `claim` la frena nombrando el id viejo: soltala con el comando que imprime `release` y volvé a
+  tomarla con `--line`, y mové su plan de `planning/wip/<id>.md` a `planning/wip/<id>-line-<línea>.md` (caso 429).
+- **`release` reconoce tu propio reclamo hecho desde otro id.** Antes decía que la tarea «es de» vos mismo y mandaba a
+  borrar el reclamo a mano. Ahora dice desde qué runner la tomaste e imprime el comando que la suelta con ese id, como
+  ya hacía `claim`; y si la tiene la sesión de otra línea, o la principal, manda a soltarla desde ella. El id sale
+  citado para el shell, en éste y en todo `export CAUCE_RUNNER=…` que imprime el CLI (caso 432).
+
 ## [0.113.3] - 2026-10-21
 
 ### Corregido
