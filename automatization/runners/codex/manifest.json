@@ -6,6 +6,12 @@
     "source": "hooks.json",
     "target": ".codex/hooks.json"
   },
+  "hookTrust": {
+    "config": "config.toml",
+    "home": "CODEX_HOME",
+    "fallback": "~/.codex",
+    "trust": "abrí codex en esa carpeta y confialos con /hooks"
+  },
   "instructions": [
     {
       "source": "AGENTS.md",

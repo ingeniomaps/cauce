@@ -90,7 +90,10 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
   const codexHooks = JSON.parse(fs.readFileSync(path.join(workspace, '.codex', 'hooks.json'), 'utf8'))
   assert.ok(codexHooks.hooks.PreToolUse.length)
-  assert.equal(run(['automation', 'doctor', target, 'codex']).status, 0)
+  // Recién instalado, nadie confió los hooks, y sin eso Codex no corre ninguno: es el único error (caso 434).
+  const doctor = run(['automation', 'doctor', target, 'codex'])
+  assert.match(doctor.stderr + doctor.stdout, /✗ codex: 4 hook\(s\) de .* sin confiar/)
+  assert.match(doctor.stderr + doctor.stdout, /codex: 1 error\(es\)/)
   assert.equal(run(['automation', 'install', target, 'gemini']).status, 0)
   const gemini = JSON.parse(fs.readFileSync(path.join(workspace, '.gemini', 'settings.json'), 'utf8'))
   assert.equal(gemini.general.checkpointing.enabled, true)
