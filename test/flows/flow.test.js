@@ -309,7 +309,16 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   const { prompts } = await runFlow()
   const etapa = prompts.find((one) => one.key === 'stage:encuadre')
   assert.ok(etapa, 'la etapa corrió')
-  assert.match(etapa.prompt, /encuadre-analisis\.md/, 'el análisis se escribe, con el id de la etapa')
+  assert.match(etapa.prompt, / como 2026-09-12-product-development-encuadre-analisis\.md /,
+    'el análisis se escribe con la fecha, el recorrido y el id de la etapa')
+  assert.match(etapa.prompt,
+    /no lo pises: agregá -2, -3… antes de \.md, como 2026-09-12-product-development-encuadre-analisis-2\.md/,
+    'y dos corridas del mismo día no comparten archivo, con el sufijo en un lugar fijo y el nombre entero')
+  const undated = await runFlow({ 'flow-contract': { ...baseScript()['flow-contract'], today: undefined } })
+  const undatedStage = undated.prompts.find((one) => one.key === 'stage:encuadre').prompt
+  assert.match(undatedStage, / como <AAAA-MM-DD>-product-development-encuadre-analisis\.md /,
+    'sin la fecha en el contrato, el agente la pone')
+  assert.doesNotMatch(undatedStage, /undefined/, 'y el nombre no dice undefined, igual en cualquier día')
   assert.match(etapa.prompt, /devolvé esa ruta en analysis/, 'y lo que vuelve por el esquema es la ruta')
   assert.match(etapa.prompt, /cada campo tiene su tope/, 'el resto del esquema queda corto')
   assert.match(etapa.prompt, /missing y humanAction hasta 400/,
