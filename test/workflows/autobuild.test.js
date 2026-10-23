@@ -448,7 +448,7 @@ test('lo que la línea ya decidió llega a Ready, Plan, Critique y Build', async
 // pasos la citan. Por qué tiene que viajar al WIP está junto al pedido, en el recorrido.
 //
 // Se mide en el WIP y en Build porque son los dos que la necesitan y por motivos distintos: el WIP es
-// donde queda escrita para quien revisa —R9 pide la mutación declarada, no recordada— y Build es quien la
+// donde queda escrita para quien revisa —R29 pide la mutación declarada, no recordada— y Build es quien la
 // corre. Que llegue a uno solo deja la mitad del defecto en pie.
 test('la estrategia de prueba del plan llega al WIP y a Build', async () => {
   const estrategia = 'romper el replace y ver roja «pone mayúscula en cada palabra»'

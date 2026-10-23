@@ -140,10 +140,8 @@ prohíbe; no vale cuando comprobar es abrir una página. El rótulo honesto no s
 —evita afirmar de más, y por eso no es una falta— pero deja la pregunta abierta igual, y la entrega llega con
 un hueco donde había un dato disponible.
 
-Es el modo de fallo más difícil de ver porque se parece a la prudencia. En la sesión que originó este párrafo,
-cuatro cargos independientes rotularon «hipótesis» el default de una herramienta o la base de un porcentaje que
-la fuente pública de esa misma herramienta define; ninguno afirmó nada falso, y los cuatro dejaron a quien
-recibía la entrega pagando con una sesión entera lo que costaba abrir un enlace.
+Es el modo de fallo más difícil de ver porque se parece a la prudencia: rotular «hipótesis» no afirma nada falso,
+y aun así quien recibe la entrega paga con una sesión entera lo que costaba abrir un enlace.
 
 No se infiere el default de una herramienta desde otra del mismo paquete, ni una regla de una jurisdicción
 desde otra. Una negativa correcta sostenida en un mecanismo falso queda tan comprometida como el mecanismo.
@@ -229,15 +227,11 @@ Toda premisa sobre el comportamiento del propio código —qué hace un endpoint
 dónde vive un componente— se abre en el archivo, en la línea, antes de escribirla en una aceptación, un
 plan o un diagnóstico. No alcanza con recordarla ni con haberla leído la semana pasada.
 
-**Y el ancla se abre, no se copia.** Una referencia `archivo:línea` traída de otra tarea es una premisa
-más, no una comprobación: el archivo se movió. En la instancia que originó esta regla, una función pasó
-de la línea 555 a la 733 dentro de la misma sesión.
+**Y el ancla se abre, no se copia.** Una referencia `archivo:línea` traída de otra tarea es una premisa más,
+no una comprobación: el archivo puede haberse movido.
 
-Lo que esto evita es una clase entera de vuelta perdida, y se reconoce porque el trabajo frena en la
-puerta y no en el código: la aceptación pedía algo que el sistema no hace, así que ninguna
-implementación la cumple. Cuatro corridas seguidas se perdieron así en un solo día —una afirmaba que un
-webhook abría acceso sobre filas terminales, y hace lo contrario—, y las cuatro se veían como un
-problema de implementación.
+Lo que esto evita es una clase entera de vuelta perdida, y se reconoce porque el trabajo frena en la puerta y
+no en el código: la aceptación pedía algo que el sistema no hace, así que ninguna implementación la cumple.
 
 El contraste es el mismo que pide R14 y por eso no se repite acá: lo consultado se enumera, con la ruta
 leída y la línea. La diferencia es sólo el sujeto.

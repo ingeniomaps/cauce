@@ -5,6 +5,7 @@
 @template/planning/rules/system/runs.md
 @template/planning/rules/system/code-shape.md
 @template/planning/rules/system/commits.md
+@template/planning/rules/system/proof.md
 @template/planning/rules/system/conduct.md
 
 Sólo punteros: las reglas viven una vez, en los archivos de arriba. Este archivo existe porque Claude

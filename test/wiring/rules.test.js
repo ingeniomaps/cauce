@@ -9,6 +9,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const O = require('../../engine/core/ownership')
+const R = require('../../engine/automation/rules')
 const { inline } = require('../../engine/automation/runners')
 
 // El banco de los dos casos: una regla que sobrescribe una del sistema y una propia nueva.
@@ -34,6 +35,7 @@ test('las reglas vigentes son las propias y las del sistema que el proyecto no s
     'planning/rules/system/commits.md',
     'planning/rules/system/conduct.md',
     'planning/rules/system/process.md',
+    'planning/rules/system/proof.md',
     'planning/rules/system/runs.md',
     'planning/rules/code-shape.md',
     'planning/rules/security.md',
@@ -214,16 +216,72 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // toolkit enseña algo nuevo —39,1 con cuatro archivos, 45,9 con R24..R28, 50,7 con lo agregado a R3,
   // R8..R10 y R17, 49,1 al retirar lo que una medición mostró que R6 ya lograba, y 50,3 con el comparador
   // que R27 nombra para cuando cerrar por defecto rompe el uso diario, 51,2 con la decisión que R17 manda a
-  // HUMAN_ACTIONS (caso 234), y 52,3 con la comparación de antes y después que R9 pide al cambiar quién
-  // hace algo (caso 324)— y la ventana se deja angosta a propósito: que esta prueba falle en cada edición de una
-  // regla **es** la función, y es lo único que obliga a medir lo que cada agente paga antes de moverla.
+  // HUMAN_ACTIONS (caso 234), 52,3 con la comparación de antes y después que R9 pide al cambiar quién
+  // hace algo (caso 324), 51,8 al llevar al README la nota de por qué `runs.md` existe (caso 439), 47,2 al
+  // nombrar en vez de cargar la doctrina de cómo se prueba, R29 (caso 440), 45,9 al llevar al README el relato de
+  // los incidentes (caso 441), y 46,3 al devolverle a R9 las tres exigencias de R29 que no admiten excepción— y la
+  // ventana se deja angosta a propósito: que esta prueba falle en cada edición de una regla **es** la función, y
+  // es lo único que obliga a medir lo que cada agente paga antes de moverla.
   //
   // Y las propias son 0,0 acá, que es la propiedad que compra medir lo propio: una instancia recién
   // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
   // aritmética que había que recalcular; ahora es una invariante y por eso se asercia.
   assert.match(salida.stdout,
-    /claude: el bloque de reglas carga 5 archivo\(s\), 52\.\d KB en cada agente \(0\.0 KB propias\)/,
+    /claude: el bloque de reglas carga 5 archivo\(s\), 46\.\d KB en cada agente \(0\.0 KB propias\)/,
     'declara cuántas, cuánto pesan y cuánto de eso puso el proyecto')
+})
+
+// Por qué R16, R20..R22 y R26 viven en `runs.md` le sirve a quien mantiene las reglas, no a quien las cumple: va al
+// README de reglas, que no se carga, y no a un archivo que paga cada agente (caso 439).
+test('la nota de por qué una regla vive en su archivo no viaja en lo que carga cada agente', () => {
+  const { target } = installedProject('cauce-rules-nota-')
+  // La prosa se envuelve a 120 columnas: la frase puede quedar partida en dos líneas.
+  const note = /adoptadas\s+por\s+referencia/
+  const loaded = O.effectiveRules(target).filter((file) => note.test(read(path.join(target, file))))
+  assert.deepEqual(loaded, [], 'la nota sigue en una regla que se carga')
+  assert.match(read(path.join(target, 'planning', 'rules', 'README.md')), note, 'y no llegó al README')
+})
+
+// El incidente que originó cada regla le sirve a quien la mantiene: la regla se queda con su instrucción y su
+// argumento, y el relato vive en el README de reglas, que no se carga (caso 441).
+test('el relato de los incidentes no viaja en lo que carga cada agente', () => {
+  const { target } = installedProject('cauce-rules-relato-')
+  const incidents = [/siete\s+millones\s+de\s+tokens/, /24,2\s+GB/, /de\s+la\s+línea\s+555\s+a\s+la\s+733/,
+    /cuatro\s+cargos\s+independientes/, /un\s+webhook\s+abría\s+acceso/, /fallaron\s+uno\s+al\s+día\s+siguiente/]
+  const readme = read(path.join(target, 'planning', 'rules', 'README.md'))
+  for (const incident of incidents) {
+    const loaded = R.split(target).loaded.filter((file) => incident.test(read(path.join(target, file))))
+    assert.deepEqual(loaded, [], `${incident} sigue en una regla que se carga`)
+    assert.match(readme, incident, 'y no llegó al README')
+  }
+})
+
+// Lo que no admite excepción no puede quedar en un archivo que se lee sólo si el disparador se reconoce: al escribir
+// una prueba no se abrió nunca (0/3, caso 440), y una quita casi nunca se ve como una. Esas tres exigencias viajan
+// cargadas en R9; R29 explica cómo cumplirlas.
+test('R9 carga las tres exigencias de R29 que no admiten excepción', () => {
+  const { target } = installedProject('cauce-rules-r9-')
+  const loaded = R.split(target).loaded.map((file) => read(path.join(target, file))).join('\n')
+  for (const [rule, pattern] of [
+    ['la mutación se declara', /la\s+mutación\s+se\s+declara\s+por\s+escrito/],
+    ['una quita sin su aserción de ausencia no se entrega',
+      /una\s+quita\s+no\s+se\s+entrega\s+sin\s+su\s+aserción\s+de\s+ausencia/],
+    ['una quita casi nunca se ve como una', /una\s+quita\s+casi\s+nunca\s+se\s+ve\s+como\s+una\s+quita/],
+  ]) {
+    assert.match(loaded, pattern, `no se carga: ${rule}`)
+  }
+})
+
+// La doctrina de cómo se prueba se lee al probar, no en cada arranque: queda nombrada con su momento, y R9 —que sí
+// se carga— dice dónde está (caso 440).
+test('R29 se nombra en el bloque y no se carga, y R9 la señala', () => {
+  const { target } = installedProject('cauce-rules-r29-')
+  const { named, loaded } = R.split(target)
+  assert.deepEqual(named.map((one) => one.file), ['planning/rules/system/proof.md'])
+  assert.match(named[0].surface, /al escribir o revisar una aceptación, una prueba/)
+  assert.ok(!loaded.includes('planning/rules/system/proof.md'), 'la carga en cada agente')
+  assert.match(read(path.join(target, 'planning', 'rules', 'system', 'commits.md')),
+    /viven\s+en\s+R29\s+\(`proof\.md`\)/)
 })
 
 test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia limpia', () => {

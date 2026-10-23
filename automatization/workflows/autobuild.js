@@ -324,7 +324,7 @@ const QA = {
     passed: { type: 'boolean' }, evidence: { type: 'string' }, behavioral: { type: 'boolean' },
     bugs: { type: 'array', items: { type: 'string' } },
     // Lo que dio cada mutación que Build declaró sin correr. `red` es lo único que se decide con esto: una
-    // que no se puso roja dice que la prueba no cuida lo que nombra (R9).
+    // que no se puso roja dice que la prueba no cuida lo que nombra (R29).
     mutations: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['detail', 'red'],
       properties: { detail: { type: 'string' }, red: { type: 'boolean' }, output: { type: 'string' } },
@@ -1630,7 +1630,7 @@ while (rounds++ < MAX_TASKS) {
       // La estrategia de prueba es `required` en el plan y hasta acá se descartaba, así que un paso que
       // decía «correr la mutación declarada en testStrategy» apuntaba a un lugar que no existía: quien
       // revisa no podía distinguir la mutación corrida de la pensada, y la única salida que le quedaba
-      // era rehacer la revisión. R9 pide la mutación **declarada**, y el WIP es donde queda escrita.
+      // era rehacer la revisión. R29 pide la mutación **declarada**, y el WIP es donde queda escrita.
       //
       // Es la tercera vez que algo decidido no llega a quien decide después: el contexto de la épica
       // (027), la descripción de la tarea (177) y esto. Las tres se arreglan igual — que viaje.
@@ -1943,7 +1943,7 @@ while (rounds++ < MAX_TASKS) {
     if (blockers(review).length) {
       // «Sólo estos hallazgos» acota el alcance (R6) y por sí solo deja un cabo suelto: una corrección
       // tiene dependientes y no se anuncian —el conteo que enumeraba lo que cambió, el comentario que
-      // describía la forma vieja, la fila que la afirmaba—. Es R9 leído al derecho: lo que deja de valer
+      // describía la forma vieja, la fila que la afirmaba—. Es R29 leído al derecho: lo que deja de valer
       // se lleva puesto a quien lo daba por cierto, y eso vive casi siempre en otro archivo.
       //
       // Sin pedirlo, la vuelta siguiente rechaza por la deriva que la corrección acabó de crear, y como

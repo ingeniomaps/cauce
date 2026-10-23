@@ -98,6 +98,6 @@ lint, para lo que un CI corre, para un permiso: cualquier mecanismo cuya lista a
 acordarse de ampliar.
 
 Y el caso que más se disfraza es la excepción por ambiente. «Esta comprobación no corre en desarrollo»
-es una quita escrita como agregado —R9—, y además garantiza que el camino de producción sea el único que
+es una quita escrita como agregado —R29—, y además garantiza que el camino de producción sea el único que
 nunca se ejercitó. Si hace falta que en desarrollo sea más fácil, se le da a desarrollo lo que necesita
 para pasar la comprobación, no una puerta trasera.

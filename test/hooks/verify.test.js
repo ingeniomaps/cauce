@@ -56,7 +56,7 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
     fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
     assert.doesNotThrow(() => execute('verify', commit))
     const inCopy = fs.readFileSync(seen, 'utf8')
-    // La segunda mitad es la aserción de ausencia que R9 pide para una quita: el nombre viejo no viaja.
+    // La segunda mitad es la aserción de ausencia que R29 pide para una quita: el nombre viejo no viaja.
     // Sin ella, exportar los dos a la vez pasaría, y lo que se quitó fue justamente el que no sirve.
     assert.match(inCopy, /^verify=false viejo=vacio/m,
       'la copia no sincroniza nada antes de correr el gate, y por el nombre que pnpm sí lee')
@@ -71,7 +71,7 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
   }
 })
 
-// La regresión del caso 070, medida como R9 pide que se mida una quita: por ausencia de daño. Poner
+// La regresión del caso 070, medida como R29 pide que se mida una quita: por ausencia de daño. Poner
 // `CI=true` en la copia no agregaba una conducta, **quitaba** una —la confirmación con la que pnpm frena
 // antes de purgar—, y esa confirmación era lo único que protegía al `node_modules` del proyecto. Sin
 // ella la reinstalación avanza y borra por el enlace; el gate igual termina en verde, así que nada lo

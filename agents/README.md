@@ -137,7 +137,7 @@ misma razón**, no que se repita el rojo.
 
 Hay un cuarto que no es ninguno de los tres y sólo le pasa a un caso recién escrito: **el rojo de su
 primera corrida no lo calibra**. Prueba que el caso puede fallar, no que falle por lo que dice medir —
-es la misma distinción que R9 hace para una prueba, aplicada al caso. Lo que lo calibra es una corrida
+es la misma distinción que R29 hace para una prueba, aplicada al caso. Lo que lo calibra es una corrida
 donde se rompa a propósito la conducta que el caso cuida, con el contrato puesto, y verlo ponerse rojo
 **por eso**. Hasta entonces su veredicto no sostiene una conclusión sobre el cargo.
 
