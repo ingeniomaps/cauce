@@ -102,3 +102,13 @@ El caso, sección por sección:
 - `npm run ci`: exit 0, 1591/1591, con la cobertura en su piso.
 - La regla de la instancia que lo marcó no se pudo correr acá: vive en su repositorio. Lo que ella mide —más de 300
   líneas y cuatro secciones sin índice— es lo que la prueba nueva comprueba.
+
+**Revisión final de la rama.** `/code-review high` sobre `origin/main...fix/437-443` entero, ya con los cuatro commits
+reagrupados y el 442 y el 443 adentro: diez hallazgos. Uno es de este caso.
+
+1. **La prueba contaba los `##` de dentro de un bloque de código** y no conocía el sufijo `-1` con que GitHub separa un
+   título repetido: un documento con un ejemplo así habría pedido enlaces a anclas que no existen. Ahora los bloques de
+   código no cuentan y el repetido lleva su sufijo; una prueba de la función lo fija, y la mutación que vuelve a contar
+   los bloques la pone en rojo.
+
+`npm run ci` después de esta revisión: exit 0, 1592/1592, con la cobertura en su piso.

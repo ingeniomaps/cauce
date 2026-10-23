@@ -149,3 +149,22 @@ siete son de este caso, en seis puntos: el primero junta dos que describen el mi
 5. **La prueba del puntero de R9 buscaba espacios simples**, y un ajuste de línea la rompía con el puntero intacto. Ahora
    usa `\s+`, como sus vecinas.
 6. **El comentario de historia de pesos de `rules.test.js` había quedado con los cortes rotos.** Rearmado.
+
+**Revisión final de la rama.** `/code-review high` sobre `origin/main...fix/437-443` entero, ya con los cuatro commits
+reagrupados y el 442 y el 443 adentro: diez hallazgos. Uno es de este caso.
+
+1. **R9 cargada no decía que cambiar quién hace algo se prueba con el antes y el después** (caso 324): había quedado sólo
+   en R29. Ahora es parte de lo que R9 carga. Prueba: el patrón nuevo de «R9 carga las tres exigencias…», en rojo antes
+   y con la mutación que lo saca.
+
+**Prueba real del disparador «al escribir una aceptación»**, que la primera medición no cubría. Seis sesiones con
+`claude -p`, tres sobre el motor de `origin/main` —R9 entera cargada— y tres sobre la rama —R9 corta y `proof.md`
+nombrado—, pidiendo escribir la tarea de rechazar cantidades negativas con su aceptación, sin nombrar la mutación:
+
+| | La aceptación declara la mutación | Abrió `proof.md` |
+|---|---|---|
+| `main` | 3/3 | — |
+| La rama | 3/3 | 1/3 |
+
+Por ejemplo: «Mutación declarada: quitar la comprobación de `qty < 0` tiene que poner en rojo la prueba del
+`RangeError`». USD 0,61 a 0,88 por sesión, 4,12 en total.

@@ -32,9 +32,9 @@ diseño — eso vive en el commit y en el código.
 
 - **La doctrina de cómo se prueba sale de R9 y pasa a R29, en `system/proof.md`, nombrada y no cargada.** R9 se queda
   en `commits.md` con lo que rige al entregar —verde no reemplaza al artefacto, el criterio que ninguna prueba aserta no
-  está cubierto, una prueba que nunca se vio en rojo no prueba nada— y con las tres exigencias que no admiten
-  excepción: la mutación se declara por escrito, una quita no se entrega sin su aserción de ausencia vista en rojo, y
-  una quita casi nunca se ve como una. Cómo se cumplen, la precondición, la deprecación, la confirmación que estorba y
+  está cubierto, una prueba que nunca se vio en rojo no prueba nada— y con lo que no admite excepción: la mutación se
+  declara por escrito, una quita no se entrega sin su aserción de ausencia vista en rojo, y una quita casi nunca se
+  ve como una, tampoco cuando lo que cambia es quién hace algo, que se prueba con el antes y el después. Cómo se cumplen, la precondición, la deprecación, la confirmación que estorba y
   los dependientes de una quita pasan a R29, con `aplica: al escribir o revisar una aceptación, una prueba, o un cambio
   que quita o reemplaza algo`. Medido con sesiones reales antes y después: con un pedido de quitar un comportamiento,
   los tres agentes abrieron el archivo y probaron la quita por ausencia, viéndola en rojo, igual que con R9 cargada.

@@ -298,3 +298,28 @@ eran mensajes que mandaban a algo que no funciona sobre el camino del árbol bor
 Mutaciones, en una copia del árbol, una prueba en rojo cada una: `ops line` sin comprobar la limpieza del registro, el
 consejo viejo para el commit suelto, sin rama viva mandando a mergear, `ops lines` mandando a rearmar siempre, y
 nombrar una rama sin ref.
+
+**Revisión final de la rama.** `/code-review high` sobre `origin/main...fix/437-443` entero, ya con los cuatro commits
+reagrupados y el 442 y el 443 adentro: diez hallazgos. Siete son de este caso.
+
+1. **Sin rama viva, `ops lines` mandaba a mergear** un árbol borrado. Reproducido; ahora dice que no hay rama viva y
+   que se saque el registro si no se lo quiere, como `ops line`.
+2. **`ops line` pedía la rama viva dos veces** con el árbol borrado. Ahora la pide una vez y sólo si hace falta.
+3. **Con el registro podado** (`git worktree prune`, o el automático de `git gc` pasado su plazo) el retiro vuelve a
+   mirar sólo `line/<línea>`. Se decidió que no: sin carpeta y sin registro, git no guarda en qué estaba el árbol, y el
+   trabajo sigue en su rama, que el retiro no borra.
+4. **Un árbol bloqueado con la carpeta borrada** no lo saca el retiro ni `ops line`, que usan un solo `--force`. Se
+   decidió que no: el `lock` es una decisión de la persona, y forzarlo la pasaría por encima; el mensaje de git dice cómo.
+5. **El enlace simbólico con la carpeta de la línea entera borrada**: no se reproduce por el CLI —la raíz se resuelve con
+   `real()` antes de armar la ruta—, igual que en la tercera revisión.
+6. **`isLine` (`engine/core/task-trees.js:90`) supone que la rama de la línea existe mientras la línea exista.** Es de la
+   disposición anterior a 0.111.0, donde la carpeta de una línea era `<repo>-<línea>` al lado del repo; se decidió que
+   no, porque hoy los árboles viven en `lines/` y no chocan con los de una tarea.
+7. **Tres lectores de `git worktree list --porcelain`** (`registeredAt`, `worktrees()`, y el de `engine/cli/worktree.js`).
+   Se decidió que no en este caso: unificarlos toca código que no es de éste, y queda como deuda a la vista.
+
+**Prueba real de las rondas 3 y 4**, en el banco `sidecar`: con el árbol en `line/manuel-payments`, un commit sin
+mergear y la carpeta borrada, `ops lines` dice «falta el árbol, que estaba en line/manuel-payments sin llegar a master:
+mergealo antes de rearmarlo»; `ops line` se niega con la misma razón y el comando para sacar el registro; el retiro sale
+en 1; y `git worktree list --porcelain` sigue mostrando el registro con su `HEAD`. Siguiendo el consejo —mergear—,
+`ops line` rearma el árbol y el retiro sale en 0 con «llegó a master».

@@ -190,3 +190,13 @@ están arriba (`today` y el sufijo). Los otros cinco son del 438 y están en su 
   al ejemplo corto la pone en rojo.
 - **`<AAAA-MM-DD>` puede terminar literal en el nombre.** Se decidió que no: es la misma convención con que este
   recorrido pide el parcial y el informe final, y cambiarla acá sola dejaría tres formas en el mismo pedido.
+
+**Revisión final de la rama.** `/code-review high` sobre `origin/main...fix/437-443` entero, ya con los cuatro commits
+reagrupados y el 442 y el 443 adentro: diez hallazgos. Uno es de este caso: que con el contrato sin fecha el pedido dice «como `<AAAA-MM-DD>`-…»
+sin decir que se reemplace. **Se decidió que no**, por tercera vez y por la misma razón: es la convención con que el
+mismo recorrido pide el parcial y el informe final.
+
+**Prueba real con el pedido final.** Dos corridas de un agente real con el pedido tal como quedó —el ejemplo del sufijo
+con el nombre entero—, sacado del motor congelado en `HEAD`: la primera escribió
+`2026-10-23-product-development-frame-analisis.md`, la segunda `…-frame-analisis-2.md`, y el primero quedó intacto
+(`sha1sum -c`: «La suma coincide»). USD 0,64 y 0,71.
