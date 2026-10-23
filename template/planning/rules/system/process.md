@@ -46,9 +46,7 @@ directa de las tres — y la única que no se puede tener de antemano. Cuando na
 que sobreviva, lo que sigue no es escribir un tercero: es mirar la unidad.
 
 Dos rechazos sobre lo mismo dicen más que dos rechazos sobre cosas distintas. Si los dos señalan la misma
-dimensión de la aceptación, ahí está la costura por donde parte. En el caso que originó esto, una crítica
-objetó cómo se probaba un número con unidades y la otra un estado que ya se cumplía: dos formas de
-comprobar dentro de una sola aceptación, que es la definición de dos resultados con vidas distintas.
+dimensión de la aceptación, ahí está la costura por donde parte.
 
 Lo que la hace fácil de perder es que llega **después** de que las otras dos dieron el visto bueno, y las
 dos acertaron: la aceptación era concreta y las condiciones no cruzaban el umbral. Una unidad puede estar
@@ -82,12 +80,10 @@ Las dos barras juntas, y en los dos sentidos: una tarea de tres horas con quince
 el tope de esfuerzo y no se construye nunca; una tarea de una condición y tres días lo pasa por el otro
 lado. Medir una sola deja pasar la mitad de los casos.
 
-**Una decisión no es una unidad de trabajo.** Lo que no tiene nada que construir —decidir, elegir, esperar
-una respuesta— no entra a la cola: queda como acción humana, con la pregunta exacta, o dentro de la tarea que
-la necesita, como precondición. Escrita como tarea pasa las dos barras sin esfuerzo —una condición, casi
-nada que hacer— y gasta una vuelta entera para terminar reportando que había que preguntar. Es raro y sale
-caro: de 432 tareas cerradas en cuatro instancias fue una sola, que se cerró a mano porque la puerta no
-encontró nada que verificar; en otra costó 327k tokens antes de plegarse como precondición.
+**Una decisión no es una unidad de trabajo.** Lo que no tiene nada que construir —decidir, elegir, esperar una
+respuesta— no entra a la cola: queda como acción humana, con la pregunta exacta, o dentro de la tarea que la
+necesita, como precondición. Escrita como tarea pasa las dos barras sin esfuerzo —una condición, casi nada que
+hacer— y gasta una vuelta entera para terminar reportando que había que preguntar. Es raro y sale caro.
 
 
 ## R25 — El identificador de una unidad de trabajo no cambia mientras está viva
@@ -98,11 +94,9 @@ lo único que ata la cola con lo entregado.
 
 Y rompe **sin que nada falle**, que es lo que lo vuelve caro. El estado de una unidad no está escrito en
 ningún lado: se deriva cruzando el identificador entre la cola, lo reclamado y lo hecho. Con el nombre
-cambiado, las dos mitades dejan de cruzarse y cada lado se lee coherente por separado: la cola muestra
-una tarea pendiente que ya está construida, y lo hecho muestra una entrega que nadie pidió. La puerta
-pasa en verde. En la instancia que originó esta regla, una tarea partida en cuatro se cerró con dos
-nombres nuevos y la corrida siguiente gastó 594k tokens para descubrir que tres de ellas ya estaban
-hechas.
+cambiado, las dos mitades dejan de cruzarse y cada lado se lee coherente por separado: la cola muestra una
+tarea pendiente que ya está construida, y lo hecho muestra una entrega que nadie pidió. La puerta pasa en
+verde.
 
 Cuando el nombre de verdad tiene que cambiar, la salida es barata y hay que escribirla: el nuevo lleva
 el viejo al lado —`slug-nuevo (antes: slug-viejo)`— hasta que la unidad se cierra. Ahí el cruce vuelve a
@@ -118,10 +112,8 @@ Un bloqueo, una pausa o un trabajo en curso que se representan con «el archivo 
 fallo que no se ve: resolverlos exige acordarse de borrar, y el que revisa lee lo que el archivo dice
 —que ya está resuelto— mientras el mecanismo sigue leyendo que existe.
 
-Se paga entero y en la puerta de entrada: la corrida arranca, lee el estado completo, y recién ahí
-descubre que lo que la frena es un archivo que alguien dejó puesto. En la instancia que originó esta
-regla pasó dos veces el mismo día —la segunda después de haber dicho que no se repetiría— a 42k tokens
-por vez.
+Se paga entero y en la puerta de entrada: la corrida arranca, lee el estado completo, y recién ahí descubre
+que lo que la frena es un archivo que alguien dejó puesto.
 
 El archivo se queda y su contenido dice en qué estado está. Es lo que ya hace el WIP de este toolkit:
 `status: IDLE` es un estado escrito, no un archivo ausente, así que quien lo lee y quien lo comprueba

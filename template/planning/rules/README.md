@@ -88,6 +88,11 @@ agente, porque le sirve a quien mantiene la regla y no a quien la cumple (caso 4
   rotularon «hipótesis» el default de una herramienta o la base de un porcentaje que la fuente pública de esa misma
   herramienta define; ninguno afirmó nada falso, y los cuatro dejaron a quien recibía la entrega pagando con una
   sesión entera lo que costaba abrir un enlace.
+- **R17** — En el caso que originó el párrafo de los dos rechazos, una crítica objetó cómo se probaba un número con
+  unidades y la otra un estado que ya se cumplía: dos formas de comprobar dentro de una sola aceptación, que es la
+  definición de dos resultados con vidas distintas. Y una decisión escrita como tarea: de 432 tareas cerradas en
+  cuatro instancias fue una sola, que se cerró a mano porque la puerta no encontró nada que verificar; en otra costó
+  327k tokens antes de plegarse como precondición.
 - **R20** — En la sesión que originó la regla, cargos que habían pasado todos sus casos fallaron uno al día
   siguiente sin que el motivo tocara nada de lo que se había cambiado: la varianza que una re-corrida devuelve
   existe.
@@ -98,6 +103,10 @@ agente, porque le sirve a quien mantiene la regla y no a quien la cumple (caso 4
   sesión. Y cuatro corridas seguidas se perdieron en un solo día por una premisa sin abrir —una afirmaba que un
   webhook abría acceso sobre filas terminales, y hace lo contrario—, y las cuatro se veían como un problema de
   implementación.
+- **R25** — En la instancia que originó la regla, una tarea partida en cuatro se cerró con dos nombres nuevos y la
+  corrida siguiente gastó 594k tokens para descubrir que tres de ellas ya estaban hechas.
 - **R26** — En la instancia que originó la regla, varios revisores lanzaron la misma suite: cuatro corridas en
   cuatro minutos. El sistema operativo mató la sesión entera con un pico de 24,2 GB y se llevó puesta la corrida que
   estaba a punto de terminar.
+- **R28** — En la instancia que originó la regla, el archivo que frenaba la corrida pasó dos veces el mismo día —la
+  segunda después de haber dicho que no se repetiría— a 42k tokens por vez.

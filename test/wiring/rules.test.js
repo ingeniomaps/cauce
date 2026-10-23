@@ -219,15 +219,16 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // HUMAN_ACTIONS (caso 234), 52,3 con la comparación de antes y después que R9 pide al cambiar quién
   // hace algo (caso 324), 51,8 al llevar al README la nota de por qué `runs.md` existe (caso 439), 47,2 al
   // nombrar en vez de cargar la doctrina de cómo se prueba, R29 (caso 440), 45,9 al llevar al README el relato de
-  // los incidentes (caso 441), y 46,3 al devolverle a R9 las tres exigencias de R29 que no admiten excepción— y la
-  // ventana se deja angosta a propósito: que esta prueba falle en cada edición de una regla **es** la función, y
-  // es lo único que obliga a medir lo que cada agente paga antes de moverla.
+  // los incidentes (caso 441), 46,3 al devolverle a R9 las tres exigencias de R29 que no admiten excepción, y 45,6
+  // al llevar también el relato de `process.md` (caso 443)— y la ventana se deja angosta a propósito: que esta
+  // prueba falle en cada edición de una regla **es** la función, y es lo único que obliga a medir lo que cada
+  // agente paga antes de moverla.
   //
   // Y las propias son 0,0 acá, que es la propiedad que compra medir lo propio: una instancia recién
   // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
   // aritmética que había que recalcular; ahora es una invariante y por eso se asercia.
   assert.match(salida.stdout,
-    /claude: el bloque de reglas carga 5 archivo\(s\), 46\.\d KB en cada agente \(0\.0 KB propias\)/,
+    /claude: el bloque de reglas carga 5 archivo\(s\), 45\.\d KB en cada agente \(0\.0 KB propias\)/,
     'declara cuántas, cuánto pesan y cuánto de eso puso el proyecto')
 })
 
@@ -243,11 +244,13 @@ test('la nota de por qué una regla vive en su archivo no viaja en lo que carga 
 })
 
 // El incidente que originó cada regla le sirve a quien la mantiene: la regla se queda con su instrucción y su
-// argumento, y el relato vive en el README de reglas, que no se carga (caso 441).
+// argumento, y el relato vive en el README de reglas, que no se carga (casos 441 y 443).
 test('el relato de los incidentes no viaja en lo que carga cada agente', () => {
   const { target } = installedProject('cauce-rules-relato-')
   const incidents = [/siete\s+millones\s+de\s+tokens/, /24,2\s+GB/, /de\s+la\s+línea\s+555\s+a\s+la\s+733/,
-    /cuatro\s+cargos\s+independientes/, /un\s+webhook\s+abría\s+acceso/, /fallaron\s+uno\s+al\s+día\s+siguiente/]
+    /cuatro\s+cargos\s+independientes/, /un\s+webhook\s+abría\s+acceso/, /fallaron\s+uno\s+al\s+día\s+siguiente/,
+    // Los de `process.md`, que el 441 no cubría (caso 443).
+    /un\s+número\s+con\s+unidades/, /de\s+432\s+tareas\s+cerradas/, /594k\s+tokens/, /a\s+42k\s+tokens/]
   const readme = read(path.join(target, 'planning', 'rules', 'README.md'))
   for (const incident of incidents) {
     const loaded = R.split(target).loaded.filter((file) => incident.test(read(path.join(target, file))))
