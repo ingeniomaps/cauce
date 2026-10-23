@@ -1,14 +1,15 @@
 ---
 caso: 443
 titulo: process.md también carga en cada agente el relato de los incidentes que originaron R17, R25 y R28
-estado: abierto
+estado: resuelto
+resuelto-en: 0.115.0
 prioridad: baja
 version-detectada: 0.115.0
 ---
 
 # 443 — `process.md` también carga el relato de sus incidentes
 
-**🔴 abierto** · detectado en 0.115.0 · prioridad **baja**. Sale de la revisión del 441.
+**🟢 resuelto en 0.115.0** · detectado en 0.115.0 · prioridad **baja**. Sale de la revisión del 441.
 
 ## Resumen
 
@@ -63,3 +64,43 @@ La revisión de código de los casos 439 a 441 marcó que `process.md:90,104,123
 
 - Caso 441: el mismo cambio en `conduct.md` y `runs.md`.
 - Caso 439: de donde salió la medición original.
+
+## Cierre
+
+**Resuelto en 0.115.0**, a pedido del dueño el 2026-10-23 («haz el plan y organiza para cerrar el 442 y 443»), en la
+misma versión que el 441, con el mismo criterio y el mismo destino.
+
+El caso, sección por sección:
+
+- **Resumen: las cifras.** Salieron las cuatro frases de incidente de `process.md`: el caso de las dos críticas y las
+  432 tareas con sus 327k tokens (R17), la tarea partida en cuatro y los 594k tokens (R25), y las dos veces del mismo
+  día a 42k tokens (R28). Cada párrafo conserva su argumento: «es raro y sale caro», «rompe sin que nada falle», «se
+  paga entero y en la puerta de entrada». Las frases viven ahora, con su texto, en «De dónde salió cada regla» del
+  README de reglas. El bloque baja de 46,3 a 45,6 KB por agente.
+- **Causa raíz: la prueba buscaba seis frases y no la clase.** Sigue buscando frases, ahora diez: suma las cuatro de
+  éste. Una prueba de la clase —«ninguna frase cuenta un incidente»— exigiría decidir con un patrón qué es relato,
+  que es la lectura que el 441 mostró que un patrón no hace (falsos positivos como el de R22). Se decidió que no.
+- **Fix propuesto, la medición.** Se hizo, abajo, sobre R17: es la frase más conductual de las cuatro.
+- **Tradeoffs.** «El ahorro es chico»: 0,7 KB por agente; se hizo por pedido. «Mueve la ventana de KB»:
+  `test/wiring/rules.test.js` fija 45,x, con la entrada «caso 443».
+
+**Lo que se corrió para saber que funciona.**
+
+- La prueba del 441, «el relato de los incidentes no viaja en lo que carga cada agente», con las cuatro frases nuevas:
+  en rojo antes de moverlas (`/un\s+número\s+con\s+unidades/ sigue en una regla que se carga`), verde después.
+  Mutación en una copia del árbol, devolviendo `process.md` a `HEAD`: el mismo rojo.
+- **Sesiones reales con `claude -p`**, sobre un banco `sidecar` instalado fuera del repositorio, con el motor congelado
+  —`git archive HEAD` para antes, el árbol de trabajo para después; entre las dos plantillas sólo difieren
+  `process.md` y el README de reglas (`diff -rq`)—. El pedido: armar el hito para un cambio del descuento que comercial
+  todavía no decidió, sin nombrar la regla. Lo que R17 prohíbe es escribir la decisión como tarea:
+
+  | | Decisión escrita como tarea | Decisión como acción humana que bloquea la tarea |
+  |---|---|---|
+  | Antes, con el relato | 0/3 | 3/3 |
+  | Después, sin el relato | 0/3 | 3/3 |
+
+  Lo que lo refutaba —más decisiones en la cola después— no ocurrió. `check` pasó en las seis. USD 0,65 a 0,77 por
+  sesión, 4,37 en total.
+- **Lo que no se midió**: los relatos de R25 y R28 no tienen un escenario en sesiones cortas —un renombre a mitad de
+  camino, un archivo de bloqueo olvidado—.
+- `npm run ci`: exit 0, 1591/1591, con la cobertura en su piso.

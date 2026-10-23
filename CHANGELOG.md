@@ -18,11 +18,17 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
-- **El relato de los incidentes que originaron R14, R20, R21, R24 y R26 pasó al README de reglas.** Las reglas
+- **`AGENTS.md` y `planning/delivery/teamwork.md` abren con un índice.** Los dos pasaban de 300 líneas sin forma de
+  navegarlos, y una instancia no podía agregarles el índice sin separarse del molde. Una prueba falla ahora cuando un
+  documento del molde cruza ese tamaño sin índice. Al actualizar no hay nada que hacer (caso 442).
+
+- **El relato de los incidentes que originaron R14, R17, R20, R21, R24, R25, R26 y R28 pasó al README de reglas.** Las reglas
   conservan su instrucción y su argumento; las frases que contaban la sesión que las originó —los siete millones de
   tokens, el pico de 24,2 GB, los cuatro cargos— viven ahora en «De dónde salió cada regla», que no se carga. Con
-  esto y con R29, el bloque de reglas queda en 46,3 KB por agente, desde 52,3. Medido con sesiones reales antes y después sobre un pedido que tienta a
-  suponer el comportamiento de una herramienta: comprobaron el dato los tres agentes en los dos grupos (caso 441).
+  esto y con R29, el bloque de reglas queda en 45,6 KB por agente, desde 52,3. Medido con sesiones reales antes y después sobre un pedido que tienta a
+  suponer el comportamiento de una herramienta, y sobre uno que tienta a escribir una decisión como tarea: los
+  agentes comprobaron el dato, y dejaron la decisión como acción humana, igual con el relato que sin él (casos 441
+  y 443).
 
 - **La doctrina de cómo se prueba sale de R9 y pasa a R29, en `system/proof.md`, nombrada y no cargada.** R9 se queda
   en `commits.md` con lo que rige al entregar —verde no reemplaza al artefacto, el criterio que ninguna prueba aserta no
