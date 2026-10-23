@@ -294,4 +294,7 @@ test('sin rama viva, ops line no manda a mergear a una rama que no hay', () => {
   assert.notEqual(again.status, 0)
   assert.match(again.stderr, /no hay rama viva contra qué comprobarlo/)
   assert.doesNotMatch(again.stderr, /mergeá/)
+  const listed = run(['lines', ops]).stdout
+  assert.match(listed, /falta el árbol, que estaba en feature, y no hay rama viva contra qué comprobarlo/)
+  assert.doesNotMatch(listed, /mergealo/)
 })

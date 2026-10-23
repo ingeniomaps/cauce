@@ -78,12 +78,15 @@ function plant(session, name, repo, warnings) {
   const source = path.join(session, repo)
   const tree = LT.treeOf(session, name, repo)
   const branch = `${BRANCH}${name}`
+  // La rama viva, pedida una vez y sólo si hace falta: la usan el freno del árbol borrado y la rama nueva.
+  let known
+  const liveOf = () => (known === undefined ? (known = LNP.startPoint(source)) : known)
   if (!fs.existsSync(tree)) {
     // Rearmar saca del registro el árbol borrado, y con él lo único que sabe en qué estaba: si era otra rama o un
     // commit suelto con trabajo que no llegó, el árbol nuevo sale de `line/<línea>` y el retiro deja de verlo
     // (caso 438).
     const gone = LNP.registeredAt(source, tree)
-    const live = LNP.startPoint(source)
+    const live = gone && gone.commit && gone.branch !== branch ? liveOf() : ''
     if (gone && gone.commit && gone.branch !== branch && !LNP.reachedLive(source, gone.commit, live)) {
       const where = gone.branch || `el commit ${gone.commit.slice(0, 12)}`
       // `-f -f`: con uno solo, git no saca un árbol bloqueado.
@@ -113,7 +116,7 @@ function plant(session, name, repo, warnings) {
     // `occupied` y no `existsSync`: un enlace roto también ocupa la ruta, y sin verlo el error era el de git, opaco.
     if (occupied(tree)) return { error: `${tree} ya existe y no es un worktree de ${repo}.` }
     const hasBranch = git(source, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
-    if (!hasBranch) from = LNP.startPoint(source)
+    if (!hasBranch) from = liveOf()
     const args = hasBranch ? [tree, branch] : ['-b', branch, tree, ...(from ? [from] : [])]
     fs.mkdirSync(path.dirname(tree), { recursive: true })
     const added = git(source, 'worktree', 'add', ...args)
@@ -316,8 +319,9 @@ function lines(dir, cli) {
         : `  el árbol está en ${repo.head || 'HEAD separado'}, no en ${repo.branch}`
       const replant = repo.head === repo.branch || repo.reached
       const moved = !repo.exists ? (replant ? '  falta el árbol: ops line lo vuelve a armar'
-        : `  falta el árbol, que estaba en ${repo.head || `el commit ${repo.commit.slice(0, 12)}`} sin llegar a `
-          + `${repo.live || 'la rama viva'}: mergealo antes de rearmarlo`)
+        : `  falta el árbol, que estaba en ${repo.head || `el commit ${repo.commit.slice(0, 12)}`}`
+          + (repo.live ? ` sin llegar a ${repo.live}: mergealo antes de rearmarlo`
+            : ', y no hay rama viva contra qué comprobarlo: sacá el registro si no lo querés'))
         : repo.broken ? `  git no dice qué commit tiene: ${LNP.UNREADABLE}`
         : away + (repo.ahead === null ? '  sin rama viva contra qué contar'
           : (repo.ahead || repo.behind ? `  +${repo.ahead} / -${repo.behind}` : ''))
