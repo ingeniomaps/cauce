@@ -19,6 +19,24 @@ const SECTIONS = 4
 // proyecto y no este archivo» → `qué-sabe-este-proyecto-y-no-este-archivo`.
 const anchor = (title) => title.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-')
 
+// Los títulos `##` de un documento con su ancla. Un `##` dentro de un bloque de código es un ejemplo y no un título,
+// y un título repetido lleva el sufijo `-1`, `-2` con que GitHub los separa.
+function sections(text) {
+  const seen = new Map()
+  return [...text.replace(/^```[\s\S]*?^```/gm, '').matchAll(/^## (.+)$/gm)].map((match) => match[1])
+    .filter((title) => title !== 'Contenido').map((title) => {
+      const base = anchor(title)
+      const count = seen.get(base) || 0
+      seen.set(base, count + 1)
+      return { title, anchor: count ? `${base}-${count}` : base }
+    })
+}
+
+test('los títulos dentro de un bloque de código no cuentan, y uno repetido lleva su sufijo', () => {
+  const text = '# Doc\n\n## Uno\n\n```markdown\n## Ejemplo\n```\n\n## Dos\n\n## Uno\n'
+  assert.deepEqual(sections(text).map((one) => one.anchor), ['uno', 'dos', 'uno-1'])
+})
+
 // Del disco y no de `git ls-files`: sin git la lista salía vacía y la prueba pasaba sin mirar nada.
 const markdown = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
   const at = path.join(dir, entry.name)
@@ -32,11 +50,11 @@ test('todo documento largo del molde tiene un índice que enlaza cada sección',
   const missing = []
   for (const file of docs) {
     const text = fs.readFileSync(path.join(ROOT, file), 'utf8')
-    const titles = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1]).filter((one) => one !== 'Contenido')
-    if (text.split('\n').length <= LONG || titles.length < SECTIONS) continue
+    const found = sections(text)
+    if (text.split('\n').length <= LONG || found.length < SECTIONS) continue
     const index = (text.match(/^## Contenido\n([\s\S]*?)\n## /m) || [])[1] || ''
-    for (const title of titles) {
-      if (!index.includes(`](#${anchor(title)})`)) missing.push(`${file}: ${title}`)
+    for (const { title, anchor: target } of found) {
+      if (!index.includes(`](#${target})`)) missing.push(`${file}: ${title}`)
     }
   }
   assert.deepEqual(missing, [], 'secciones sin entrada en el índice de su documento')
