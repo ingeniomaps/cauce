@@ -14,6 +14,54 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.115.0] - 2026-10-23
+
+### Cambiado
+
+- **El relato de los incidentes que originaron R14, R20, R21, R24 y R26 pasó al README de reglas.** Las reglas
+  conservan su instrucción y su argumento; las frases que contaban la sesión que las originó —los siete millones de
+  tokens, el pico de 24,2 GB, los cuatro cargos— viven ahora en «De dónde salió cada regla», que no se carga. Con
+  esto y con R29, el bloque de reglas queda en 46,3 KB por agente, desde 52,3. Medido con sesiones reales antes y después sobre un pedido que tienta a
+  suponer el comportamiento de una herramienta: comprobaron el dato los tres agentes en los dos grupos (caso 441).
+
+- **La doctrina de cómo se prueba sale de R9 y pasa a R29, en `system/proof.md`, nombrada y no cargada.** R9 se queda
+  en `commits.md` con lo que rige al entregar —verde no reemplaza al artefacto, el criterio que ninguna prueba aserta no
+  está cubierto, una prueba que nunca se vio en rojo no prueba nada— y con las tres exigencias que no admiten
+  excepción: la mutación se declara por escrito, una quita no se entrega sin su aserción de ausencia vista en rojo, y
+  una quita casi nunca se ve como una. Cómo se cumplen, la precondición, la deprecación, la confirmación que estorba y
+  los dependientes de una quita pasan a R29, con `aplica: al escribir o revisar una aceptación, una prueba, o un cambio
+  que quita o reemplaza algo`. Medido con sesiones reales antes y después: con un pedido de quitar un comportamiento,
+  los tres agentes abrieron el archivo y probaron la quita por ausencia, viéndola en rojo, igual que con R9 cargada.
+  **Al actualizar**: si sobrescribiste `commits.md`, tu copia todavía trae la doctrina entera, y R29 la repite; sacala
+  de ahí o sobrescribí también `proof.md`. Las lecciones que corrigen sobre esa doctrina pasan a citar
+  `proof.md#R29`, así que el conteo de correcciones repetidas no junta las nuevas con las que citaban `commits.md#R9`
+  (caso 440).
+
+- **La nota de por qué las reglas de `system/runs.md` viven ahí pasó al README de reglas.** Explicaba el override por
+  nombre de archivo (caso 160), le sirve a quien mantiene las reglas y no a quien las cumple, y cada agente la cargaba:
+  el bloque de reglas baja de 52,3 a 51,8 KB por agente. Ninguna regla cambió de texto. Al actualizar no hay nada que
+  hacer (caso 439).
+
+### Corregido
+
+- **`flow` ya no pisa el análisis de etapa de la corrida anterior.** Cada etapa lo escribía en
+  `planning/reports/<etapa>-analisis.md`, y la corrida siguiente —u otro recorrido con una etapa del mismo nombre,
+  como `frame`— lo reemplazaba sin aviso, dejando a los informes anteriores citando una ruta que ya decía otra cosa.
+  Ahora es `<AAAA-MM-DD>-<recorrido>-<etapa>-analisis.md`, y si ya existe, `…-analisis-2.md`. Los archivos con
+  el nombre viejo que tengas en `planning/reports/` se quedan donde están; nada los lee por nombre (caso 437).
+- **El retiro de una línea comprueba lo que tiene su árbol, no el nombre de su rama.** Con el árbol en otra rama —un
+  `git switch` adentro, o la rama renombrada— el retiro (`ops lines join` sobre una línea declarada) miraba sólo
+  `line/<línea>`, decía «llegó» con trabajo sin mergear, y `--apply` quitaba el árbol y la declaración. Ahora se niega
+  mientras el commit del árbol no esté en la rama viva, esté en la rama que esté —también con su carpeta borrada, porque
+  git sigue teniendo su HEAD—, y dice qué hacer con esa rama; si ya llegó, retira y nombra la rama
+  que queda, porque sólo borra `line/<línea>`. `ops lines` dice en qué rama está el árbol y cuenta lo que tiene, y el
+  aviso de solape entre líneas ve sus archivos; `ops line` avisa al reusar un árbol que está en otra rama, y no rearma
+  uno borrado cuyo registro tiene trabajo que no llegó. Una carpeta
+  de la línea que perdió su `.git`, o un árbol sin commits, ya no se leen como el repositorio que los contiene ni se
+  retiran. **Al actualizar**, si tus ramas de
+  línea tienen otro nombre en el remoto —una por persona, por ejemplo—, el nombre local puede seguir siendo
+  `line/<línea>` y el del remoto fijarse al empujar: `git push origin line/<línea>:<rama-remota>` (caso 438).
+
 ## [0.114.0] - 2026-10-22
 
 ### Agregado
