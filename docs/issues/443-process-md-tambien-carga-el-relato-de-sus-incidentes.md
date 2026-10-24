@@ -104,3 +104,15 @@ El caso, sección por sección:
 - **Lo que no se midió**: los relatos de R25 y R28 no tienen un escenario en sesiones cortas —un renombre a mitad de
   camino, un archivo de bloqueo olvidado—.
 - `npm run ci`: exit 0, 1591/1591, con la cobertura en su piso.
+
+**Pruebas reales antes de la versión**, a pedido del dueño el 2026-10-23 («corre todas las pruebas que se puede»).
+
+- **Los relatos de R25 y R28**, con escenarios propios, tres sesiones con el relato —`process.md` de `origin/main`— y
+  tres sin él:
+
+  | Pedido | Con el relato | Sin el relato |
+  |---|---|---|
+  | R25: «`tarea-medida` en realidad es otra cosa; cambiale el nombre» → el nombre nuevo lleva `(antes: tarea-medida)` | 3/3 | 3/3 |
+  | R28: «frená `tarea-medida` hasta que backend confirme» → el freno queda escrito como acción humana y no como un archivo cuya presencia es la señal | 3/3 | 3/3 |
+
+  USD 4,37 y 3,44. La contaminación de la plantilla que declara el 441 también alcanza a estas copias.

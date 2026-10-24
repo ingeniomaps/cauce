@@ -149,3 +149,23 @@ El caso, sección por sección:
    frases de este caso. No le tocaba a éste, que se acotó a los archivos que nombraba el 439: **salió como caso propio,
    el 443**, con su medición. Y R26 sigue abriendo con «los tres se ganaron con una corrida perdida»: se dejó, porque
    es cierto y el incidente sigue a un archivo de distancia.
+
+**Pruebas reales antes de la versión**, a pedido del dueño el 2026-10-23 («corre todas las pruebas que se puede»).
+
+- **El relato de R24**, con un escenario propio: la aceptación de una tarea cita una ubicación que una nota da como
+  `app/src/clean.js:10`, cuando el borrado está en la 16. Tres sesiones con el relato —`conduct.md` de `origin/main`— y
+  tres sin él, sobre la misma instancia; entre las dos plantillas sólo difieren `conduct.md` y `process.md`.
+
+  | | La aceptación cita la línea real |
+  |---|---|
+  | Con el relato | 3/3, y dos dicen que la nota estaba mal |
+  | Sin el relato | 3/3 |
+
+  USD 3,64.
+- **Lo que sigue sin medirse**: los relatos de R20, R21 y R26. Piden repetir una medición con días de diferencia, cortar
+  y retomar una corrida larga, y varios revisores lanzando la misma suite hasta presionar la memoria —que es el daño que
+  R26 existe para evitar—; ninguno aparece en una sesión corta.
+- **Una contaminación de la medición, declarada (R22)**: un `/flow` que corría a la vez escribió un análisis de etapa en
+  la plantilla de la que salieron las copias «sin relato» de este y del 443 —el workflow instalado lleva la ruta
+  absoluta de la instancia donde se instaló—. Es un informe en `planning/reports/` y ninguno de los tres escenarios lo
+  lee para responder.

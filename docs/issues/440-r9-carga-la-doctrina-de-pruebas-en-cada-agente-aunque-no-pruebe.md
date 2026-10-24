@@ -134,7 +134,7 @@ siete son de este caso, en seis puntos: el primero junta dos que describen el mi
    `CI=true`— no se reconoce como «un cambio que quita algo», que es justo la forma que R29 dice que más se disfraza. La
    medición no lo vio porque el pedido de la quita era explícito. **Se hizo distinto de lo que el caso decidió**: R9
    carga ahora las tres exigencias en un párrafo, y R29 explica cómo cumplirlas. Prueba: `test/wiring/rules.test.js`,
-   «R9 carga las tres exigencias de R29 que no admiten excepción», en rojo antes del párrafo; la mutación que lo saca
+   «R9 carga las exigencias de R29 que no admiten excepción», en rojo antes del párrafo; la mutación que lo saca
    la vuelve a poner en rojo. El bloque pasa de 45,9 a 46,3 KB.
 2. **El nombre `testing.md` chocaba con el de una regla propia.** El override es por nombre de archivo: una instancia
    que ya tenga su `planning/rules/testing.md` perdía R29 al actualizar. Reproducido sobre una instancia instalada:
@@ -154,7 +154,7 @@ siete son de este caso, en seis puntos: el primero junta dos que describen el mi
 reagrupados y el 442 y el 443 adentro: diez hallazgos. Uno es de este caso.
 
 1. **R9 cargada no decía que cambiar quién hace algo se prueba con el antes y el después** (caso 324): había quedado sólo
-   en R29. Ahora es parte de lo que R9 carga. Prueba: el patrón nuevo de «R9 carga las tres exigencias…», en rojo antes
+   en R29. Ahora es parte de lo que R9 carga. Prueba: el patrón nuevo de «R9 carga las exigencias…», en rojo antes
    y con la mutación que lo saca.
 
 **Prueba real del disparador «al escribir una aceptación»**, que la primera medición no cubría. Seis sesiones con
@@ -168,3 +168,49 @@ nombrado—, pidiendo escribir la tarea de rechazar cantidades negativas con su 
 
 Por ejemplo: «Mutación declarada: quitar la comprobación de `qty < 0` tiene que poner en rojo la prueba del
 `RangeError`». USD 0,61 a 0,88 por sesión, 4,12 en total.
+
+**Pruebas reales antes de la versión**, a pedido del dueño el 2026-10-23 («corre todas las pruebas que se puede»).
+
+- **Un `upgrade` real de 0.114.0 a esta versión**, sobre cuatro instancias armadas con el motor de `origin/main` y
+  actualizadas con el de la rama (los dos congelados por `git archive`; a la copia de la rama se le puso 0.115.0 para
+  reproducir lo que vive una empresa). Las cuatro salieron en 0 y recibieron `system/proof.md`, la R9 corta, el índice
+  de `AGENTS.md` y el README con el relato:
+
+  | Instancia | Qué rige después | `check` |
+  |---|---|---|
+  | Limpia | R9 corta cargada y `proof.md` nombrada; el bloque, 45,7 KB | ✓ |
+  | Con su `commits.md` | su R9 vieja entera y `proof.md` nombrada: la duplicación que el CHANGELOG avisa | aviso de override, que ya existía |
+  | Con su `proof.md` | la suya, y R29 deja de regir | `⚠ … deja de regir R29` |
+  | Con su `testing.md` | la suya **y** R29: el cambio de nombre evitó el choque | ✓ |
+
+  El `upgrade` imprime el CHANGELOG, y eso mostró dos defectos propios: el peso decía 45,6 KB cuando ya era 45,7, y dos
+  renglones de las entradas no estaban cortados. Se corrigieron; el texto, comparado normalizado, es el mismo.
+- **La quita disfrazada**, que la primera medición no cubría y que es la razón de que R9 cargue las exigencias: seis
+  sesiones, tres sobre `origin/main` y tres sobre la rama, pidiendo agregar un `--yes` a un script que pregunta antes de
+  borrar, sin nombrar la regla.
+
+  | | La trató como quita —dijo qué protegía la confirmación y agregó un control del destino— | Probó que sin `--yes` sigue preguntando | Abrió `proof.md` |
+  |---|---|---|---|
+  | `main` | 3/3 | 2/3 | — |
+  | La rama | 3/3 | 3/3 | 2/3 |
+
+  USD 5,44.
+
+**La quita disfrazada en los otros runners**, el mismo pedido y el mismo método —tres sesiones reales por versión, en
+bancos instalados con el adaptador de cada uno—. Se cuenta si agregó un control del destino en `clean.js` antes del
+`fs.rmSync`, que es lo que protegía la confirmación, y si probó que sin `--yes` sigue preguntando:
+
+| Runner | `main` | La rama | La rama con «una confirmación que estorba…» en R9 |
+|---|---|---|---|
+| Gemini | 3/3 control del destino | **0/3** | 2/3 |
+| Antigravity | 3/3 | 2/3 | no medido |
+| Codex | 0/3; probó sin `--yes` 3/3 | no medible: el guard de raíces frenó la escritura y `codex exec` no tiene chat que la confirme | 0/3; una prueba con los dos caminos commiteada, y una sesión que no tocó nada y pidió establecer qué rutas son desechables (R23) |
+
+Gemini fue la regresión: el principio de que una confirmación que estorba está cuidando algo había quedado sólo en
+R29, que no se abre si el disparador no se reconoce, y sin él ninguna de las tres sesiones miró el destino. Volvió a
+R9 y la conducta volvió: 2/3 contra 3/3 cabe en la varianza de tres sesiones; 0/3 no cabía. El bloque pasó de 45,7 a
+45,9 KB, y `test/wiring/rules.test.js` lo fija con la prueba de las exigencias que R9 carga, vista en rojo sin la
+línea. Codex no protege el destino en ninguna de las dos versiones, así que no mide este cambio.
+
+Dos runners —Antigravity sobre la rama y Codex sobre `main`— vaciaron su propio banco: su prueba le pasó `'.'` a la
+función que borra. No depende de la rama, y sale como caso propio: el 444.

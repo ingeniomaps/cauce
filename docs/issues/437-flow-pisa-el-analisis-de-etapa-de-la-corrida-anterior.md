@@ -200,3 +200,19 @@ mismo recorrido pide el parcial y el informe final.
 con el nombre entero—, sacado del motor congelado en `HEAD`: la primera escribió
 `2026-10-23-product-development-frame-analisis.md`, la segunda `…-frame-analisis-2.md`, y el primero quedó intacto
 (`sha1sum -c`: «La suma coincide»). USD 0,64 y 0,71.
+
+**Pruebas reales antes de la versión**, a pedido del dueño el 2026-10-23 («corre todas las pruebas que se puede»).
+
+- **Un `/flow` real de punta a punta**, con `claude -p "/flow que el alta de vendedores no genere duplicados"` sobre
+  una instancia `sidecar` con el motor de la rama congelado e instalado en su propia carpeta. El recorrido corrió entero
+  en unos cuatro minutos: el agente del contrato trajo la fecha desde `ops context` —lo que las corridas anteriores no
+  probaban, porque la fecha se les pasaba a mano—, la etapa `frame` escribió
+  `planning/reports/2026-10-23-product-development-frame-analisis.md`, su gate no se cumplió, se escribió la acción humana
+  y el informe parcial, y **el parcial cita el análisis por su nombre nuevo**, dos veces: quien sintetiza leyó la ruta
+  que la etapa devolvió. USD 2,72.
+- **La primera corrida de esa prueba estuvo mal armada, y se repitió.** Se copió una instancia ya instalada a otra
+  carpeta, y el workflow instalado lleva la ruta absoluta de la instancia donde se instaló: corrió en la copia y quiso
+  escribir en el original, y el guard de archivos frenó la acción humana y el parcial por estar fuera de las raíces de
+  la sesión. No es un defecto de este caso —una instancia no se mueve después de instalar—, pero lo que se mide en una
+  copia hay que instalarlo en la copia.
+

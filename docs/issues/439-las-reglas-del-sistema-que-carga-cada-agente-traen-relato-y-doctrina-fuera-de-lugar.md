@@ -196,3 +196,9 @@ La partición, ítem por ítem:
   los cinco archivos de `system/` y no el README, y en la instancia `adoptadas` aparece 0 veces en `runs.md` y 1 en el
   README.
 - `npm run ci`: exit 0, 1587/1587, con la cobertura en su piso.
+
+**Pruebas reales antes de la versión**, a pedido del dueño el 2026-10-23 («corre todas las pruebas que se puede»).
+
+- **Un `upgrade` real** de una instancia de 0.114.0 a esta versión, con el motor de `origin/main` y el de la rama
+  congelados por `git archive`: sale en 0, y la nota de `runs.md` llega al README de reglas de la instancia, que no se
+  carga. El detalle de los cuatro escenarios está en el 440.

@@ -323,3 +323,13 @@ mergear y la carpeta borrada, `ops lines` dice «falta el árbol, que estaba en 
 mergealo antes de rearmarlo»; `ops line` se niega con la misma razón y el comando para sacar el registro; el retiro sale
 en 1; y `git worktree list --porcelain` sigue mostrando el registro con su `HEAD`. Siguiendo el consejo —mergear—,
 `ops line` rearma el árbol y el retiro sale en 0 con «llegó a master».
+
+**Pruebas reales antes de la versión**, a pedido del dueño el 2026-10-23 («corre todas las pruebas que se puede»).
+
+- **Árbol bloqueado con la carpeta borrada**, en el banco `sidecar` (`git worktree lock` y la carpeta borrada): `ops line`
+  y el retiro salen en 1 con el mensaje de git —«no se pueden eliminar árbol de trabajo bloqueado; usa 'remove -f -f'
+  para forzar o desbloquear primero»— y la línea sigue declarada en `ops.config.json`. Es lo decidido: el motor no
+  fuerza un `lock`.
+- **Árbol sin commits** (`switch --orphan`): con su carpeta, `ops lines` y el retiro dicen «git no dice qué commit tiene
+  … no es un árbol, o no tiene commits» y el retiro sale en 1; con la carpeta borrada, el retiro sale en 0 —no había nada
+  que perder—, la declaración se va y `git worktree list` queda sólo con la principal.
