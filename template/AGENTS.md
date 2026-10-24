@@ -299,6 +299,14 @@ que la persona pide en el chat nombrando el remoto y la rama, o el que ella conf
 Reescribir historia publicada no entra en el trato: un `push --force` se frena con la llave prendida o
 apagada.
 
+**La rama viva es la rama por defecto del remoto**, la que git anota como `origin/HEAD`; `main` y `master`
+cuentan siempre. Si la tuya es otra —`develop`, por ejemplo—, se declara en cada repositorio con
+`git remote set-head origin develop`, y no hay un campo en `ops.config.json` que la repita. De ella dependen de
+dónde nace una línea nueva, qué commits y pushes frenan los guards por caer en la viva, contra qué se cuenta lo
+que lleva una línea y cuándo `ops lines join` la da por llegada. Sin declararla, en un repositorio que trabaja
+sobre `develop` la línea nace de `main` —`ops line` lo muestra en su «sale de»— y el commit directo sobre
+`develop` no se frena.
+
 Commitear en la rama viva es aparte y también se pide: `autobuild` corta una rama por tarea,
 `<tipo>/<slug>`, y commitea ahí sin consultar. Sólo commitea en la viva si el proyecto declara
 `runner.commitToLiveBranch: true`. Y no depende de quién lo recuerde: un guard frena cualquier commit que
