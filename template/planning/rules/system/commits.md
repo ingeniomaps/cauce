@@ -40,13 +40,14 @@ del test, no su salida: un exit code no distingue la prueba que sostiene el crit
 Y una prueba que nunca se vio fallar no muestra que su aserción funcione: el rojo previo es lo único que
 la separa de una que pasa haga lo que haga el código.
 
-Tres cosas de cómo se prueba no admiten excepción, y por eso viajan acá: **la mutación se declara por escrito**
+Cuatro cosas de cómo se prueba no admiten excepción, y por eso viajan acá: **la mutación se declara por escrito**
 en la aceptación que la pide —qué se rompe y qué prueba tiene que ponerse roja—; **una quita no se entrega sin su
-aserción de ausencia**, vista en rojo devolviendo lo quitado; y **una quita casi nunca se ve como una quita**: una
+aserción de ausencia**, vista en rojo devolviendo lo quitado; **una quita casi nunca se ve como una quita**: una
 bandera que se pone o una variable que se exporta «para que deje de…» lo es, y cambiar quién hace algo, o cómo,
-también, y se sostiene sólo con la salida de antes y la de después sobre el mismo caso. Cómo se cumplen, y la deprecación y la
-confirmación que estorba, viven en R29 (`proof.md`): se lee al escribir o revisar una aceptación, una prueba, o un
-cambio que quita o reemplaza algo.
+también, y se sostiene sólo con la salida de antes y la de después sobre el mismo caso; y **una confirmación que
+estorba casi siempre está cuidando algo**: antes de callarla se establece qué protege, y se le quita a la herramienta
+el motivo de preguntar, no la pregunta. Cómo se cumplen, y la deprecación, viven en R29 (`proof.md`): se lee al
+escribir o revisar una aceptación, una prueba, o un cambio que quita o reemplaza algo.
 
 ## R10 — Publicación humana por defecto
 

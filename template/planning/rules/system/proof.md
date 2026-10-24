@@ -6,9 +6,9 @@ aplica: al escribir o revisar una aceptación, una prueba, o un cambio que quita
 
 Cómo se ve que una prueba cuida lo que nombra, y cómo se prueba lo que un cambio quita. Rige al escribir o
 revisar una aceptación, una prueba, o un cambio que quita o reemplaza algo. Lo que de esto no admite excepción
-—declarar la mutación, no entregar una quita sin su aserción de ausencia, y que una quita casi nunca se ve como
-una— R9 lo carga en cada agente, porque una regla que sólo se abre cuando el disparador se reconoce no alcanza
-para una puerta.
+—declarar la mutación, no entregar una quita sin su aserción de ausencia, que una quita casi nunca se ve como
+una, y que una confirmación que estorba casi siempre está cuidando algo— R9 lo carga en cada agente, porque una
+regla que sólo se abre cuando el disparador se reconoce no alcanza para una puerta.
 
 ## R29 — Una prueba se ve romper, y una quita se prueba por ausencia
 

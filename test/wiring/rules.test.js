@@ -220,10 +220,10 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // hace algo (caso 324), 51,8 al llevar al README la nota de por qué `runs.md` existe (caso 439), 47,2 al
   // nombrar en vez de cargar la doctrina de cómo se prueba, R29 (caso 440), 45,9 al llevar al README el relato de
   // los incidentes (caso 441), 46,3 al devolverle a R9 las tres exigencias de R29 que no admiten excepción, 45,6
-  // al llevar también el relato de `process.md` (caso 443), y 45,7 al sumarle a R9 el antes y el después de cambiar
-  // quién hace algo— y la ventana se deja angosta a propósito: que esta
-  // prueba falle en cada edición de una regla **es** la función, y es lo único que obliga a medir lo que cada
-  // agente paga antes de moverla.
+  // al llevar también el relato de `process.md` (caso 443), 45,7 al sumarle a R9 el antes y el después de cambiar
+  // quién hace algo, y 45,9 al sumarle que una confirmación que estorba está cuidando algo— y la ventana se deja
+  // angosta a propósito: que esta prueba falle en cada edición de una regla **es** la función, y es lo único que
+  // obliga a medir lo que cada agente paga antes de moverla.
   //
   // Y las propias son 0,0 acá, que es la propiedad que compra medir lo propio: una instancia recién
   // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
@@ -261,9 +261,9 @@ test('el relato de los incidentes no viaja en lo que carga cada agente', () => {
 })
 
 // Lo que no admite excepción no puede quedar en un archivo que se lee sólo si el disparador se reconoce: al escribir
-// una prueba no se abrió nunca (0/3, caso 440), y una quita casi nunca se ve como una. Esas tres exigencias viajan
+// una prueba no se abrió nunca (0/3, caso 440), y una quita casi nunca se ve como una. Esas exigencias viajan
 // cargadas en R9; R29 explica cómo cumplirlas.
-test('R9 carga las tres exigencias de R29 que no admiten excepción', () => {
+test('R9 carga las exigencias de R29 que no admiten excepción', () => {
   const { target } = installedProject('cauce-rules-r9-')
   const loaded = R.split(target).loaded.map((file) => read(path.join(target, file))).join('\n')
   for (const [rule, pattern] of [
@@ -271,6 +271,8 @@ test('R9 carga las tres exigencias de R29 que no admiten excepción', () => {
     ['una quita sin su aserción de ausencia no se entrega',
       /una\s+quita\s+no\s+se\s+entrega\s+sin\s+su\s+aserción\s+de\s+ausencia/],
     ['una quita casi nunca se ve como una', /una\s+quita\s+casi\s+nunca\s+se\s+ve\s+como\s+una\s+quita/],
+    ['una confirmación que estorba se calla sólo sabiendo qué protege',
+      /una\s+confirmación\s+que\s+estorba\s+casi\s+siempre\s+está\s+cuidando\s+algo/],
     ['cambiar quién hace algo se compara antes y después',
       /cambiar\s+quién\s+hace\s+algo[\s\S]{0,80}antes\s+y\s+(la\s+)?de\s+después/],
   ]) {
