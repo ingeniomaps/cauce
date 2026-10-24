@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.115.1] - 2026-10-24
+
+### Cambiado
+
+- **`AGENTS.md` dice cómo declarar la rama viva cuando no es `main`.** Es la rama por defecto del remoto, y se cambia
+  con `git remote set-head origin <rama>` en cada repositorio; decía cuál era, pero no cómo nombrar otra ni qué
+  depende de ella: de dónde nace una línea nueva, qué commits y pushes frenan los guards, contra qué se cuenta una
+  línea y cuándo su retiro la da por llegada. **Al actualizar**, si tu rama viva es `develop` u otra, corré
+  `git remote set-head origin <rama>` en cada repositorio: sin eso tus líneas nacen de `main` y un commit directo
+  sobre esa rama no se frena.
+
 ## [0.115.0] - 2026-10-23
 
 ### Cambiado
