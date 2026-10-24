@@ -69,6 +69,14 @@ diseño — eso vive en el commit y en el código.
   commits, ya no se leen como el repositorio que los contiene ni se retiran. **Al actualizar**, si tus ramas de línea
   tienen otro nombre en el remoto —una por persona, por ejemplo—, el nombre local puede seguir siendo `line/<línea>` y
   el del remoto fijarse al empujar: `git push origin line/<línea>:<rama-remota>` (caso 438).
+- **Un commit desde una carpeta que git no toma como repositorio dice por qué, y no la ayuda de `git diff`.** Los
+  guards que leen el índice frenaban bien, pero ahí git no dice la causa: rechaza `--cached` y suelta su ayuda entera,
+  y el mensaje la pegaba con un consejo sobre variables que no venía al caso. Un agente lo leyó como un hook roto.
+  Ahora cita lo que git responde sobre esa carpeta —que no es un repositorio, o que es de otro dueño y cómo
+  habilitarlo—. Al actualizar no hay nada que hacer.
+- **`teamwork.md` dice que `codex exec` lanzado por otro proceso va con la entrada cerrada**, `< /dev/null`. Sin eso,
+  con la entrada que no es una terminal, Codex la espera antes de empezar y la sesión queda colgada sin avisar: medido
+  con `codex-cli 0.163.0`, seis sesiones quietas 2h41m en `Reading additional input from stdin...`.
 
 ## [0.114.0] - 2026-10-22
 
