@@ -257,6 +257,10 @@ como si fuera de ella. Sin la variable, esa sesión entera queda sin `plan-first
 la sesión cuenta como de la persona, y lo que el guard frena se aprueba por archivo. El comando del recorrido
 (`/autobuild <línea>`) no necesita la variable: un comando de Cauce nunca contó como pedido de la persona.
 
+**`codex exec` lanzado por otro proceso se lanza con la entrada cerrada**: `codex exec "…" < /dev/null`. Si la entrada no
+es una terminal y nadie la cierra, Codex la espera antes de empezar —`Reading additional input from stdin...`— y la
+sesión queda colgada sin gastar nada ni avisar.
+
 ### Qué runner puede tomar qué rol
 
 Cualquiera de los cuatro que Cauce soporta puede ser líder —escribe la aceptación—, programador o revisor, con los guards
