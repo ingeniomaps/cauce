@@ -338,12 +338,14 @@ function isCommit(command) {
 // que no hay ningún consumidor que sólo quiera consultar el índice.
 function stagedFiles(dir) {
   const result = spawnSync('git', ['-C', dir, 'diff', '--cached', '--name-only'], { encoding: 'utf8' })
-  if (result.status !== 0) {
-    const why = (result.stderr || '').trim() || (result.error && result.error.message) || 'git falló'
-    block(`no se pudo leer el índice de ${dir} (${why}). Un guard que no puede verificar no autoriza. `
-      + 'Si usaste una variable en `git -C`, escribí la ruta literal.')
-  }
-  return result.stdout.trim().split('\n').filter(Boolean)
+  if (result.status === 0) return result.stdout.trim().split('\n').filter(Boolean)
+  // Fuera de un repositorio que pueda usar, git no dice por qué: suelta la ayuda de `--no-index`, que un agente leyó
+  // como hook roto. El porqué —no es un repositorio, o es de otro dueño— lo da `rev-parse`, y se cita ése.
+  if (/--no-index/.test(result.stderr || '')) block(`git no toma ${dir} como repositorio: `
+    + spawnSync('git', ['-C', dir, 'rev-parse'], { encoding: 'utf8' }).stderr.trim())
+  const why = (result.stderr || '').trim() || (result.error && result.error.message) || 'git falló'
+  block(`no se pudo leer el índice de ${dir} (${why}). Un guard que no puede verificar no autoriza. `
+    + 'Si usaste una variable en `git -C`, escribí la ruta literal.')
 }
 
 // El índice que un hook de pre-ejecución lee es el de **antes** del comando, y el comando puede ser
