@@ -134,11 +134,22 @@ function retire(root, name, cli) {
   const repos = LT.trees(root).filter((one) => one.line === name).map(({ repo, source, tree }) => {
     const live = LNP.startPoint(source)
     const has = branchExists(source, branch)
-    // Sin rama no hay nada que perder; con rama, llegó si la viva la contiene.
-    const merged = !has || Boolean(live && git(source, 'merge-base', '--is-ancestor', branch, live).status === 0)
     const exists = fs.existsSync(tree)
-    const dirty = exists ? (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length : 0
-    return { repo, source, tree, branch, live, has, merged, exists, dirty }
+    // Con la carpeta borrada, lo que el árbol tenía sigue en el registro de git.
+    const at = exists ? LNP.treeAt(tree) : LNP.registeredAt(source, tree)
+    const reached = (ref) => LNP.reachedLive(source, ref, live)
+    // Llegó si la viva contiene la rama de la línea y también lo que tiene el árbol, esté en la rama que esté: mirar
+    // sólo `line/<línea>` daba por llegado el trabajo de un árbol que se había ido a otra (caso 438). Sin rama ni
+    // árbol no hay nada que perder; un árbol del que git no sabe decir qué commit tiene no llega.
+    const treeReached = at ? !at.commit || reached(at.commit) : !exists
+    const merged = treeReached && (!has || (at && at.branch === branch) || reached(branch))
+    const dirty = exists && at
+      ? (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length : 0
+    const head = at ? at.branch : branch
+    return {
+      repo, source, tree, branch, head, commit: at ? at.commit : '', broken: exists && !at,
+      registered: !exists && at ? at.path : '', treeReached, live, has, merged, exists, dirty,
+    }
   })
   const ST = require('../planning/state')
   const state = ST.snapshot(path.join(root, 'planning'))
@@ -155,6 +166,11 @@ function retire(root, name, cli) {
     for (const one of repos) {
       if (one.exists) {
         const removed = git(one.source, 'worktree', 'remove', one.tree)
+        if (removed.status !== 0) {
+          return fail(`git worktree remove falló en ${one.repo}: ${(removed.stderr || '').trim()}`, REFUSED)
+        }
+      } else if (one.registered) {
+        const removed = git(one.source, 'worktree', 'remove', '--force', one.registered)
         if (removed.status !== 0) {
           return fail(`git worktree remove falló en ${one.repo}: ${(removed.stderr || '').trim()}`, REFUSED)
         }
@@ -179,6 +195,10 @@ function retire(root, name, cli) {
   for (const one of repos) {
     console.log(`  ${one.repo}  ${one.merged ? `llegó a ${one.live || '(sin rama viva)'}` : heldWhy(one, false)}`
       + `${one.merged && one.dirty ? `, pero ${one.dirty} cambio(s) sin commitear en ${one.tree}` : ''}`)
+    // El retiro borra `line/<línea>` y nada más: la rama a la que se fue el árbol se queda, y sin decirlo nadie la ve.
+    if (one.merged && one.head && one.head !== branch && branchExists(one.source, one.head)) {
+      console.log(`  queda ${one.head} en ${one.repo}: no es de la línea, y el retiro no la borra`)
+    }
   }
   if (milestones.length) {
     console.log(`  quedan hitos de la línea sin terminar: ${milestones.join(', ')} — sin la línea no los toma `
@@ -193,6 +213,11 @@ function retire(root, name, cli) {
 
 const heldWhy = (one, named = true) => `${named ? `${one.repo}: ` : ''}${one.merged
   ? `${one.dirty} cambio(s) sin commitear en ${one.tree}`
+  : one.broken ? `git no dice qué commit tiene ${one.tree}: ${LNP.UNREADABLE}`
+  : one.live && !one.treeReached && one.head !== one.branch
+    ? `el árbol ${one.tree} está en ${one.head || 'HEAD separado'}, que no llegó a ${one.live}: mergeá `
+      + `${one.head || `el commit ${one.commit.slice(0, 12)}`} a ${one.live} —por PR, como cualquier rama— y volvé a `
+      + 'retirarla'
   : one.live ? `${one.branch} no llegó a ${one.live}`
     : `no tiene rama viva contra qué comprobar que ${one.branch} llegó`}`
 

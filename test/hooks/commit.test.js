@@ -126,6 +126,14 @@ test('un índice que no se puede leer no autoriza el commit', () => {
   assert.throws(() => execute('governance', { cwd: root, tool_input: { command: 'git -C $OPS commit -m x' } }),
     /escribí la ruta literal/)
 
+  // Desde una carpeta sin git también frena, y lo dice en vez de pegar la ayuda de `git diff` y hablar de variables.
+  const loose = tempRoot('ops-hook-sin-git-'), notRepo = /no es un repositorio git|not a git repository/
+  for (const guard of ['governance', 'dependencies', 'verify']) {
+    blocked(guard, { cwd: loose, tool_input: { command: 'git commit -m x' } }, notRepo)
+  }
+  assert.throws(() => execute('governance', { cwd: loose, tool_input: { command: 'git commit -m x' } }),
+    (error) => !/--no-index|opción|unknown option|ruta literal/.test(error.message))
+
   // La contracara, que este mismo arreglo estuvo a punto de romper: un commit cuyo **mensaje** cita ese
   // comando no está eligiendo repositorio, lo está citando. El commit que explica todo esto se bloqueó
   // a sí mismo hasta que `gitDirectory` empezó a leer el mensaje como dato.

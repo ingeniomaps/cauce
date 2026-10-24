@@ -64,24 +64,24 @@ test('el protocolo manda contrastar la línea de una tarea contra su descripció
   }
 })
 
-// R9 exige la mutación desde siempre; lo nuevo es que quede **escrita**. Se afirma por ejes y no por
-// redacción, por lo mismo que la pasada de lanes de acá arriba.
+// R29 exige la mutación desde siempre —antes en R9, de donde salió en el caso 440—; lo nuevo es que quede
+// **escrita**. Se afirma por ejes y no por redacción, por lo mismo que la pasada de lanes de acá arriba.
 //
 // Lo propio de éste es qué se pierde si se cae: la mutación que no se escribió no la puede reponer quien
 // revisa, sólo rehacerla. Los tres ejes se comprobaron por separado — quitar cualquiera de los tres deja
 // la puerta en rojo sola.
-test('R9 pide que la mutación se declare, no sólo que se corra', () => {
+test('R29 pide que la mutación se declare, no sólo que se corra', () => {
   const raiz = path.resolve(__dirname, '..', '..')
-  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
-  const r9 = commits.split(/^##\s+/m).find((parte) => /^R9\b/.test(parte))
-  assert.ok(r9, 'R9 existe en commits.md')
+  const testing = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'proof.md'), 'utf8')
+  const r29 = testing.split(/^##\s+/m).find((parte) => /^R29\b/.test(parte))
+  assert.ok(r29, 'R29 existe en proof.md')
 
   for (const [eje, patron] of [
     ['la mutación se escribe, no sólo se corre', /mutación se declara por escrito/],
     ['dice qué romper y qué tiene que ponerse rojo', /qué se rompe\s*\n?\s*y qué prueba tiene que ponerse roja/],
     ['sin eso, revisar obliga a volver a correrla', /volver a correrla/],
   ]) {
-    assert.match(r9, patron, `R9 perdió el eje: ${eje}`)
+    assert.match(r29, patron, `R29 perdió el eje: ${eje}`)
   }
 })
 
@@ -156,12 +156,12 @@ test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () =
 //
 // Lo propio de éste es que la regla tiene dos bordes y sin los dos se vuelve su propio opuesto: sin la
 // condición de borrado, deprecar es no quitar nunca; sin «lo que nadie llama se borra», es deprecar
-// todo. R9 ya decía cómo se prueba una quita y nunca cuándo se puede hacer.
-test('R9 dice cuándo se puede quitar lo que está en uso', () => {
+// todo. R29 ya decía cómo se prueba una quita y nunca cuándo se puede hacer.
+test('R29 dice cuándo se puede quitar lo que está en uso', () => {
   const raiz = path.resolve(__dirname, '..', '..')
-  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
-  const r9 = commits.split(/^##\s+/m).find((parte) => /^R9\b/.test(parte))
-  assert.ok(r9, 'R9 existe en commits.md')
+  const testing = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'proof.md'), 'utf8')
+  const r29 = testing.split(/^##\s+/m).find((parte) => /^R29\b/.test(parte))
+  assert.ok(r29, 'R29 existe en proof.md')
 
   for (const [eje, patron] of [
     ['lo que está en uso se depreca, no se corta', /está en uso no se corta: se depreca/],
@@ -170,7 +170,7 @@ test('R9 dice cuándo se puede quitar lo que está en uso', () => {
     ['sin eso queda para siempre', /código muerto con un cartel puesto/],
     ['y lo que nadie llama se borra', /Lo que no llama nadie es otra cosa y se borra/],
   ]) {
-    assert.match(r9, patron, `R9 perdió el eje: ${eje}`)
+    assert.match(r29, patron, `R29 perdió el eje: ${eje}`)
   }
 })
 
@@ -297,7 +297,7 @@ test('los rangos que declara el README de reglas son los que hay', () => {
   // Y ningún archivo del sistema queda sin declarar.
   const archivos = fs.readdirSync(path.join(rules, 'system')).filter((name) => name.endsWith('.md'))
   assert.equal(declarado.length, archivos.length, 'cada archivo del sistema tiene su línea')
-  assert.equal(cubiertos.size, 28, 'las veintiocho reglas están declaradas en alguna línea')
+  assert.equal(cubiertos.size, 29, 'las veintinueve reglas están declaradas en alguna línea')
 })
 
 // La misma lección que la plantilla de épica: lo que se copia no puede traer algo que haya que borrar

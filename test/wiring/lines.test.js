@@ -64,7 +64,7 @@ test('una línea vive en lines/<línea>/<repo>, sin configuración propia, y la 
   assert.deepEqual(fs.readdirSync(path.join(base, 'lines', 'pagos')), ['pagos'])
   assert.deepEqual(report.unlinked, [])
 
-  // Lo que se quitó (R9). La línea no tiene carpeta de sesión al lado, ni configuración de runner, ni las
+  // Lo que se quitó (R29). La línea no tiene carpeta de sesión al lado, ni configuración de runner, ni las
   // instrucciones, ni su propia instancia, ni el motor enlazado: la sesión que la lleva es la de siempre.
   assert.equal(fs.existsSync(`${base}-pagos`), false, 'armó la carpeta de sesión de al lado')
   for (const absent of ['.claude', 'CLAUDE.md', 'ops', 'node_modules']) {

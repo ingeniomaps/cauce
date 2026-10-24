@@ -22,8 +22,9 @@ const START_AT = '<!-- cauce:reglas inicio'
 const LEGACY_IMPORT = /^@\S*planning\/rules\/\S+\.md\s*$/
 
 // Una regla que declara `aplica:` rige igual, y se carga sólo cuando se toca esa superficie. Lo que se
-// ahorra está medido: el contexto de arranque de **cada** agente son ~16 K tokens sólo de lo que Cauce
-// pone, y una regla que importa en una tarea de cada cien se leía cien veces (caso 141).
+// ahorra está medido: cuando se midió, el contexto de arranque de **cada** agente eran ~16 K tokens sólo de
+// lo que Cauce ponía, y una regla que importa en una tarea de cada cien se leía cien veces (caso 141). El
+// peso de hoy lo dice `weightLine`.
 //
 // El default es lo que vuelve seguro esto: sin el campo, la regla se carga como siempre. Al revés —pedir
 // que declare `siempre` para seguir cargándose— cada instancia habría perdido sus reglas propias en el

@@ -162,7 +162,7 @@ async function runFlow(changes = {}, options = {}) {
     // recorrido la lanza, vuelve en la línea siguiente y el arnés ya la anotó. Así fue como una prueba
     // en verde aserció durante una versión entera la fila de HUMAN_ACTIONS que en una corrida real nunca
     // llegaba al disco — la precondición que medía no ocurre por el camino de producción, que es lo que
-    // R9 nombra en su último párrafo. Caso 087.
+    // R29 nombra de la precondición de un caso. Caso 087.
     await new Promise((resolve) => { setImmediate(resolve) })
     asked.push(key)
     prompts.push({ key, prompt, agentType: options.agentType || '' })

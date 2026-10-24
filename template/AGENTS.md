@@ -7,6 +7,17 @@ proyecto; las reglas propias viven junto a `system/`, y donde una de ellas sobre
 restringe una del sistema, rige la del proyecto. Lo que este proyecto tiene de propio
 —su mapa, sus integraciones, hasta dónde llega la autonomía acá— vive en `organization/workspace.md`.
 
+## Contenido
+
+- [Qué sabe este proyecto y no este archivo](#qué-sabe-este-proyecto-y-no-este-archivo)
+- [Cargos disponibles](#cargos-disponibles)
+- [Qué se puede editar y qué no](#qué-se-puede-editar-y-qué-no)
+- [Cómo leer el estado](#cómo-leer-el-estado)
+- [Cómo tomar trabajo](#cómo-tomar-trabajo)
+- [Con qué runner arrancás](#con-qué-runner-arrancás)
+- [Autonomía](#autonomía)
+- [Definición de terminado](#definición-de-terminado)
+
 ## Qué sabe este proyecto y no este archivo
 
 El mapa real —qué se construye, qué repos existen, qué está fuera de alcance—, las integraciones con su

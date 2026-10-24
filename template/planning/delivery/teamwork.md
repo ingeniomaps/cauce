@@ -5,6 +5,18 @@
 Una instancia la comparte un equipo, y lo que comparte es de tres clases distintas. Casi todos los
 choques entre dos personas —o entre dos agentes— salen de tratarlas igual.
 
+## Contenido
+
+- [Los tres anillos](#los-tres-anillos)
+- [Un árbol de trabajo por persona o por agente](#un-árbol-de-trabajo-por-persona-o-por-agente)
+- [Tomar una tarea sin pisarse](#tomar-una-tarea-sin-pisarse)
+- [Varios agentes en una misma máquina](#varios-agentes-en-una-misma-máquina)
+- [Pasar una tarea a otra persona](#pasar-una-tarea-a-otra-persona)
+- [Una sesión construye y otra revisa](#una-sesión-construye-y-otra-revisa)
+- [Cuando el equipo crece o se achica](#cuando-el-equipo-crece-o-se-achica)
+- [Dónde va cada cosa que el equipo se dice](#dónde-va-cada-cosa-que-el-equipo-se-dice)
+- [Lo que git tiene que saber](#lo-que-git-tiene-que-saber)
+
 ## Los tres anillos
 
 | Anillo | Qué vive ahí | Escritores | Frecuencia |
@@ -244,6 +256,10 @@ pedido con que un coordinador lanza a un programador —`claude -p "…"`, `code
 como si fuera de ella. Sin la variable, esa sesión entera queda sin `plan-first` ni la gobernanza. Con ella, ningún mensaje de
 la sesión cuenta como de la persona, y lo que el guard frena se aprueba por archivo. El comando del recorrido
 (`/autobuild <línea>`) no necesita la variable: un comando de Cauce nunca contó como pedido de la persona.
+
+**`codex exec` lanzado por otro proceso se lanza con la entrada cerrada**: `codex exec "…" < /dev/null`. Si la entrada no
+es una terminal y nadie la cierra, Codex la espera antes de empezar —`Reading additional input from stdin...`— y la
+sesión queda colgada sin gastar nada ni avisar.
 
 ### Qué runner puede tomar qué rol
 

@@ -17,10 +17,11 @@ const { spawnSync } = require('node:child_process')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
 const LNP = require('../planning/lines')
 const LT = require('../core/line-trees')
+const { shellWord } = require('../core/files')
 const { BRANCH, NAME } = LNP
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
-const real = (dir) => (fs.existsSync(dir) ? fs.realpathSync(dir) : dir)
+const { real } = LNP
 const isDir = (dir) => {
   try { return fs.statSync(dir).isDirectory() } catch { return false }
 }
@@ -60,7 +61,7 @@ function unlinkSiblings(session, name) {
 // viaja. Sólo si es la raíz de uno: una carpeta adentro de otro repositorio ajeno no es asunto de la línea.
 function ignoreLines(session) {
   const top = git(session, 'rev-parse', '--show-toplevel')
-  if (top.status !== 0 || real(top.stdout.trim()) !== real(session)) return
+  if (top.status !== 0 || !LNP.ownRoot(session, top.stdout.trim())) return
   const common = git(session, 'rev-parse', '--git-common-dir').stdout.trim()
   const file = path.join(path.resolve(session, common), 'info', 'exclude')
   const entry = `/${LT.DIR}/`
@@ -77,14 +78,45 @@ function plant(session, name, repo, warnings) {
   const source = path.join(session, repo)
   const tree = LT.treeOf(session, name, repo)
   const branch = `${BRANCH}${name}`
-  if (!fs.existsSync(tree)) git(source, 'worktree', 'remove', '--force', tree)
+  // La rama viva, pedida una vez y sólo si hace falta: la usan el freno del árbol borrado y la rama nueva.
+  let known
+  const liveOf = () => (known === undefined ? (known = LNP.startPoint(source)) : known)
+  if (!fs.existsSync(tree)) {
+    // Rearmar saca del registro el árbol borrado, y con él lo único que sabe en qué estaba: si era otra rama o un
+    // commit suelto con trabajo que no llegó, el árbol nuevo sale de `line/<línea>` y el retiro deja de verlo
+    // (caso 438).
+    const gone = LNP.registeredAt(source, tree)
+    const live = gone && gone.commit && gone.branch !== branch ? liveOf() : ''
+    if (gone && gone.commit && gone.branch !== branch && !LNP.reachedLive(source, gone.commit, live)) {
+      const where = gone.branch || `el commit ${gone.commit.slice(0, 12)}`
+      // `-f -f`: con uno solo, git no saca un árbol bloqueado.
+      const drop = `\`git -C ${shellWord(source)} worktree remove -f -f ${shellWord(gone.path)}\``
+      return { error: `el árbol borrado de ${repo} estaba en ${where}, ${live
+        ? `que no llegó a ${live}: ${gone.branch ? `mergeá ${gone.branch}` : 'guardalo en una rama y mergeala'} a `
+          + `${live} antes de rearmarlo`
+        : 'y no hay rama viva contra qué comprobarlo'}. Si no lo querés, sacá el registro con ${drop}.` }
+    }
+    if (gone) {
+      const removed = git(source, 'worktree', 'remove', '--force', gone.path)
+      if (removed.status !== 0) {
+        return { error: `git worktree remove falló en ${repo}: ${(removed.stderr || '').trim()}` }
+      }
+    }
+  }
   const reused = registered(source, tree)
+  // Un árbol que se reusa puede estar en otra rama que la de la línea: se sigue usando, y lo que se ve es lo que tiene.
+  const at = reused && LNP.treeAt(tree)
+  if (reused && !at) warnings.push(`${repo}: git no dice qué commit tiene ${tree}: ${LNP.UNREADABLE}.`)
+  if (at && at.branch !== branch) {
+    warnings.push(`${repo}: el árbol está en ${at.branch || 'HEAD separado'}, no en ${branch}; la línea sigue lo que `
+      + 'tenga ese árbol, y la rama que no es la suya no la borra el retiro.')
+  }
   let from = ''
   if (!reused) {
     // `occupied` y no `existsSync`: un enlace roto también ocupa la ruta, y sin verlo el error era el de git, opaco.
     if (occupied(tree)) return { error: `${tree} ya existe y no es un worktree de ${repo}.` }
     const hasBranch = git(source, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
-    if (!hasBranch) from = LNP.startPoint(source)
+    if (!hasBranch) from = liveOf()
     const args = hasBranch ? [tree, branch] : ['-b', branch, tree, ...(from ? [from] : [])]
     fs.mkdirSync(path.dirname(tree), { recursive: true })
     const added = git(source, 'worktree', 'add', ...args)
@@ -140,8 +172,7 @@ const occupied = (at) => {
   try { return Boolean(fs.lstatSync(at)) } catch { return false }
 }
 
-const registered = (source, tree) => (git(source, 'worktree', 'list', '--porcelain').stdout || '').split('\n')
-  .some((entry) => entry.trim() === `worktree ${tree}`)
+const registered = (source, tree) => Boolean(LNP.registeredAt(source, tree))
 
 // `core.hooksPath` vive en la configuración del repositorio y la comparten todos sus worktrees, pero la carpeta
 // a la que suele apuntar —`.husky/_`— la genera la instalación y git la ignora: un árbol nuevo no la trae, y
@@ -284,9 +315,16 @@ function lines(dir, cli) {
     console.log(`\n${one.name}  (línea declarada)`)
     if (!one.repos.length) console.log(`  ${unworked(one.name)}`)
     for (const repo of one.repos) {
-      const moved = !repo.exists ? '  falta el árbol: ops line lo vuelve a armar'
-        : repo.ahead === null ? '  sin rama viva contra qué contar'
-          : (repo.ahead || repo.behind ? `  +${repo.ahead} / -${repo.behind}` : '')
+      const away = repo.head === repo.branch ? ''
+        : `  el árbol está en ${repo.head || 'HEAD separado'}, no en ${repo.branch}`
+      const replant = repo.head === repo.branch || repo.reached
+      const moved = !repo.exists ? (replant ? '  falta el árbol: ops line lo vuelve a armar'
+        : `  falta el árbol, que estaba en ${repo.head || `el commit ${repo.commit.slice(0, 12)}`}`
+          + (repo.live ? ` sin llegar a ${repo.live}: mergealo antes de rearmarlo`
+            : ', y no hay rama viva contra qué comprobarlo: sacá el registro si no lo querés'))
+        : repo.broken ? `  git no dice qué commit tiene: ${LNP.UNREADABLE}`
+        : away + (repo.ahead === null ? '  sin rama viva contra qué contar'
+          : (repo.ahead || repo.behind ? `  +${repo.ahead} / -${repo.behind}` : ''))
       console.log(`  ${repo.repo}  ${repo.tree}  (${repo.branch})${moved}`
         + `${repo.dirty ? `  · ${repo.dirty} sin commitear` : ''}`)
     }

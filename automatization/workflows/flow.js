@@ -298,6 +298,10 @@ function levels(stages) {
 const runStage = (stage, index) => {
   const visible = handoffs.filter((entry) => ancestors(stage, index).includes(entry.id))
   const open = openConditions(visible)
+  // Fecha y recorrido delante del id: con el id solo, cada corrida pisaba el análisis de la anterior, y varios
+  // recorridos comparten ids de etapa (caso 437). `today` es opcional en el contrato: sin él, la fecha la pone el
+  // agente.
+  const analysis = `${contract.today || '<AAAA-MM-DD>'}-${FLOW}-${stage.id}-analisis`
   const previous = visible.length
     ? `Handoffs previos:\n${visible.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
       + (open.length
@@ -315,7 +319,8 @@ const runStage = (stage, index) => {
     `tiene que respetar; y gate=no-cumplido si no se cumple, y ahí explicá en missing qué falta y en ` +
     `humanAction la acción concreta que lo desbloquea. En openQuestions marcá blocking=true sólo en la que ` +
     `condiciona la decisión siguiente. ` +
-    `Escribí primero tu análisis completo en ${REPORTS} como ${stage.id}-analisis.md —ahí no hay ` +
+    `Escribí primero tu análisis completo en ${REPORTS} como ${analysis}.md ` +
+    `(si ya existe, no lo pises: agregá -2, -3… antes de .md, como ${analysis}-2.md) —ahí no hay ` +
     `límite de extensión y es lo que lee quien sintetiza al final— y devolvé esa ruta en analysis.\n` +
     // Se pide menos de lo que el esquema admite. Con el pedido igual al techo, un agente real devolvió 1001 y
     // 1015 caracteres cinco veces seguidas y la etapa murió: el modelo no cuenta con precisión, y el margen

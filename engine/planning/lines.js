@@ -30,6 +30,47 @@ function currentLine(root) {
   return branch.startsWith(BRANCH) ? branch.slice(BRANCH.length) : ''
 }
 
+const real = (dir) => (fs.existsSync(dir) ? fs.realpathSync(dir) : dir)
+// Si `top`, la raíz que git dio preguntando desde `dir`, es `dir` mismo. Si no lo es, `git -C dir` subió hasta el
+// repositorio que contiene a la carpeta y contestó por él.
+const ownRoot = (dir, top) => real(top) === real(dir)
+
+// Dónde está de verdad el árbol de una línea: su rama ('' en HEAD separado) y su commit. La rama de una línea se deduce
+// de su nombre, y eso dice dónde **debería** estar, no dónde está: un `git switch` adentro lo saca sin que nada se
+// entere (caso 438). `null` si git no puede decir qué commit tiene: la carpeta no es un árbol por sí misma, o no tiene
+// ninguno. Una sola llamada: corre por cada árbol de cada línea en `ops lines`.
+function treeAt(tree) {
+  const read = git(tree, 'rev-parse', '--show-toplevel', 'HEAD', '--symbolic-full-name', 'HEAD')
+  const [top, commit, ref = ''] = (read.stdout || '').trim().split('\n')
+  if (read.status !== 0 || !commit || !ownRoot(tree, top)) return null
+  return { branch: ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : '', commit }
+}
+
+// Por qué git no dice qué tiene un árbol, y qué hacer: lo dicen el retiro, `ops lines` y `ops line`. Borrarla sólo
+// destraba si lo que tenía ya llegó: si no, `ops line` se niega a rearmarla.
+const UNREADABLE = 'no es un árbol, o no tiene commits. Si lo que tenía ya llegó a la rama viva, borrá la carpeta y '
+  + '`ops line` la vuelve a armar'
+
+// Si la rama viva contiene `ref`. Sin rama viva no hay contra qué, y no llega.
+const reachedLive = (source, ref, live = startPoint(source)) => Boolean(live)
+  && git(source, 'merge-base', '--is-ancestor', ref, live).status === 0
+
+// Lo mismo para un árbol cuya carpeta ya no está y que git sigue teniendo registrado, o `null` si no lo tiene. Borrar
+// la carpeta no se lleva lo que el árbol tenía: su HEAD sigue en el registro, y ése es el que hay que mirar.
+function registeredAt(source, tree) {
+  const where = (dir) => path.join(real(path.dirname(dir)), path.basename(dir))
+  const listed = git(source, 'worktree', 'list', '--porcelain')
+  const entry = (listed.stdout || '').split('\n\n').map((block) => block.split('\n'))
+    .find((lines) => lines[0].startsWith('worktree ') && where(lines[0].slice('worktree '.length)) === where(tree))
+  if (!entry) return null
+  const field = (name) => (entry.find((line) => line.startsWith(`${name} `)) || '').slice(name.length + 1)
+  // Un árbol sin commits figura con `HEAD 0000…`: no hay nada que perder, y se dice con el commit vacío. `path` es
+  // como git lo tiene escrito, que es como hay que nombrarlo para sacarlo del registro.
+  const head = field('HEAD')
+  return { branch: field('branch').replace(/^refs\/heads\//, ''), commit: /^0+$/.test(head) ? '' : head,
+    path: entry[0].slice('worktree '.length) }
+}
+
 // La línea de la sesión que pregunta: la que dice `--line`, que tiene que estar declarada, y sin argumento la
 // principal. `root` es el planning. Una línea pedida que no existe se dice: contestar como la principal le
 // daría a esa sesión el trabajo de otra.
@@ -244,10 +285,24 @@ function declaredStatus(root, instance) {
     const repos = trees.filter((one) => one.line === name).map(({ repo, source, tree }) => {
       const branch = `${BRANCH}${name}`
       const exists = fs.existsSync(tree)
-      const moved = measure(source, startPoint(source), branch)
-      byRepo.set(repo, [...(byRepo.get(repo) || []), { line: name, files: moved.files }])
-      const dirty = exists ? (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length : 0
-      return { repo, tree, branch, exists, ahead: moved.ahead, behind: moved.behind, dirty }
+      const at = exists ? treeAt(tree) : registeredAt(source, tree)
+      // Se cuenta lo que tiene el árbol, no la rama que debería tener: con el árbol en otra, la de la línea no dice
+      // nada de su trabajo, y el solape se quedaba sin sus archivos. Lo que la rama de la línea tenga sin mergear
+      // también entra al solape: el árbol se fue de ella, pero eso va a llegar a la viva igual.
+      const from = startPoint(source)
+      const moved = measure(source, from, at && at.commit ? at.commit : branch)
+      const files = at && at.commit && at.branch !== branch
+        ? [...new Set([...moved.files, ...measure(source, from, branch).files])].sort() : moved.files
+      byRepo.set(repo, [...(byRepo.get(repo) || []), { line: name, files }])
+      const dirty = exists && at
+        ? (git(tree, 'status', '--porcelain').stdout || '').split('\n').filter(Boolean).length : 0
+      return {
+        repo, tree, branch, head: at ? at.branch : branch, commit: at ? at.commit : '', live: from,
+        // Sólo lo lee el listado de un árbol borrado: para uno en disco sería una llamada a git que nadie usa.
+        reached: !exists && Boolean(at && (!at.commit || reachedLive(source, at.commit, from))), broken: exists && !at,
+        exists,
+        ahead: moved.ahead, behind: moved.behind, dirty,
+      }
     })
     const own = scope(state.milestones, name).milestones
     const slugs = new Set(own.flatMap((one) => one.tasks.map((task) => task.slug)))
@@ -322,7 +377,7 @@ function mergeWarnings(root, milestones, tableRows) {
 }
 
 module.exports = {
-  BRANCH, NAME, currentLine, sessionLine, LEGACY, startPoint, branchOf, scope, whereToTake, lineErrors, worktrees,
-  placement, claimsElsewhere, status, resumeAdvice,
+  BRANCH, NAME, real, currentLine, treeAt, registeredAt, reachedLive, ownRoot, UNREADABLE, sessionLine, LEGACY,
+  startPoint, branchOf, scope, whereToTake, lineErrors, worktrees, placement, claimsElsewhere, status, resumeAdvice,
   classifyConflicts, duplicateEpics, mergeWarnings,
 }

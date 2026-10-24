@@ -3,13 +3,6 @@
 Lo que cuesta una vuelta de trabajo y qué la vuelve aprovechable: dónde se va el contexto, cuándo una
 medición vale, cómo se retoma lo que se cortó y qué no se toca mientras se mide.
 
-Viven acá y no en `process.md` por una razón medida. El override de una regla es por nombre de archivo,
-así que una empresa que escribe su propio `process.md` —reemplazar «pensar antes de editar» por su
-versión es lo primero que hace cualquiera— se llevaba puestas también éstas, que nadie reemplaza y que
-`effectiveRules` dejaba de entregarle a todo agente. Una instancia real lo vivió: las declaró «adoptadas
-por referencia» en una tabla de prosa que el motor no lee, y aun así dos de ellas no estaban rigiendo el
-día que le costaron una sesión entera (caso 160).
-
 ## R16 — El costo es el contexto, no las palabras
 
 Cada llamada reenvía el contexto entero, así que gasta más quien da más vueltas que quien escribe más.
@@ -53,10 +46,8 @@ entonces se declara así y se repite varias veces, porque una sola no estima nad
 esperando que esta vez salga distinto no es ninguna de las dos: es comprar un número nuevo con la misma
 información.
 
-Un cambio que no toca lo que el caso mide no compra una re-corrida. La medición vuelve a costar entera y
-lo que devuelve es la varianza que ya estaba ahí — y esa varianza existe: en la sesión que originó esta
-regla, cargos que habían pasado todos sus casos fallaron uno al día siguiente sin que el motivo tocara
-nada de lo que se había cambiado.
+Un cambio que no toca lo que el caso mide no compra una re-corrida. La medición vuelve a costar entera y lo
+que devuelve es la varianza que ya estaba ahí.
 
 Y lo que se repite es el caso que falló, no la batería. Un sujeto que falla uno de seis vuelve a correr
 ese uno: los otros cinco veredictos ya se tienen, y volver a mirarlos cuesta lo mismo que obtenerlos la
@@ -103,10 +94,7 @@ sólo lo que falta, usarlo no es una optimización: es la forma correcta de la c
 
 Un mecanismo de reanudación se comprueba, nunca se supone —R14 no hace excepción con las herramientas
 propias—. Después de reanudar se mira si efectivamente reutilizó: cuántas unidades de trabajo nuevas
-aparecieron, cuánto se gastó. La sesión que originó esta regla creyó estar reanudando desde caché y
-volvió a correr entero dos veces: siete millones de tokens para un solo veredicto, con los archivos de
-las etapas ya cumplidas a la vista en el directorio de trabajo, y con el filtro que lo evitaba escrito
-por quien reanudaba tres horas antes.
+aparecieron, cuánto se gastó.
 
 ## R22 — Lo que se mide no se toca mientras se mide
 
@@ -138,9 +126,7 @@ tres se ganaron con una corrida perdida.
 que juzga a otro frena trabajo que no pidió juzgar y lo hace con reglas que ese equipo no escribió.
 
 **Acota su costo, con un tope y con un candado.** Dos revisores lanzando la misma suite son dos corridas
-simultáneas, y ninguna de las dos lo sabe. En la instancia que originó esta regla fueron cuatro en cuatro
-minutos: el sistema operativo mató la sesión entera con un pico de 24,2 GB y se llevó puesta la corrida
-que estaba a punto de terminar. Y lo que ya se midió no se vuelve a medir: si el build dejó su
+simultáneas, y ninguna de las dos lo sabe. Y lo que ya se midió no se vuelve a medir: si el build dejó su
 resultado, la puerta lo lee en vez de rehacerlo.
 
 **No escribe en el árbol que juzga.** Un formateador con `--fix`, un build que limpia su salida, un

@@ -14,6 +14,70 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.115.0] - 2026-10-23
+
+### Cambiado
+
+- **`AGENTS.md` y `planning/delivery/teamwork.md` abren con un índice.** Los dos pasaban de 300 líneas sin forma de
+  navegarlos, y una instancia no podía agregarles el índice sin separarse del molde. Una prueba falla ahora cuando un
+  documento del molde cruza ese tamaño sin índice. Al actualizar no hay nada que hacer (caso 442).
+
+- **El relato de los incidentes que originaron R14, R17, R20, R21, R24, R25, R26 y R28 pasó al README de reglas.** Las
+  reglas conservan su instrucción y su argumento; las frases que contaban la sesión que las originó —los siete
+  millones de tokens, el pico de 24,2 GB, los cuatro cargos— viven ahora en «De dónde salió cada regla», que no se
+  carga. Con esto, con R29 y con lo que R9 volvió a cargar de ella, el bloque de reglas queda en 45,9 KB por agente,
+  desde 52,3. Medido con sesiones reales antes y después sobre un pedido que tienta a suponer el comportamiento de una
+  herramienta, y sobre uno que tienta a escribir una decisión como tarea: los agentes comprobaron el dato, y dejaron la
+  decisión como acción humana, igual con el relato que sin él (casos 441 y 443).
+
+- **La doctrina de cómo se prueba sale de R9 y pasa a R29, en `system/proof.md`, nombrada y no cargada.** R9 se queda
+  en `commits.md` con lo que rige al entregar —verde no reemplaza al artefacto, el criterio que ninguna prueba aserta
+  no está cubierto, una prueba que nunca se vio en rojo no prueba nada— y con las cuatro cosas que no admiten
+  excepción: la mutación se declara por escrito, una quita no se entrega sin su aserción de ausencia vista en rojo, una
+  quita casi nunca se ve como una —tampoco cuando lo que cambia es quién hace algo, que se prueba con el antes y el
+  después—, y una confirmación que estorba casi siempre está cuidando algo. Cómo se cumplen, la precondición, la
+  deprecación y los dependientes de una quita pasan a R29, con `aplica: al escribir o revisar una aceptación, una
+  prueba, o un cambio que quita o reemplaza algo`. Medido con sesiones reales antes y después: con un pedido de quitar
+  un comportamiento, los tres agentes abrieron el archivo y probaron la quita por ausencia, viéndola en rojo, igual que
+  con R9 cargada. Y con un pedido de agregar un `--yes` a un script que confirma antes de borrar, medido también en
+  Codex, Gemini y Antigravity: Gemini dejó de proteger el destino del borrado cuando la confirmación que estorba quedó
+  sólo en R29 (de 3/3 a 0/3), y volvió a 2/3 con esa línea de nuevo en R9. **Al actualizar**: si sobrescribiste
+  `commits.md`, tu copia todavía trae la doctrina entera, y R29 la repite; sacala de ahí o sobrescribí también
+  `proof.md`. Las lecciones que corrigen sobre esa doctrina pasan a citar `proof.md#R29`, así que el conteo de
+  correcciones repetidas no junta las nuevas con las que citaban `commits.md#R9` (caso 440).
+
+- **La nota de por qué las reglas de `system/runs.md` viven ahí pasó al README de reglas.** Explicaba el override por
+  nombre de archivo (caso 160), le sirve a quien mantiene las reglas y no a quien las cumple, y cada agente la
+  cargaba: el bloque de reglas baja de 52,3 a 51,8 KB por agente. Ninguna regla cambió de texto. Al actualizar no hay
+  nada que hacer (caso 439).
+
+### Corregido
+
+- **`flow` ya no pisa el análisis de etapa de la corrida anterior.** Cada etapa lo escribía en
+  `planning/reports/<etapa>-analisis.md`, y la corrida siguiente —u otro recorrido con una etapa del mismo nombre,
+  como `frame`— lo reemplazaba sin aviso, dejando a los informes anteriores citando una ruta que ya decía otra cosa.
+  Ahora es `<AAAA-MM-DD>-<recorrido>-<etapa>-analisis.md`, y si ya existe, `…-analisis-2.md`. Los archivos con el
+  nombre viejo que tengas en `planning/reports/` se quedan donde están; nada los lee por nombre (caso 437).
+- **El retiro de una línea comprueba lo que tiene su árbol, no el nombre de su rama.** Con el árbol en otra rama —un
+  `git switch` adentro, o la rama renombrada— el retiro (`ops lines join` sobre una línea declarada) miraba sólo
+  `line/<línea>`, decía «llegó» con trabajo sin mergear, y `--apply` quitaba el árbol y la declaración. Ahora se niega
+  mientras el commit del árbol no esté en la rama viva, esté en la rama que esté —también con su carpeta borrada,
+  porque git sigue teniendo su HEAD—, y dice qué hacer con esa rama; si ya llegó, retira y nombra la rama que queda,
+  porque sólo borra `line/<línea>`. `ops lines` dice en qué rama está el árbol y cuenta lo que tiene, y el aviso de
+  solape entre líneas ve sus archivos; `ops line` avisa al reusar un árbol que está en otra rama, y no rearma uno
+  borrado cuyo registro tiene trabajo que no llegó. Una carpeta de la línea que perdió su `.git`, o un árbol sin
+  commits, ya no se leen como el repositorio que los contiene ni se retiran. **Al actualizar**, si tus ramas de línea
+  tienen otro nombre en el remoto —una por persona, por ejemplo—, el nombre local puede seguir siendo `line/<línea>` y
+  el del remoto fijarse al empujar: `git push origin line/<línea>:<rama-remota>` (caso 438).
+- **Un commit desde una carpeta que git no toma como repositorio dice por qué, y no la ayuda de `git diff`.** Los
+  guards que leen el índice frenaban bien, pero ahí git no dice la causa: rechaza `--cached` y suelta su ayuda entera,
+  y el mensaje la pegaba con un consejo sobre variables que no venía al caso. Un agente lo leyó como un hook roto.
+  Ahora cita lo que git responde sobre esa carpeta —que no es un repositorio, o que es de otro dueño y cómo
+  habilitarlo—. Al actualizar no hay nada que hacer.
+- **`teamwork.md` dice que `codex exec` lanzado por otro proceso va con la entrada cerrada**, `< /dev/null`. Sin eso,
+  con la entrada que no es una terminal, Codex la espera antes de empezar y la sesión queda colgada sin avisar: medido
+  con `codex-cli 0.163.0`, seis sesiones quietas 2h41m en `Reading additional input from stdin...`.
+
 ## [0.114.0] - 2026-10-22
 
 ### Agregado

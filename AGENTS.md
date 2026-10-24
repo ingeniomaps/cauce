@@ -229,7 +229,7 @@ mergear no entra a la propuesta mensual y su hallazgo se pierde.
 
 Lo que **no** se hace es autorizar en tanda por estar pendiente. Aprobar por «está esperando» y no por
 «es inocuo» apaga la compuerta el día que algo abra un PR por otra vía —un flow, una propuesta, un cargo
-nuevo—, que es la forma que R9 describe: la confirmación se calla sumando una bandera y lo que desaparece
+nuevo—, que es la forma que R29 describe: la confirmación se calla sumando una bandera y lo que desaparece
 es la pregunta, no el riesgo.
 
 **Conviene aprobarlo en los PR de propuesta y es opcional en los de investigación.** El guard que valida
@@ -374,7 +374,7 @@ también se corrió y se dice cómo, que es lo que separa «no ocurre» de «est
 
 Lo que esta exigencia evita es concreto y ya pasó: un arreglo comprobado a medias —se midió que lo nuevo
 aparecía y no que lo viejo se hubiera ido— se cerró, se publicó y volvió como el caso siguiente. Por qué
-esa mitad no alcanza vive en R9; acá está sólo cuándo se aplica.
+esa mitad no alcanza vive en R29; acá está sólo cuándo se aplica.
 
 `test/repo/issues.test.js` comprueba que la sección exista, que el estado del frontmatter coincida con el
 encabezado y —desde 0.75.0— que el cierre nombre su prueba. **No comprueba que el cierre sea honesto**, y

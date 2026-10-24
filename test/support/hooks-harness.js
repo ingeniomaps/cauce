@@ -133,7 +133,7 @@ function pushRoot(prefix, runner = {}) {
 // convivir, y ahí el verde diría que ocurrió la mitad del cambio—.
 // El error que produjo el 070 no fue elegir mal una variable: fue no ver que ponerla era una **quita**.
 // `CI=true` no agregaba una conducta, sacaba la confirmación con la que pnpm frena antes de purgar — y
-// una confirmación que estorba casi siempre está cuidando algo. R9 pide que una quita se pruebe por
+// una confirmación que estorba casi siempre está cuidando algo. R29 pide que una quita se pruebe por
 // ausencia, y esa prueba no se escribió porque nadie extrañaba lo que se estaba sacando.
 //
 // La lista atrapa lo que conocemos y nada más, que es el límite honesto de una lista. Lo que agrega es
