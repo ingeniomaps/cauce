@@ -17,7 +17,8 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { contentOf, carriesContent, opsRoot } = require('./input')
+const { contentOf, carriesContent, opsRoot, configOf } = require('./input')
+const { withTaskTrees } = require('../core/task-trees')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const CF = require('./confirm')
@@ -120,6 +121,77 @@ function unnamed(input, root, file) {
 // partición que hace `push.js` cuando pregunta por un destino.
 const { isPush } = AP
 
+// Lo que la persona nombra por su nombre —`package.json`, `git clean -fd`— no dice de qué repositorio, y desde el 445
+// y el 446 cada línea es de uno: dejar pasar todas las que se llaman igual era aprobar en todos lo que ella nombró una
+// vez (caso 447). Una línea pedida así pasa sola si nada más se llama igual, o si el mensaje nombra un tramo de su
+// lugar que lo demás no tiene. Lo demás es lo que el archivo ya aprueba —si no, partir la escritura en dos pasaba cada
+// mitad— y lo mismo en los otros checkouts: con una sola línea el agente elegía por ella, y en la prueba real eligió
+// el árbol de una línea entre cinco `package.json` sin que nada preguntara.
+const BOUND_BEFORE = /[\s'"`(/]/
+const BOUND_AFTER = /^(?:[\s'"`),;:!?]|\.(?:\s|$)|$)/
+
+// Con qué nombre la menciona la persona y dónde vale, o `null` si la línea no es de un lugar.
+function placeOf(line) {
+  const spoken = CHAT.spokenOf(line)
+  if (spoken !== line) return { name: `${spoken} @`, where: line.slice(spoken.length + 3), least: 1 }
+  return path.isAbsolute(line) ? { name: path.basename(line), where: line, least: 2 } : null
+}
+
+const real = (one) => { try { return fs.realpathSync(one) } catch { return path.resolve(one) } }
+
+// El mismo lugar en los otros checkouts de la instancia —raíces, árboles de tarea y de línea—, si existe.
+function siblings(root, where) {
+  const declared = (configOf(root).workspaceRoots || []).filter((one) => one && one.path)
+    .map((one) => path.resolve(root, one.path))
+  const checkouts = [...new Set(withTaskTrees(root, declared).map(real))]
+  const at = real(where)
+  const own = checkouts.filter((one) => at === one || at.startsWith(`${one}${path.sep}`))
+    .sort((one, other) => other.length - one.length)[0]
+  if (!own) return []
+  const relative = path.relative(own, at)
+  return checkouts.filter((one) => one !== own).map((one) => path.join(one, relative))
+    .filter((one) => fs.existsSync(one))
+}
+
+function says(text, piece) {
+  for (let at = text.indexOf(piece); at !== -1; at = text.indexOf(piece, at + 1)) {
+    const before = text[at - 1]
+    if ((!before || BOUND_BEFORE.test(before)) && BOUND_AFTER.test(text.slice(at + piece.length))) return true
+  }
+  return false
+}
+
+function distinguished(text, own, others) {
+  const parts = own.where.split('/').filter(Boolean)
+  for (let count = own.least; count <= parts.length; count += 1) {
+    const piece = parts.slice(-count).join('/').toLowerCase()
+    const shared = others.some((one) => one.toLowerCase() === piece || one.toLowerCase().endsWith(`/${piece}`))
+    if (!shared && says(text, piece)) return true
+  }
+  return false
+}
+
+// De las líneas que el mensaje pidió por su nombre, las que no distingue de otra del archivo que se llama igual.
+function blurred(input, root, lines, byName) {
+  const saved = CHAT.said(input)
+  if (!saved || !byName.length) return []
+  const text = String(CHAT.wordsOf(saved)).toLowerCase()
+  const kept = [...new Set([...AP.read(root), ...lines])].map((line) => ({ line, at: placeOf(line) }))
+    .filter((one) => one.at)
+  return byName.filter((line) => {
+    const own = placeOf(line)
+    if (!own) return false
+    const others = [...kept.filter((one) => one.line !== line && one.at.name === own.name).map((one) => one.at.where),
+      ...siblings(root, own.where)]
+    return others.length > 0 && !distinguished(text, own, others)
+  })
+}
+
+const AMBIGUOUS = (file, lines) => `${file} es la aprobación de una persona, y lo que nombró coincide con más de un `
+  + 'lugar:\n' + lines.map((line) => `  ${line}\n`).join('')
+  + 'Preguntale cuáles quiere aprobar. Si contesta que sí, reintentá la misma escritura y pasa; si nombra uno, '
+  + 'escribí sólo ése.'
+
 // Por qué no se puede escribir este contenido, o vacío.
 //
 // Cada línea vale por sí sola, al revés que en `ops.config.json`, donde una llave cambia de sentido según lo
@@ -133,10 +205,16 @@ function unasked(input, root, file) {
   const lines = added(input, root)
   const pushes = CHAT.authorized(input, lines.filter(isPush), { asked: CHAT.ordersPush, inherit: false })
   const paths = CHAT.authorized(input, lines.filter((line) => !isPush(line)), { inherit: false })
-  const cleared = new Set([...pushes, ...paths].map((one) => one.item))
+  const byName = paths.filter((one) => one.via === 'orden').map((one) => one.item)
+  const vague = new Set(blurred(input, root, lines, byName))
+  const cleared = new Set([...pushes, ...paths].map((one) => one.item).filter((item) => !vague.has(item)))
   const missing = lines.filter((line) => !cleared.has(line))
   if (!missing.length) return ''
   if (CF.native(input)) return ASKED(input, file, missing)
+  if (missing.every((line) => vague.has(line))) {
+    CHAT.hold(input, [file, ...missing])
+    return AMBIGUOUS(file, missing)
+  }
   // El archivo se anota junto con las líneas: sin él, el «dale» aprobaría las líneas y el guard volvería a
   // frenar por el archivo, que en ese mensaje ya nadie nombra.
   CHAT.hold(input, [file, ...missing])
