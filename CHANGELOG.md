@@ -38,6 +38,19 @@ diseño — eso vive en el commit y en el código.
   Con «agregá package.json a .ops-approval», si otro checkout también tiene ese archivo, el agente no puede escribirse
   la línea: el bloqueo lista las rutas y pregunta cuál. Un «sí» las aprueba, y nombrar el repositorio o la ruta entera
   aprueba sólo esa. Lo mismo para un comando con su lugar, como `git clean -fd`.
+- **Un `/autobuild` en una línea ya no intenta cambiar la rama de la instancia para commitear planning** (caso 450).
+  Si la instancia está en `main` o `master`, la corrida cierra el hito y para con `planning-uncommitted`: el estado de
+  planning lo commitea la sesión principal. Antes intentaba cortar `work/planning`, el guard de la línea lo frenaba y
+  la única salida era aprobar la instancia entera.
+- **`git clean -d -f` y `git clean -x -f` se frenan, y una simulación con `-n` ya no** (caso 452). El guard miraba
+  sólo la primera opción: esas dos formas borraban sin preguntar, y `git clean -fdn`, que no borra nada, se frenaba.
+- **Un «dale» cubre el reintento aunque el agente le cambie un `cd` o un `echo` al comando** (caso 451). Lo que se
+  aprueba es el tramo que el guard reconoce, con su lugar: la línea para pegar pasa a ser `git clean -fd @ <repo>` y
+  no el comando entero. Las líneas escritas antes con el comando entero siguen valiendo para ese comando.
+- **Desde una línea de trabajo, pedir en el chat un `git` sobre la instancia lo destraba** (caso 449). «Haz el merge
+  de main en work/…» pasaba sólo nombrando la carpeta de la instancia; ahora lo juzga el agente, como el merge de un
+  PR, y el guard frena sólo si el mensaje pregunta, niega o frena. La línea para pegar es `git merge @ <instancia>`,
+  y no la instancia entera.
 - **Con Gemini, un comando se juzga en la carpeta donde corre** (caso 446). Gemini manda esa carpeta aparte, en
   `dir_path`, y los guards la ignoraban: una aprobación con lugar valía en todos los repositorios, y un commit en un
   repositorio frenaba con «git no toma … como repositorio».

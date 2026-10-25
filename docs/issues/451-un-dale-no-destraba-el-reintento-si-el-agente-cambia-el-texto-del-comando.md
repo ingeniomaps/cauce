@@ -1,14 +1,15 @@
 ---
 caso: 451
 titulo: Un «dale» no destraba el reintento de un comando destructivo si el agente cambia algo del texto, porque la confirmación cubre el comando entero tal como llegó
-estado: abierto
+estado: resuelto
+resuelto-en: 0.116.0
 prioridad: media
 version-detectada: 0.115.1
 ---
 
 # 451 — Un «dale» no destraba el reintento si el agente cambia el texto del comando
 
-**🔴 abierto** · detectado en 0.115.1 · prioridad **media** — toda confirmación por chat de un comando que frena
+**🟢 resuelto en 0.116.0** · detectado en 0.115.1 · prioridad **media** — toda confirmación por chat de un comando que frena
 `destructive`, cuando el agente no reintenta con el texto idéntico.
 
 ## Resumen
@@ -89,3 +90,30 @@ La prueba real del «dale» del 446, después de publicar la rama de 0.116.0, el
 
 - 446: el lugar que lleva el ítem.
 - 184: por qué la confirmación no exige una palabra.
+
+## Cierre
+
+**Resuelto en 0.116.0**, en la rama de los huecos de esa versión. La decisión, del 2026-10-25, fue la primera del
+fix propuesto.
+
+- **El ítem es el tramo que matchea.** Se hizo. `stretchOf` (`engine/hooks/shell.js`) parte el comando por `;`, `&`,
+  `|` y el salto de línea fuera de comillas, le saca los paréntesis, las llaves y las redirecciones, y si la regla
+  reconoce un solo tramo, ése es el ítem. Si reconoce dos, el ítem sigue siendo el comando entero, así que aprobar
+  uno no aprueba el otro. Dónde corre lo sigue diciendo el lugar, que se lee del comando entero (el `cd` cuenta ahí).
+- **Las líneas viejas.** Una línea escrita antes, con el comando entero y su lugar, sigue aprobando ese mismo comando.
+- **Pedir el texto idéntico.** No se hizo: era la alternativa.
+
+La prueba:
+
+- `test/hooks/approval-place.test.js`. Con `cd <api> && git clean -fd; echo …` el bloqueo da `git clean -fd @
+  <api>`, y esa línea aprueba también `git clean -fd 2>&1 | tail -3`. En `web`, frena. La línea vieja con el comando
+  entero sigue valiendo, y dos tramos no se parten. Por chat, el «dale» a `git clean -fd; echo …` cubre el reintento
+  con `cd <api> && git clean -fd`, y no el de `web`. Antes del arreglo dio rojo, con el ítem entero. En una copia,
+  cuatro mutaciones dieron rojo: el comando entero, sin la línea vieja, partir dos tramos, y dejar las redirecciones.
+- **El guard solo**, con la secuencia de la reproducción. Con 0.115.1: bloqueo `exit 2`, reintento con `cd` `exit 2`.
+  Con el motor de la rama: bloqueo `exit 2`, reintento con `cd` `exit 0`, el mismo en `web` `exit 2`.
+- **Sesiones reales** de `claude -p --resume`. En una, el bloqueo de `cd <banco>/app && git clean -fd; echo …` ofreció
+  la línea `git clean -fd @ <banco>/app`, sólo el tramo. El «dale» lo destrabó, y el paso en `web` volvió a frenar.
+  En esa sesión el agente reintentó con el mismo texto, así que no ejercitó el cambio de texto; eso lo mide el guard
+  solo, arriba. En otra, el agente corrió por su cuenta `git clean -fdn` antes del paso, el guard lo frenó, y el
+  «dale» quedó atado a esa simulación. Esa simulación nunca tenía que frenar, y salió como el caso 452.

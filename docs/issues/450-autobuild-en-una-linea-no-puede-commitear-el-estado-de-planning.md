@@ -1,14 +1,15 @@
 ---
 caso: 450
 titulo: Un /autobuild en una línea de trabajo no puede commitear el estado de planning cuando la instancia está en su rama viva, porque el recorrido manda cortar work/planning y line-scope frena todo checkout en la instancia
-estado: abierto
+estado: resuelto
+resuelto-en: 0.116.0
 prioridad: media
 version-detectada: 0.115.1
 ---
 
 # 450 — Un `/autobuild` en una línea no puede commitear el estado de planning
 
-**🔴 abierto** · detectado en 0.115.1 · prioridad **media** — todo `/autobuild <línea>` que cierra una tarea con la
+**🟢 resuelto en 0.116.0** · detectado en 0.115.1 · prioridad **media** — todo `/autobuild <línea>` que cierra una tarea con la
 instancia sidecar en `main` o `master` y sin rama de trabajo de planning.
 
 ## Resumen
@@ -115,3 +116,39 @@ La corrida que completó la prueba real del 448 en la rama de los huecos de 0.11
 - 449: el mismo guard, con la orden de la persona en el chat.
 - 423: por qué `checkout` y `switch` en la instancia salen de la línea.
 - 448: la corrida donde apareció.
+
+## Cierre
+
+**Resuelto en 0.116.0**, en la rama de los huecos de esa versión. La decisión, del 2026-10-25, fue la primera del
+fix propuesto: la línea no cambia la rama de la instancia, y el recorrido para diciéndolo.
+
+- **Que la línea no cambie la rama de la instancia.** Se hizo. En una línea, el pedido de todo commit de planning
+  dice que si la instancia está en una rama viva no se cambia de rama ni se commitea (`LINE_INSTANCE`, en
+  `automatization/workflows/autobuild.js`). Si el cierre de una tarea queda así, la corrida no toma otra tarea:
+  termina el hito, con su checkpoint, y para con `planning-uncommitted`, una parada nueva de la familia «Persona»
+  (`engine/planning/stops.js` y el `PROTOCOL.md` del molde).
+- **Que la rama de planning exista antes.** Se decidió que no: era la alternativa.
+- **El bloqueo que se contradecía.** Se hizo con el 449: un `git` en la instancia ya no dice «Esto lo corregís vos»,
+  y lo que ofrece pegar es `git switch @ <instancia>`, no la instancia entera.
+
+Lo que no preveía: la primera versión del arreglo paraba en el commit de planning, con `return halt(...)`. La corrida
+real `wf_5cc4a84c-046` mostró que así el hito terminaba sin su checkpoint humano, que antes sí se escribía. Era una
+quita, y se corrigió: la corrida marca la parada, sale del lazo de tareas, hace el cierre y el checkpoint, y para al
+final.
+
+La prueba:
+
+- `test/workflows/autobuild-line.test.js`: en una línea, con el commit de planning devolviendo `live: true` sin
+  commitear, el pedido lleva la consigna, la corrida termina en `planning-uncommitted` nombrando la tarea y la sesión
+  principal, y el checkpoint del hito se pide igual. Fuera de una línea, nada cambia. En una copia, cinco mutaciones
+  dieron rojo: sin la parada, sin la consigna al agente, parar a mitad del lazo, no parar al final, y no marcar la
+  corrida.
+- **Dos corridas reales** de `claude -p '/autobuild piloto'` en el banco sidecar, con la instancia en `master` y sin
+  rama de planning:
+  - `wf_5cc4a84c-046` (USD 6,37, primera versión): el commit de planning devolvió `committed: false` («Esta corrida
+    lleva la línea piloto … no cambié de rama, no stageé nada»), y paró con `planning-uncommitted`. Sin checkpoint.
+  - `wf_e16e9535-609` (versión final): el mismo `committed: false`, después `closing`, `human-checkpoint` (escribió
+    `checkpoints/tercero.md` sin commitearlo, por la misma consigna) y `checkpoint-held`. Paró con «anotar-licencia
+    quedó entregada y su estado de planning sin commitear: la instancia está en master …».
+  - En las dos, después de la parada, el agente de la sesión intentó por su cuenta `git switch -c` en la instancia.
+    `line-scope` lo frenó y ofreció pegar `git switch @ <banco>/ops`, la línea angosta del 449.
