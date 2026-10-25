@@ -155,10 +155,10 @@ function carriesContent(input) {
     || typeof input.content === 'string' || typeof input.patch === 'string' || Boolean(patchOf(input))
 }
 
+// Gemini manda la carpeta del comando aparte, en `dir_path`, relativa a `cwd`: sin sumarla todo se juzgaba en la raíz.
 function cwdOf(input) {
-  const cwd = input.cwd || input.tool_input && input.tool_input.cwd
-    || process.env.OPS_ROOT || process.cwd()
-  return path.resolve(String(cwd))
+  const { cwd, dir_path: dir } = input.tool_input || {}
+  return path.resolve(String(input.cwd || cwd || process.env.OPS_ROOT || process.cwd()), String(dir || ''))
 }
 
 function blocked(message) {

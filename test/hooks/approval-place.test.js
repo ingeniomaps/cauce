@@ -236,3 +236,25 @@ test('cada herramienta lleva el lugar de su clase, y las que no dependen de dón
     }
   } finally { ws.restore() }
 })
+
+// Medido en una sesión real de Gemini 0.63.0: la línea salía con la raíz del banco y el commit no hallaba repositorio.
+test('la carpeta que Gemini manda en dir_path es donde corre el comando', () => {
+  const ws = sidecar('ops-approval-place-gemini-')
+  const gemini = (command, dir) => ({ hook_event_name: 'BeforeTool', tool_name: 'run_shell_command', cwd: ws.workspace,
+    tool_input: { command, dir_path: dir } })
+  try {
+    const pasted = pasteApproval(ws.ops, messageOf('destructive', gemini('git clean -fd', 'api')))
+    assert.deepEqual(pasted, [`git clean -fd @ ${ws.repos.api}`])
+    assert.doesNotThrow(() => execute('destructive', gemini('git clean -fd', 'api')))
+    blocked('destructive', gemini('git clean -fd', 'web'), /borra archivos sin seguimiento/)
+
+    fs.writeFileSync(path.join(ws.repos.api, 'package.json'), '{"name":"x"}\n')
+    fs.writeFileSync(path.join(ws.repos.api, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+    git(['add', 'package.json', 'pnpm-lock.yaml'], ws.repos.api)
+    git(['commit', '-qm', 'init'], ws.repos.api)
+    fs.writeFileSync(path.join(ws.repos.api, 'package.json'), '{"name":"x","dependencies":{"y":"1"}}\n')
+    git(['add', 'package.json'], ws.repos.api)
+    blocked('dependencies', gemini('git commit -m x', 'api'),
+      new RegExp(`${ws.repos.api.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: cambió package\\.json`))
+  } finally { ws.restore() }
+})
