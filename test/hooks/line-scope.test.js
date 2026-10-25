@@ -270,3 +270,20 @@ test('un git en la instancia pasa si la persona lo pide, y su bloqueo no dice qu
     assert.doesNotThrow(() => execute('shell-boundary', shell(id, ops, 'git stash')))
   })
 })
+
+// Caso 449. Lo que la línea no puede corregir sola, con el diálogo de Claude Code a mano, se pregunta ahí en vez de
+// frenar: es la persona la que decide si la instancia cambia de rama.
+test('con el diálogo nativo, un git en la instancia se pregunta en el diálogo', () => {
+  const { base, ops } = session('cauce-line-scope-dialogo-')
+  withRoot(ops, () => {
+    const id = sessionId()
+    executeAll(['pre-shell'], shell(id, ops, 'node tools/ops.js claim planning t-piloto --line piloto'))
+    prompt(id, 'implementá la tarea', base)
+    const dialog = { hook_event_name: 'PreToolUse', permission_mode: 'default', prompt_id: 'm1' }
+    const input = shell(id, ops, 'git merge --no-edit main', dialog)
+    let asked = null
+    try { executeAll(['pre-shell'], input) } catch (error) { asked = error }
+    assert.ok(asked && asked.ask, `no pidió el diálogo: ${asked && asked.message}`)
+    assert.ok(asked.message.includes(`git merge @ ${ops}`), asked.message)
+  })
+})
