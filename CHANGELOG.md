@@ -48,9 +48,9 @@ diseño — eso vive en el commit y en el código.
   aprueba es el tramo que el guard reconoce, con su lugar: la línea para pegar pasa a ser `git clean -fd @ <repo>` y
   no el comando entero. Las líneas escritas antes con el comando entero siguen valiendo para ese comando.
 - **Desde una línea de trabajo, pedir en el chat un `git` sobre la instancia lo destraba** (caso 449). «Haz el merge
-  de main en work/…» pasaba sólo nombrando la carpeta de la instancia; ahora lo juzga el agente, como el merge de un
-  PR, y el guard frena sólo si el mensaje pregunta, niega o frena. La línea para pegar es `git merge @ <instancia>`,
-  y no la instancia entera.
+  de main en work/…» pasaba sólo nombrando la carpeta de la instancia; ahora alcanza con nombrar el `git` —«merge»,
+  «mergeá», «stash»—, y el guard frena si el mensaje pregunta, niega o frena. La línea para pegar es
+  `git merge @ <instancia>`, y no la instancia entera; la que ya tenías con la carpeta sigue valiendo.
 - **Con Gemini, un comando se juzga en la carpeta donde corre** (caso 446). Gemini manda esa carpeta aparte, en
   `dir_path`, y los guards la ignoraban: una aprobación con lugar valía en todos los repositorios, y un commit en un
   repositorio frenaba con «git no toma … como repositorio».
