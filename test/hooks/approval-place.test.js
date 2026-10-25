@@ -270,7 +270,14 @@ test('lo que rodea al comando no cambia lo que se aprueba: un cd adelante o un e
       runs(ws.workspace, `cd ${ws.repos.api} && git clean -fd; echo "exit=$?"`)))
     assert.deepEqual(pasted, [`git clean -fd @ ${ws.repos.api}`])
     assert.doesNotThrow(() => execute('destructive', runs(ws.repos.api, 'git clean -fd 2>&1 | tail -3')))
+    assert.doesNotThrow(() => execute('destructive', runs(ws.repos.api, 'git clean -fd && git status --short')))
     blocked('destructive', runs(ws.workspace, `cd ${ws.repos.web} && git clean -fd`), /borra archivos sin seguimiento/)
+    // Lo que cambia la carpeta de una forma que el lugar no lee no reduce el ítem: la línea de api pasaba en web.
+    for (const command of ['(cd ../web; git clean -fd)', 'pushd ../web && git clean -fd',
+      'for d in ../web; do cd $d; git clean -fd; done', 'builtin cd ../web && git clean -fd',
+      'eval "cd ../web" && git clean -fd', 'source ./a.sh && git clean -fd']) {
+      blocked('destructive', runs(ws.repos.api, command), /borra archivos sin seguimiento/)
+    }
     ws.approve(`git clean -fd; git status @ ${ws.repos.web}`)
     assert.doesNotThrow(() => execute('destructive', runs(ws.repos.web, 'git clean -fd; git status')))
     // Dos tramos que la regla reconoce no se parten: el ítem sigue siendo el comando entero.
