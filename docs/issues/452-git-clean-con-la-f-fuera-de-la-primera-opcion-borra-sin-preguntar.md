@@ -72,6 +72,14 @@ Que la regla frene si alguna opción del mismo tramo fuerza (`-…f…` o `--for
   `git clean -d -f` desde `app`. El guard lo frenó con «'git clean -f' borra archivos sin seguimiento» y
   `suelto.tmp` siguió ahí. Con el motor de 0.115.1, el mismo comando sale con `exit 0`.
 
+**Lo que esta regla todavía no ve**, señalado por la revisión de código del conjunto y dejado así a propósito:
+
+- Un valor de `-e` que empieza con guion (`git clean -fdx -e -node-cache`) se lee como una simulación y pasa.
+- Una redirección antes de las opciones (`git clean 2>&1 -f`) corta la lectura del tramo y pasa.
+
+Son formas rebuscadas, que un agente no escribe para limpiar. Leer las opciones con su valor pide un parser de
+`git clean`, que es más de lo que este caso arregla.
+
 ## Relacionados
 
 - 451: la sesión donde apareció.

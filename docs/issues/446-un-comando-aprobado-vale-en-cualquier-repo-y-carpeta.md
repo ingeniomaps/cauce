@@ -326,3 +326,12 @@ desde adentro de `app` no lo aprueba esa línea. Esa forma del ítem es anterior
   - cada bloqueo dio la línea de su repositorio;
   - con sólo las líneas de `app` pegadas, la limpieza corrió en `app` y la de `web` siguió frenada;
   - el «dale» destrabó `app` y `web` volvió a frenar con su propia línea.
+
+**La revisión de código del conjunto, el mismo día**, encontró un borde del arreglo de Gemini. Sin el shim, que exporta
+`OPS_ROOT`, la raíz de la sesión salía de `cwdOf`, que ahora suma `dir_path`. En un sidecar, la instancia se buscaba
+desde `../app` y no aparecía. `sessionStart` (`engine/hooks/input.js`) lee ahora `cwd` antes que `cwdOf`. La prueba
+se vio en rojo sin el cambio. Con el shim instalado no pasaba, porque ahí `OPS_ROOT` siempre está.
+
+La segunda pasada señaló que, sin el shim, un `dir_path: 'ops'` desde el workspace ya no encuentra la instancia. Antes
+de esta rama tampoco la encontraba, porque la búsqueda arrancaba del workspace igual que ahora, y con el shim instalado
+`OPS_ROOT` siempre está. Se deja así.

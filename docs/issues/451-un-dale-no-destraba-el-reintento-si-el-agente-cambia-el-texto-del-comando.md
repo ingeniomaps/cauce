@@ -117,3 +117,25 @@ La prueba:
   En esa sesión el agente reintentó con el mismo texto, así que no ejercitó el cambio de texto; eso lo mide el guard
   solo, arriba. En otra, el agente corrió por su cuenta `git clean -fdn` antes del paso, el guard lo frenó, y el
   «dale» quedó atado a esa simulación. Esa simulación nunca tenía que frenar, y salió como el caso 452.
+
+**La revisión de código del conjunto, el mismo día, encontró una regresión de este arreglo.** El lugar sale de
+`AP.locate`, que no sigue un subshell, un `pushd` ni el `cd` de un bucle. Con el tramo solo como ítem, la línea
+`git clean -fd @ <api>` dejaba pasar `(cd ../web; git clean -fd)` corrido desde `api`. Antes del arreglo no pasaba,
+porque el ítem era el comando entero. Medido con el guard: pasaban `(cd ../web; git clean -fd)`, `pushd ../web && git
+clean -fd` y `for d in ../web; do cd $d; git clean -fd; done`.
+
+Se corrigió: el tramo se usa sólo si la carpeta donde corre, leída con `steps` (que sí sigue esas formas), es la del
+lugar. Si no, el ítem vuelve a ser el comando entero. Las tres formas frenan, y `cd <api> && git clean -fd; echo …`
+sigue reduciéndose al tramo. Las tres entraron en la prueba, y su mutación (no comprobar el lugar) dio rojo. Por el
+guard solo, otra vez: el reintento con `cd` tras el «dale» `exit 0`, el mismo en `web` `exit 2`, el subshell a `web`
+`exit 2`. El comentario de `destructive` que todavía decía «el comando entero» se corrigió.
+
+**La segunda pasada de revisión, sobre esa corrección, encontró que tampoco alcanzaba.** `steps` no sigue `builtin
+cd`, `eval "cd …"` ni `source`, así que con esas formas el tramo seguía reduciéndose en la carpeta equivocada. Y
+comparar dos resolvedores del lugar dejaba la aprobación dependiendo de que los dos coincidieran. Se cambió el
+criterio: el tramo se usa sólo si todo lo demás del comando es inerte —un `cd` a una ruta escrita, o `echo`,
+`printf`, `true`, `tail`, `head`, `wc`, `sort`, `git status|log|diff|show`— y el comando no agrupa con paréntesis ni
+llaves. Cualquier otra cosa deja el comando entero, como antes del 451 (cerrado por defecto, R27). La prueba suma
+`builtin cd`, `eval` y `source` frenando, y `git clean -fd && git status --short` reduciéndose. Dos mutaciones dieron
+rojo: no mirar los grupos, y no exigir lo inerte. Por el guard solo, otra vez: el reintento con `cd` tras el «dale»
+`exit 0`, el mismo en `web` `exit 2`.

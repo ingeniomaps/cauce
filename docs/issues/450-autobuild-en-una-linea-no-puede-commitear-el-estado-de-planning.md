@@ -152,3 +152,15 @@ La prueba:
     quedó entregada y su estado de planning sin commitear: la instancia está en master …».
   - En las dos, después de la parada, el agente de la sesión intentó por su cuenta `git switch -c` en la instancia.
     `line-scope` lo frenó y ofreció pegar `git switch @ <banco>/ops`, la línea angosta del 449.
+
+**La revisión de código del conjunto, el mismo día**, encontró dos cosas, y las dos se arreglaron con su prueba vista en
+rojo:
+
+- Si otra parada del cierre llegaba antes —un `check` en rojo que no se repara—, tapaba la del 450 y no se decía qué
+  había quedado sin commitear. `halt` suma ahora ese detalle a cualquier parada.
+- La parada final no traía la lista de tareas entregadas (`done`, `count`, `hito`) que trae el final de siempre.
+  `stop` (`automatization/shared/workflow-finish.js`) acepta esos campos, y la parada los lleva.
+
+**La segunda pasada de revisión** encontró que las dos salidas seguían sin traer todo lo del final de siempre: la
+parada propia perdía `manual` y `checkpoint` (lo que el caso 380 sumó), y la parada que llega antes no traía `done`.
+Las dos lo llevan ahora, con su prueba y su mutación en rojo.

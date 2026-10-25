@@ -169,3 +169,26 @@ La prueba:
   work/planning.» el agente corrió `git merge --no-edit master` y pasó (fast-forward a `ea9e0d7`). El mismo comando
   con el mismo mensaje, por el guard solo: con 0.115.1 `exit 2`, con el motor de la rama `exit 0`. «¿hago el
   merge?» da `exit 2` en los dos.
+
+**La revisión de código del conjunto, el mismo día, cambió dos cosas:**
+
+- **La orden tiene que nombrar el subcomando.** Tal como se hizo primero, cualquier mensaje que no preguntara, negara
+  ni frenara contaba como orden: un «implementá la tarea» dejaba al agente cambiarle la rama a la sesión principal
+  por su cuenta, que es lo que cerró el 423. Ahora `ordersShared` exige además que el mensaje nombre el subcomando del
+  ítem («merge», «mergeá», «stash»), como un archivo se nombra por su ruta. No es una lista de verbos: compara contra
+  el ítem. «haz el merge de main en work/<persona>» lo nombra y pasa. Lo que no lo nombra se destraba confirmando el
+  bloqueo. La prueba suma «implementá la tarea» frenando, y su mutación (no exigir el nombre) dio rojo. Por el guard
+  solo, en el banco: el pedido de la sesión real `exit 0`, «implementá la tarea» `exit 2`, «¿hago el merge?» `exit 2`.
+- **La línea vieja sigue valiendo.** La ruta de la instancia, que el bloqueo ofrecía pegar antes, sigue aprobando su
+  `git`. Sin eso, quien la había pegado quedaba frenado sin aviso. Probado, con su mutación en rojo.
+
+Quedó sin cambiar, con la razón: cuando un mismo comando escribe afuera de la línea y además corre un `git` en la
+instancia, el bloqueo entero deja de decir «Esto lo corregís vos», también para la escritura que el agente sí podría
+mover a su árbol. Es raro, y el mensaje igual dice a qué árbol va la escritura.
+
+**La segunda pasada de revisión** encontró que el nombre se buscaba sin borde a la derecha: «implementá ambos cambios»
+contaba como `git am`. Ahora el subcomando va entero; en los nombres de cuatro letras o más se admite la conjugación
+(«mergeá», «stasheá»). «abrí el pull request» sigue nombrando `pull`: es el mismo límite que tiene nombrar un archivo
+por su nombre, y lo juzga el agente. La prueba suma «implementá ambos cambios» frenando `git am` y «mergeá main acá»
+pasando, y su mutación (sin el borde) dio rojo. Por el guard solo: el pedido de la sesión real `exit 0`, «implementá
+ambos cambios» `exit 2`, «¿hago el merge?» `exit 2`.
