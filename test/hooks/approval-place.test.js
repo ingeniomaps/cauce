@@ -256,6 +256,12 @@ test('la carpeta que Gemini manda en dir_path es donde corre el comando', () => 
     git(['add', 'package.json'], ws.repos.api)
     blocked('dependencies', gemini('git commit -m x', 'api'),
       new RegExp(`${ws.repos.api.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: cambió package\\.json`))
+    // La raíz de la sesión no es la carpeta del comando: sin el shim, que exporta OPS_ROOT, la instancia se buscaba
+    // desde `../api` y no aparecía.
+    const { opsRoot } = require('../../engine/hooks/input')
+    delete process.env.OPS_ROOT
+    delete process.env.CLAUDE_PROJECT_DIR
+    assert.equal(opsRoot({ cwd: ws.ops, tool_input: { command: 'git status', dir_path: '../api' } }), ws.ops)
   } finally { ws.restore() }
 })
 

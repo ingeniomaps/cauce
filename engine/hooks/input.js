@@ -482,7 +482,7 @@ const DECLARE_IT = 'Si el proyecto necesita escribir ahí siempre, lo declara un
 // La raíz donde vive `planning/`, que es donde se busca la aprobación. La resuelven igual los guards de
 // archivos, los de shell y la aprobación misma, así que se resuelve en un solo lugar.
 // Desde dónde se busca: la carpeta en la que el runner abrió la sesión, o el directorio de la llamada.
-const sessionStart = (input) => process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input)
+const sessionStart = (input) => process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || input.cwd || cwdOf(input)
 
 function opsRoot(input) {
   return findOpsRoot(sessionStart(input))
