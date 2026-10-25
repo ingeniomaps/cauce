@@ -173,7 +173,10 @@ test('guard-plan-first se abre por aprobación, por variable y donde no hay inst
   const root = planFirstRoot('ops-hook-plan-llaves-', WIP_IDLE)
   const writes = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
 
+  // La forma relativa ya no aprueba (caso 445).
   fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'src/altas.js\n')
+  blocked('plan-first', writes, /sin plan/)
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `${path.join(root, 'src', 'altas.js')}\n`)
   assert.doesNotThrow(() => execute('plan-first', writes))
   // La aprobación vale para la ruta que nombra y para ninguna otra.
   blocked('plan-first', { cwd: root, tool_input: { file_path: 'src/bajas.js' } }, /sin plan/)

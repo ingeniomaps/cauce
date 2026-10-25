@@ -194,4 +194,7 @@ function testWorkers(input) {
   }
 }
 
-module.exports = { testWorkers }
+// Si una línea es un comando que este guard frena, para que `check` no la confunda con una ruta.
+const launches = (line) => launched(asRun(line)).length > 0
+
+module.exports = { testWorkers, launches }

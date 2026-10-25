@@ -49,15 +49,17 @@ function governance(input) {
   // El índice nombra cada ruta desde la raíz del repositorio —también lanzado desde `ops/`— y la gobernanza
   // se declara desde la raíz ops: con `ops/` dentro del repo, el layout por defecto de `init`, era
   // `ops/planning/rules/…` contra `^planning/` y el guard no frenaba nada sin decirlo (caso 334). Se juzga
-  // la ruta relativa a la raíz ops cuando la hay; la que se aprueba y se nombra sigue siendo la del índice.
+  // la ruta relativa a la raíz ops cuando la hay; la que se aprueba y se nombra es la del índice, entera desde
+  // la raíz de su repositorio (caso 445).
   const { dir, staged } = stagedForCommit(command, cwdOf(input), input)
   const ops = opsRoot(input)
-  const governed = governedOf(ops, toplevel(dir), staged)
+  const top = toplevel(dir)
+  const governed = governedOf(ops, top, staged)
   if (!governed.length) return
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
   // entre una llave por operación y una puerta que quedó abierta.
-  const pending = AP.pendingNow(opsRoot(input), governed, input)
+  const pending = AP.pendingNow(opsRoot(input), governed.map((file) => path.join(top, file)), input)
   if (!pending.length) return
   block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pending, input)}`)
 }

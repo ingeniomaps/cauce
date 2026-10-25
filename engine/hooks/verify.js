@@ -215,7 +215,7 @@ function verify(input) {
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
-  const unapproved = AP.pendingNow(opsRoot(input), staged, input)
+  const unapproved = AP.pendingNow(opsRoot(input), staged.map(AP.inRepo(dir)), input)
   const approved = !unapproved.length
   if (changedOpenApi && !hasApiGenerated && !approved) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '

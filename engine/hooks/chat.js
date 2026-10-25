@@ -103,9 +103,24 @@ function asks(clause) {
   return words.some((word) => ASKS.has(word) || ASKS.has(word.replace(ENCLITIC, '')))
 }
 
+// Dónde vale un comando aprobado: el ítem lleva el lugar al final, porque el mismo texto en otro repositorio u
+// otra carpeta es otra operación (caso 446). Va pegado y no en un campo aparte para que todo lo que guarda y
+// compara ítems —lo pendiente, lo concedido, la línea de `.ops-approval`— lo distinga sin saber de lugares. Lo
+// que no lo lleva es lo que se lee como palabras: con el lugar adentro, el último tramo de la ruta sería el nombre
+// del repositorio, y «arreglá la api» contaría como pedir el comando.
+const PLACE = ' @ '
+const placed = (item, where) => (where ? `${item}${PLACE}${where}` : item)
+function spokenOf(item) {
+  const at = item.lastIndexOf(PLACE)
+  return at >= 0 && path.isAbsolute(item.slice(at + PLACE.length)) ? item.slice(0, at) : item
+}
+// Si un ítem es un destino de push, `push <remoto> <rama>`, con su lugar o sin él.
+const isPush = (item) => /^push\s+\S+\s+\S+$/.test(spokenOf(item))
+
 // Cada aparición del nombre en el texto: si va negada y si su frase pide algo. Un nombre tiene que estar
 // entero: `.env` no aparece en «el .env.example», y un punto sólo lo cierra si termina la frase.
-function mentions(text, item) {
+function mentions(text, given) {
+  const item = spokenOf(given)
   const lower = String(text).toLowerCase()
   const found = []
   for (const name of new Set([item, path.basename(item)].map((one) => one.toLowerCase()))) {
@@ -189,7 +204,7 @@ const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+
 // Después de un aviso del runner pasa sólo lo nombrado. «Los merges de este turno» es una lectura del turno en
 // que la persona habló, y lo que el agente hace tras el aviso puede venir de lo que el aviso decía (caso 281).
 function ordersMerge(text, item, { relayed = false } = {}) {
-  const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(item)
+  const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(spokenOf(item))
   if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
   const named = []
   const denied = []
@@ -480,4 +495,4 @@ function grantedIn(root) {
 }
 
 module.exports = { DIR, record, said, authorized, unauthorized, unauthorizedNow, hold, ordersPush, ordersMerge,
-  grantedIn }
+  grantedIn, placed, spokenOf, isPush }

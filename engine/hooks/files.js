@@ -27,8 +27,8 @@ const LS = require('./line-scope')
 
 // Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
 // angosta: vale para esa ruta y para ninguna otra, a diferencia de la variable, que apaga el guard hasta
-// que cierre la sesión.
-const approved = (input, file) => !AP.pending(opsRoot(input), [file], input).length
+// que cierre la sesión. Se coteja resuelta, y el bloqueo la ofrece igual, para que la línea sea una sola.
+const approved = (input, file) => !AP.pending(opsRoot(input), [AP.at(input, file)], input).length
 
 // Qué archivo es una credencial, para los dos guards que la cuidan: `secrets`, que frena escribirla, y
 // `secrets-read`, que frena leerla. Devuelve el motivo, o vacío.
@@ -68,7 +68,7 @@ function secrets(input) {
   for (const file of filesOf(input)) {
     const reason = credential(input, file)
     if (!reason || approved(input, file)) continue
-    block(`${file} ${reason}\n${AP.HOW(null, [file], input)}`)
+    block(`${file} ${reason}\n${AP.HOW(null, [AP.at(input, file)], input)}`)
   }
 }
 
@@ -87,7 +87,8 @@ function secretsRead(input) {
   for (const file of [...filesOf(input), ...patterns]) {
     if (!patternNames(file).some((name) => credential(input, name)) || approved(input, file)) continue
     block(`${file} es una credencial: leerla la deja en el contexto de la sesión. Si hace falta un valor, `
-      + `pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', [file], input, [file], { durable: true })}`)
+      + `pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', [AP.at(input, file)], input, undefined,
+        { durable: true })}`)
   }
 }
 
@@ -97,7 +98,7 @@ function integrationSnapshot(input) {
     if (!/(?:^|\/)integrations\/[^/]+\/staging\/(?:.+\/remote\.json|sync-state\.json)$/.test(file)) continue
     if (approved(input, raw)) continue
     block(`${file} pertenece al sincronizador. Cura draft.md; no edites snapshots a mano.\n`
-      + AP.HOW(null, [raw], input, [raw], { fixable: true }))
+      + AP.HOW(null, [AP.at(input, raw)], input, undefined, { fixable: true }))
   }
 }
 
@@ -108,7 +109,7 @@ function generated(input) {
     if (!/(?:^|[._-])generated\.[^.]+$/i.test(base) && !/(?:^|[._-])gen\.(?:go|ts|js|py)$/i.test(base)) continue
     if (approved(input, raw)) continue
     block(`${file} parece código generado. Modifica su fuente y ejecuta el generador; no lo edites a mano.\n`
-      + AP.HOW(null, [raw], input, [raw], { fixable: true }))
+      + AP.HOW(null, [AP.at(input, raw)], input, undefined, { fixable: true }))
   }
 }
 
@@ -147,7 +148,7 @@ function testEvidence(input) {
     'Si la aserción está mal, corregila; si el comportamiento cambió, cambialo junto con la prueba que ' +
     'lo fija. Si tiene que quedar afuera igual —flake conocido, entorno que acá no existe—, es una ' +
     'decisión con dueño.\n'
-  const how = (file) => AP.HOW('OPS_TEST_EVIDENCE_OVERRIDE', [file], input)
+  const how = (file) => AP.HOW('OPS_TEST_EVIDENCE_OVERRIDE', [AP.at(input, file)], input)
   for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
     const removed = match[1].trim()
     if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}${how(removed)}`)
@@ -295,7 +296,7 @@ function planFirst(input) {
     // la acción correcta es angosta y concreta —el mismo criterio con que `HOW` decide no nombrarla—.
     const how = foreign.length
       ? AP.HOW(null, [], input, [])
-      : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw], input, [raw], { fixable: true })
+      : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [AP.at(input, raw)], input, undefined, { fixable: true })
     block(`${raw} cambia el producto sin plan. ${why}${how}`)
   }
 }

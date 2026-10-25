@@ -18,6 +18,11 @@ planning/.push-log
 # dejar nada, y quién la dio y con qué alcance se pregunta en la máquina donde ocurrió la conversación.
 planning/.grant-log
 
+# Las aprobaciones que una persona escribe a mano para destrabar un guard. Son de quien las dio, en su máquina,
+# para una operación: versionadas, autorizaban en el clon de otro lo que ella aprobó para otra cosa. Y nombran
+# rutas absolutas, que no viajan entre máquinas. Lo que el equipo quiera permitir siempre va en ops.config.json.
+planning/.ops-approval
+
 # El plan de cada runner. Es de la máquina que lo corre —existe para recuperar una ejecución
 # interrumpida, y nadie más puede retomarla— y cambia en cada paso, así que compartirlo es un conflicto
 # por commit a cambio de nada. Lo que el equipo sí necesita saber vive en `planning/claims/`.

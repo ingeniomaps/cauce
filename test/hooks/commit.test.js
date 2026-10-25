@@ -146,7 +146,7 @@ test('un índice que no se puede leer no autoriza el commit', () => {
 // la misma puerta abierta que vino a cerrar, con otra forma. Por qué existe y por qué se coteja en vez
 // de consumirse, en `approval`.
 test('una aprobación de gobernanza vale para lo que nombra y deja de valer al cambiar', () => {
-  const root = tempRoot('ops-hook-aprobacion-')
+  const root = fs.realpathSync(tempRoot('ops-hook-aprobacion-'))
   git(['init'], root)
   git(['config', 'user.email', 'x@y.z'], root)
   git(['config', 'user.name', 'x'], root)
@@ -164,7 +164,7 @@ test('una aprobación de gobernanza vale para lo que nombra y deja de valer al c
   }
   // Con cabecera: quien lo escribe a mano va a explicar qué autorizó y cuándo, y eso no es una ruta.
   const approve = (...paths) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    `# Aprobado por X el 2026-09-06 para el commit de la propuesta 2026-08.\n${paths.join('\n')}\n`)
+    `# Aprobado por X el 2026-09-06.\n${paths.map((one) => path.join(root, one)).join('\n')}\n`)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
   const rule = write('planning/rules/system/conduct.md')
@@ -450,12 +450,12 @@ test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo 
 // uno solo y ya no se llama de gobernanza — una aprobación escrita a mano nombra rutas, y quién las
 // mira lo decide qué guard esté juzgando esa ruta.
 test('la aprobación por operación abre los guards que deciden sobre una ruta', () => {
-  const root = tempRoot('ops-hook-approval-todos-')
+  const root = fs.realpathSync(tempRoot('ops-hook-approval-todos-'))
   initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
   const approve = (...paths) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    `# Aprobado por X el 2026-09-07.\n${paths.join('\n')}\n`)
+    `# Aprobado por X el 2026-09-07.\n${paths.map((one) => path.join(root, one)).join('\n')}\n`)
   const clear = () => fs.rmSync(path.join(root, 'planning', '.ops-approval'), { force: true })
 
   // En `migrations` lo que se decide es la ruta del archivo que se está por escribir.

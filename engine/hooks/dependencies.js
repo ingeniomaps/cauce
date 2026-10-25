@@ -85,8 +85,13 @@ function dependencies(input) {
   // Lo que se juzga acá es el archivo staged, así que la aprobación por ruta lo expresa: autorizar
   // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
   // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
-  const unapproved = (parent, names) => AP.pendingNow(opsRoot(input),
-    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name)), input)
+  // Devuelve las rutas del índice, que es lo que `lockUnaffected` sabe leer; se aprueban con `key`.
+  const key = AP.inRepo(dir)
+  const unapproved = (parent, names) => {
+    const files = names.map((name) => path.posix.join(parent === '.' ? '' : parent, name))
+    const left = new Set(AP.pendingNow(opsRoot(input), files.map(key), input))
+    return files.filter((file) => left.has(key(file)))
+  }
   // Un lock cuenta si está en disco **o** si el commit lo va a llevar, y la unión no es un detalle: el
   // disco solo perdía el que alguien borró del árbol sin stagear el borrado —sigue en el índice, sigue
   // en el próximo commit— y ahí la comprobación dejaba de dispararse justo cuando más hacía falta. Es
@@ -104,22 +109,22 @@ function dependencies(input) {
     const onDisk = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
     const existingLocks = [...new Set([...onDisk, ...[...locks].filter((n) => inIndex.has(enParent(n)))])]
     if (onDisk.length > 1) {
-      block(`${parent}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
+      block(`${key(parent)}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
     }
     const manifests = unapproved(parent, state.manifests)
       .filter((name) => !lockUnaffected(dir, name, existingLocks))
     if (state.manifests.length && existingLocks.length && !state.locks.length && manifests.length) {
       // Un lock que ya no está en disco pero sigue en el índice impide aflojar y no se ve: se nombra.
       const stale = existingLocks.filter((name) => !onDisk.includes(name))
-      block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
+      block(`${key(parent)}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
         + (stale.length ? `Hay otro lockfile en el índice y no en disco —${stale.join(', ')}—: con dos, un `
           + 'manifiesto que no toca dependencias tampoco afloja. Si ya no se usa, sacalo del índice.\n' : '')
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests, input))
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests.map(key), input))
     }
     const lockfiles = unapproved(parent, state.locks)
     if (state.locks.length && !state.manifests.length && lockfiles.length) {
-      block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', lockfiles, input))
+      block(`${key(parent)}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', lockfiles.map(key), input))
     }
   }
 }

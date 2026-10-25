@@ -196,7 +196,7 @@ function comments(input) {
   if (hard.length) {
     // Lo duro lo puede aprobar la persona, como cualquier gate: el idioma de un archivo ajeno no se corrige.
     // Aprobarlo no saltea la pasada de abajo, que es del agente y no de lo declarado.
-    const unapproved = AP.pendingNow(root, staged, input)
+    const unapproved = AP.pendingNow(root, staged.map(AP.inRepo(dir)), input)
     if (unapproved.length) {
       block(`Los comentarios que agrega este commit rompen lo que declara ops.config.json → comments:\n`
         + `${hard.map((one) => `  - ${one}`).join('\n')}\n`

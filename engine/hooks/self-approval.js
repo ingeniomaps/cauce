@@ -118,7 +118,7 @@ function unnamed(input, root, file) {
 // Una línea de push no se pregunta como una ruta: `mentions` compara también el basename, así que para
 // `push origin feat/login` alcanzaría con que el mensaje pidiera algo del login (caso 103). Es la misma
 // partición que hace `push.js` cuando pregunta por un destino.
-const isPush = (line) => /^push\s+\S+\s+\S+$/.test(line)
+const { isPush } = AP
 
 // Por qué no se puede escribir este contenido, o vacío.
 //

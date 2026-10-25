@@ -240,7 +240,7 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
   git(['add', 'package.json', 'app.js'], root)
   const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    `${rutas.join('\n')}\n`)
+    `${rutas.map((one) => path.join(fs.realpathSync(root), one)).join('\n')}\n`)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
   blocked('verify', commit, /Verify falló/)
@@ -264,7 +264,8 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   git(['add', 'openapi/api.yaml'], api)
   const commitApi = { cwd: api, tool_input: { command: 'git commit -m x' } }
   blocked('verify', commitApi, /OpenAPI\/Swagger/)
-  fs.writeFileSync(path.join(api, 'planning', '.ops-approval'), 'openapi/api.yaml\n')
+  fs.writeFileSync(path.join(api, 'planning', '.ops-approval'),
+    `${path.join(fs.realpathSync(api), 'openapi', 'api.yaml')}\n`)
   assert.doesNotThrow(() => execute('verify', commitApi))
 })
 

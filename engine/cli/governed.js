@@ -48,9 +48,9 @@ function governed(dir, files, cli) {
     for (const reading of readings(file, cli.value('--service', ''))) {
       const target = real(reading)
       const repo = toplevel(existingDir(target))
-      // Se nombra como la nombra el índice, que es lo que el guard frena y lo que una persona escribe al aprobar.
-      const indexed = path.relative(repo, target)
-      if (governedOf(ops, repo, [indexed]).length && !found.includes(indexed)) found.push(indexed)
+      // Se juzga con la ruta del índice y se nombra como el guard la coteja: entera desde la raíz de su
+      // repositorio, que es lo que una persona escribe al aprobar (caso 445).
+      if (governedOf(ops, repo, [path.relative(repo, target)]).length && !found.includes(target)) found.push(target)
     }
   }
   // El mismo escape que el guard: con la variable puesta no frena nada, así que acá tampoco hay nada pendiente.

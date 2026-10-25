@@ -14,7 +14,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, writableRoots, outsideRoots, DECLARE_IT, opsRoot, withoutGitGlobals, gitDirectory, owns,
-  asRun, assignedValues,
+  asRun, assignedValues, toplevel, realPath,
 } = require('./input')
 const { writesWithBase } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
@@ -25,7 +25,7 @@ const LS = require('./line-scope')
 const AP = require('./approval')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
-const { deliveryRules } = require('./delivery')
+const { deliveryRules, namesRepo, GH, DIR } = require('./delivery')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
 // decidían por su cuenta admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra
@@ -65,6 +65,99 @@ function publishedHead(input) {
   return Boolean(result.stdout.trim())
 }
 
+// Dónde vale una aprobación, según la regla: el repositorio para lo que hace `git` —y para un `gh` que no lo nombra,
+// que es el que va a resolver—, la carpeta para un deploy o un stack de Compose, que leen su configuración de ahí.
+// Real, para que un enlace no lo convierta en otro lugar. Se calcula una vez por clase y por comando.
+const REPO = 'repo'
+function placesOf(raw, input) {
+  const known = new Map()
+  return (kind) => {
+    if (!kind) return { where: '', sure: true }
+    if (!known.has(kind)) {
+      const { dir, sure } = AP.locate(raw, input, { shell: kind === GH })
+      known.set(kind, { where: kind === DIR ? realPath(dir) : toplevel(dir), sure })
+    }
+    return known.get(kind)
+  }
+}
+const UNNAMED = '`gh` elige el repositorio solo, desde la carpeta en la que corre —y en un fork, el original—, así '
+  + 'que una línea sin él valdría en cualquiera. Nombrá el destino con --repo y el bloqueo va a decir qué pegar.'
+const UNSURE = 'el comando no deja saber dónde corre —dos destinos distintos, o uno que el shell expande—, así que '
+  + 'una línea valdría en otro lugar. Corré cada parte por separado, con la ruta escrita, y el bloqueo va a decir qué '
+  + 'pegar.'
+
+// Las reglas de `destructive`, en la forma `[patrón, mensaje, si tiene salida, cómo se lee el ítem, dónde vale]`.
+// Viven aparte porque `check` las necesita también: una línea de `.ops-approval` sin el lugar que su regla pide ya
+// no aprueba nada, y para saberlo hay que saber qué regla la habría frenado (caso 446).
+function rulesOf(input) {
+  return [
+    ...deliveryRules(input),
+    [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales.", true, null, REPO],
+    // Lo que R8 protege es la historia que **otro ya leyó**, y el motor ya hace esa distinción para el
+    // push: publicar se autoriza, reescribir lo publicado no. Acá se hace la misma, mirando si algún
+    // remoto alcanza a HEAD.
+    //
+    // Antes se bloqueaba siempre, «por política y no por daño», y eso no impedía el resultado sino el
+    // comando que lo nombra: `git reset --soft HEAD~1` y volver a commitear produce exactamente lo mismo,
+    // no lo frena ningún guard y no deja constancia de nada. Una regla que se cumple mejor esquivándola se
+    // termina esquivando siempre (caso 178).
+    //
+    // Y no lleva salida por chat ni publicado ni sin publicar: sin publicar no la necesita, y publicado es
+    // la misma reescritura que el force-push, que tampoco la tiene.
+    ...(publishedHead(input) ? [[
+      new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
+      "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
+        + 'prohíbe: hacé otro commit encima.',
+    ]] : []),
+    [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
+    // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
+    // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
+    // nombrado es trabajo corriente y no se toca.
+    //
+    // Pasó dos veces en una sesión, las dos limpiando restos de una prueba: el comando revirtió también
+    // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
+    // comando — `.` es el cwd, y el cwd suele tener más de lo que uno está mirando.
+    [
+      // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
+      // que restaura el working tree por defecto y toma el pathspec sin separador.
+      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${MISMO}*?\s)?`
+        + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
+      "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
+      + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
+      true,
+      null,
+      REPO,
+    ],
+    [
+      /\bdocker(?:\s+\w+)*\s+(?:volume\s+(?:rm|prune)|system\s+prune|network\s+prune)\b/,
+      'La limpieza global de Docker puede borrar datos compartidos.',
+      true,
+    ],
+    [
+      /\bdocker(?:\s+compose|-compose)\s+(?:\S+\s+)*(?:down|stop|kill|rm)\b/,
+      'Detener un stack Compose puede interrumpir servicios compartidos.',
+      true,
+      null,
+      DIR,
+    ],
+    [
+      new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
+        + String.raw`|\bdd\s+${MISMO}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
+      'Operación destructiva sobre disco o dispositivo.',
+    ],
+    [
+      // El destino se reconoce como lo escribe una persona y no sólo desnudo: entre comillas, con llaves,
+      // detrás de `--` y con barra final. Las comillas importan más que las otras tres — `rm -rf "$HOME"`
+      // es la forma *correcta* de escribirlo en bash, así que sin esto el hueco premiaba al que cita bien
+      // sus variables. Y `destructive` no desentrecomilla fuera de un commit, a propósito, así que la
+      // comilla tiene que entrar en el patrón (caso 167).
+      new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:--\s+)?['"]?`
+        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${PALABRA})`),
+      "'rm -r' sobre /, home o el directorio padre es catastrófico.",
+    ],
+  ]
+}
+
 // Un mensaje de commit es dato, no código. `git commit -m "fix: bloquear git push --force"` disparaba
 // el guard de publicación, y lo mismo `rm -rf /` nombrado en una explicación; con el heredoc que se usa
 // para un mensaje largo, el cuerpo entero entra en el comando, así que la línea que arregla esto no se
@@ -98,68 +191,6 @@ function destructive(input) {
       + 'habilita: publicá con un push normal, o registrá una acción humana.')
   }
   publish(input, command)
-  const rules = [
-    ...deliveryRules(input),
-    [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales.", true],
-    // Lo que R8 protege es la historia que **otro ya leyó**, y el motor ya hace esa distinción para el
-    // push: publicar se autoriza, reescribir lo publicado no. Acá se hace la misma, mirando si algún
-    // remoto alcanza a HEAD.
-    //
-    // Antes se bloqueaba siempre, «por política y no por daño», y eso no impedía el resultado sino el
-    // comando que lo nombra: `git reset --soft HEAD~1` y volver a commitear produce exactamente lo mismo,
-    // no lo frena ningún guard y no deja constancia de nada. Una regla que se cumple mejor esquivándola se
-    // termina esquivando siempre (caso 178).
-    //
-    // Y no lleva salida por chat ni publicado ni sin publicar: sin publicar no la necesita, y publicado es
-    // la misma reescritura que el force-push, que tampoco la tiene.
-    ...(publishedHead(input) ? [[
-      new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
-      "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
-        + 'prohíbe: hacé otro commit encima.',
-    ]] : []),
-    [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento.", true],
-    // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
-    // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
-    // nombrado es trabajo corriente y no se toca.
-    //
-    // Pasó dos veces en una sesión, las dos limpiando restos de una prueba: el comando revirtió también
-    // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
-    // comando — `.` es el cwd, y el cwd suele tener más de lo que uno está mirando.
-    [
-      // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
-      // que restaura el working tree por defecto y toma el pathspec sin separador.
-      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${MISMO}*?\s)?`
-        + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
-      "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
-      + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
-      true,
-    ],
-    [
-      /\bdocker(?:\s+\w+)*\s+(?:volume\s+(?:rm|prune)|system\s+prune|network\s+prune)\b/,
-      'La limpieza global de Docker puede borrar datos compartidos.',
-      true,
-    ],
-    [
-      /\bdocker(?:\s+compose|-compose)\s+(?:\S+\s+)*(?:down|stop|kill|rm)\b/,
-      'Detener un stack Compose puede interrumpir servicios compartidos.',
-      true,
-    ],
-    [
-      new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
-        + String.raw`|\bdd\s+${MISMO}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
-      'Operación destructiva sobre disco o dispositivo.',
-    ],
-    [
-      // El destino se reconoce como lo escribe una persona y no sólo desnudo: entre comillas, con llaves,
-      // detrás de `--` y con barra final. Las comillas importan más que las otras tres — `rm -rf "$HOME"`
-      // es la forma *correcta* de escribirlo en bash, así que sin esto el hueco premiaba al que cita bien
-      // sus variables. Y `destructive` no desentrecomilla fuera de un commit, a propósito, así que la
-      // comilla tiene que entrar en el patrón (caso 167).
-      new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:--\s+)?['"]?`
-        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${PALABRA})`),
-      "'rm -r' sobre /, home o el directorio padre es catastrófico.",
-    ],
-  ]
   // El tercer elemento dice si la regla tiene salida. Las que no la tienen son las que una persona tampoco
   // debería poder abrir pidiéndolo: `--amend` y el force-push de arriba, que R8 prohíbe sin excepción
   // configurable; el borrado de disco; y `rm -r` sobre raíz, home o el padre, que es la clase que gobierna
@@ -169,17 +200,48 @@ function destructive(input) {
   // El ítem que se aprueba es el comando entero tal como llegó, no el pedazo que matcheó: `git clean -f`
   // no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento no destrabaría lo que
   // la persona escribió. Entero es además lo que ella pegaría en el archivo, y lo más angosto: cualquier
-  // otra bandera es otro comando y vuelve a preguntarse.
-  for (const [pattern, message, open, by] of rules) {
+  // otra bandera es otro comando y vuelve a preguntarse. Y lleva el lugar donde corre, cuando el efecto depende
+  // de él: el mismo texto en otro repositorio u otra carpeta es otra operación (caso 446).
+  const spotOf = placesOf(raw, input)
+  const root = opsRoot(input)
+  for (const [pattern, message, open, by, kind] of rulesOf(input)) {
     if (!pattern.test(command)) continue
     const parts = by && by.items(command)
-    const items = parts || [String(raw).trim()]
-    const held = open ? AP.pending(opsRoot(input), items, input, parts ? by.asked : undefined) : items
+    const texts = parts || [String(raw).trim()]
+    // Un `gh` que no nombra su repositorio no tiene línea que valga sólo para él, ni un comando cuyo lugar no se sabe:
+    // para ésos el archivo no se consulta, y lo concedido en el chat queda atado al lugar desde donde corren.
+    const unnamed = new Set(texts.filter((one) => kind === GH && !namesRepo(one)))
+    const spots = texts.map((one) => spotOf(unnamed.has(one) ? GH : kind === GH ? '' : kind))
+    const items = texts.map((one, at) => AP.placed(one, spots[at].where))
+    const loose = new Set(items.filter((one, at) => unnamed.has(texts[at]) || !spots[at].sure))
+    const filed = new Set(open && root ? AP.read(root) : [])
+    const asked = items.filter((one) => loose.has(one) || !filed.has(one))
+    const held = open ? AP.pending('', asked, input, parts ? by.asked : undefined) : items
     if (!held.length) continue
-    block(open ? `${message}\n${AP.HOW(null, held, input)}` : message)
+    const pasteable = held.filter((one) => !loose.has(one))
+    const why = unnamed.size ? UNNAMED : UNSURE
+    const how = () => AP.HOW(null, held, input, pasteable, { unpasteable: loose.size ? why : '' })
+    block(open ? `${message}\n${how()}` : message)
   }
   const tree = removesTheTree(input, command)
   if (tree) block(tree)
+}
+
+// Las líneas de `.ops-approval` que son un comando que su regla aprueba con lugar y no lo llevan: la forma de antes
+// del 446, que ya no aprueba nada. Es la misma tabla que decide el bloqueo, así que una regla nueva entra sola.
+function unplaced(root, lines) {
+  if (!lines.length) return []
+  // Con el config ilegible la tabla no se puede armar —los `deployCommands` salen de ahí—, y eso ya lo denuncia
+  // `check` como error: acá se calla en vez de tumbar la corrida.
+  let rules
+  try { rules = rulesOf({ cwd: root }) } catch { return [] }
+  return lines.filter((line) => {
+    if (AP.spokenOf(line) !== line) return false
+    if (AP.isPush(line)) return true
+    const command = withoutGitGlobals(asRun(line))
+    return rules.some(([pattern, , open, , place]) => open && pattern.test(command)
+      && (place === REPO || place === DIR || (place === GH && !namesRepo(command))))
+  })
 }
 
 function gitAdd(input) {
@@ -301,4 +363,4 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = { destructive, gitAdd, shellBoundary, run, MISMO }
+module.exports = { destructive, gitAdd, shellBoundary, run, MISMO, unplaced }

@@ -11,8 +11,8 @@
 //   la persona que la sesión. El push sale de la sesión principal.
 // - Una rama viva —`main`, `master` y la rama por defecto de cada remoto— no la alcanza ni `allowPush` ni
 //   una orden del chat si el proyecto no la nombró en `runner.pushToLiveBranches`. La línea exacta en
-//   `.ops-approval` sí la alcanza: la escribe una persona a mano y los guards de límites no dejan que el
-//   agente se la escriba.
+//   `.ops-approval`, con el repositorio del que sale, sí la alcanza: la escribe una persona a mano y los
+//   guards de límites no dejan que el agente se la escriba.
 // - A una rama de trabajo, o a una viva ya nombrada, la alcanzan `allowPush`, la línea exacta en
 //   `.ops-approval`, un mensaje de la persona que ordena ese push con su remoto y su rama, o un «dale» al
 //   push que quedó frenado. Qué cuenta como orden lo decide `chat.js`.
@@ -20,7 +20,7 @@
 // El `--force` no llega hasta acá: lo frena `destructive` antes, sin override (R8).
 
 const { spawnSync } = require('node:child_process')
-const { block, cwdOf, gitDirectory, opsRoot, configOf } = require('./input')
+const { block, commandOf, opsRoot, configOf, toplevel } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const CF = require('./confirm')
@@ -99,8 +99,12 @@ const SUBAGENT = "'git push' desde un subagente no se publica, con ningún permi
   + 'persona (R10), y un subagente es trabajo que el agente delegó. Devolvé el resultado a la sesión '
   + 'principal, que es la que publica.'
 
-function liveMessage(live, input) {
-  const lines = live.filter((to) => to.remote).map((to) => to.item)
+// Un destino se aprueba con el repositorio del que sale, porque `origin` se llama igual en todos y `push origin main`
+// aprobado para uno publicaba el `main` de cualquiera (caso 446). Vale para la línea del archivo y para el «dale».
+const filedAs = (to, top) => AP.placed(to.item, top)
+
+function liveMessage(live, input, top, sure) {
+  const lines = sure ? live.filter((to) => to.remote).map((to) => filedAs(to, top)) : []
   const names = [...new Set(live.map((to) => (to.every ? 'todas las ramas' : to.branch)))].join(', ')
   // Le habla al agente y deja el permiso como cosa de la persona, por lo mismo que `AP.HOW`: medido en
   // una sesión real, con «pegando tal cual» a secas el agente se ofreció a escribirse la aprobación.
@@ -112,8 +116,8 @@ function liveMessage(live, input) {
       + lines.map((line) => `  ${line}\n`).join('') : '.')
 }
 
-function workMessage(items, input) {
-  const lines = items.filter((item) => item.startsWith('push '))
+function workMessage(items, input, sure) {
+  const lines = sure ? items.filter((item) => item.startsWith('push ')) : []
   const native = CF.native(input)
   if (native) CF.askPerson(input)
   const held = native ? false : CHAT.hold(input, items)
@@ -127,7 +131,9 @@ function workMessage(items, input) {
   const paste = lines.length
     ? `\nSi prefiere aprobarlo a mano, que pegue ella tal cual en ${AP.where(input)} estas líneas:\n`
       + lines.map((line) => `  ${line}\n`).join('')
-    : ' Sin remoto y rama que se puedan leer del comando no hay línea que aprobar: nombralos.\n'
+    : sure ? ' Sin remoto y rama que se puedan leer del comando no hay línea que aprobar: nombralos.\n'
+      : ' El comando no deja saber de qué repositorio sale —dos destinos distintos, o uno que el shell expande—, '
+        + 'así que no hay línea que aprobar: corré cada push por separado, con la ruta escrita.\n'
   return `'git push' publica cambios y requiere una acción humana. ${how}${paste}`
     + 'El permiso permanente es runner.allowPush en ops.config.json, y lo decide una persona.'
 }
@@ -155,31 +161,36 @@ function publish(input, command) {
   const pushes = [...command.matchAll(PUSH)]
   if (!pushes.length) return
   if (input.agent_id) block(SUBAGENT)
-  const dir = gitDirectory(command, cwdOf(input))
+  // El repositorio sale del comando como llegó: `command` ya no trae el `-C` —lo saca `withoutGitGlobals`—, y sin
+  // él `git -C /a push` se resolvía en la carpeta de la sesión, para la rama viva y para el lugar (caso 446).
+  const { dir, sure } = AP.locate(commandOf(input), input)
+  let top = ''
+  const topOf = () => top || (top = toplevel(dir))
   const root = opsRoot(input)
   const runner = (root && configOf(root).runner) || {}
   const listed = new Set(Array.isArray(runner.pushToLiveBranches) ? runner.pushToLiveBranches : [])
   const filed = new Set(root ? AP.read(root) : [])
   const live = liveBranches(dir)
   const destinations = pushes.flatMap((match) => destinationsOf(match[1], dir))
-  const byFile = destinations.filter((to) => to.item && to.item.startsWith('push ') && filed.has(to.item))
+  const byFile = sure ? destinations.filter((to) => to.item && to.item.startsWith('push ')
+    && filed.has(filedAs(to, topOf()))) : []
   const left = destinations.filter((to) => !byFile.includes(to))
   const unlisted = left.filter((to) => to.every || (live.has(to.branch) && !listed.has(to.branch)))
-  if (unlisted.length) block(liveMessage(unlisted, input))
+  if (unlisted.length) block(liveMessage(unlisted, input, topOf(), sure))
   // Con la llave puesta no hizo falta ninguna aprobación, así que no hay ninguna que anotar: la
   // autorización ya está escrita en `ops.config.json`, y repetirla en cada push sería registrar el archivo
   // del proyecto contra sí mismo.
   if (runner.allowPush === true) return
-  const items = [...new Set(left.map((to) => to.item))]
+  const items = [...new Set(left.map((to) => filedAs(to, topOf())))]
   // Se pregunta sin conceder, a diferencia de lo que pasa por `AP.pending`: volver a leer lo que ya se
   // leyó no agrega consecuencia y volver a publicar sí, así que la autorización de un push vale para esa
   // operación y no para el mensaje siguiente (R10).
   const cleared = CHAT.authorized(input, items, { asked: CHAT.ordersPush })
   const unordered = items.filter((item) => !cleared.some((one) => one.item === item))
-  if (unordered.length) block(workMessage(unordered, input))
-  const destination = new Map(destinations.map((to) => [to.item, to]))
+  if (unordered.length) block(workMessage(unordered, input, sure))
+  const destination = new Map(destinations.map((to) => [filedAs(to, topOf()), to]))
   trail(root, input.session_id, [
-    ...new Map(byFile.map((to) => [to.item, entryOf(to, AP.APPROVAL)])).values(),
+    ...new Map(byFile.map((to) => [filedAs(to, topOf()), entryOf(to, AP.APPROVAL)])).values(),
     ...cleared.map((one) => entryOf(destination.get(one.item), one.via)),
   ])
 }

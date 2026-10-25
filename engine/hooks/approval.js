@@ -26,14 +26,37 @@
 
 const path = require('node:path')
 const fs = require('node:fs')
-const { opsRoot, cwdOf } = require('./input')
+const { opsRoot, cwdOf, toplevel, gitDirectory } = require('./input')
 const CHAT = require('./chat')
 const CF = require('./confirm')
 
 const APPROVAL = '.ops-approval'
 
+// Una ruta se aprueba absoluta, que es la única forma que nombra un checkout. Relativa, `package.json` era el
+// manifiesto de todos los repositorios de un sidecar y de todos los árboles de sus líneas de trabajo, así que
+// la línea que una persona escribió para uno aprobaba los demás (caso 445). `at` es para la ruta que trae una
+// herramienta —relativa al cwd de la llamada si viene así, como la de un parche—, e `inRepo` para la del
+// índice, relativa a la raíz real de su repositorio.
+const at = (input, raw) => path.resolve(cwdOf(input), raw)
+// Dónde corre un comando, para el lugar que lleva su aprobación (caso 446): el primer `git -C` o `cd`, como lo lee
+// `gitDirectory`. Con dos destinos distintos, o uno que el shell expande, ese lugar sería una suposición y una línea
+// sobre él valdría donde no debe: `sure` lo dice, y quien lo usa no ofrece línea. Para `gh`, que corre en la carpeta
+// del shell, el `-C` de un `git` del mismo comando no cuenta.
+function locate(raw, input, { shell = false } = {}) {
+  const text = shell ? raw.replace(/(^|\s)git(?:\s+-C\s+\S+)+/g, '$1git') : raw
+  const targets = [...text.matchAll(/(?:\s-C\s+|(?:^|[;&|\n]\s*)cd\s+)(['"]?)([^\s'";&|]+)\1/g)].map((one) => one[2])
+  const sure = new Set(targets).size <= 1 && !targets.some((one) => /[$`*?~]/.test(one))
+  return { dir: gitDirectory(text, cwdOf(input)), sure }
+}
+
+function inRepo(dir) {
+  // La raíz se pide recién al primer uso: un commit que no frena nada no paga el `rev-parse`.
+  let top = ''
+  return (file) => path.join(top || (top = toplevel(dir)), file)
+}
+
 // Una ruta por línea, `#` para lo demás. El archivo ausente y el vacío son lo mismo: no hay nada
-// aprobado, que es el estado normal. Un push se aprueba igual, con la línea `push <remoto> <rama>`
+// aprobado, que es el estado normal. Un push se aprueba igual, con la línea `push <remoto> <rama> @ <repo>`
 // tal cual y sin patrones: `feat/*` convertiría una aprobación puntual en un permiso (caso 103).
 //
 // El texto se lee aparte del archivo porque `self-approval` compara lo que se está por escribir contra lo
@@ -93,10 +116,10 @@ function REFUSED(items, input = {}) {
 }
 
 // Cómo se toma la salida angosta, dicho una vez porque lo dicen todos los bloqueos que la tienen. Lleva
-// las líneas exactas porque cada guard coteja la ruta en la forma que tiene a mano —absoluta la que llega
-// de un Write, relativa al repositorio la que sale del índice— y una línea en la otra forma no pega: sin
-// decirla, lo que quedaba a mano era la variable (caso 089). Nombra también la variable: sigue
-// existiendo, y esconderla haría que quien la necesite la descubra sin saber su alcance.
+// las líneas exactas porque lo que se coteja no siempre es lo que se escribiría a mano —una ruta resuelta,
+// un comando entero, un ítem que no es una ruta— y una línea en otra forma no pega: sin decirla, lo que
+// quedaba a mano era la variable (caso 089). Nombra también la variable: sigue existiendo, y esconderla
+// haría que quien la necesite la descubra sin saber su alcance.
 //
 // Con una persona en el chat, además, deja anotado lo que se frenó —para eso llama a `hold`— y lo dice
 // primero: contestar es más corto que editar un archivo, y es lo que la persona ya está haciendo. El
@@ -109,7 +132,8 @@ function REFUSED(items, input = {}) {
 // `turn` lo pasa el guard que no hereda —los de límites y el de la configuración—: decirle a la persona que su
 // confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación falsa en
 // el bloqueo, vista en una sesión real de Gemini (caso 370).
-function HOW(variable, lines, input, pasteable = lines, { durable = false, fixable = false, turn = false } = {}) {
+function HOW(variable, lines, input, pasteable = lines,
+  { durable = false, fixable = false, turn = false, unpasteable = '' } = {}) {
   // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el
   // diálogo, y un pendiente que sobreviviera lo podría aprobar un mensaje sobre otra cosa (caso 221).
   // Sin nada que aprobar no hay diálogo: `plan-first` con un plan a la vista pide escribir el plan, no un sí.
@@ -171,10 +195,12 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false, fixab
       + (chat ? '' : 'Vos no lo escribas —un guard lo frena—: decí qué se frenó y dónde, y reintentá cuando '
         + 'esté; si sos un subagente, devolvele el bloqueo a quien te lanzó. ')
     : ''
+  // Por qué no hay línea lo dice el guard cuando no es la expansión del shell, que es el caso de siempre.
   const unresolved = stuck.length
-    ? `Por archivo no hay línea que pegar para ${stuck.join(', ')}: la ruta llegó con una expansión del shell `
-      + 'sin resolver, y la aprobación compara texto, así que esa línea sólo valdría para un comando escrito '
-      + 'igual. Volvé a correrlo con la ruta escrita y el bloqueo va a decir qué pegar. '
+    ? `Por archivo no hay línea que pegar para ${stuck.join(', ')}: ` + (unpasteable
+      || 'la ruta llegó con una expansión del shell sin resolver, y la aprobación compara texto, así que esa '
+        + 'línea sólo valdría para un comando escrito igual. Volvé a correrlo con la ruta escrita y el bloqueo '
+        + 'va a decir qué pegar.') + ' '
     : ''
   // Sin variable no se nombra ninguna. Un guard que no tiene apagado por sesión no debería anunciar uno, y
   // los que estrenan salida angosta con el 117 no lo tienen a propósito: ofrecer el permiso más ancho
@@ -224,8 +250,27 @@ function warnings(root) {
   const out = []
   const { credential } = require('./files')
   const approved = read(root)
-  const secret = approved.filter((line) => credential({ cwd: root }, line))
-  const rest = approved.filter((line) => !secret.includes(line))
+  // Una ruta relativa es la forma de antes del 445: ya no aprueba nada, y sin nombrarla se leía como una aprobación
+  // vigente. Una línea de una palabra puede ser también el comando que `workers` aprueba —`vitest`, `./vitest`—, que
+  // sigue valiendo: ésas las reconoce el propio guard.
+  const { launches } = require('./workers')
+  const stale = approved.filter((line) => !/\s/.test(line) && !path.isAbsolute(line) && !launches(line))
+  // Lo mismo para un comando cuyo efecto depende de dónde corre y que se aprobó sin lugar (caso 446).
+  const { unplaced } = require('./shell')
+  const placeless = unplaced(root, approved.filter((line) => /\s/.test(line)))
+  const old = [...stale, ...placeless]
+  const secret = approved.filter((line) => !old.includes(line) && credential({ cwd: root }, line))
+  const rest = approved.filter((line) => !old.includes(line) && !secret.includes(line))
+  if (stale.length) {
+    out.push(`planning/${APPROVAL}: ${stale.length} línea(s) con una ruta relativa, que ya no aprueba nada: `
+      + `${stale.join(', ')}. Una ruta se aprueba entera, como la nombra el bloqueo; si todavía hace falta, que `
+      + 'la vuelva a aprobar una persona con esa línea')
+  }
+  if (placeless.length) {
+    out.push(`planning/${APPROVAL}: ${placeless.length} línea(s) sin el lugar donde valen, que ya no aprueban nada: `
+      + `${placeless.join(', ')}. Un comando que depende de dónde corre se aprueba con el repositorio o la carpeta `
+      + 'que nombra el bloqueo, y uno de `gh` nombrando --repo')
+  }
   if (secret.length) {
     out.push(`planning/${APPROVAL}: ${secret.length} credencial(es) aprobadas hasta que se borre su línea: `
       + secret.join(', '))
@@ -241,4 +286,7 @@ function warnings(root) {
   return out
 }
 
-module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW, REFUSED, warnings }
+module.exports = {
+  APPROVAL, at, inRepo, locate, placed: CHAT.placed, spokenOf: CHAT.spokenOf, isPush: CHAT.isPush, lines, read,
+  pending, pendingNow, where, HOW, REFUSED, warnings,
+}

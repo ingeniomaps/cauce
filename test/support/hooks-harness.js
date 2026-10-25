@@ -77,6 +77,34 @@ function chatSession() {
   }
 }
 
+// Un sidecar como lo arma `init`: la instancia en `ops/` y dos repositorios al lado, que es lo mínimo donde la
+// misma ruta relativa existe dos veces. La sesión se abre en el workspace, como la lanza el runner.
+function sidecar(prefix) {
+  const workspace = fs.realpathSync(tempRoot(prefix))
+  const ops = path.join(workspace, 'ops')
+  fs.mkdirSync(path.join(ops, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'sidecar',
+    workspaceRoots: [{ name: 'api', path: '../api' }, { name: 'web', path: '../web' }] }))
+  const repos = {}
+  for (const name of ['api', 'web']) {
+    repos[name] = path.join(workspace, name)
+    fs.mkdirSync(repos[name])
+    initRepo(repos[name])
+  }
+  const approval = path.join(ops, 'planning', '.ops-approval')
+  const approve = (...lines) => fs.writeFileSync(approval, `${lines.join('\n')}\n`)
+  const env = { OPS_ROOT: process.env.OPS_ROOT, CLAUDE_PROJECT_DIR: process.env.CLAUDE_PROJECT_DIR }
+  process.env.OPS_ROOT = ops
+  process.env.CLAUDE_PROJECT_DIR = workspace
+  const restore = () => {
+    for (const [name, value] of Object.entries(env)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+  return { workspace, ops, repos, approve, restore }
+}
+
 function messageOf(name, input) {
   try { execute(name, input) } catch (error) {
     if (error.blocked) return error.message
@@ -182,7 +210,7 @@ function repoPublicado(prefix) {
 
 module.exports = {
   blocked, git, initRepo, repoPublicado, chatSession, messageOf,
-  planFirstRoot, pasteApproval, pushRoot,
+  planFirstRoot, pasteApproval, pushRoot, sidecar,
   DISARM, WIP_IDLE, WIP_CON_PLAN, WIP_WITHOUT_PLAN,
   BACKLOG_WITH_TASK, BACKLOG_EMPTY, WORK, LIVE,
 }
