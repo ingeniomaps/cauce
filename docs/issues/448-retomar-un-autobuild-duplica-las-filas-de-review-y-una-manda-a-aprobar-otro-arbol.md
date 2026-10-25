@@ -162,3 +162,10 @@ Lo que el caso encontró y no preveía: el conteo de `test/wiring/runners-contra
 Lo que queda sin medir: que el agente reconozca la misma decisión dicha con otras palabras es juicio suyo, no un
 mecanismo. La corrida real la reconoció una vez. Una dedupe por texto, como el `Set` de `autobuild.js:2005`, no la
 reconocería.
+
+**Medido después del cierre, el 2026-10-25**: la vuelta que faltaba, con la línea del árbol aprobada y el motor de
+`main`. La corrida `wf_2cfef1ed-aee` (USD 6,55) retomó, volvió a pasar por Review y contestó «No registré filas
+nuevas. Las dos decisiones que dejó abiertas la revisión de sumar-left-pad ya tienen su fila pendiente». Después
+commiteó en el árbol de la línea (`91de16c`) y cerró la tarea. En `human/` siguieron las dos filas de la primera
+corrida, con su hora. Van dos retomas de dos sin duplicar. Esa corrida encontró además otro defecto: no pudo
+commitear el estado de planning en la instancia. Salió como caso propio, el 450.

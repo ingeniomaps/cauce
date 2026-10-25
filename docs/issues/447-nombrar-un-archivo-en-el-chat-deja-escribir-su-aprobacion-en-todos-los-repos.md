@@ -131,3 +131,8 @@ La prueba:
 Lo que el arreglo no cubre: compara sólo contra lo que el archivo aprueba y contra los checkouts que la instancia
 conoce (sus raíces y sus árboles de tarea y de línea). Un clon que la instancia no declara no cuenta como «otro con el
 mismo nombre»: la línea que lo nombre por su nombre pasa si es la única que hay.
+
+**Medido después del cierre, el 2026-10-25**: el camino del diálogo nativo, que ninguna de las tres pruebas cubría.
+Una cuarta prueba en `test/hooks/approval-chat-name.test.js` pide el diálogo de Claude Code (`permission_mode:
+default`) con una sola ruta que otro checkout también tiene: el guard pregunta en el diálogo y muestra esa ruta. En
+una copia, sin la comprobación, esa prueba dio rojo.

@@ -299,3 +299,9 @@ no llevan lugar. Se vio en rojo quitándole el lugar a `reset --hard` y a los `d
   ofreciendo su propia línea con lugar; un `gh` sin `--repo` pide el diálogo y no ofrece línea. Que Claude Code muestre
   el diálogo ante un `ask` no lo cambia este caso y está medido en `confirm.js`; no se abrió una sesión interactiva.
 
+
+**Medido después del cierre, el 2026-10-25, con Antigravity (agy 1.4.7)**, en el mismo banco que el 445. agy corre
+desde la raíz del banco con `cd app && …`, así que la línea que da el bloqueo es `cd app && git clean -fd @
+<banco>/app`. Con esa línea pegada, el `git clean -fd` corrió en `app` («Borrando suelto.tmp») y el de `web` siguió
+frenado con su propia línea. El ítem lleva el `cd` porque es el comando tal como llegó: un `git clean -fd` lanzado
+desde adentro de `app` no lo aprueba esa línea. Esa forma del ítem es anterior a este caso.
