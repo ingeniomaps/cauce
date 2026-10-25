@@ -223,3 +223,34 @@ test('la sesión de una línea no cambia con git el checkout de la principal, y 
     assert.doesNotThrow(() => execute('shell-boundary', shell(main, base, 'git -C app switch -c tmp')))
   })
 })
+
+// Caso 449, con la orden que la frenaba en la sesión real: «haz el merge de main en work/manuel».
+test('un git en la instancia pasa si la persona lo pide, y su bloqueo no dice que lo corrige el agente', () => {
+  const { base, ops } = session('cauce-line-scope-orden-')
+  withRoot(ops, () => {
+    const id = sessionId()
+    executeAll(['pre-shell'], shell(id, ops, 'node tools/ops.js claim planning t-piloto --line piloto'))
+    const merge = (extra) => () => execute('shell-boundary', shell(id, ops, 'git merge --no-edit main', extra))
+    // Un subagente no tiene mensaje propio: sin una orden que lo cubra, frena.
+    prompt(id, 'implementá la tarea', base)
+    const message = (() => {
+      try { merge({ agent_id: 'build' })() } catch (error) { return error.message }
+      return ''
+    })()
+    assert.match(message, STRAYED)
+    assert.ok(message.includes(`  git merge @ ${ops}\n`), message)
+    assert.doesNotMatch(message, /Esto lo corregís vos/)
+    prompt(id, 'haz el merge de main en work/manuel', base)
+    assert.doesNotThrow(merge())
+    // La dirección segura la sigue decidiendo el guard: la pregunta, la negación y el freno no ordenan.
+    for (const text of ['¿mergeo main?', 'no hagas el merge todavía', 'pará con eso']) {
+      prompt(id, text, base)
+      assert.throws(merge(), (error) => error.blocked && STRAYED.test(error.message), text)
+    }
+    // Y la línea pegada vale para ese git y ningún otro.
+    fs.appendFileSync(path.join(ops, 'planning', '.ops-approval'), `git merge @ ${ops}\n`)
+    prompt(id, '¿seguimos?', base)
+    assert.doesNotThrow(merge())
+    assert.throws(() => execute('shell-boundary', shell(id, ops, 'git stash')), (error) => STRAYED.test(error.message))
+  })
+})
