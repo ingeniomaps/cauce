@@ -16,7 +16,7 @@ const {
   commandOf, cwdOf, block, writableRoots, outsideRoots, DECLARE_IT, opsRoot, withoutGitGlobals, gitDirectory, owns,
   asRun, assignedValues, toplevel, realPath,
 } = require('./input')
-const { writesWithBase } = require('./shell-writes')
+const { writesWithBase, REDIRECTIONS } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -63,6 +63,39 @@ function publishedHead(input) {
   const result = spawnSync('git', ['branch', '-r', '--contains', 'HEAD'], { cwd, encoding: 'utf8' })
   if (result.status !== 0) return true
   return Boolean(result.stdout.trim())
+}
+
+// Los tramos de un comando, partido por `;`, `&`, `|` y el salto de línea fuera de comillas, sin los paréntesis o
+// llaves que lo agrupan ni sus redirecciones, que no cambian qué hace. El `&` de una redirección —`2>&1`, `&>`— no
+// parte.
+function stretches(raw) {
+  const found = []
+  let start = 0
+  let quote = ''
+  for (let at = 0; at < raw.length; at += 1) {
+    const char = raw[at]
+    if (quote) {
+      if (char === quote) quote = ''
+      else if (char === '\\' && quote === '"') at += 1
+    } else if (char === '\\') at += 1
+    else if (char === "'" || char === '"') quote = char
+    else if (';|\n'.includes(char) || (char === '&' && raw[at - 1] !== '>' && raw[at + 1] !== '>')) {
+      found.push(raw.slice(start, at))
+      start = at + 1
+    }
+  }
+  return [...found, raw.slice(start)].map((one) => one.replace(REDIRECTIONS, ' ').trim().replace(/^[({]+\s*/, '')
+    .replace(/\s*[)}]+$/, '').replace(/\s+/g, ' ')).filter(Boolean)
+}
+
+// Lo que se aprueba de un comando: el tramo que la regla reconoce, si es uno solo. Lo que lo rodea —el `cd` que lo
+// lleva a su carpeta, el `echo` que lee la salida— lo cambia el agente de un intento al siguiente, y con el comando
+// entero como ítem el reintento era otra cosa y el «dale» de la persona no lo cubría (caso 451). Dónde corre ya lo
+// dice el lugar. Con dos tramos que la regla reconoce, el comando entero: aprobar uno no aprueba el otro.
+function stretchOf(raw, pattern) {
+  const text = String(raw).trim()
+  const hits = stretches(text).filter((one) => pattern.test(withoutGitGlobals(asRun(one))))
+  return hits.length === 1 ? hits[0] : text
 }
 
 // Dónde vale una aprobación, según la regla: el repositorio para lo que hace `git` —y para un `gh` que no lo nombra,
@@ -207,7 +240,7 @@ function destructive(input) {
   for (const [pattern, message, open, by, kind] of rulesOf(input)) {
     if (!pattern.test(command)) continue
     const parts = by && by.items(command)
-    const texts = parts || [String(raw).trim()]
+    const texts = parts || [stretchOf(raw, pattern)]
     // Un `gh` que no nombra su repositorio no tiene línea que valga sólo para él, ni un comando cuyo lugar no se sabe:
     // para ésos el archivo no se consulta, y lo concedido en el chat queda atado al lugar desde donde corren.
     const unnamed = new Set(texts.filter((one) => kind === GH && !namesRepo(one)))
@@ -215,7 +248,9 @@ function destructive(input) {
     const items = texts.map((one, at) => AP.placed(one, spots[at].where))
     const loose = new Set(items.filter((one, at) => unnamed.has(texts[at]) || !spots[at].sure))
     const filed = new Set(open && root ? AP.read(root) : [])
-    const asked = items.filter((one) => loose.has(one) || !filed.has(one))
+    // La línea que se escribió antes del 451, con el comando entero, sigue aprobando ese mismo comando.
+    const whole = parts ? [] : [AP.placed(String(raw).trim(), spots[0].where)]
+    const asked = items.filter((one) => loose.has(one) || !(filed.has(one) || whole.some((line) => filed.has(line))))
     const held = open ? AP.pending('', asked, input, parts ? by.asked : undefined) : items
     if (!held.length) continue
     const pasteable = held.filter((one) => !loose.has(one))

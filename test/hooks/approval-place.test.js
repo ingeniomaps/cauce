@@ -258,3 +258,33 @@ test('la carpeta que Gemini manda en dir_path es donde corre el comando', () => 
       new RegExp(`${ws.repos.api.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: cambió package\\.json`))
   } finally { ws.restore() }
 })
+
+// Caso 451. El ítem era el comando entero, y un agente que reintenta con un `cd` adelante o un `echo` atrás ya pedía
+// otra cosa: el «dale» de la persona no lo cubría. El ítem es el tramo que la regla reconoce; dónde corre lo dice
+// el lugar.
+test('lo que rodea al comando no cambia lo que se aprueba: un cd adelante o un echo atrás', () => {
+  const ws = sidecar('ops-approval-place-stretch-')
+  const chat = chatSession()
+  try {
+    const pasted = pasteApproval(ws.ops, messageOf('destructive',
+      runs(ws.workspace, `cd ${ws.repos.api} && git clean -fd; echo "exit=$?"`)))
+    assert.deepEqual(pasted, [`git clean -fd @ ${ws.repos.api}`])
+    assert.doesNotThrow(() => execute('destructive', runs(ws.repos.api, 'git clean -fd 2>&1 | tail -3')))
+    blocked('destructive', runs(ws.workspace, `cd ${ws.repos.web} && git clean -fd`), /borra archivos sin seguimiento/)
+    ws.approve(`git clean -fd; git status @ ${ws.repos.web}`)
+    assert.doesNotThrow(() => execute('destructive', runs(ws.repos.web, 'git clean -fd; git status')))
+    // Dos tramos que la regla reconoce no se parten: el ítem sigue siendo el comando entero.
+    blocked('destructive', runs(ws.repos.web, 'git clean -fd && git clean -fdx'),
+      new RegExp(`git clean -fd && git clean -fdx @ ${ws.repos.web}`))
+    fs.rmSync(path.join(ws.ops, 'planning', '.ops-approval'))
+
+    const first = chat.says('corré el paso 1')
+    blocked('destructive', first(runs(ws.repos.api, 'git clean -fd; echo "exit=$?"')), /borra archivos sin seguimiento/)
+    const yes = chat.says('dale')
+    assert.doesNotThrow(() => execute('destructive', yes(runs(ws.workspace, `cd ${ws.repos.api} && git clean -fd`))))
+    blocked('destructive', yes(runs(ws.workspace, `cd ${ws.repos.web} && git clean -fd`)), /borra archivos/)
+  } finally {
+    chat.close()
+    ws.restore()
+  }
+})
