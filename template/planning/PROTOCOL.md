@@ -186,7 +186,8 @@ paró y lo primero que dice quién la destraba:
 - **Cola** — hay trabajo y no se pudo tomar: `queue-unavailable` · `claim-stuck` · `manual-held` ·
   `manual-critical` · `worktree-failed` · `review-not-ready`
 - **Persona** — lo que sigue lo decide o lo aprueba alguien, o lo revisa otra sesión: `awaiting-review` ·
-  `blocked-on-human` · `governance-approval-needed` · `commit-needs-approval` · `review-pending`
+  `blocked-on-human` · `governance-approval-needed` · `commit-needs-approval` · `review-pending` ·
+  `planning-uncommitted`
 - **Preparación** — la tarea no está lista, o no se pudo reescribir o partir: `not-ready` · `refine-not-applied` ·
   `refine-unwritable` · `split-not-applied` · `split-left-dependents`
 - **Plan** — ningún plan sobrevivió a la crítica, o no quedó escrito: `plan-rejected` · `plan-blocked` ·

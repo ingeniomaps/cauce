@@ -16,7 +16,7 @@ const {
   commandOf, cwdOf, block, writableRoots, outsideRoots, DECLARE_IT, opsRoot, withoutGitGlobals, gitDirectory, owns,
   asRun, assignedValues, toplevel, realPath,
 } = require('./input')
-const { writesWithBase } = require('./shell-writes')
+const { writesWithBase, REDIRECTIONS } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -65,6 +65,49 @@ function publishedHead(input) {
   return Boolean(result.stdout.trim())
 }
 
+// Los tramos de un comando, partido por `;`, `&`, `|` y el salto de línea fuera de comillas, sin los paréntesis o
+// llaves que lo agrupan ni sus redirecciones, que no cambian qué hace. El `&` de una redirección —`2>&1`, `&>`— no
+// parte.
+function stretches(raw) {
+  const found = []
+  let start = 0
+  let quote = ''
+  for (let at = 0; at < raw.length; at += 1) {
+    const char = raw[at]
+    if (quote) {
+      if (char === quote) quote = ''
+      else if (char === '\\' && quote === '"') at += 1
+    } else if (char === '\\') at += 1
+    else if (char === "'" || char === '"') quote = char
+    else if (';|\n'.includes(char) || (char === '&' && raw[at - 1] !== '>' && raw[at + 1] !== '>')) {
+      found.push(raw.slice(start, at))
+      start = at + 1
+    }
+  }
+  return [...found, raw.slice(start)].map((one) => one.replace(REDIRECTIONS, ' ').trim().replace(/^[({]+\s*/, '')
+    .replace(/\s*[)}]+$/, '').replace(/\s+/g, ' ')).filter(Boolean)
+}
+
+// Lo que se aprueba de un comando: el tramo que la regla reconoce, si es uno solo. Lo que lo rodea —el `cd` que lo
+// lleva a su carpeta, el `echo` que lee la salida— lo cambia el agente de un intento al siguiente, y con el comando
+// entero como ítem el reintento era otra cosa y el «dale» de la persona no lo cubría (caso 451). Dónde corre ya lo
+// dice el lugar. Con dos tramos que la regla reconoce, el comando entero: aprobar uno no aprueba el otro.
+//
+// Y se reduce sólo si todo lo demás es inerte: un `cd` a una ruta escrita, que es lo que el lugar sabe leer, o algo
+// que sólo lee o muestra. Cualquier otra cosa puede mover la carpeta sin que el lugar lo vea —un subshell, `pushd`,
+// `builtin cd`, `eval`, `source`—, y con el tramo solo la línea de `api` dejaba pasar la limpieza en `web`. Ahí queda
+// el comando entero, como antes del 451: cerrado por defecto (R27).
+const INERT = new RegExp(String.raw`^(?:cd\s+(['"]?)[^\s'"$\`*?~\\]+\1`
+  + String.raw`|(?:echo|printf|true|tail|head|wc|sort|git\s+(?:status|log|diff|show))(?:\s.*)?)$`)
+function stretchOf(raw, pattern) {
+  const text = String(raw).trim()
+  const all = stretches(text)
+  const hits = all.filter((one) => pattern.test(withoutGitGlobals(asRun(one))))
+  // Un grupo —`( … )`, `{ …; }`— devuelve la carpeta al cerrarse, y el lugar no lo sigue: queda entero.
+  const grouped = /[(){}]/.test(text.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, ''))
+  return hits.length === 1 && !grouped && all.every((one) => one === hits[0] || INERT.test(one)) ? hits[0] : text
+}
+
 // Dónde vale una aprobación, según la regla: el repositorio para lo que hace `git` —y para un `gh` que no lo nombra,
 // que es el que va a resolver—, la carpeta para un deploy o un stack de Compose, que leen su configuración de ahí.
 // Real, para que un enlace no lo convierta en otro lugar. Se calcula una vez por clase y por comando.
@@ -109,7 +152,11 @@ function rulesOf(input) {
       "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
         + 'prohíbe: hacé otro commit encima.',
     ]] : []),
-    [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
+    // Fuerza en cualquiera de sus opciones, y no simula: mirando sólo la primera, `-d -f` borraba sin preguntar y
+    // `-fdn`, que no borra nada, se frenaba (caso 452).
+    [new RegExp(String.raw`\bgit\s+clean\b(?=${MISMO}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
+      + String.raw`(?!${MISMO}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
+    "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
     // nombrado es trabajo corriente y no se toca.
@@ -197,17 +244,17 @@ function destructive(input) {
   // R23. El resto no tenía salida por omisión y no por decisión: son anteriores al canal de chat de 0.81.0
   // —por qué ese canal existe y qué distingue, en `chat.js`— y nadie volvió a pasarles por encima (117).
   //
-  // El ítem que se aprueba es el comando entero tal como llegó, no el pedazo que matcheó: `git clean -f`
-  // no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento no destrabaría lo que
-  // la persona escribió. Entero es además lo que ella pegaría en el archivo, y lo más angosto: cualquier
-  // otra bandera es otro comando y vuelve a preguntarse. Y lleva el lugar donde corre, cuando el efecto depende
-  // de él: el mismo texto en otro repositorio u otra carpeta es otra operación (caso 446).
+  // El ítem que se aprueba es el tramo del comando que la regla reconoce, entero —`stretchOf`, caso 451—, y no el
+  // pedazo que matcheó: `git clean -f` no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento
+  // no destrabaría lo que la persona escribió. Cualquier otra bandera es otro comando y vuelve a preguntarse. Y lleva
+  // el lugar donde corre, cuando el efecto depende de él: el mismo texto en otro repositorio u otra carpeta es otra
+  // operación (caso 446).
   const spotOf = placesOf(raw, input)
   const root = opsRoot(input)
   for (const [pattern, message, open, by, kind] of rulesOf(input)) {
     if (!pattern.test(command)) continue
     const parts = by && by.items(command)
-    const texts = parts || [String(raw).trim()]
+    const texts = parts || [stretchOf(raw, pattern)]
     // Un `gh` que no nombra su repositorio no tiene línea que valga sólo para él, ni un comando cuyo lugar no se sabe:
     // para ésos el archivo no se consulta, y lo concedido en el chat queda atado al lugar desde donde corren.
     const unnamed = new Set(texts.filter((one) => kind === GH && !namesRepo(one)))
@@ -215,7 +262,9 @@ function destructive(input) {
     const items = texts.map((one, at) => AP.placed(one, spots[at].where))
     const loose = new Set(items.filter((one, at) => unnamed.has(texts[at]) || !spots[at].sure))
     const filed = new Set(open && root ? AP.read(root) : [])
-    const asked = items.filter((one) => loose.has(one) || !filed.has(one))
+    // La línea que se escribió antes del 451, con el comando entero, sigue aprobando ese mismo comando.
+    const whole = parts ? [] : [AP.placed(String(raw).trim(), spots[0].where)]
+    const asked = items.filter((one) => loose.has(one) || !(filed.has(one) || whole.some((line) => filed.has(line))))
     const held = open ? AP.pending('', asked, input, parts ? by.asked : undefined) : items
     if (!held.length) continue
     const pasteable = held.filter((one) => !loose.has(one))

@@ -495,4 +495,4 @@ function grantedIn(root) {
 }
 
 module.exports = { DIR, record, said, wordsOf, authorized, unauthorized, unauthorizedNow, hold, ordersPush,
-  ordersMerge, grantedIn, placed, spokenOf, isPush }
+  ordersMerge, grantedIn, placed, spokenOf, isPush, refuses }

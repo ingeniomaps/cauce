@@ -10,7 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const { execute } = require('../../engine/hooks/run')
+const { execute, executeAll } = require('../../engine/hooks/run')
 
 const AMBIGUOUS = /coincide con más de un lugar/
 
@@ -55,6 +55,28 @@ test('un archivo nombrado por su nombre no se aprueba en todos los repositorios 
     fs.writeFileSync(approval, `${api}\n`)
     const whole = chat.says(`agregá ${web} a .ops-approval`)
     assert.doesNotThrow(() => execute('workspace-boundary', whole(writes(`${api}\n${web}\n`))))
+  } finally {
+    chat.close()
+    ws.restore()
+  }
+})
+
+// Con el diálogo de Claude Code a mano no se espera un «sí» por chat: se pregunta ahí, mostrando las rutas.
+test('con el diálogo nativo, las rutas que el nombre no distingue se preguntan en el diálogo', () => {
+  const ws = sidecar('ops-approval-chat-native-')
+  const chat = chatSession()
+  const approval = path.join(ws.ops, 'planning', '.ops-approval')
+  const api = path.join(ws.repos.api, 'package.json')
+  const web = path.join(ws.repos.web, 'package.json')
+  fs.writeFileSync(web, '{}\n')
+  try {
+    const bare = chat.says('agregá package.json a .ops-approval')
+    const input = bare({ hook_event_name: 'PreToolUse', permission_mode: 'default', cwd: ws.workspace,
+      tool_input: { file_path: approval, content: `${api}\n` } })
+    let asked = null
+    try { executeAll(['workspace-boundary'], input) } catch (error) { asked = error }
+    assert.ok(asked && asked.ask, `no pidió el diálogo: ${asked && asked.message}`)
+    assert.ok(asked.message.includes(`  ${api}\n`), asked.message)
   } finally {
     chat.close()
     ws.restore()

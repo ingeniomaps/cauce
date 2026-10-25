@@ -24,6 +24,7 @@ const { landing } = require('../core/files')
 const { opsRoot, commandOf, cwdOf } = require('./input')
 const { steps } = require('./shell-changes')
 const AP = require('./approval')
+const CHAT = require('./chat')
 
 // El temporal, como el registro del chat: una sesión dura lo que dura, y su línea con ella.
 const DIR = path.join(os.tmpdir(), 'cauce-line')
@@ -136,7 +137,7 @@ function strayed(input, file, lands = file, sub = '') {
   const ours = (one) => trees.some((base) => inside(base, one))
   const shared = sub && SHARED.has(sub) && spots.find((one) => [root, real(root)].some((base) => inside(base, one))
     && !ours(one))
-  if (shared) return { file, line, shared: sub }
+  if (shared) return { file, line, shared: sub, root }
   const off = spots.find((one) => [session, real(session)].some((base) => inside(base, one))
     && ![root, real(root)].some((base) => inside(base, one)) && !ours(one))
   if (!off) return null
@@ -207,10 +208,31 @@ function gitTargets(ran) {
   return found
 }
 
+// Un `git` en la instancia no se nombra como un archivo: la persona pide «el merge de main», no una carpeta, y con la
+// ruta como ítem su orden no lo destrababa nunca (caso 449). El ítem es el subcomando con su lugar. La orden tiene que
+// nombrar ese subcomando —«merge», «mergeá», «stash»—, como un archivo se nombra por su ruta: si alcanzara cualquier
+// mensaje, un «implementá la tarea» dejaba al agente cambiarle la rama a la sesión principal (caso 423). Lo demás lo
+// juzga el agente, como el merge de un PR (caso 280): el guard frena el mensaje que pregunta, niega o frena, y lo que
+// llega tras un aviso del runner.
+const sharedItem = (one) => AP.placed(`git ${one.shared}`, one.root)
+// El nombre va entero —«ambos» no es `am`— y, si es largo, conjugado en español: «mergeá», «stasheá».
+function ordersShared(text, item, { relayed = false } = {}) {
+  const sub = CHAT.spokenOf(item).replace(/^git /, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const conjugated = sub.length >= 4 ? '(?:[aáeéií]\\p{L}*)?' : ''
+  return !relayed && !CHAT.refuses(text) && new RegExp(`(?<![\\p{L}])${sub}${conjugated}(?![\\p{L}])`, 'iu')
+    .test(String(text))
+}
+
 // El bloqueo, con todo lo que salió de la línea junto. `found` lleva lo que devolvió `strayed`.
 function refusal(input, found) {
   if (!found.length) return ''
-  const held = AP.pendingNow(opsRoot(input), [...new Set(found.map((one) => one.file))], input)
+  const root = opsRoot(input)
+  const shared = found.filter((one) => one.shared)
+  // La ruta de la instancia pegada antes del 449 sigue aprobando su `git`: era la línea que el bloqueo ofrecía.
+  const filed = new Set(root ? AP.read(root) : [])
+  const held = [...AP.pendingNow(root, [...new Set(found.filter((one) => !one.shared).map((one) => one.file))], input),
+    ...AP.pendingNow(root, [...new Set(shared.filter((one) => !filed.has(one.file)).map(sharedItem))], input,
+      ordersShared)]
   if (!held.length) return ''
   const { line } = found[0]
   const where = found.map((one) => (one.shared ? `${one.file} es la instancia, una sola para las dos sesiones, y \`git `
@@ -219,7 +241,8 @@ function refusal(input, found) {
   return `esta sesión lleva la línea ${line}, y escribe sólo en sus árboles (lines/${line}/…) y en la instancia: `
     + `${where.join('; ')}. Lo de afuera de la línea es de la sesión principal, que lo tiene abierto en su rama. `
     + `Si la línea tiene que trabajar otro repositorio, se suma con \`ops line <ops-root> ${line} <repo>\`.\n`
-    + AP.HOW(null, held, input, held, { fixable: true, turn: true })
+    // Lo que la línea escribe afuera lo corrige ella, escribiéndolo en su árbol; un `git` en la instancia, no.
+    + AP.HOW(null, held, input, held, { fixable: !shared.length, turn: true })
 }
 
 module.exports = { DIR, remember, lineOf, strayed, refusal, gitTargets }

@@ -236,3 +236,68 @@ test('cada herramienta lleva el lugar de su clase, y las que no dependen de dón
     }
   } finally { ws.restore() }
 })
+
+// Medido en una sesión real de Gemini 0.63.0: la línea salía con la raíz del banco y el commit no hallaba repositorio.
+test('la carpeta que Gemini manda en dir_path es donde corre el comando', () => {
+  const ws = sidecar('ops-approval-place-gemini-')
+  const gemini = (command, dir) => ({ hook_event_name: 'BeforeTool', tool_name: 'run_shell_command', cwd: ws.workspace,
+    tool_input: { command, dir_path: dir } })
+  try {
+    const pasted = pasteApproval(ws.ops, messageOf('destructive', gemini('git clean -fd', 'api')))
+    assert.deepEqual(pasted, [`git clean -fd @ ${ws.repos.api}`])
+    assert.doesNotThrow(() => execute('destructive', gemini('git clean -fd', 'api')))
+    blocked('destructive', gemini('git clean -fd', 'web'), /borra archivos sin seguimiento/)
+
+    fs.writeFileSync(path.join(ws.repos.api, 'package.json'), '{"name":"x"}\n')
+    fs.writeFileSync(path.join(ws.repos.api, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+    git(['add', 'package.json', 'pnpm-lock.yaml'], ws.repos.api)
+    git(['commit', '-qm', 'init'], ws.repos.api)
+    fs.writeFileSync(path.join(ws.repos.api, 'package.json'), '{"name":"x","dependencies":{"y":"1"}}\n')
+    git(['add', 'package.json'], ws.repos.api)
+    blocked('dependencies', gemini('git commit -m x', 'api'),
+      new RegExp(`${ws.repos.api.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: cambió package\\.json`))
+    // La raíz de la sesión no es la carpeta del comando: sin el shim, que exporta OPS_ROOT, la instancia se buscaba
+    // desde `../api` y no aparecía.
+    const { opsRoot } = require('../../engine/hooks/input')
+    delete process.env.OPS_ROOT
+    delete process.env.CLAUDE_PROJECT_DIR
+    assert.equal(opsRoot({ cwd: ws.ops, tool_input: { command: 'git status', dir_path: '../api' } }), ws.ops)
+  } finally { ws.restore() }
+})
+
+// Caso 451. El ítem era el comando entero, y un agente que reintenta con un `cd` adelante o un `echo` atrás ya pedía
+// otra cosa: el «dale» de la persona no lo cubría. El ítem es el tramo que la regla reconoce; dónde corre lo dice
+// el lugar.
+test('lo que rodea al comando no cambia lo que se aprueba: un cd adelante o un echo atrás', () => {
+  const ws = sidecar('ops-approval-place-stretch-')
+  const chat = chatSession()
+  try {
+    const pasted = pasteApproval(ws.ops, messageOf('destructive',
+      runs(ws.workspace, `cd ${ws.repos.api} && git clean -fd; echo "exit=$?"`)))
+    assert.deepEqual(pasted, [`git clean -fd @ ${ws.repos.api}`])
+    assert.doesNotThrow(() => execute('destructive', runs(ws.repos.api, 'git clean -fd 2>&1 | tail -3')))
+    assert.doesNotThrow(() => execute('destructive', runs(ws.repos.api, 'git clean -fd && git status --short')))
+    blocked('destructive', runs(ws.workspace, `cd ${ws.repos.web} && git clean -fd`), /borra archivos sin seguimiento/)
+    // Lo que cambia la carpeta de una forma que el lugar no lee no reduce el ítem: la línea de api pasaba en web.
+    for (const command of ['(cd ../web; git clean -fd)', 'pushd ../web && git clean -fd',
+      'for d in ../web; do cd $d; git clean -fd; done', 'builtin cd ../web && git clean -fd',
+      'eval "cd ../web" && git clean -fd', 'source ./a.sh && git clean -fd']) {
+      blocked('destructive', runs(ws.repos.api, command), /borra archivos sin seguimiento/)
+    }
+    ws.approve(`git clean -fd; git status @ ${ws.repos.web}`)
+    assert.doesNotThrow(() => execute('destructive', runs(ws.repos.web, 'git clean -fd; git status')))
+    // Dos tramos que la regla reconoce no se parten: el ítem sigue siendo el comando entero.
+    blocked('destructive', runs(ws.repos.web, 'git clean -fd && git clean -fdx'),
+      new RegExp(`git clean -fd && git clean -fdx @ ${ws.repos.web}`))
+    fs.rmSync(path.join(ws.ops, 'planning', '.ops-approval'))
+
+    const first = chat.says('corré el paso 1')
+    blocked('destructive', first(runs(ws.repos.api, 'git clean -fd; echo "exit=$?"')), /borra archivos sin seguimiento/)
+    const yes = chat.says('dale')
+    assert.doesNotThrow(() => execute('destructive', yes(runs(ws.workspace, `cd ${ws.repos.api} && git clean -fd`))))
+    blocked('destructive', yes(runs(ws.workspace, `cd ${ws.repos.web} && git clean -fd`)), /borra archivos/)
+  } finally {
+    chat.close()
+    ws.restore()
+  }
+})

@@ -355,3 +355,9 @@ con `app` y `web` y el motor congelado como copia de la rama:
   commiteó en `line/piloto` y cerró la tarea en `done/`. Una corrida anterior no tomó la tarea porque el hito no estaba
   asignado a la línea; eso es del banco, no del motor.
 
+
+**Medido después del cierre, el 2026-10-25, con Antigravity (agy 1.4.7)**, en un banco sidecar con el motor de `main`
+(`7e54a2ec`). Una sesión `agy -p` siguió un archivo de pasos con un commit de `package.json` sin lockfile en `app` y en
+`web`. Cada bloqueo dio la ruta entera de su repositorio (`<banco>/app/package.json`, `<banco>/web/package.json`).
+Con sólo la línea de `app` pegada, en una segunda sesión el guard de dependencias dejó pasar el commit de `app` (lo
+frenó después el de la rama viva, que es otro) y siguió frenando el de `web`.

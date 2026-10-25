@@ -423,8 +423,15 @@ const PLANNING_BRANCH = () => (contract.commitToLiveBranch
     + 'remoto— no commitees ahí ni lo consultes: pasate a la rama de trabajo de planning que ya exista —la '
     + 'que ya lleva commits de estado de planning sin mergear— y si no hay ninguna cortá `work/planning`. '
     + 'Es una sola rama que se acumula, nunca una por tarea. Si ya está en una rama que no es viva, '
-    + 'commiteá en ésa.')
+    + 'commiteá en ésa.' + LINE_INSTANCE())
   + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
+// En una línea la instancia es la misma que tiene abierta la sesión principal, y `line-scope` frena ahí todo checkout
+// porque le cambia la rama a la otra (caso 423). Cortar `work/planning` desde la línea no tiene salida: lo commitea la
+// sesión principal, y la corrida para diciéndolo (caso 450).
+const LINE_INSTANCE = () => (planning && planning.line
+  ? ` Esta corrida lleva la línea ${unquoted(planning.line)}: si el repositorio está en una rama viva no cambies de `
+    + 'rama ni commitees —la rama de la instancia es de la sesión principal—, y devolvé committed en false.'
+  : '')
 // Dueño por defecto de cada fase. Es determinista: no hace falta preguntarle a un modelo quién
 // revisa la arquitectura o quién decide si la evidencia de calidad alcanza.
 const OWNERS = {
@@ -891,9 +898,13 @@ const commitBlocked = async (slug, subject = `block ${slug}`) => {
 let holding = ''
 // La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
 let cut = false
+// Lo que el cierre de una tarea en una línea no pudo commitear (caso 450). Lo dice el final de la corrida, y también
+// la parada que llegue antes, que si no lo taparía.
+let stranded = ''
 const halt = async (reason, detail = '', subject = '') => {
   if (holding) await commitBlocked(holding, subject || undefined)
-  return stop(reason, detail)
+  return stop(reason, stranded ? `${detail} · ${stranded}` : detail,
+    stranded ? { done: completed, count: completed.length } : {})
 }
 
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
@@ -2412,12 +2423,21 @@ while (rounds++ < MAX_TASKS) {
     } else if (stated.live && !contract.commitToLiveBranch) {
       log(`el estado de planning de ${task.id} quedó commiteado en la rama viva ${stated.branch || ''}: movelo`)
     }
+    // Acá sí se frena, y es la excepción a lo de arriba: en una línea la rama de la instancia no la cambia nadie más
+    // que la sesión principal, así que cada tarea siguiente sumaría otro cierre suelto (caso 450). No se toma otra
+    // tarea, pero el hito cierra igual —su revisión humana se escribe— y la parada se dice al final.
+    if (planning.line && stated && !stated.committed && stated.live && !contract.commitToLiveBranch) {
+      stranded = `${task.id} quedó entregada y su estado de planning sin commitear: la instancia está en `
+        + `${stated.branch || 'su rama viva'}, y desde la línea no se cambia esa rama. Lo commitea la sesión `
+        + 'principal, en la rama de trabajo de planning; después se reanuda.'
+    }
   }
   holding = ''
   if (commit && commit.branch && !usedBranches.includes(commit.branch)) usedBranches.push(commit.branch)
   completed.push(task.id)
   planning = await readContext()
   if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
+  if (stranded) break
 }
 
 if (rounds > MAX_TASKS) {
@@ -2607,5 +2627,7 @@ if (completed.length && contract.humanCheckpoint && !cut) {
 const manual = ((planning && planning.manual) || []).filter((slug) => !completed.includes(slug))
   .map((slug) => ({ slug, reason: handedBack.get(slug) || 'declarada [manual] en la cola' }))
 manual.forEach((one) => log(`${one.slug} la hace la sesión: ${one.reason}`))
-return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran,
-  ...(manual.length ? { manual } : {}), ...(checkpointNote ? { checkpoint: checkpointNote } : {}) })
+const delivered = { done: completed, count: completed.length, hito: currentMilestone, phases: ran,
+  ...(manual.length ? { manual } : {}), ...(checkpointNote ? { checkpoint: checkpointNote } : {}) }
+if (stranded) return stop('planning-uncommitted', stranded, delivered)
+return finish(delivered)
