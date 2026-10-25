@@ -274,13 +274,31 @@ test('check muestra una aprobación de gobernanza sin borrar, contando rutas', (
   const planning = path.join(target, 'planning')
   assert.doesNotMatch(run(['check', planning]).stderr, /ops-approval/, 'sin archivo no avisa nada')
 
-  fs.writeFileSync(path.join(planning, '.ops-approval'),
-    '# Aprobado por X el 2026-09-06.\n# Vale para el commit de la propuesta.\nplanning/rules/system/conduct.md\n')
+  fs.writeFileSync(path.join(planning, '.ops-approval'), '# Aprobado por X el 2026-09-06.\n'
+    + `# Vale para el commit de la propuesta.\n${path.join(planning, 'rules', 'system', 'conduct.md')}\n`)
   const avisado = run(['check', planning])
 
   assert.equal(avisado.status, 0, 'es advertencia: la aprobación es legítima, lo que no puede es esconderse')
   assert.match(avisado.stderr + avisado.stdout, /ops-approval: 1 ruta\(s\)/,
     'una ruta y dos comentarios son una ruta')
+  assert.doesNotMatch(avisado.stderr + avisado.stdout, /ruta relativa/, 'una ruta entera no es una línea vieja')
+
+  // Las formas de antes del 445 y del 446 ya no aprueban nada, y contarlas como vigentes las escondía: una ruta
+  // relativa, y un comando que depende de dónde corre aprobado sin su lugar. Lo que nombra su lugar o su
+  // repositorio, y lo que no depende de dónde corre, sigue contado como antes.
+  fs.appendFileSync(path.join(planning, '.ops-approval'), 'package.json\npush origin feat/x\ngit clean -fd\n'
+    + `git clean -fd @ ${target}\ngh pr merge 3\ngh pr merge 3 --repo acme/app\ndocker system prune\n`
+    + 'vitest\n./vitest\n')
+  const viejo = run(['check', planning])
+  const dicho = viejo.stderr + viejo.stdout
+  assert.equal(viejo.status, 0)
+  assert.match(dicho, /1 línea\(s\) con una ruta relativa, que ya no aprueba nada: package\.json\./)
+  assert.match(dicho, /3 línea\(s\) sin el lugar donde valen, que ya no aprueban nada: /)
+  assert.match(dicho, /aprueban nada: push origin feat\/x, git clean -fd, gh pr merge 3\./)
+  // `vitest` es lo que `workers` aprueba para un runner sin cota: una palabra, no una ruta, y sigue valiendo.
+  assert.match(dicho, /ops-approval: 6 ruta\(s\) aprobadas y sin borrar/)
+  fs.writeFileSync(path.join(planning, '.ops-approval'),
+    `${path.join(planning, 'rules', 'system', 'conduct.md')}\n`)
 
   // Una credencial que la persona dejó aprobada se nombra aparte: no es un resto de commit (caso 202).
   const env = path.join(target, '.env')

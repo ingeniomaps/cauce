@@ -68,8 +68,9 @@ test('check nombra el rastro que git no está ignorando', () => {
   git(target, 'init', '-q')
 
   const dichos = avisos(planning)
-  assert.equal(dichos.length, 1, `un solo aviso, con los tres adentro: ${JSON.stringify(dichos)}`)
-  for (const rastro of ['planning/.verify-log', 'planning/.push-log', 'planning/.grant-log']) {
+  assert.equal(dichos.length, 1, `un solo aviso, con los cuatro adentro: ${JSON.stringify(dichos)}`)
+  for (const rastro of ['planning/.verify-log', 'planning/.push-log', 'planning/.grant-log',
+    'planning/.ops-approval']) {
     assert.match(dichos[0], new RegExp(rastro.replace(/[.*]/g, '\\$&')), `nombra ${rastro}`)
   }
 
@@ -82,6 +83,29 @@ test('check nombra el rastro que git no está ignorando', () => {
   const quedan = avisos(planning)
   assert.doesNotMatch(quedan[0], /planning\/\.push-log/, 'cubierto por su regla, ya no se nombra')
   assert.match(quedan[0], /planning\/\.grant-log/, 'y los que siguen sin cubrir se siguen nombrando')
+})
+
+// Las aprobaciones son locales desde el 445, y una instancia de antes puede tenerlas commiteadas. Ahí la línea del
+// `.gitignore` no alcanza —git sigue versionando lo que ya trackea— y el aviso tiene que decir la otra mitad.
+test('un archivo local ya versionado se nombra con cómo sacarlo del índice', () => {
+  const { target, planning } = instancia('cauce-rastros-versionado-')
+  fs.copyFileSync(path.resolve(__dirname, '..', '..', 'template', 'gitignore'), path.join(target, '.gitignore'))
+  git(target, 'init', '-q')
+  fs.writeFileSync(path.join(planning, '.ops-approval'), '/x/package.json\n')
+  git(target, 'add', '-f', 'planning/.ops-approval')
+
+  const dichos = avisos(planning)
+  assert.equal(dichos.length, 1, JSON.stringify(dichos))
+  assert.match(dichos[0], /git versiona \(planning\/\.ops-approval\)/)
+  // Con la instancia nombrada, porque en sidecar se corre desde el workspace; y corrido tal cual, resuelve.
+  const dado = dichos[0].match(/(git -C .+ rm --cached -- planning\/\.ops-approval)/)
+  assert.ok(dado, dichos[0])
+  assert.equal(spawnSync('bash', ['-c', dado[1]], { cwd: path.dirname(target), encoding: 'utf8' }).status, 0)
+  git(target, 'add', '-f', 'planning/.ops-approval')
+  assert.doesNotMatch(dichos[0], /agregá esas líneas/, 'la línea ya está: lo que falta es sacarlo del índice')
+
+  git(target, 'rm', '-q', '--cached', 'planning/.ops-approval')
+  assert.deepEqual(avisos(planning), [], 'fuera del índice y cubierto, no queda nada que decir')
 })
 
 // El molde de este repositorio: `ops.config.json` existe y su modo es el marcador que `init` sustituye.

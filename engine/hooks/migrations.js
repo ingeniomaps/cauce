@@ -33,7 +33,7 @@ function alreadyShipped(file) {
     : ''
 }
 
-const approved = (input, file) => !AP.pending(opsRoot(input), [file], input).length
+const approved = (input, file) => !AP.pending(opsRoot(input), [AP.at(input, file)], input).length
 
 // El `Edit` trae lo que reemplaza; el archivo en disco dice dónde cae (caso 185). Se lo lee sólo para
 // ubicar el fragmento: lo que ya estaba no se juzga.
@@ -77,6 +77,9 @@ function migrations(input) {
     if (!isMigration.test(normalized)) continue
     if (approved(input, normalized)) continue
     const file = path.resolve(cwdOf(input), raw)
+    // Lo que se ofrece pegar es lo que `approved` coteja: con las barras normalizadas, una ruta que llegó con `\`
+    // daría otra línea.
+    const key = AP.at(input, normalized)
     // El mensaje nombra el archivo y la sentencia: un falso positivo se lee igual que un bloqueo correcto
     // mientras no diga sobre qué está decidiendo. Y cuando la migración se partió, dice que la reversión
     // no se juzgó, para que quien lo lea no busque la sentencia en el bloque equivocado.
@@ -88,7 +91,7 @@ function migrations(input) {
     if (found) {
       const where = scope.label ? ` en el bloque que aplica (la reversión, \`${scope.label}\`, no se juzga)` : ''
       block(`${raw} contiene ${found.kind}${where}: \`${found.what}\`.\n`
-        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
+        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [key], input))
     }
     // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
     // juzga además ese contenido, entero y como está en disco (caso 367). Entero incluye su reversión: el
@@ -107,7 +110,7 @@ function migrations(input) {
     if (carried) {
       block(`${raw} entra como migración por un renombrado, y el parche renombra ${from}, que trae `
         + `${carried.kind}: \`${carried.what}\`. Se juzga ese archivo como está, sin calcular qué le cambia el `
-        + `parche.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input)}`)
+        + `parche.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE', [key], input)}`)
     }
     // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
     // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva
@@ -116,7 +119,7 @@ function migrations(input) {
     const shipped = alreadyShipped(file)
     if (shipped) {
       block(`${raw} ${shipped}. Crea una nueva en vez de reescribirla.\n`
-        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input, [normalized], { fixable: true }))
+        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [key], input, [key], { fixable: true }))
     }
   }
 }

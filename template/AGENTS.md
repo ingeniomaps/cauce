@@ -144,7 +144,8 @@ para el agente con el que hablás.
 autorizás, una por línea, con `#` para lo que no sea una ruta. En sidecar es el `planning/` de la
 instancia y no una carpeta al lado de tus proyectos; el bloqueo dice la ruta exacta. Es un solo archivo
 para todos los guards, porque lo que escribís son rutas y quién las mira lo decide qué guard esté
-juzgando esa ruta. Lo escribís vos, o el agente con tu confirmación: si intenta escribírselo solo, un
+juzgando esa ruta. Cada ruta va entera, como la nombra el bloqueo, para que valga en el repositorio que
+aprobaste y en ningún otro; por eso el archivo es tuyo y de tu máquina, y no se commitea. Lo escribís vos, o el agente con tu confirmación: si intenta escribírselo solo, un
 guard lo frena y te muestra qué iba a agregar.
 
 **Una lectura que necesitás siempre se aprueba una vez.** El «dale» dura la sesión, y el diálogo de Claude

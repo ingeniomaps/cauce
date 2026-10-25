@@ -34,12 +34,13 @@ test('lo que un bloqueo dice pegar destraba ese mismo bloqueo', () => {
   const removal = {
     cwd: plan, tool_input: { patch: '*** Begin Patch\n*** Delete File: tests/alta_test.go\n*** End Patch' },
   }
-  assert.deepEqual(pasteApproval(plan, messageOf('test-evidence', removal)), ['tests/alta_test.go'])
+  // El parche la trae relativa, y se pega resuelta desde donde corre: así nombra un checkout (caso 445).
+  assert.deepEqual(pasteApproval(plan, messageOf('test-evidence', removal)), [path.join(plan, 'tests', 'alta_test.go')])
   assert.doesNotThrow(() => execute('test-evidence', removal))
 
-  // Los de commit cotejan rutas relativas al repositorio; el manifiesto va dentro de una carpeta, que es
-  // donde `dependencies` mostraba la carpeta y el nombre por separado y la línea no aparecía en ningún lado.
-  const repo = tempRoot('ops-hook-pegar-commit-')
+  // Los de commit cotejan la ruta del índice entera desde la raíz real del repositorio; el manifiesto va dentro de
+  // una carpeta, que es donde `dependencies` mostraba la carpeta y el nombre por separado y la línea no aparecía.
+  const repo = fs.realpathSync(tempRoot('ops-hook-pegar-commit-'))
   initRepo(repo)
   fs.mkdirSync(path.join(repo, 'planning'), { recursive: true })
   fs.mkdirSync(path.join(repo, 'engine'))
@@ -50,20 +51,21 @@ test('lo que un bloqueo dice pegar destraba ese mismo bloqueo', () => {
   fs.writeFileSync(path.join(repo, 'packages', 'app', 'package-lock.json'), '{}\n')
   git(['add', 'engine/x.js', 'packages/app/package.json'], repo)
   const commit = { cwd: repo, tool_input: { command: 'git commit -m x' } }
-  assert.deepEqual(pasteApproval(repo, messageOf('governance', commit)), ['engine/x.js'])
+  assert.deepEqual(pasteApproval(repo, messageOf('governance', commit)), [path.join(repo, 'engine', 'x.js')])
   assert.doesNotThrow(() => execute('governance', commit))
-  assert.deepEqual(pasteApproval(repo, messageOf('dependencies', commit)), ['packages/app/package.json'])
+  assert.deepEqual(pasteApproval(repo, messageOf('dependencies', commit)),
+    [path.join(repo, 'packages', 'app', 'package.json')])
   assert.doesNotThrow(() => execute('dependencies', commit))
 
   // `verify` aprueba el conjunto staged, y su bloqueo no nombraba ninguna ruta.
   fs.mkdirSync(path.join(repo, 'openapi'))
   fs.writeFileSync(path.join(repo, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
   git(['add', 'openapi/api.yaml'], repo)
-  assert.deepEqual(pasteApproval(repo, messageOf('verify', commit)), ['openapi/api.yaml'])
+  assert.deepEqual(pasteApproval(repo, messageOf('verify', commit)), [path.join(repo, 'openapi', 'api.yaml')])
   assert.doesNotThrow(() => execute('verify', commit))
 
   // Y el bloqueo de un gate en rojo, que es el otro camino de `verify` y el que más se ve.
-  const gate = tempRoot('ops-hook-pegar-gate-')
+  const gate = fs.realpathSync(tempRoot('ops-hook-pegar-gate-'))
   initRepo(gate)
   fs.mkdirSync(path.join(gate, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(gate, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
@@ -71,7 +73,8 @@ test('lo que un bloqueo dice pegar destraba ese mismo bloqueo', () => {
   fs.writeFileSync(path.join(gate, 'app.js'), 'module.exports = true\n')
   git(['add', 'package.json', 'app.js'], gate)
   const commitGate = { cwd: gate, tool_input: { command: 'git commit -m x' } }
-  assert.deepEqual(pasteApproval(gate, messageOf('verify', commitGate)).sort(), ['app.js', 'package.json'])
+  assert.deepEqual(pasteApproval(gate, messageOf('verify', commitGate)).sort(),
+    [path.join(gate, 'app.js'), path.join(gate, 'package.json')])
   assert.doesNotThrow(() => execute('verify', commitGate))
 
   // `migrations` coteja la ruta con las barras normalizadas, y lo que muestra tiene que ser ésa: con una
@@ -80,7 +83,8 @@ test('lo que un bloqueo dice pegar destraba ese mismo bloqueo', () => {
   const destructive = {
     cwd: mig, tool_input: { file_path: 'migrations\\001_init.sql', content: 'DROP TABLE users;\n' },
   }
-  assert.deepEqual(pasteApproval(mig, messageOf('migrations', destructive)), ['migrations/001_init.sql'])
+  assert.deepEqual(pasteApproval(mig, messageOf('migrations', destructive)),
+    [path.join(mig, 'migrations', '001_init.sql')])
   assert.doesNotThrow(() => execute('migrations', destructive))
 })
 

@@ -14,6 +14,40 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.116.0] - 2026-10-25
+
+### Cambiado
+
+- **Una ruta de `.ops-approval` se aprueba entera, y vale para ese archivo de ese repositorio** (caso 445). Relativa,
+  `package.json` aprobaba el manifiesto de todos los repositorios de un sidecar y de todos los árboles de sus líneas.
+  Vale para los gates de commit —`dependencies`, `verify`, `governance`, `comments`— y para los guards que reciben la
+  ruta de una herramienta, como `migrations` o `test-evidence` con un parche. El bloqueo dice la línea exacta, y el de
+  `dependencies` nombra el repositorio en vez de `.`. `ops governed` contesta en la misma forma.
+- **Un comando aprobado vale en el repositorio o la carpeta donde se aprobó** (caso 446). La línea lleva el lugar al
+  final —`git clean -fd @ /ruta/al/repo`, `push origin feat/x @ /ruta/al/repo`, `terraform apply @ /ruta/a/infra/prod`—
+  y lo concedido en el chat también: un «dale» en un repositorio ya no deja pasar el mismo comando en otro. `gh` sin
+  `--repo` deja de aprobarse por archivo, porque elige el repositorio solo; nombrándolo, la línea vale para ese
+  repositorio. `kubectl`, `helm`, `docker … prune` y los comandos sin cota de workers siguen sin lugar. Y un
+  `git -C <repo> push` se juzga en ese repositorio —su rama viva incluida—, no en la carpeta desde donde corre.
+- **`planning/.ops-approval` es local.** Una aprobación es de quien la dio, en su máquina; versionada, autorizaba en el
+  clon de otro. El molde la ignora, y `check` avisa si tu instancia la versiona.
+
+### Corregido
+
+- **Pedir en el chat que se apruebe un archivo por su nombre ya no lo aprueba en todos los repositorios** (caso 447).
+  Con «agregá package.json a .ops-approval», si otro checkout también tiene ese archivo, el agente no puede escribirse
+  la línea: el bloqueo lista las rutas y pregunta cuál. Un «sí» las aprueba, y nombrar el repositorio o la ruta entera
+  aprueba sólo esa. Lo mismo para un comando con su lugar, como `git clean -fd`.
+- **Retomar un `/autobuild` ya no repite las decisiones de Review en `planning/human/`** (caso 448). La corrida que
+  retoma vuelve a revisar, y lo que ya estaba pendiente se registraba otra vez con `-2`. En una línea de trabajo, la
+  fila nombra el árbol de la línea; y la aprobación que pide un guard al commitear ya no se registra como decisión:
+  la pide la parada del commit, con la ruta exacta.
+
+**Al actualizar**: `check` nombra cada línea de `.ops-approval` en la forma vieja —una ruta relativa, o un comando sin
+su lugar—, que ya no aprueba nada; si todavía hace falta, el próximo bloqueo da la línea nueva. Si `check` dice que git
+versiona `planning/.ops-approval`, sacala del índice con el comando que da el aviso, sumá `planning/.ops-approval` a tu
+`.gitignore` y commiteá las dos cosas: `upgrade` no toca ese archivo.
+
 ## [0.115.1] - 2026-10-24
 
 ### Cambiado

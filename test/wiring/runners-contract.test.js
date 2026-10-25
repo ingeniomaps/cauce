@@ -277,5 +277,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 69 desde el 2026-10-16: después del plan, el recorrido dicta `tools/ops.js governed` para saber qué va a frenar
   // el guard de gobernanza (caso 383). Misma forma literal y misma raíz que el `release` del 163.
-  assert.equal(hits, 69, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 70 desde el 2026-10-25: quien registra las decisiones de Review lee antes las pendientes con `tools/ops.js human`
+  // (caso 448), el mismo comando que la parada del 351 le dicta a la persona, ahora dictado al agente desde la raíz.
+  assert.equal(hits, 70, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

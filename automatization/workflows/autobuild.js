@@ -567,11 +567,14 @@ const REPLANNED = ' En cada hallazgo con blocking=true, replan es true si correg
   + 'su alcance, sus pasos o cómo se prueba— y hay que volver a criticarlo; y false si el plan queda igual y '
   + 'alcanza con que quien construye lo cumpla al escribir —un nombre, un formato, una regla que aplicar—: ésa '
   + 'viaja como condición y la revisión comprueba que se cumplió. Ante la duda, true. En los demás, false.'
-// Acompaña a todo prompt con schema REVIEWED.
+// Acompaña a todo prompt con schema REVIEWED. La aprobación que pide un guard queda fuera de las decisiones porque
+// registrada por Review nombró una ruta que el guard no pidió, la de otro árbol (caso 448).
 const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
   + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
   + ' producto, un contrato público, una autoridad que el cargo no tiene—: ése se registra para una'
-  + ' persona y no manda a tocar código. En cada hallazgo, ref es la regla que lo sostiene, con su ruta y su'
+  + ' persona y no manda a tocar código. La línea de .ops-approval que un guard va a pedir al commitear no es una'
+  + ' decisión: la pide la parada del commit, con la ruta que da el guard. En cada hallazgo, ref es la regla que'
+  + ' lo sostiene, con su ruta y su'
   + ' número —<ruta>#<número>— y una de las que rigen, o la palabra criterio si es juicio tuyo sin regla'
   + ' escrita; nunca presentes un criterio como regla. Y verified es true sólo si comprobaste lo que el hallazgo'
   + ' afirma —leíste el código que lo muestra, corriste el comando—; si lo suponés, false: un hallazgo sin'
@@ -2007,10 +2010,14 @@ while (rounds++ < MAX_TASKS) {
     if (filed.length) {
       // La nota que devuelve viaja al hecho: sin ella la entrega afirma una fila que el disco no tiene,
       // que es el caso 087 entrando por otra puerta.
+      // Retomar vuelve a pasar por Review, así que lo que la corrida anterior ya registró llega otra vez, con otras
+      // palabras: el `Set` de arriba no lo ve, y la forma de la fila manda el repetido a un `-2` (caso 448).
       const note = await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de `
         + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. El task nunca es `
         + `${task.id} —el porqué es el mismo que en Build—: va la épica, el hito o el recorrido al que `
-        + `alcanza. No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
+        + `alcanza. Antes corré "node tools/ops.js human ${P}" desde ${ROOT}: una decisión que ya tiene una fila `
+        + 'pendiente no se vuelve a registrar, aunque esté dicha con otras palabras.'
+        + `${WHERE} No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
       decidedNote = `${note}`
     }
     // El árbol de la tarea primero, que puede colgar de la raíz: si no, la entrada nombraría uno que al

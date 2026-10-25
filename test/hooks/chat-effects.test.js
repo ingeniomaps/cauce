@@ -51,6 +51,8 @@ test('la aprobación sólo recibe las líneas que la persona nombró en su mensa
     assert.doesNotThrow(() => execute('workspace-boundary', orders(writes('push origin main\n'))))
     const loginOnly = chat.says('agregá src/login.js a .ops-approval y arreglá el login')
     blocked('workspace-boundary', loginOnly(writes('push origin feat/login\n')), /no las pidió/)
+    // Y con el repositorio al final, que es la forma que aprueba desde el 446: sigue siendo un push.
+    blocked('workspace-boundary', loginOnly(writes(`push origin feat/login @ ${root}\n`)), /no las pidió/)
 
     // El «dale» aprueba exactamente lo que el bloqueo mostró, que por eso lleva las líneas adentro.
     const again = chat.says('agregá src/login.js a .ops-approval')

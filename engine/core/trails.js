@@ -2,7 +2,8 @@
 
 // Los rastros que Cauce escribe **dentro** de la instancia y que no viajan: son evidencia de una corrida
 // local, de la máquina donde ocurrió, y committearlos sería historia que nadie lee y un conflicto por
-// commit. Cada uno nace con su razón escrita en `template/gitignore`, al lado de su línea.
+// commit. Cada uno nace con su razón escrita en `template/gitignore`, al lado de su línea. Las aprobaciones
+// que una persona escribe a mano no son un rastro, pero no viajan por lo mismo y se avisan igual (caso 445).
 //
 // Viven declarados acá y no en el módulo que escribe cada uno porque son tres —`verify`, `push` y el
 // chat— y hacían falta en un cuarto lugar: el aviso de abajo. Escribir la lista ahí habría dejado una
@@ -11,10 +12,11 @@ const VERIFY = 'planning/.verify-log'
 const PUSH = 'planning/.push-log'
 const GRANT = 'planning/.grant-log'
 
-const LOCAL = [VERIFY, PUSH, GRANT]
+const LOCAL = [VERIFY, PUSH, GRANT, 'planning/.ops-approval']
 
 const { spawnSync } = require('node:child_process')
 const { mode } = require('./ownership')
+const { shellWord } = require('./files')
 
 // A quién le toca esta pregunta. Los rastros los escribe Cauce **dentro de una instancia**, así que en una
 // raíz que no lo es no existen ni van a existir, y avisar ahí es hablar de algo imposible: el molde de este
@@ -53,15 +55,34 @@ function unignored(root) {
   return LOCAL.filter((one) => !covered.has(one))
 }
 
+// Cuáles ya están versionados. La línea del `.gitignore` no los saca del índice, y `check-ignore` no nombra un
+// archivo trackeado aunque una regla lo cubra —medido con git 2.53.0—, así que para éstos «agregá la línea» era
+// una salida que no salía: hay que decir que se sacan del índice (caso 445).
+function tracked(root) {
+  const listed = spawnSync('git', ['ls-files', '--', ...LOCAL], { cwd: root, encoding: 'utf8' })
+  if (listed.status !== 0) return []
+  const found = new Set(listed.stdout.split('\n').map((one) => one.trim()).filter(Boolean))
+  return LOCAL.filter((one) => found.has(one))
+}
+
 // El aviso, en la forma que `check` publica el resto: cuenta, nombra y no falla. Lleva las rutas porque
 // son exactamente lo que hay que pegar, que es lo único accionable — el archivo es de la empresa y Cauce
 // no lo edita.
 function warnings(root) {
   if (!forInstance(root)) return []
-  const missing = unignored(root)
-  if (!missing.length) return []
-  return [`${missing.length} rastro(s) local(es) que git no ignora (${missing.join(', ')}); `
-    + 'agregá esas líneas a tu .gitignore o van a entrar al repositorio']
+  const kept = tracked(root)
+  const missing = unignored(root).filter((one) => !kept.includes(one))
+  const out = []
+  if (missing.length) {
+    out.push(`${missing.length} rastro(s) local(es) que git no ignora (${missing.join(', ')}); `
+      + 'agregá esas líneas a tu .gitignore o van a entrar al repositorio')
+  }
+  if (kept.length) {
+    // Con `-C`: en sidecar la sesión se abre en el workspace, y desde ahí la ruta relativa a la instancia no existe.
+    out.push(`${kept.length} rastro(s) local(es) que git versiona (${kept.join(', ')}): sacalos del índice con `
+      + `git -C ${shellWord(root)} rm --cached -- ${kept.join(' ')}, y que tu .gitignore los cubra`)
+  }
+  return out
 }
 
 module.exports = { VERIFY, PUSH, GRANT, warnings }

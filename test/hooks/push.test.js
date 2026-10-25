@@ -78,7 +78,7 @@ test('un «dale» a un push frenado aprueba ese push y ningún otro', () => {
       assert.match(notHeld, /no quedó esperando su confirmación/)
       assert.doesNotMatch(notHeld, /reintentá el mismo push/)
     } finally { denied.close() }
-    assert.match(stopped, /\n {2}push origin feat\/x\n/)
+    assert.match(stopped, /\n {2}push origin feat\/x @ \S+\n/)
     const goAhead = chat.says('dale')
     assert.doesNotThrow(() => execute('destructive', push(goAhead, 'git push origin feat/x')))
     blocked('destructive', push(goAhead, 'git push origin feat/y'), WORK)
@@ -91,8 +91,12 @@ test('un «dale» a un push frenado aprueba ese push y ningún otro', () => {
 test('.ops-approval aprueba un push por su línea exacta, sin patrones', () => {
   const root = pushRoot('ops-hook-push-archivo-')
   const push = (command) => ({ cwd: root, tool_input: { command } })
+  // Con el repositorio del que sale: `origin` se llama igual en todos (caso 446).
   fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    'push origin feat/x\npush origin main\npush origin feat/*\ngit push\n')
+    'push origin feat/x\n')
+  blocked('destructive', push('git push origin feat/x'), WORK)
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `push origin feat/x @ ${root}\npush origin main @ ${root}\npush origin feat/* @ ${root}\ngit push @ ${root}\n`)
   assert.doesNotThrow(() => execute('destructive', push('git push origin feat/x')))
   blocked('destructive', push('git push origin feat/y'), WORK)
   // La línea exacta alcanza la rama viva: la escribe una persona a mano, y el agente no puede.
@@ -139,7 +143,7 @@ test('un push que pasa por una aprobación deja su línea en el rastro de la ins
     // Las tres vías se distinguen, y el rastro sólo agrega.
     messageOf('destructive', push(chat.says('subí la rama'), 'git push origin feat/y'))
     assert.doesNotThrow(() => execute('destructive', push(chat.says('dale'), 'git push origin feat/y')))
-    fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'push origin feat/z\n')
+    fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `push origin feat/z @ ${root}\n`)
     assert.doesNotThrow(() => execute('destructive', push(chat.says('seguí'), 'git push origin feat/z')))
     assert.deepEqual(trail().map((one) => [one.branch, one.via]),
       [['feat/x', 'orden'], ['feat/y', 'dale'], ['feat/z', '.ops-approval']])
@@ -196,7 +200,7 @@ test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ni
   }
   const stopped = messageOf('destructive', push('git push origin main'))
   assert.match(stopped, /runner\.pushToLiveBranches/)
-  assert.match(stopped, /\n {2}push origin main\n/)
+  assert.match(stopped, /\n {2}push origin main @ \S+\n/)
   blocked('destructive', push('git push origin feat/x', { agent_id: 'sub' }), /desde un subagente/)
 
   // Nombrada, la rama viva queda como una de trabajo: la alcanza la llave, y la otra sigue afuera.
@@ -204,7 +208,7 @@ test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ni
   assert.doesNotThrow(() => execute('destructive', push('git push origin main')))
   blocked('destructive', push('git push origin master'), LIVE)
   blocked('destructive', push('git push origin main', { agent_id: 'sub' }), /desde un subagente/)
-  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'push origin feat/x\n')
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `push origin feat/x @ ${root}\n`)
   blocked('destructive', push('git push origin feat/x', { agent_id: 'sub' }), /desde un subagente/)
   fs.rmSync(path.join(root, 'planning', '.ops-approval'))
 
