@@ -315,6 +315,21 @@ test('la fila de una parada nace pendiente, y si no quedó así la parada lo dic
   }
 })
 
+// Caso 448. Retomar vuelve a pasar por Review, y lo que esa revisión deja abierto se registraba de nuevo: la misma
+// decisión quedó en dos filas, la segunda con -2. Y la aprobación que el guard pide al commitear la pide la parada
+// del commit con la ruta del guard; registrada por Review, nombró la de otro árbol.
+test('Review no repite una decisión pendiente ni registra la aprobación que pide el commit', async () => {
+  const decision = { detail: 'el manifiesto queda sin su lockfile', blocking: false, decision: true }
+  const { prompts } = await runFlow({
+    [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [decision] },
+  })
+  const filed = prompts.find((one) => one.key === 'Review|review-human').prompt
+  assert.match(filed, /ops\.js human \S+/, 'lee las filas que ya hay')
+  assert.match(filed, /ya tiene una fila pendiente no se vuelve a registrar/)
+  const review = prompts.find((one) => one.key === KEY.review).prompt
+  assert.match(review, /\.ops-approval que un guard va a pedir al commitear no es una decisión/)
+})
+
 // Caso 101. El tope lo aplica el recorrido sobre lo que le pasa al agente: cinco hallazgos no
 // bloqueantes llegan como tres, en una línea cada uno, y los dos que no entran quedan contados en el
 // hecho de revisión, que es lo que viaja a `done/`.

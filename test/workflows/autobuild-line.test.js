@@ -202,3 +202,15 @@ test('en una línea declarada se construye y se commitea en el árbol de la lín
   // árbol la dejaría sin checkout para la tarea siguiente.
   assert.doesNotMatch(commit, /git branch -m|worktree remove|git switch -c/)
 })
+
+// Caso 448. Quien escribe la fila de una decisión de Review no sabía que había un árbol: completó una ruta de app con
+// la del checkout principal, y la persona aprobó un archivo que el commit no toca.
+test('en una línea, la fila que deja Review sabe dónde está el trabajo', async () => {
+  const decision = { detail: 'el manifiesto queda sin su lockfile', blocking: false, decision: true }
+  const { prompts } = await runFlow(inLine({
+    [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [decision] },
+  }))
+  const filed = promptOf(prompts, 'Review|review-human')
+  assert.ok(filed.includes(TREE.work), filed)
+  assert.match(filed, /no en el checkout compartido/)
+})
