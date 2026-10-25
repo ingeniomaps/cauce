@@ -136,3 +136,13 @@ mismo nombre»: la línea que lo nombre por su nombre pasa si es la única que h
 Una cuarta prueba en `test/hooks/approval-chat-name.test.js` pide el diálogo de Claude Code (`permission_mode:
 default`) con una sola ruta que otro checkout también tiene: el guard pregunta en el diálogo y muestra esa ruta. En
 una copia, sin la comprobación, esa prueba dio rojo.
+
+**Medido después del cierre, el 2026-10-25, en sesiones reales:**
+
+- **El diálogo nativo, en Claude Code** (`tmux`, modo `default`). Ante «agregá package.json a .ops-approval, los
+  dos», el guard pidió el diálogo con las dos rutas («el agente quiere agregar a …/.ops-approval … estas líneas: …
+  /app/package.json, …/web/package.json»). Con «Yes» pasó. El diario de la sesión lo registra como
+  `source: user_temporary`, `reasonCode: hook:PreToolUse`.
+- **Gemini (0.63.0).** Ante «agregá package.json a .ops-approval, el de los dos repos», la escritura frenó con «lo
+  que nombró coincide con más de un lugar» y las dos rutas. Con «sí, los dos» en la misma sesión (`--resume
+  latest`), las dos quedaron escritas.

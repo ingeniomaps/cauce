@@ -305,3 +305,24 @@ desde la raíz del banco con `cd app && …`, así que la línea que da el bloqu
 <banco>/app`. Con esa línea pegada, el `git clean -fd` corrió en `app` («Borrando suelto.tmp») y el de `web` siguió
 frenado con su propia línea. El ítem lleva el `cd` porque es el comando tal como llegó: un `git clean -fd` lanzado
 desde adentro de `app` no lo aprueba esa línea. Esa forma del ítem es anterior a este caso.
+
+**Medido después del cierre, el 2026-10-25, en sesiones reales:**
+
+- **El «dale» por chat, en Claude Code.** En una sesión interactiva (`tmux`, `bypassPermissions`), `git clean -fd`
+  frenó en `app`, el «dale» lo destrabó («Deleted suelto.tmp»), y el paso siguiente, el mismo comando en `web`, volvió
+  a frenar con `git clean -fd @ <banco>/web`. Con `claude -p --resume` el «dale» no destrabó ni `app`: el agente
+  reintentó con un `cd` adelante y el ítem ya era otro. Eso es anterior a este caso y salió como el 451.
+- **El diálogo nativo, en Claude Code** (`tmux`, modo `default`). Con `git clean -fd @ <banco>/app` en el archivo,
+  `git clean -fd` en `web` abrió el diálogo del guard («Hook PreToolUse:Bash requires confirmation») ofreciendo
+  `git clean -fd @ <banco>/web`. Con «Yes» corrió. En `app` sólo aparecieron los permisos normales de Claude Code,
+  nunca el diálogo del guard.
+- **Gemini (0.63.0) encontró un hueco, y quedó arreglado.** Gemini manda la raíz de la sesión en `cwd` y la carpeta
+  del comando en `tool_input.dir_path`, relativa. El motor sólo leía `cwd`, así que todo comando se juzgaba en la raíz:
+  el bloqueo daba `git clean -fd @ <banco>`, una línea que valía en todos los repositorios, y un commit lanzado con
+  `dir_path` frenaba con «git no toma <banco> como repositorio». Con el motor de 0.115.1 el commit frena igual, así
+  que no es una regresión. Pero en Gemini el lugar de este caso no se cumplía. `cwdOf` (`engine/hooks/input.js`) suma
+  ahora `dir_path`. La prueba nueva de `test/hooks/approval-place.test.js` se vio en rojo antes del arreglo (la línea
+  salía con la raíz). Con el arreglo, en sesiones reales de Gemini:
+  - cada bloqueo dio la línea de su repositorio;
+  - con sólo las líneas de `app` pegadas, la limpieza corrió en `app` y la de `web` siguió frenada;
+  - el «dale» destrabó `app` y `web` volvió a frenar con su propia línea.

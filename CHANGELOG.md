@@ -38,6 +38,9 @@ diseño — eso vive en el commit y en el código.
   Con «agregá package.json a .ops-approval», si otro checkout también tiene ese archivo, el agente no puede escribirse
   la línea: el bloqueo lista las rutas y pregunta cuál. Un «sí» las aprueba, y nombrar el repositorio o la ruta entera
   aprueba sólo esa. Lo mismo para un comando con su lugar, como `git clean -fd`.
+- **Con Gemini, un comando se juzga en la carpeta donde corre** (caso 446). Gemini manda esa carpeta aparte, en
+  `dir_path`, y los guards la ignoraban: una aprobación con lugar valía en todos los repositorios, y un commit en un
+  repositorio frenaba con «git no toma … como repositorio».
 - **Retomar un `/autobuild` ya no repite las decisiones de Review en `planning/human/`** (caso 448). La corrida que
   retoma vuelve a revisar, y lo que ya estaba pendiente se registraba otra vez con `-2`. En una línea de trabajo, la
   fila nombra el árbol de la línea; y la aprobación que pide un guard al commitear ya no se registra como decisión:
