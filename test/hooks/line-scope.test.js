@@ -231,10 +231,23 @@ test('un git en la instancia pasa si la persona lo pide, y su bloqueo no dice qu
     const id = sessionId()
     executeAll(['pre-shell'], shell(id, ops, 'node tools/ops.js claim planning t-piloto --line piloto'))
     const merge = (extra) => () => execute('shell-boundary', shell(id, ops, 'git merge --no-edit main', extra))
-    // Un subagente no tiene mensaje propio: sin una orden que lo cubra, frena.
+    // Un mensaje que no pide ese git no lo ordena: si no, cualquier pedido dejaba al agente cambiarle la rama a la
+    // sesión principal, que es lo que el 423 cerró.
     prompt(id, 'implementá la tarea', base)
+    assert.throws(merge(), (error) => error.blocked && STRAYED.test(error.message), 'un pedido sobre otra cosa')
+    // Y el nombre va entero: «ambos» no es `git am`. La conjugación sí cuenta —«mergeá»—, en los nombres largos.
+    prompt(id, 'implementá ambos cambios', base)
+    assert.throws(() => execute('shell-boundary', shell(id, ops, 'git am x.patch')),
+      (error) => error.blocked && STRAYED.test(error.message), '«ambos»')
+    prompt(id, 'mergeá main acá', base)
+    assert.doesNotThrow(merge())
+    // El bloqueo, el que ve un subagente en otra sesión de la línea, sin nada pendiente que confirmar.
+    const other = sessionId()
+    executeAll(['pre-shell'], shell(other, ops, 'node tools/ops.js claim planning t-piloto --line piloto'))
+    prompt(other, 'implementá la tarea', base)
     const message = (() => {
-      try { merge({ agent_id: 'build' })() } catch (error) { return error.message }
+      const input = shell(other, ops, 'git merge --no-edit main', { agent_id: 'build' })
+      try { execute('shell-boundary', input) } catch (error) { return error.message }
       return ''
     })()
     assert.match(message, STRAYED)
@@ -252,5 +265,8 @@ test('un git en la instancia pasa si la persona lo pide, y su bloqueo no dice qu
     prompt(id, '¿seguimos?', base)
     assert.doesNotThrow(merge())
     assert.throws(() => execute('shell-boundary', shell(id, ops, 'git stash')), (error) => STRAYED.test(error.message))
+    // La ruta de la instancia, que el bloqueo ofrecía pegar antes, sigue aprobando.
+    fs.appendFileSync(path.join(ops, 'planning', '.ops-approval'), `${ops}\n`)
+    assert.doesNotThrow(() => execute('shell-boundary', shell(id, ops, 'git stash')))
   })
 })
