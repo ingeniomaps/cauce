@@ -32,6 +32,13 @@ diseño — eso vive en el commit y en el código.
 - **`planning/.ops-approval` es local.** Una aprobación es de quien la dio, en su máquina; versionada, autorizaba en el
   clon de otro. El molde la ignora, y `check` avisa si tu instancia la versiona.
 
+### Corregido
+
+- **Retomar un `/autobuild` ya no repite las decisiones de Review en `planning/human/`** (caso 448). La corrida que
+  retoma vuelve a revisar, y lo que ya estaba pendiente se registraba otra vez con `-2`. En una línea de trabajo, la
+  fila nombra el árbol de la línea; y la aprobación que pide un guard al commitear ya no se registra como decisión:
+  la pide la parada del commit, con la ruta exacta.
+
 **Al actualizar**: `check` nombra cada línea de `.ops-approval` en la forma vieja —una ruta relativa, o un comando sin
 su lugar—, que ya no aprueba nada; si todavía hace falta, el próximo bloqueo da la línea nueva. Si `check` dice que git
 versiona `planning/.ops-approval`, sacala del índice con el comando que da el aviso, sumá `planning/.ops-approval` a tu
