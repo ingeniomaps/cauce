@@ -1,14 +1,15 @@
 ---
 caso: 447
 titulo: Nombrar un archivo por su nombre en el chat deja al agente escribirse la aprobación de ese archivo en todos los repositorios
-estado: abierto
+estado: resuelto
+resuelto-en: 0.116.0
 prioridad: media
 version-detectada: 0.116.0
 ---
 
 # 447 — Nombrar un archivo en el chat deja escribir su aprobación en todos los repos
 
-**🔴 abierto** · detectado en 0.116.0 · prioridad **media** — sidecar con más de un repositorio, o con líneas de
+**🟢 resuelto en 0.116.0** · detectado en 0.116.0 · prioridad **media** — sidecar con más de un repositorio, o con líneas de
 trabajo; hace falta que la persona pida escribir la aprobación nombrando el archivo sólo por su nombre.
 
 ## Resumen
@@ -77,3 +78,56 @@ el script de arriba antes de escribirlo.
 - 445 — la misma pregunta por archivo: una aprobación nombra un archivo de un checkout.
 - 446 — lo mismo para los comandos y para lo concedido en el chat.
 - 202 — por qué la persona puede pedirle al agente que escriba una línea permanente.
+
+## Cierre
+
+**Resuelto en 0.116.0**, en la misma rama y el mismo PR que el 445, el 446 y el 448. La decisión, del 2026-10-25,
+fue la del fix propuesto: frenar y mostrar, no tocar `mentions`.
+
+El caso, sección por sección:
+
+- **Fix propuesto.** Se hizo distinto en un punto, con la razón. `self-approval.js` deja pasar una línea pedida por su
+  nombre sólo si nada más se llama igual, o si el mensaje nombra un tramo de su lugar que lo demás no tiene
+  (`api/package.json`, la ruta entera, «para api» en un comando con su lugar). Si no, frena con «lo que nombró
+  coincide con más de un lugar», lista las líneas y las deja esperando el «dale». Lo distinto: el caso proponía
+  comparar sólo contra las otras líneas nuevas. Así quedaban dos huecos: partir la escritura en dos, y una sola línea
+  elegida por el agente. Por eso se compara también contra lo que el archivo ya aprueba y contra el mismo lugar en
+  los otros checkouts (raíces, árboles de tarea y de línea). El segundo hueco lo encontró la prueba real, que se
+  cuenta abajo.
+- **La alternativa** (comparar el sufijo dentro de `mentions`): se decidió que no, porque cambia qué cuenta como pedido
+  en todos los guards con chat. El sufijo se compara igual, pero sólo acá.
+- **Tradeoffs.** El primero se aceptó: aprobar en todos cuesta un «sí» más. El segundo no aplica, porque `mentions`
+  no se tocó.
+- **Lo que el caso no preveía:** el mismo cruce valía para los comandos con su lugar. «agregá git clean -fd a
+  .ops-approval» dejaba escribir `git clean -fd @ <repo>` para cada repositorio. Entra con la misma regla: el lugar
+  de un comando se distingue nombrando su carpeta.
+
+La prueba:
+
+- `test/hooks/approval-chat-name.test.js`: tres pruebas, una por archivo, una por comando y una para el paquete de un
+  monorepo declarado como raíz propia. Las dos primeras se vieron en rojo antes del arreglo («Missing expected
+  exception» en la primera escritura). Después, en una copia, siete mutaciones dieron rojo: sin la comprobación, sin
+  lo que ya está en el archivo, sin descartar el tramo compartido, sin distinguir nunca, sin los comandos, sin los
+  otros checkouts y sin tomar el checkout más cercano. La tercera prueba la pidió la puerta de cobertura: ninguna
+  pasaba por una ruta que cuelga de dos raíces.
+- `npm run ci`: 1614 de 1614.
+- **Prueba real** en el banco del 448, con el motor de la rama: sesiones de `claude -p` en una instancia con cinco
+  `package.json` (`app`, `web`, `ops`, el árbol de la línea y una copia de QA).
+  - Con la primera versión del arreglo, «agregá package.json a .ops-approval» terminó con el agente escribiendo una
+    sola ruta, la del árbol, elegida por él, y el guard la dejó pasar. Eso llevó a sumar los otros checkouts.
+  - Con la versión final, «agregá package.json a .ops-approval, el del commit de la tarea» frenó la escritura:
+
+    ```
+    …/ops/planning/.ops-approval es la aprobación de una persona, y lo que nombró coincide con más de un lugar:
+      <banco>/lines/piloto/app/package.json
+    Preguntale cuáles quiere aprobar. …
+    ```
+
+    El agente preguntó cuál. Con «sí» en la misma sesión la escritura pasó, con esa sola línea en el archivo.
+  - Una vuelta intermedia no ejerció el arreglo. Ante «agregá package.json a .ops-approval» el agente preguntó solo,
+    sin intentar escribir. Y la respuesta «el del commit de la tarea, elegilo vos» no nombraba `.ops-approval`, así
+    que la frenó la regla de siempre, la de escribirse la aprobación sin que nadie la nombre.
+
+Lo que el arreglo no cubre: compara sólo contra lo que el archivo aprueba y contra los checkouts que la instancia
+conoce (sus raíces y sus árboles de tarea y de línea). Un clon que la instancia no declara no cuenta como «otro con el
+mismo nombre»: la línea que lo nombre por su nombre pasa si es la única que hay.
