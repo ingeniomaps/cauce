@@ -13,7 +13,7 @@ const STOP_FAMILIES = {
     'role-unknown'],
   Cola: ['queue-unavailable', 'claim-stuck', 'manual-held', 'manual-critical', 'worktree-failed', 'review-not-ready'],
   Persona: ['awaiting-review', 'blocked-on-human', 'governance-approval-needed', 'commit-needs-approval',
-    'review-pending'],
+    'review-pending', 'planning-uncommitted'],
   Preparación: ['not-ready', 'refine-not-applied', 'refine-unwritable', 'split-not-applied',
     'split-left-dependents'],
   Plan: ['plan-rejected', 'plan-blocked', 'critique-unbacked', 'wip-malformed', 'wip-not-persisted'],

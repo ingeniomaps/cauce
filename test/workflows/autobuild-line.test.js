@@ -214,3 +214,25 @@ test('en una línea, la fila que deja Review sabe dónde está el trabajo', asyn
   assert.ok(filed.includes(TREE.work), filed)
   assert.match(filed, /no en el checkout compartido/)
 })
+
+// Caso 450. La instancia es una sola para la línea y la sesión principal, y `line-scope` frena todo checkout ahí: el
+// recorrido le mandaba a la línea cortar `work/planning` cuando la instancia estaba en su rama viva, y el cierre
+// quedaba suelto con un bloqueo que pedía aprobar la instancia entera.
+test('en una línea, con la instancia en su rama viva, el recorrido no cambia de rama y para dicho', async () => {
+  const { result, prompts } = await runFlow(inLine({
+    [KEY.planningCommit]: { committed: false, branch: 'main', live: true, reason: 'la instancia está en main' },
+    [KEY.contract]: { ...inLine()[KEY.contract], humanCheckpoint: true },
+  }))
+  assert.match(promptOf(prompts, KEY.planningCommit),
+    /lleva la línea admin: si el repositorio está en una rama viva no/)
+  assert.equal(result.reason, 'planning-uncommitted')
+  assert.match(result.detail, /sesión principal/)
+  assert.match(result.detail, /T-1/)
+  // Para al final y no a mitad: el hito cierra con su revisión humana, como cerraba antes.
+  assert.ok(prompts.some((one) => one.key === 'Closing|human-checkpoint'), 'el checkpoint del hito se escribe')
+
+  // Fuera de una línea sigue como estaba: la rama de planning se corta, y lo que no se commitea se anota sin parar.
+  const loose = await runFlow({ [KEY.planningCommit]: { committed: false, branch: 'main', live: true, reason: 'x' } })
+  ranToEnd(loose.result)
+  assert.doesNotMatch(promptOf(loose.prompts, KEY.planningCommit), /lleva la línea/)
+})
