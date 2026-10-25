@@ -6,7 +6,8 @@ function finish(result) {
   return result
 }
 
-const stop = (reason, detail = '') => {
+// `more` es lo que una parada que llega después de entregar trabajo suma a su resultado: qué entregó.
+const stop = (reason, detail = '', more = {}) => {
   log(`Checkpoint: ${reason}${detail ? ` — ${detail}` : ''}`)
-  return finish({ stopped: true, reason, detail })
+  return finish({ stopped: true, reason, detail, ...more })
 }

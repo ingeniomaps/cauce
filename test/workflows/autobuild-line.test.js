@@ -5,7 +5,7 @@
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { KEY, baseScript, ranToEnd, runFlow, reached } = require('../support/autobuild-harness')
+const { KEY, NO_TASK, baseScript, ranToEnd, runFlow, reached } = require('../support/autobuild-harness')
 
 const TREE = { ok: true, path: '/linea/api-T-1', work: '/linea/api-T-1/src', branch: 'task/T-1', repo: '/original/api' }
 const WORKTREE = 'Worktree|worktree:T-1'
@@ -230,6 +230,22 @@ test('en una línea, con la instancia en su rama viva, el recorrido no cambia de
   assert.match(result.detail, /T-1/)
   // Para al final y no a mitad: el hito cierra con su revisión humana, como cerraba antes.
   assert.ok(prompts.some((one) => one.key === 'Closing|human-checkpoint'), 'el checkpoint del hito se escribe')
+  // Y dice qué entregó y qué quedó para la sesión, como el final de siempre (caso 380).
+  assert.deepEqual(result.done, ['T-1'])
+  const manual = await runFlow(inLine({
+    [KEY.planningCommit]: { committed: false, branch: 'main', live: true, reason: 'x' },
+  }), { contexts: [inLine()[KEY.context], { ...NO_TASK, line: 'admin', queued: 1, manual: ['T-9'] }] })
+  assert.deepEqual(manual.result.manual.map((one) => one.slug), ['T-9'])
+
+  // Si el cierre para por otra cosa, lo que quedó sin commitear se dice igual.
+  const red = { ok: false, errors: ['done/T-1.md: falta commit'], warnings: [], lessons: [] }
+  const stuck = await runFlow(inLine({
+    [KEY.planningCommit]: { committed: false, branch: 'main', live: true, reason: 'la instancia está en main' },
+    [KEY.closing]: red, 'Closing|closing-repair': { fixed: [] },
+  }))
+  assert.equal(stuck.result.reason, 'planning-check-failed')
+  assert.match(stuck.result.detail, /sesión principal/)
+  assert.deepEqual(stuck.result.done, ['T-1'], 'la otra parada dice también qué se entregó')
 
   // Fuera de una línea sigue como estaba: la rama de planning se corta, y lo que no se commitea se anota sin parar.
   const loose = await runFlow({ [KEY.planningCommit]: { committed: false, branch: 'main', live: true, reason: 'x' } })

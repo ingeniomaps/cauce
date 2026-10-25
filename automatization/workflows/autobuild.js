@@ -898,9 +898,13 @@ const commitBlocked = async (slug, subject = `block ${slug}`) => {
 let holding = ''
 // La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
 let cut = false
+// Lo que el cierre de una tarea en una línea no pudo commitear (caso 450). Lo dice el final de la corrida, y también
+// la parada que llegue antes, que si no lo taparía.
+let stranded = ''
 const halt = async (reason, detail = '', subject = '') => {
   if (holding) await commitBlocked(holding, subject || undefined)
-  return stop(reason, detail)
+  return stop(reason, stranded ? `${detail} · ${stranded}` : detail,
+    stranded ? { done: completed, count: completed.length } : {})
 }
 
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
@@ -991,8 +995,6 @@ const classified = new Set()
 // Las que el clasificador devolvió a la sesión en esta corrida, con su motivo: van en el resultado (caso 380).
 const handedBack = new Map()
 
-// Lo que el cierre de una tarea en una línea no pudo commitear, para decirlo al final (caso 450).
-let stranded = ''
 while (rounds++ < MAX_TASKS) {
   phase('Pick')
   // Una tarea manual reclamada por este runner, o en su WIP, la está haciendo la sesión: el reclamo siguiente
@@ -2625,6 +2627,7 @@ if (completed.length && contract.humanCheckpoint && !cut) {
 const manual = ((planning && planning.manual) || []).filter((slug) => !completed.includes(slug))
   .map((slug) => ({ slug, reason: handedBack.get(slug) || 'declarada [manual] en la cola' }))
 manual.forEach((one) => log(`${one.slug} la hace la sesión: ${one.reason}`))
-if (stranded) return stop('planning-uncommitted', `${stranded}${checkpointNote ? ` · ${checkpointNote}` : ''}`)
-return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran,
-  ...(manual.length ? { manual } : {}), ...(checkpointNote ? { checkpoint: checkpointNote } : {}) })
+const delivered = { done: completed, count: completed.length, hito: currentMilestone, phases: ran,
+  ...(manual.length ? { manual } : {}), ...(checkpointNote ? { checkpoint: checkpointNote } : {}) }
+if (stranded) return stop('planning-uncommitted', stranded, delivered)
+return finish(delivered)
