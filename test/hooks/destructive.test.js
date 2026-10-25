@@ -411,3 +411,16 @@ test('la regla del destino resuelto ve prefijos y globs, y el cd sin resolver fr
     assert.doesNotThrow(() => execute('destructive', { cwd: root, tool_input: { command } }), command)
   }
 })
+
+// Caso 452. La regla de `git clean` miraba sólo la primera opción: `-d -f` borraba sin preguntar, y una simulación
+// con `-n` en el mismo racimo —`-fdn`, que no borra nada— se frenaba.
+test('git clean se frena si fuerza, en cualquier opción, y no si sólo simula', () => {
+  for (const command of ['git clean -d -f', 'git clean -x -f', 'git clean -df', 'git clean --force', 'git clean -fd',
+    'git -C app clean -d --force']) {
+    blocked('destructive', { tool_input: { command } }, /borra archivos sin seguimiento/)
+  }
+  for (const command of ['git clean -fdn', 'git clean -n -fd', 'git clean -fd --dry-run', 'git clean -nd',
+    'git clean -e fixtures -n']) {
+    assert.doesNotThrow(() => execute('destructive', { tool_input: { command } }), command)
+  }
+})

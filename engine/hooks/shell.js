@@ -142,7 +142,11 @@ function rulesOf(input) {
       "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
         + 'prohíbe: hacé otro commit encima.',
     ]] : []),
-    [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
+    // Fuerza en cualquiera de sus opciones, y no simula: mirando sólo la primera, `-d -f` borraba sin preguntar y
+    // `-fdn`, que no borra nada, se frenaba (caso 452).
+    [new RegExp(String.raw`\bgit\s+clean\b(?=${MISMO}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
+      + String.raw`(?!${MISMO}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
+    "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
     // nombrado es trabajo corriente y no se toca.
