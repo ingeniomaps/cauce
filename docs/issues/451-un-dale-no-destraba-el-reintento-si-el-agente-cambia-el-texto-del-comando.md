@@ -139,3 +139,11 @@ llaves. Cualquier otra cosa deja el comando entero, como antes del 451 (cerrado 
 `builtin cd`, `eval` y `source` frenando, y `git clean -fd && git status --short` reduciéndose. Dos mutaciones dieron
 rojo: no mirar los grupos, y no exigir lo inerte. Por el guard solo, otra vez: el reintento con `cd` tras el «dale»
 `exit 0`, el mismo en `web` `exit 2`.
+
+**Medido después del merge del #903, con el motor de `main`:**
+
+- `claude -p --resume`: el bloqueo de `cd <banco>/app && git clean -fd; echo …` ofreció `git clean -fd @ <banco>/app`.
+  El «dale» lo destrabó («Borró un solo archivo sin seguimiento de `app`»), y en `web` el paso volvió a frenar con su
+  propia línea.
+- Gemini 0.63.0: lo mismo. El bloqueo ofreció `git clean -fd @ <banco>/app`, el «dale» lo destrabó («Borrando
+  suelto.tmp»), y en `web` volvió a frenar con `git clean -fd @ <banco>/web`.
