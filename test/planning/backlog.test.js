@@ -206,6 +206,11 @@ test('las condiciones de una aceptación se cuentan como el autor las marcó', (
     'con marcadores mandan ellos: el `;` de adentro de una condición no la parte en dos')
   assert.equal(P.acceptanceConditions('se ordena por fecha (ver ADR 3) y no rompe la paginación.'), 1,
     'un número entre paréntesis que no marca una condición no la inventa')
+  const five = '(1) a; (2) b; (3) c; (4) d; (5) e.'
+  assert.equal(P.acceptanceConditions(`${five} Mutación: quitar x pone en rojo la (1); quitar y, la (5).`), 5,
+    'la mutación que cita una condición por su marcador no suma otra (caso 457)')
+  assert.equal(P.acceptanceConditions('(1) sola. Mutación: quitarla pone en rojo la (1).'), 1,
+    'citada por la mutación sigue siendo un marcador suelto')
 })
 
 test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {

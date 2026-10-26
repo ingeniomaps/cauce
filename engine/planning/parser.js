@@ -190,11 +190,14 @@ const MARKERS = new RegExp(String.raw`\*\(\s*(?:→|->|criterios?\s)[^)]*\)\*`
 // Sub-cuenta a propósito. Una frase larga con comas vale 1, y un solo `(1)` suelto también: un umbral
 // que salta cuando no debe convierte la escapatoria de R17 en trámite, y ahí la razón se escribe para
 // callar el mensaje en vez de para que alguien la lea. Un falso negativo deja las cosas como estaban.
+//
+// Se cuentan marcadores distintos y no apariciones: la mutación cita la condición que pone en rojo por su
+// marcador —«pone en rojo la (5)»—, y contada dos veces una tarea de cinco cruzaba el umbral (caso 457).
 function acceptanceConditions(value) {
   const text = String(value || '').trim()
   if (!text) return 0
-  const marcadas = (text.match(/\(\d+\)/g) || []).length
-  if (marcadas >= 2) return marcadas
+  const marked = new Set(text.match(/\(\d+\)/g)).size
+  if (marked >= 2) return marked
   return text.split(';').map((one) => one.trim()).filter(Boolean).length
 }
 
