@@ -50,7 +50,8 @@ diseño — eso vive en el commit y en el código.
 - **Desde una línea de trabajo, pedir en el chat un `git` sobre la instancia lo destraba** (caso 449). «Haz el merge
   de main en work/…» pasaba sólo nombrando la carpeta de la instancia; ahora alcanza con nombrar el `git` —«merge»,
   «mergeá», «stash»—, y el guard frena si el mensaje pregunta, niega o frena. La línea para pegar es
-  `git merge @ <instancia>`, y no la instancia entera; la que ya tenías con la carpeta sigue valiendo.
+  `git merge @ <instancia>`, y no la instancia entera; la que ya tenías con la carpeta sigue valiendo. En una sesión
+  interactiva de Claude Code, ese `git` ya no frena: abre el diálogo de confirmación.
 - **Con Gemini, un comando se juzga en la carpeta donde corre** (caso 446). Gemini manda esa carpeta aparte, en
   `dir_path`, y los guards la ignoraban: una aprobación con lugar valía en todos los repositorios, y un commit en un
   repositorio frenaba con «git no toma … como repositorio».

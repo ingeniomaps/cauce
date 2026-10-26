@@ -164,3 +164,11 @@ rojo:
 **La segunda pasada de revisión** encontró que las dos salidas seguían sin traer todo lo del final de siempre: la
 parada propia perdía `manual` y `checkpoint` (lo que el caso 380 sumó), y la parada que llega antes no traía `done`.
 Las dos lo llevan ahora, con su prueba y su mutación en rojo.
+
+**Medido después del merge del #903, con el motor de `main`:** un `/autobuild piloto` real (`wf_56d13818-867`, USD
+7,40) con la instancia en `master`. Pasó por `closing`, `human-checkpoint` y `checkpoint-held`, y paró con:
+
+```
+"stopped":true,"reason":"planning-uncommitted","detail":"anotar-mantenimiento quedó entregada y su estado de
+planning sin commitear: la instancia está en master, …","done":["anotar-mantenimiento"],"count":1,"hito":"cuarto"
+```

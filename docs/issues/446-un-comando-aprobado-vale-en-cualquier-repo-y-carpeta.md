@@ -335,3 +335,9 @@ se vio en rojo sin el cambio. Con el shim instalado no pasaba, porque ahí `OPS_
 La segunda pasada señaló que, sin el shim, un `dir_path: 'ops'` desde el workspace ya no encuentra la instancia. Antes
 de esta rama tampoco la encontraba, porque la búsqueda arrancaba del workspace igual que ahora, y con el shim instalado
 `OPS_ROOT` siempre está. Se deja así.
+
+**Upgrade real desde 0.115.1, el 2026-10-25, con el motor de `main` (`73b15374`).** Instancia sidecar creada con el
+motor de 0.115.1 (`init`, `automation install`, `line`). Ahí `git clean -fd` frenaba ofreciendo `git clean -fd`, sin
+lugar, y pegada esa línea, la limpieza pasaba en `app` y en `web`. Después de cambiar el motor, de `ops upgrade` y de
+reinstalar el runner, `check` avisó «1 línea(s) sin el lugar donde valen, que ya no aprueban nada: git clean -fd».
+La limpieza frenó en `app` y en `web`, cada una ofreciendo su línea (`git clean -fd @ <banco>/app`, `… @ <banco>/web`).
