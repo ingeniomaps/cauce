@@ -160,7 +160,8 @@ La prueba:
   rama y la sesión atada por un `/autobuild piloto` real, con `principal.txt` sin commitear en el checkout principal.
   El paso 1, `sh -c "git -C <banco>/app stash -u"`, frenó con «`<banco>/app` es el checkout de la sesión principal, y
   `git stash` le cambia su rama…», ofreciendo `git stash @ <banco>/app`; el stash siguió vacío y `principal.txt`, en su
-  lugar. La sesión no siguió con los pasos 2 y 3 porque eran el mismo cambio, y correrlos en sesiones aparte lo frenó
-  el clasificador de permisos de esta sesión. Esos dos se le pasaron al hook instalado del banco con la misma sesión, y
-  con el motor final frenaron los tres (`exit 2`) con el mismo mensaje, mientras `git -C <banco>/app status` pasó. Con
-  el motor de `main` en el mismo banco, los tres pasaron (`exit 0`).
+  lugar. La sesión no siguió con los pasos 2 y 3 porque eran el mismo cambio, y se corrieron después, con el motor
+  final y autorizados por el dueño del proyecto, cada uno en una sesión propia atada a la línea: `stdbuf -oL git -C
+  <banco>/app stash -u` y `eval "git -C <banco>/app stash -u"` frenaron con el mismo mensaje, y el stash del checkout
+  principal siguió vacío con `principal.txt` en su lugar. Pasados al hook instalado del banco, los tres frenaron
+  (`exit 2`) y `git -C <banco>/app status` pasó; con el motor de `main` en el mismo banco, los tres pasaron (`exit 0`).
