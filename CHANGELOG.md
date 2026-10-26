@@ -42,6 +42,10 @@ diseño — eso vive en el commit y en el código.
   el checkout principal, un `rm` o un `touch` fuera de las raíces, y una escritura con `>`, `tee` o `cp` —también la
   de una credencial o de `ops.config.json`—. Lo que corre en otra máquina, como `ssh` o `docker exec`, sigue sin
   juzgarse. Y `env -C` o `sudo -D` ya no cambian la carpeta de los comandos que siguen, sólo la del suyo.
+- **Lo que un shell lee de su entrada también se juzga** (caso 456). `echo '…' | sh`, `printf '…' | bash`,
+  `bash <<EOF`, `cat <<EOF | sh`, `sh <<< '…'`, `sudo -s <<EOF` y `source /dev/stdin` corrían su comando sin que los
+  límites de escritura y borrado, ni el de una línea de trabajo, lo vieran. Un documento escrito con `cat > archivo <<EOF`, un commit con `-F-` o un `ssh host bash <<EOF`
+  siguen siendo dato. Y `bash <<< X` ya no hace que un renglón posterior `X` esconda lo que hay en medio.
 
 ## [0.116.0] - 2026-10-25
 
