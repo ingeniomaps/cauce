@@ -190,39 +190,70 @@ siguiente.
 
 ## Cierre
 
-**Resuelto en 0.117.0.** La decisión, del 2026-10-25, fue la primera opción de la regresión: en el checkout principal
-vale cualquiera de los dos juicios, el del subcomando o el de la carpeta, así que no deja de pasar nada que pasaba.
+**Resuelto en 0.117.0.** La decisión de la regresión se tomó dos veces. Primero se eligió que en el checkout valieran
+los dos juicios, el del subcomando y el de la carpeta, para que «Actualiza app» siguiera pasando. La revisión de código
+mostró que el juicio por carpeta era el hueco del 423: con el motor de `main` y con esa versión, un `git -C app stash` o
+`switch -c x` pasaba después de «actualizá app?», «actualizá app, pero no hagas stash», «arreglá el login de la app» o
+«revisá app y después seguí» (`exit 0` en las cuatro), y frenaba sólo con «implementá la tarea». Con ese dato, el
+2026-10-25 se decidió lo mismo que en la instancia: la orden nombra el subcomando.
 
 - **Tratar como `shared` un `git` de `SHARED` en el checkout principal.** Se hizo, en `strayed`
-  (`engine/hooks/line-scope.js`): el ítem es `git <subcomando> @ <checkout>` y el bloqueo deja de ser `fixable`, así
-  que abre el diálogo. La orden se juzga con `ordersShared` o, como antes, nombrando la carpeta (`ordersCheckout`, que
-  usa `named` de `engine/hooks/chat.js`).
-- **El texto del bloqueo.** Se hizo: dice que es el checkout de la sesión principal y que el `git` le cambia la rama, y
-  deja el árbol de la línea como pista.
-- **La regresión de «Actualiza app».** Se decidió que no hubiera: vale también el juicio por carpeta.
-- **La línea ya pegada con la carpeta.** Sigue aprobando, como en el 449.
+  (`engine/hooks/line-scope.js`): el ítem es `git <subcomando> @ <checkout>`, la orden se juzga con `ordersShared` y el
+  bloqueo deja de ser `fixable`, así que abre el diálogo. Desde una subcarpeta del checkout, el lugar sigue siendo el
+  checkout.
+- **El texto del bloqueo.** Se hizo: dice que es el checkout de la sesión principal, y da como pista la carpeta que le
+  corresponde en el árbol de la línea, o la raíz del árbol si esa carpeta no existe ahí.
+- **La regresión de «Actualiza app».** Se aceptó: sin diálogo frena, y el mensaje siguiente que no niega lo destraba.
+- **La línea ya pegada con la carpeta.** Sigue aprobando, también un `git` corrido desde una de sus subcarpetas.
 - **El checkout de un repositorio que la línea no trabaja.** Se decidió no tocarlo, con la razón de arriba.
-- **Lo que no preveía.** El comentario de `SHARED` decía «en la instancia», y la constante pasó a valer también para el
-  checkout principal; se corrigió.
+- **Lo que no preveía.** El comentario de `SHARED` decía «en la instancia», y la constante vale ahora también para el
+  checkout principal: se corrigió.
+
+**Las dos pasadas de revisión de código**, y qué pasó con cada hallazgo:
+
+- Se corrigieron, con su prueba vista en rojo: el juicio por carpeta (arriba); que la pista apuntara a la raíz del árbol
+  desde una subcarpeta, y a una carpeta que el árbol no tiene; y que la carpeta pegada aprobara sólo desde esa misma
+  carpeta.
+- **`--git-dir` y `GIT_DIR`**: un `git` corrido en el árbol de la línea contra el repositorio del checkout principal no
+  se juzga. Pasa igual con el motor de `main`, así que no es de este arreglo. Salió como el caso 454, medido.
+- **Una palabra común nombra un subcomando**: «pull request» o el «checkout» de una tienda cuentan como orden de
+  `git pull` o `git checkout`. Es el límite que el 449 ya dejó escrito para la instancia, y acá se hereda igual.
+- **Un comando que junta el `git` del checkout con un archivo escrito afuera** pierde la indicación de que el archivo se
+  corrige en el árbol, porque el bloqueo entero deja de ser `fixable`. Es el mismo límite que el 449 tiene con la
+  instancia.
+- **Dos repositorios anidados en una línea** (`.` y `app`) toman el primero que contiene la ruta. Ya pasaba con la
+  pista de un archivo, no hay líneas así en uso, y no se tocó.
+- **Juntar el checkout y la instancia en una sola rama de `strayed`** se dejó para cuando haga falta: hoy son dos
+  lugares con su texto propio.
 
 La prueba:
 
 - `test/hooks/line-scope.test.js`, prueba nueva con la orden de la sesión real: en `auto` pide el diálogo con
-  `git merge @ <checkout>`; el bloqueo de un subagente no dice «Esto lo corregís vos» y trae la pista del árbol;
-  «haz el merge de master en app» y «actualizá app» pasan; «¿actualizo app?» y «no hagas el merge todavía» frenan; crear
-  una rama y escribir un archivo ahí siguen diciendo «Esto lo corregís vos». Con el motor de `main` dio rojo (esta y la
-  del 423 que leía el texto viejo). En una copia, cuatro mutaciones dieron rojo: tratar así cualquier subcomando, sacar
-  el juicio por carpeta, dejar `fixable` lo del checkout, y aceptar cualquier mensaje que no niegue.
+  `git merge @ <checkout>`; el bloqueo de un subagente no dice «Esto lo corregís vos» y trae la pista exacta, también
+  desde `app/src` y desde una carpeta que el árbol no tiene; «haz el merge de master en app» pasa, también desde
+  `app/src`; seis mensajes frenan, cada uno en su sesión («actualizá app», «actualizá app?», «arreglá el login de la
+  app», «¿actualizo app?», «no hagas el merge todavía» y «…, pero no todavía»); crear una rama y escribir un archivo
+  siguen corrigiéndose en el árbol; y la carpeta pegada aprueba desde una subcarpeta. Con el motor de `main` dio rojo.
+  En una copia, siete mutaciones dieron rojo: tratar así cualquier subcomando, volver a aceptar la carpeta, dejar
+  `fixable` lo del checkout, la pista sin la subcarpeta, la pista sin comprobar que exista, la pista siempre en la raíz,
+  y la carpeta pegada sin mirar el checkout.
 - `npm run ci`: 1622 de 1622.
-- **Sesiones reales** de Claude Code 2.1.310 en un banco instalado con el motor de la rama (sidecar, línea `piloto`
-  sobre `app`, y en `app` una rama `nuevo` un commit adelante de `master`), con la sesión atada a la línea por un
-  `/autobuild piloto` real:
-  - `claude -p` en `bypassPermissions`, «Pon al dia el master del checkout principal de app con la rama nuevo»: el
-    guard frenó con «`<banco>/app` es el checkout de la sesión principal, y `git merge` le cambia su rama…», sin «Esto
-    lo corregís vos», y ofreció pegar `git merge @ <banco>/app`. Con «Dale», el fast-forward entró (`9e85b47` →
-    `f8c7402`).
-  - Con `master` vuelto atrás, «Actualizá app con la rama nuevo, en el checkout principal» pasó sin frenar, como antes
-    del arreglo.
-  - Interactiva en `auto`, por tmux, con la misma orden de la sesión real: Claude Code abrió el diálogo «Hook
-    PreToolUse:Bash requires confirmation for this command» con el texto nuevo y `git merge @ <banco>/app`. Aprobado, el
-    fast-forward entró. Con 0.116.0, la sesión real de la empresa frenó en el mismo paso sin diálogo.
+- **Sesiones reales** con el motor final congelado en bancos instalados (sidecar, línea `piloto` sobre `app`, y una
+  rama `nuevo` adelante de `master` en `app`):
+  - Claude Code 2.1.310, `claude -p` en `bypassPermissions`, con la sesión atada por un `/autobuild piloto` real. «Pon
+    al dia el master del checkout principal de app con la rama nuevo» frenó con el texto nuevo y `git merge @
+    <banco>/app`, y el «Dale» lo destrabó (`master` en `nuevo`). «Actualizá app con la rama nuevo» frenó. «Mergeá la
+    rama nuevo en el master del checkout principal de app» hizo el fast-forward.
+  - Claude Code interactivo en `auto`, por tmux, con la orden de la sesión real: se abrió el diálogo «Hook
+    PreToolUse:Bash requires confirmation» con el texto nuevo y, aprobado, el fast-forward entró.
+  - Gemini 0.63.0, con `CAUCE_RUNNER` en la línea: la orden de la sesión real frenó con el texto nuevo y `git merge @
+    <banco>/app`. La orden que nombra el merge no se pudo medir de punta a punta: Gemini negó el `git merge` con «Tool
+    execution denied by policy», y lo negó igual en una corrida de control con los hooks de Cauce sacados de su
+    `settings.json`, así que es su política y no el guard. Esa misma orden y ese comando, pasados por el shim instalado
+    con el payload de Gemini, salen con `exit 0`.
+  - Antigravity 1.4.7, que no tiene hook del chat: las dos órdenes frenaron con el texto nuevo, sin «Esto lo corregís
+    vos», ofreciendo `git merge @ <banco>/app`. Con esa línea pegada, hizo el fast-forward.
+- **Upgrade desde 0.116.0**, en una instancia instalada con el motor del tag y la misma línea. Antes, en `auto`, el
+  bloqueo de siempre (`exit 2`, «va en el árbol de la línea»). Después del upgrade al motor de la rama: en `auto`,
+  `permissionDecision: ask`; en `bypassPermissions`, el bloqueo nuevo (`exit 2`); con la carpeta `<instancia>/app`
+  pegada como la ofrecía 0.116.0, el merge pasa (`exit 0`), también desde `app/src`. `check` sigue en verde.
