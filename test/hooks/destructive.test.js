@@ -201,6 +201,11 @@ test('el cuerpo de un heredoc es texto, y su línea de apertura sigue siendo com
     /fuera de las raíces/)
   // Y lo que va después del cierre tampoco: el recorte se lleva el cuerpo, no el resto del comando.
   blocked('destructive', entrada(`${documento('hola')}\nrm -rf /`), /catastrófico/)
+  // El cuerpo que corre un shell tampoco se lee acá como líneas sueltas: su `cd` no mueve lo de después (caso 456).
+  blocked('destructive', entrada("bash <<'FIN'\ncd /tmp/borrador\nFIN\nrm -rf ."), /directorio actual/)
+  // `<<<` no abre un heredoc, y `|&` también le pasa la salida a un shell.
+  blocked('destructive', entrada('bash <<< X\nrm -rf ~\nX'), /catastrófico/)
+  blocked('destructive', entrada("echo 'rm -rf ~' |& sh"), /catastrófico/)
 })
 
 test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése', () => {

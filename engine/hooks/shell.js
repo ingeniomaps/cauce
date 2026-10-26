@@ -14,7 +14,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, writableRoots, outsideRoots, DECLARE_IT, opsRoot, withoutGitGlobals, gitDirectory, owns,
-  asRun, assignedValues, toplevel, realPath,
+  asRun, assignedValues, toplevel, realPath, rawCommandOf,
 } = require('./input')
 const { REDIRECTIONS } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
@@ -335,7 +335,7 @@ function shellBoundary(input) {
   const found = []
   const strayed = []
   // Sin el cuerpo de los heredocs, también con un delimitador como `END-1` (`asRead`).
-  for (const { raw, base } of writes(commandOf(input), cwdOf(input))) {
+  for (const { raw, base } of writes(rawCommandOf(input), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
     // no puede verificar no autoriza —el criterio que fijó el 031 para el índice—.
@@ -363,7 +363,7 @@ function shellBoundary(input) {
   if (!allowed) return
   const command = commandOf(input)
   const assigned = assignedValues(asRead(command)) || ((text) => text)
-  const ran = steps(command, cwdOf(input))
+  const ran = steps(rawCommandOf(input), cwdOf(input))
   const changes = [
     ...removals(ran).map((one) => ({ ...one, verb: 'borra', lands: removed })),
     ...creations(ran).map((one) => ({ ...one, verb: 'escribe', lands: landing })),

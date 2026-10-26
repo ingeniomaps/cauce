@@ -306,7 +306,7 @@ test('un git escondido detrás de otro comando se frena como uno escrito suelto'
       `stdbuf -oL ${git}`, `sudo -T 10 ${git}`, `flock /var/lock/l -c '${git}'`, `su me -c '${git}'`,
       `GIT_DIR=${base}/app/.git sh -c 'git stash'`, `sh -c 'cd ${base}/app && git stash'`,
       `sh -c "eval '${git}'"`, `(export GIT_DIR=${base}/app/.git; bash -c 'git stash')`,
-      `eval 'export GIT_DIR=${base}/app/.git'; git stash`]) {
+      `eval 'export GIT_DIR=${base}/app/.git'; git stash`, `echo '${git}' | sh`, `bash <<EOF\n${git}\nEOF`]) {
       assert.throws(run(command), (error) => error.blocked && error.message.includes(` @ ${base}/app\n`), command)
     }
     for (const command of [`ssh host '${git}'`, `docker exec app sh -c '${git}'`, `git commit -m "sh -c '${git}'"`,

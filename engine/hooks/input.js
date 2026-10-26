@@ -94,10 +94,10 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
 // escribirse y el guard verá el comando de verdad cuando alguien corra el script; el borde filoso es
 // `$(cat <<EOF …)`, donde el cuerpo sí corre y ya no se mira. Es el mismo trato que con el mensaje de un
 // commit: se frena la forma habitual, no al que quiere pasar.
-const HEREDOC = /<<(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
+const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
 
-// El comando como llegó, con el cuerpo de sus heredocs. Casi ningún guard lo quiere así —ese cuerpo es dato
-// y no orden—, salvo el que juzga justamente el dato: el mensaje de un commit viaja ahí.
+// El comando como llegó, con el cuerpo de sus heredocs. Lo quieren el guard que juzga justamente el dato —el mensaje de
+// un commit viaja ahí— y los que leen por tramos, que necesitan el cuerpo que corre un shell (`asRead`, caso 456).
 function rawCommandOf(input) {
   const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
     || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
@@ -207,7 +207,7 @@ const unquoted = (command) => eachQuoted(String(command), () => '\u0000')
 // anotó sigue leyéndose como orden, que es el lado que frena (R27). Y aun para éstos el texto vuelve a ser
 // orden si lleva una sustitución adentro o si el comando se lo pasa a un shell por una tubería.
 const DATA_ONLY = new Set(['sed', 'grep', 'egrep', 'fgrep', 'rg', 'echo', 'printf', 'jq'])
-const FEEDS_SHELL = /\|\s*(?:sudo\s+)?(?:(?:ba|z|da)?sh|eval|xargs|source|\.)(?=\s|$)/
+const FEEDS_SHELL = /\|&?\s*(?:sudo\s+)?(?:(?:ba|z|da|k|mk|a)?sh|eval|xargs|source|\.)(?=\s|$)/
 function asRun(command) {
   const raw = String(command)
   if (isCommit(raw)) return unquoted(raw)

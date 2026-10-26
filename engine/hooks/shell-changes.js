@@ -18,7 +18,28 @@ const path = require('node:path')
 const { block, expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
 const { cdTarget, QUOTED_CD, REDIRECTIONS, writesWithBase } = require('./shell-writes')
-const { SAME_SHELL, LEADING, VALUED, POSITIONAL, MOVES, AWAY, RUNS, hidden, options } = require('./shell-wrappers')
+const {
+  SAME_SHELL, LEADING, VALUED, POSITIONAL, MOVES, AWAY, RUNS, hidden, reads, output, options,
+} = require('./shell-wrappers')
+
+// El tramo de apertura de un heredoc —lo que va antes del `<<` en su línea, y lo que sigue— le pasa el cuerpo a un
+// shell, directo o por una tubería. Si no, el cuerpo es dato y se borra; si sí, se marca, y lo que lo corre de verdad
+// lo decide `steps` por el verbo de cada tramo.
+function feedsShell(before, after) {
+  const reading = (text) => steps(text, null).some((one) => one.stdin)
+  // `sh 0<<EOF` le da el cuerpo a la entrada por su número.
+  if (reading(pieces(before).pop().text.replace(/(^|\s)\d+\s*$/, '$1'))) return true
+  const next = pieces(after)
+  for (let at = 0; at + 1 < next.length && next[at].piped; at += 1) if (reading(next[at + 1].text)) return true
+  return false
+}
+// El cuerpo que corre un shell queda en la lectura por tramos como una sola palabra marcada, y `steps` lo vuelve a leer
+// como el de un `sh -c`, en su propio proceso. Puesto en líneas sueltas, su `cd` seguía valiendo para lo de después y
+// un heredoc anidado se leía como órdenes. La marca no llega a la lectura común, `commandOf`, que borra el cuerpo como
+// siempre porque lo que ella arma se le muestra a la persona: sólo la ven `asRead` y quien lea su salida.
+const FED = '\u0003'
+const fed = (body) => `<<<${FED}${Buffer.from(body).toString('base64url')}`
+const unfed = (word) => (word.startsWith(FED) ? Buffer.from(word.slice(1), 'base64url').toString() : null)
 
 // Cuántos comandos escondidos se leen uno dentro de otro. Más que eso no lo escribe nadie, y leerlo sin tope
 // desbordaba la pila: el guard salía con un error que no frena, y el comando pasaba sin juzgar.
@@ -61,7 +82,9 @@ function pieces(text) {
   let opens = 0
   let closes = 0
   const cut = (at) => {
-    found.push({ text: text.slice(start, at), opens, closes })
+    // `||` no pasa la salida: corre lo de después sólo si lo de antes falló.
+    const piped = text[at] === '|' && text[at + 1] !== '|' && text[at - 1] !== '|'
+    found.push({ text: text.slice(start, at), opens, closes, piped })
     start = at + 1
     opens = 0
     closes = 0
@@ -91,7 +114,8 @@ function pieces(text) {
     } else if (char === '`') {
       if (open.length && open[open.length - 1].kind === '`') open.pop()
       else open.push({ kind: '`', quote: '' })
-    } else if ((';&\n'.includes(char) || (char === '|' && text[at - 1] !== '>'))
+    } else if (char === '&' && (/[<>]/.test(text[at - 1]) || text[at + 1] === '>')) continue
+    else if ((';&\n'.includes(char) || (char === '|' && text[at - 1] !== '>'))
       && !open.some((one) => one.kind !== '(')) cut(at)
   }
   cut(text.length)
@@ -108,7 +132,9 @@ function shellWords(text) {
     const char = text[at]
     if (quote) {
       if (char === quote) quote = ''
-      else word += char === '\\' && quote === '"' ? text[at += 1] || '' : char
+      // Entre comillas dobles la barra sólo escapa `$`, `` ` ``, `"`, `\\` y el salto: `"a\\nb"` lleva la barra.
+      else if (char === '\\' && quote === '"' && '$`"\\\n'.includes(text[at + 1] || '')) word += text[at += 1]
+      else word += char
     } else if (char === '"' || char === "'") {
       quote = char
       word = word || ''
@@ -137,15 +163,14 @@ function withoutSubstitutions(text) {
 // El cuerpo de un heredoc es dato también cuando su delimitador no son sólo letras —`END-1`, `E.O.F`, `1`,
 // `\EOF`—: la lectura común deja ese cuerpo, y acá una línea suya con `rm` o `mkdir` se leía como comando.
 // Y `export D=…` asigna igual que `D=…`. `local` no: fuera de una función falla y deja la variable vacía.
-const OPENS = /<<-?\s*\\?(['"]?)(\w[\w.-]*)\1/g
+const OPENS = /(?<!<)<<(?!<)-?\s*\\?(['"]?)(\w[\w.-]*)\1/g
 const EXPORTED = /(^|[;&\n])[ \t]*(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
 
-// El comando sin el cuerpo de sus heredocs, línea por línea y no con una expresión: la lectura común ya vació
-// los de delimitador corriente, y una expresión que busca el terminador de cada uno recorría el resto del
-// texto por cada `<<EOF` que ya no lo tiene —mil doscientos milisegundos con seis mil—. El cuerpo se quita
-// sólo si su terminador está más abajo; si no, la línea queda como está. El terminador se deja: es una palabra
-// suelta que nadie lee.
-function withoutBodies(text) {
+// El comando sin el cuerpo de sus heredocs, línea por línea y no con una expresión: una expresión que busca el
+// terminador de cada uno recorría el resto del texto por cada `<<EOF` que no lo tiene —mil doscientos milisegundos
+// con seis mil—. El cuerpo se quita sólo si su terminador está más abajo; si no, la línea queda como está. El
+// terminador se deja, salvo en la primera pasada (`closing`): es una palabra suelta que nadie lee.
+function withoutBodies(text, closing = false) {
   const lines = text.split('\n')
   const last = new Map(lines.map((line, at) => [line.trim(), at]))
   const kept = []
@@ -153,9 +178,16 @@ function withoutBodies(text) {
     kept.push(lines[at])
     // De todos los `<<` de la línea, el primero cuyo terminador está más abajo: un desplazamiento, uno citado o
     // un here-string también se escriben así, y no abren nada.
-    const opens = [...lines[at].matchAll(OPENS)].map((one) => one[2]).find((name) => last.get(name) > at)
-    if (opens === undefined) continue
-    while (lines[at + 1].trim() !== opens) at += 1
+    const opener = [...lines[at].matchAll(OPENS)].find((one) => last.get(one[2]) > at)
+    if (opener === undefined) continue
+    const opens = opener[2]
+    const line = lines[at]
+    const after = line.slice(opener.index + opener[0].length)
+    const body = []
+    while (lines[at + 1].trim() !== opens) body.push(lines[at += 1])
+    if (closing) at += 1
+    const before = line.slice(0, opener.index)
+    if (feedsShell(before, after)) kept[kept.length - 1] = before + fed(body.join('\n')) + after
   }
   return kept.join('\n')
 }
@@ -164,8 +196,12 @@ function withoutBodies(text) {
 // en más —varias expresiones de las que comparten todos los guards— vuelve atrás en cada corrida de saltos:
 // con cuarenta mil tardaba cuatro segundos. Menos la que sigue a una barra: ahí la barra une con esa línea
 // vacía, y juntarla la pegaba con el comando de abajo.
-const asRead = (command) => withoutBodies(String(command).replace(/(?<!\\)\r?\n(?:[ \t\r]*\n)+/g, '\n'))
-  .replace(EXPORTED, '$1')
+//
+// Dos pasadas, y la primera se lleva también el terminador: así un cuerpo con un heredoc anidado con sangría, o un
+// renglón que abre dos, no deja nada suelto. Es lo que hacían la lectura común y ésta una detrás de la otra, cuando
+// a esta lectura le llegaba el comando ya sin cuerpos.
+const asRead = (command) => withoutBodies(withoutBodies(String(command)
+  .replace(/(?<!\\)\r?\n(?:[ \t\r]*\n)+/g, '\n'), true)).replace(EXPORTED, '$1')
 
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
 // la carpeta al cerrarse: sin eso, `(cd /otra && ls); rm -rf build` juzgaba `build` dentro de `/otra`.
@@ -204,14 +240,19 @@ function steps(command, cwd, env = {}, depth = 0) {
   // subshell; las que van delante de un comando valen sólo para él.
   let kept = { ...env }
   const scopes = []
-  for (const { text, opens, closes } of pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3'))) {
+  // Lo que el tramo anterior le pasa por tubería a éste.
+  let feed = null
+  for (const { text, opens, closes, piped } of pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3'))) {
     // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
     // `cd /otra 2>/dev/null` es un `cd`. Lo entrecomillado no se toca: es el comando de un `sh -c '…'`, y sin su `>`
     // no se veía lo que escribe (caso 455).
     const held = []
     const mark = (one) => (one[0] === '\\' ? one : `\u0001${held.push(one) - 1}\u0001`)
-    const clean = text.replace(QUOTED, mark).replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECTIONS, ' ')
-      .replace(/\u0001(\d+)\u0001/g, (_, at) => held[at])
+    const clean = text.replace(QUOTED, mark).replace(/(?:^|\s)#[^\n]*/g, ' ').replace(/\d*<<<\s*\S+/g, ' ')
+      .replace(REDIRECTIONS, ' ').replace(/\u0001(\d+)\u0001/g, (_, at) => held[at])
+    // Un tramo vacío —el salto o el comentario que sigue a un `|`— no corta la tubería.
+    const incoming = feed
+    if (clean.trim()) feed = null
     const header = clean.match(DEFINES)
     if (header) lost = true
     const piece = header ? clean.slice(header[0].length) : clean
@@ -232,6 +273,8 @@ function steps(command, cwd, env = {}, depth = 0) {
       let prefixed = false
       let leader = ''
       let external = false
+      let args = false
+      let login = false
       let loose = 0
       let inherited = { ...kept }
       // La carpeta de este comando: `env -C`, `sudo -D` y `sudo -i` la cambian sólo para él.
@@ -243,6 +286,7 @@ function steps(command, cwd, env = {}, depth = 0) {
         const word = words.shift()
         const assigned = word.match(/^([A-Za-z_]\w*)(\+?)=(.*)$/s)
         if (isLeader(word)) {
+          args = args || word === 'xargs'
           external = external || !SAME_SHELL.includes(word)
           leader = word
           loose = POSITIONAL.get(word) || 0
@@ -255,6 +299,7 @@ function steps(command, cwd, env = {}, depth = 0) {
             if (leader === 'env' && (flag === '-i' || flag === '--ignore-environment')) inherited = {}
             if ((MOVES[leader] || []).includes(flag) && value !== undefined) here = cdTarget(home(value), here)
             if ((AWAY[leader] || []).includes(flag)) here = null
+            if (leader === 'sudo' && ['-s', '--shell', '-i', '--login'].includes(flag)) login = true
             // Un `su` de inicio de sesión empieza con el entorno limpio.
             if (leader !== 'sudo' && (AWAY[leader] || []).includes(flag)) inherited = {}
             if (leader === 'env' && ['-S', '--split-string'].includes(flag)) words.unshift(...shellWords(value || ''))
@@ -287,16 +332,26 @@ function steps(command, cwd, env = {}, depth = 0) {
         if (named && path.isAbsolute(named)) base = named
         else base = named ? cdTarget(named, base) : null
       } else {
-        const script = hidden(verb, rest)
+        // Un shell que lee de la entrada corre lo que le llega por un here-string o por la tubería.
+        const string = text.match(/<<<\s*(\S[\s\S]*)$/)
+        const word = string && shellWords(string[1])[0]
+        const input = string ? unfed(word) ?? word ?? null : incoming
+        // Lee de la entrada un shell sin comando, el que abren `sudo -s`, `sudo -i` o `su` sin `-c`, y
+        // `source /dev/stdin`. `xargs sh` no: le pasa a `sh` nombres de archivo, no comandos.
+        const stdin = !args && (verb ? reads(verb, rest) : login || leader === 'su' || leader === 'runuser')
+          || ((verb === 'source' || verb === '.') && rest[0] === '/dev/stdin')
+        const script = hidden(verb, rest) ?? (stdin ? input : null)
+        if (piped) feed = output(verb, rest, input)
         const at = lost ? null : here
         // `inside` es la carpeta del comando escondido para las escrituras, que no leen funciones (`writes`).
-        found.push({ verb, rest, base: at, env: { ...inherited, ...set }, script, inside: here })
+        found.push({ verb, rest, base: at, env: { ...inherited, ...set }, script, inside: here, stdin })
         if (script !== null) {
           const inner = steps(script, at, { ...inherited, ...set }, depth + 1)
           found.push(...inner)
           // `eval` corre en este mismo shell: su `cd` y su `export` valen para lo que sigue, y la asignación de delante
           // no. Con una función definida antes ya no se sabe dónde se está, y eso no cambia.
-          if (verb === 'eval' && !external && !lost) {
+          // `source` también: el que lee de la entrada corre en el mismo shell.
+          if (['eval', 'source', '.'].includes(verb) && !external && !lost) {
             base = inner.state.base
             kept = inner.state.kept
             lost = inner.state.lost

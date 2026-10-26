@@ -24,7 +24,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const { block, commandOf, configOf, contentOf, cwdOf, filesOf, opsRoot } = require('./input')
+const { block, commandOf, rawCommandOf, configOf, contentOf, cwdOf, filesOf, opsRoot } = require('./input')
 const CHAT = require('./chat')
 const AP = require('./approval')
 const { writes } = require('./shell-changes')
@@ -172,7 +172,7 @@ function judgeWrite(input, root, file) {
 }
 
 function judgeCommand(input, root, file) {
-  for (const { raw, base } of writes(commandOf(input), cwdOf(input))) {
+  for (const { raw, base } of writes(rawCommandOf(input), cwdOf(input))) {
     // Una ruta relativa sin base contra la que resolverla no se puede juzgar, y esa pregunta es de
     // `shell-boundary`, que ya la contesta para todo destino.
     if (!path.isAbsolute(raw) && base === null) continue
