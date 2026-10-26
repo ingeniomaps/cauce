@@ -48,6 +48,9 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     'rm -rf $HOME/fuera-de-las-raices/sub', 'rm -rf "$HOME/fuera-de-las-raices/sub"', `rm -rf "${OUT}/sub"`,
     `if [ -d x ]; then rm -rf ${OUT}/sub; fi`, `for d in a b; do rm -rf ${OUT}/sub; done`, `! rm -f ${OUT}/x`,
     `sudo -n rm -rf ${OUT}/sub`, `rm -rf \\\n  ${OUT}/a \\\n  ${OUT}/b`, `(cd ${OUT} && rm -rf sub)`,
+    // Un prefijo con valor —el usuario, el plazo, la prioridad— no es el comando (caso 454).
+    `sudo -u nadie rm -rf ${OUT}/sub`, `timeout 10 rm -rf ${OUT}/sub`, `nice -n 5 rm -rf ${OUT}/sub`,
+    `env -C ${OUT} rm -rf sub`,
     'cd && rm -rf fuera-de-las-raices', `rm -rf {${OUT}/a,${OUT}/b}`, `find -L ${OUT} -name x -delete`,
     `(cd ${OUT} && n=$(ls | wc -l); rm -rf old)`, `cd ${OUT} 2>/dev/null && rm -rf old`,
     `if ! rm -rf ${OUT}/x; then echo no; fi`, `while rm ${OUT}/x; do :; done`,

@@ -380,8 +380,8 @@ function shellBoundary(input) {
     if (off) strayed.push(off)
   }
   // Un `git` que cambia el checkout de otra sesión no escribe en ningún destino de los de arriba (caso 423).
-  for (const { dir, sub } of LS.gitTargets(ran)) {
-    const off = LS.strayed(input, dir, landing(path.sep, dir), sub)
+  for (const { dir, sub, unplaced } of LS.gitTargets(ran, { resolve: assigned })) {
+    const off = unplaced ? LS.unplaced(input, unplaced, sub) : LS.strayed(input, dir, landing(path.sep, dir), sub)
     if (off) strayed.push(off)
   }
   const why = refusal(input, found, (all) => 'el comando '

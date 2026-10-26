@@ -22,7 +22,7 @@ const path = require('node:path')
 const LT = require('../core/line-trees')
 const { landing } = require('../core/files')
 const { opsRoot, commandOf, cwdOf } = require('./input')
-const { steps } = require('./shell-changes')
+const { steps, home } = require('./shell-changes')
 const AP = require('./approval')
 const CHAT = require('./chat')
 
@@ -194,25 +194,72 @@ const READING = {
 const reads = (sub, args) => READS.has(sub) || Boolean(READING[sub] && READING[sub](args))
 
 // Los checkouts que cambian los `git` de un comando, ya partido en tramos con su carpeta (`steps`). El checkout es el
-// del `--work-tree`, o el de los `-C` sobre la carpeta del tramo; un tramo cuya carpeta no se sabe no se juzga.
-function gitTargets(ran) {
+// de los `-C` sobre la carpeta del tramo, y el del `--work-tree` si lo mueve; un tramo cuya carpeta no se sabe sólo
+// se juzga por lo que nombra entero.
+//
+// Y también el dueño del repositorio o del índice que usa: desde el árbol de la línea, con el `.git` del checkout
+// principal, un stash terminaba en el de la sesión principal y se llevaba lo de la línea (caso 454). Cerrado por
+// defecto (R27): lo que mueve el repositorio y no se puede ubicar —una variable sin resolver, `$(…)`, un `read`— se
+// devuelve como `unplaced`, y se frena hasta que se escriba con la ruta entera. También la configuración que llega por
+// el entorno (`GIT_CONFIG_*`) o por `--config-env`, que puede traer un `core.worktree`.
+const MOVES = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR']
+const CONFIGURES = ['GIT_CONFIG_COUNT', 'GIT_CONFIG_PARAMETERS']
+const REPO = new Set(['--git-dir', 'GIT_DIR'])
+function gitTargets(ran, { resolve } = {}) {
   const found = []
-  for (const { verb, rest, base } of ran) {
-    if (verb !== 'git' || base === null) continue
+  for (const { verb, rest, base, env = {} } of ran) {
+    if (verb !== 'git') continue
+    const moved = MOVES.filter((name) => env[name] !== undefined && env[name] !== '').map((name) => [name, env[name]])
+    const configured = CONFIGURES.filter((name) => env[name] !== undefined && env[name] !== '')
     let dir = base
-    let tree = ''
     let at = 0
     for (; at < rest.length && rest[at].startsWith('-'); at += 1) {
       const [flag, glued] = rest[at].split(/=(.*)/s)
-      const value = () => (glued !== undefined ? glued : rest[(at += 1)])
-      if (flag === '-C') dir = path.resolve(dir, rest[(at += 1)] || '')
-      else if (flag === '--work-tree') tree = value()
-      else if (['-c', '--git-dir', '--namespace', '--config-env'].includes(flag) && glued === undefined) at += 1
+      const value = () => (glued !== undefined ? glued : rest[(at += 1)] || '')
+      if (flag === '-C') {
+        const to = home(rest[(at += 1)] || '')
+        dir = path.isAbsolute(to) ? to : dir && path.resolve(dir, to)
+      } else if (flag === '--work-tree' || flag === '--git-dir') moved.push([flag, value()])
+      else if (flag === '-c' && /^core\.worktree=/i.test(rest[at + 1] || '')) {
+        moved.push([flag, rest[(at += 1)].replace(/^[^=]*=/, '')])
+      } else if (flag === '--config-env') configured.push(`${flag}=${value()}`)
+      else if (['-c', '--namespace'].includes(flag) && glued === undefined) at += 1
     }
     const sub = rest[at]
-    if (sub && !reads(sub, rest.slice(at + 1))) found.push({ dir: tree ? path.resolve(dir, tree) : dir, sub })
+    if (!sub || reads(sub, rest.slice(at + 1))) continue
+    for (const one of configured) found.push({ unplaced: one, sub })
+    // Sin un repositorio movido, el de la carpeta es el que cambia, aunque el árbol esté en otro lado.
+    const spots = dir && !moved.some(([name]) => REPO.has(name)) ? [dir] : []
+    for (const [name, raw] of moved) {
+      const text = home(resolve ? resolve(String(raw)) : String(raw))
+      // Un `core.worktree` relativo cuenta desde el `.git`, no desde la carpeta: no se adivina.
+      const full = path.isAbsolute(text) ? path.resolve(text) : name !== '-c' && dir && path.resolve(dir, text)
+      if (!text || /[$`]/.test(text) || !full) found.push({ unplaced: `${name}=${raw}`, sub })
+      else spots.push(ownerOf(full))
+    }
+    for (const one of new Set(spots)) found.push({ dir: one, sub })
   }
   return found
+}
+
+// El checkout de un repositorio o un índice: la carpeta que tiene el `.git`. El de un árbol de `git worktree`
+// —`<checkout>/.git/worktrees/<nombre>`, que es donde vive el de una línea— es ese árbol, que su `gitdir` nombra, a
+// veces relativo a esa carpeta (`worktree.useRelativePaths`, git 2.48).
+function ownerOf(file) {
+  const worktree = file.match(/^(.*?\/\.git\/worktrees\/[^/]+)/)
+  if (worktree) {
+    try {
+      return path.dirname(path.resolve(worktree[1], fs.readFileSync(path.join(worktree[1], 'gitdir'), 'utf8').trim()))
+    } catch { /* sin `gitdir`, se juzga como cualquier `.git` */ }
+  }
+  const repo = file.match(/^(.*?)\/\.git(?:\/|$)/)
+  return repo ? repo[1] || path.sep : file
+}
+
+// Lo que un `git` de la línea no deja ubicar: con qué decirlo, o null fuera de una línea.
+function unplaced(input, what, sub) {
+  const scope = scopeOf(input)
+  return scope && { file: what, line: scope.line, unplaced: sub }
 }
 
 // Un `git` en la instancia no se nombra como un archivo: la persona pide «el merge de main», no una carpeta, y con la
@@ -242,7 +289,9 @@ function refusal(input, found) {
     ...AP.pendingNow(root, [...new Set(unfiled.map(sharedItem))], input, ordersShared)]
   if (!held.length) return ''
   const { line } = found[0]
-  const where = found.map((one) => (one.checkout ? `${one.root} es el checkout de la sesión principal, y \`git `
+  const where = found.map((one) => (one.unplaced ? `\`git ${one.unplaced}\` usa un repositorio o un índice que no se `
+    + `puede ubicar (${one.file}): escribilo con la ruta entera, sin variables`
+    : one.checkout ? `${one.root} es el checkout de la sesión principal, y \`git `
     + `${one.shared}\` le cambia su rama, su árbol o su stash (si era para la línea, va en ${one.checkout})`
     : one.shared ? `${one.file} es la instancia, una sola para las dos sesiones, y \`git `
     + `${one.shared}\` le cambia a la otra su rama, su árbol o su stash` : one.twin
@@ -254,4 +303,4 @@ function refusal(input, found) {
     + AP.HOW(null, held, input, held, { fixable: !shared.length, turn: true })
 }
 
-module.exports = { DIR, remember, lineOf, strayed, refusal, gitTargets }
+module.exports = { DIR, remember, lineOf, strayed, refusal, gitTargets, unplaced }
