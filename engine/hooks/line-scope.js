@@ -121,9 +121,10 @@ function scopeOf(input) {
   return scope
 }
 
-// Lo que un `git` hace en la instancia y le cambia a la otra sesión, que tiene abierto el mismo checkout: su rama, su
-// árbol, su índice o su stash. En la instancia la línea escribe —es su planning— y commitea, así que ahí lo abierto
-// es lo de siempre y la excepción se declara, al revés que en el resto de la carpeta de sesión (caso 423).
+// Lo que un `git` hace en la instancia —o en el checkout principal de un repositorio de la línea, caso 453— y le
+// cambia a la otra sesión, que tiene abierto el mismo checkout: su rama, su árbol, su índice o su stash. En la
+// instancia la línea escribe —es su planning— y commitea, así que ahí lo abierto es lo de siempre y la excepción se
+// declara, al revés que en el resto de la carpeta de sesión (caso 423).
 const SHARED = new Set(['switch', 'checkout', 'stash', 'reset', 'rebase', 'merge', 'pull', 'restore', 'clean',
   'cherry-pick', 'revert', 'am', 'bisect'])
 
@@ -142,6 +143,9 @@ function strayed(input, file, lands = file, sub = '') {
     && ![root, real(root)].some((base) => inside(base, one)) && !ours(one))
   if (!off) return null
   const twin = mine.find((one) => [one.source, real(one.source)].some((base) => inside(base, off)))
+  // El checkout principal de un repositorio de la línea es de la otra sesión igual que la instancia: un `git` que le
+  // cambia la rama no se corrige en el árbol de la línea, que está en otra rama (caso 453).
+  if (twin && SHARED.has(sub)) return { file, line, shared: sub, root: twin.source, checkout: twin.tree }
   return { file, line, twin: twin && path.join(twin.tree, path.relative(real(twin.source), real(off))) }
 }
 
@@ -223,25 +227,32 @@ function ordersShared(text, item, { relayed = false } = {}) {
     .test(String(text))
 }
 
+// En el checkout principal vale además nombrarlo como hasta el 453, por su carpeta: «actualizá app» lo destrababa, y
+// sin diálogo es la única forma que tiene la persona de pedirlo.
+const ordersCheckout = (checkouts) => (text, item, options) => ordersShared(text, item, options)
+  || (checkouts.has(item) && CHAT.named(text, checkouts.get(item)))
+
 // El bloqueo, con todo lo que salió de la línea junto. `found` lleva lo que devolvió `strayed`.
 function refusal(input, found) {
   if (!found.length) return ''
   const root = opsRoot(input)
   const shared = found.filter((one) => one.shared)
-  // La ruta de la instancia pegada antes del 449 sigue aprobando su `git`: era la línea que el bloqueo ofrecía.
+  // La ruta pegada antes del 449, o del 453 en el checkout principal, sigue aprobando su `git`: era la que se ofrecía.
   const filed = new Set(root ? AP.read(root) : [])
   const held = [...AP.pendingNow(root, [...new Set(found.filter((one) => !one.shared).map((one) => one.file))], input),
     ...AP.pendingNow(root, [...new Set(shared.filter((one) => !filed.has(one.file)).map(sharedItem))], input,
-      ordersShared)]
+      ordersCheckout(new Map(shared.filter((one) => one.checkout).map((one) => [sharedItem(one), one.file]))))]
   if (!held.length) return ''
   const { line } = found[0]
-  const where = found.map((one) => (one.shared ? `${one.file} es la instancia, una sola para las dos sesiones, y \`git `
+  const where = found.map((one) => (one.checkout ? `${one.root} es el checkout de la sesión principal, y \`git `
+    + `${one.shared}\` le cambia su rama, su árbol o su stash (si era para la línea, va en ${one.checkout})`
+    : one.shared ? `${one.file} es la instancia, una sola para las dos sesiones, y \`git `
     + `${one.shared}\` le cambia a la otra su rama, su árbol o su stash` : one.twin
     ? `${one.file} va en el árbol de la línea: ${one.twin}` : `${one.file} no es de la línea`))
   return `esta sesión lleva la línea ${line}, y escribe sólo en sus árboles (lines/${line}/…) y en la instancia: `
     + `${where.join('; ')}. Lo de afuera de la línea es de la sesión principal, que lo tiene abierto en su rama. `
     + `Si la línea tiene que trabajar otro repositorio, se suma con \`ops line <ops-root> ${line} <repo>\`.\n`
-    // Lo que la línea escribe afuera lo corrige ella, escribiéndolo en su árbol; un `git` en la instancia, no.
+    // Lo que la línea escribe afuera lo corrige ella, escribiéndolo en su árbol; un `git` en un checkout compartido no.
     + AP.HOW(null, held, input, held, { fixable: !shared.length, turn: true })
 }
 
