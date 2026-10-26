@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.117.1] - 2026-10-26
+
+### Corregido
+
+- **La mutación que cita una condición por su marcador ya no cuenta como otra condición** (caso 457). Una aceptación
+  con `(1)` a `(5)` y una mutación que dice «pone en rojo la (5)» se contaba como de siete condiciones, y `check`
+  pedía partir la tarea o escribirle `(sin partir: <razón>)` aunque estaba dentro del umbral de R17. Ahora cuenta
+  cada marcador una sola vez. Si esquivaste el aviso escribiendo «la condición 5» o una razón de `sin partir`, ya no
+  hace falta.
+
 ## [0.117.0] - 2026-10-26
 
 ### Corregido
