@@ -10,7 +10,7 @@
 
 const os = require('node:os')
 const path = require('node:path')
-const { commandOf, cwdOf, block, isCommit, unquoted, opsRoot } = require('./input')
+const { commandOf, rawCommandOf, cwdOf, block, isCommit, unquoted, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
 const { REDIRECT } = require('./shell-writes')
 const { writes } = require('./shell-changes')
@@ -143,7 +143,7 @@ function writtenCredentials(input, command) {
 
 function secretsShell(input) {
   const raw = commandOf(input)
-  writtenCredentials(input, raw)
+  writtenCredentials(input, rawCommandOf(input))
   if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
   // El mensaje de un commit es dato, como en `destructive`: nombrar el archivo ahí no lo lee.
   const command = isCommit(raw) ? unquoted(raw) : raw

@@ -21,7 +21,7 @@ const os = require('node:os')
 const path = require('node:path')
 const LT = require('../core/line-trees')
 const { landing } = require('../core/files')
-const { opsRoot, commandOf, cwdOf } = require('./input')
+const { opsRoot, rawCommandOf, cwdOf } = require('./input')
 const { steps, home } = require('./shell-changes')
 const AP = require('./approval')
 const CHAT = require('./chat')
@@ -67,7 +67,7 @@ const ASKED_ROLE = /(?:^|\s)--role(?:=|\s+)(\S+)(?=\s|$)/
 // agente.
 function told(input, root) {
   const flow = typeof input.prompt === 'string' && input.prompt.match(FLOW)
-  const ran = flow ? [] : steps(commandOf(input), cwdOf(input)).map(opsArgs).filter(Boolean)
+  const ran = flow ? [] : steps(rawCommandOf(input), cwdOf(input)).map(opsArgs).filter(Boolean)
   if (!flow && !ran.length) return null
   const lines = LT.declared(root)
   const flag = flow ? (flow[1].match(ASKED_LINE) || [])[1] : ran.map(flagOf).find(Boolean)

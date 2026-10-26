@@ -16,7 +16,7 @@ const os = require('node:os')
 const path = require('node:path')
 
 const { execute } = require('../../engine/hooks/run')
-const { LEADING, VALUED, POSITIONAL } = require('../../engine/hooks/shell-changes')
+const { LEADING, VALUED, POSITIONAL } = require('../../engine/hooks/shell-wrappers')
 
 const OUT = path.join(os.homedir(), 'fuera-de-las-raices')
 
@@ -110,7 +110,7 @@ test('un borrado o una escritura escondidos detrás de otro comando frenan como 
     'runuser -u nadie -- cp -l a b', "f() { :; }; eval true; sh -c 'echo x > out'"]) {
     passes(command)
   }
-  // Lo relativo de `su -`, `sudo -i` y `sudo -R` no se juzga (el porqué, en `shell-changes.js`). Y la carpeta de
+  // Lo relativo de `su -`, `sudo -i` y `sudo -R` no se juzga (el porqué, en `shell-wrappers.js`). Y la carpeta de
   // `env -C` o `sudo -i` vale sólo para su comando.
   for (const command of [`su - root -c 'rm -rf ${far}'`, `su -l root -c 'rm -rf ${far}'`,
     `su -c 'rm -rf ${far}' - root`, `sudo -i rm -rf ${far}`, `sudo -R /r rm -rf ${far}`,
@@ -124,7 +124,58 @@ test('un borrado o una escritura escondidos detrás de otro comando frenan como 
   refuses(`${'eval '.repeat(2000)}rm -rf ${OUT}/sub`, /anida más de 16 comandos/)
 })
 
-// Los envoltorios son una lista (el porqué, en `LEADING`, `engine/hooks/shell-changes.js`): cada uno que se suma
+// Caso 456. Un shell que lee sus comandos de la entrada —por una tubería, un heredoc o un here-string— los corre, y
+// se juzgan como escritos sueltos. El cuerpo que se escribe a un archivo o va a otra máquina sigue siendo dato.
+test('lo que un shell lee de su entrada se juzga como escrito suelto', () => {
+  const { root, refuses, passes } = project('ops-hook-borra-entrada-')
+  for (const command of [`echo 'rm -rf ${OUT}/sub' | sh`, `printf 'rm -rf ${OUT}/sub' | bash`,
+    `printf '%s\\n' 'rm -rf ${OUT}/sub' | sh`, `echo -n 'rm -rf ${OUT}/sub' | sudo bash -s`,
+    `bash <<EOF\nrm -rf ${OUT}/sub\nEOF`, `sh <<'FIN'\nrm -rf ${OUT}/sub\nFIN`,
+    `cat <<EOF | sh\nrm -rf ${OUT}/sub\nEOF`, `bash -s <<EOF\ncd ${OUT}\nrm -rf sub\nEOF`,
+    `sh <<< 'rm -rf ${OUT}/sub'`, `bash <<END-1\nrm -rf ${OUT}/sub\nEND-1`,
+    `echo 'rm -rf ${OUT}/sub' | bash -s -- uno`, `printf 'echo a\\nrm -rf ${OUT}/sub\\n' | sh`,
+    // Las formas de la revisión del 456.
+    `bash 2>&1 <<EOF\nrm -rf ${OUT}/sub\nEOF`, `cat <<EOF | tee log | sh\nrm -rf ${OUT}/sub\nEOF`,
+    `echo 'rm -rf ${OUT}/sub' | cat | sh`, `echo 'rm -rf ${OUT}/sub' |& sh`, `echo 'rm -rf ${OUT}/sub' |\n  sh`,
+    `printf 'rm -rf %s\\n' ${OUT}/sub | sh`, `printf -- 'rm -rf ${OUT}/sub' | sh`,
+    `printf 'rm -rf %s/sub %s\\n' ${OUT} | sh`, `printf '%s\\n' ls 'rm -rf ${OUT}/sub' | sh`,
+    `echo -e 'ls\\nrm -rf ${OUT}/sub' | sh`, `echo 'rm -rf ${OUT}/sub' | bash -`,
+    `bash <<'EOF'\ncat > R.md <<'DOC'\nit's bad\nDOC\nEOF\nrm -rf ${OUT}/sub`,
+    `sudo -s <<EOF\nrm -rf ${OUT}/sub\nEOF`, `sudo su - root <<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `source /dev/stdin <<EOF\nrm -rf ${OUT}/sub\nEOF`, `echo 'rm -rf ${OUT}/sub' | # sigue\n  sh`,
+    // `<<<` no abre un heredoc: el renglón que repite su palabra no cierra nada, y lo de en medio corre.
+    `bash <<< X\nrm -rf ${OUT}/sub\nX`,
+    // Las de la tercera revisión: un filtro en medio, la barra entre comillas dobles, la entrada por su número o su
+    // ruta, otros shells, y `source`, que corre en el mismo shell.
+    `cat <<EOF | grep -v '^#' | sh\nrm -rf ${OUT}/sub\nEOF`, `printf "rm -rf ${OUT}/sub\\n" | sh`,
+    `echo -e "ls\\nrm -rf ${OUT}/sub" | sh`, `sh 0<<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `bash /dev/fd/0 <<EOF\nrm -rf ${OUT}/sub\nEOF`, `ash <<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `busybox sh <<EOF\nrm -rf ${OUT}/sub\nEOF`, `pkexec sh <<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `. /dev/stdin <<EOF\ncd ${OUT}\nEOF\nrm -rf sub`]) {
+    refuses(command, REMOVES)
+  }
+  refuses(`bash <<EOF\necho x > ${OUT}/f\nEOF`, /escribe en .*fuera-de-las-raices/)
+  // Cómo se lee el cuerpo no se le muestra a nadie: el mensaje no lleva la marca.
+  const fedBody = { cwd: root, tool_input: { command: `bash <<EOF\nrm -rf ${OUT}/a\nEOF` } }
+  assert.throws(() => execute('shell-boundary', fedBody), (error) => error.blocked && !error.message.includes('\u0003'))
+  // El `cd` del cuerpo queda en su shell: lo que sigue se juzga desde donde se estaba.
+  for (const command of [`cat > notas.md <<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `ssh host bash <<EOF\nrm -rf ${OUT}/sub\nEOF`, `echo 'rm -rf ${OUT}/sub' | grep rm`,
+    `echo 'rm -rf ${OUT}/sub' | bash script.sh`, "sh <<< 'echo hola'",
+    `git commit -F- <<EOF\nrm -rf ${OUT}/sub\nEOF`, `bash -s <<EOF\ncd ${OUT}\nEOF\nrm -rf build`,
+    `echo 'rm -rf ${OUT}/sub' | bash -c 'cat'`, `echo 'rm -rf ${OUT}/sub'; sh`,
+    `echo 'rm -rf ${OUT}/sub' | grep rm; sh`, `ssh -T host \\\n  bash -s <<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `bash <<'EOF'\ncat > R.md <<'DOC'\nrm -rf ${OUT}/sub\nDOC\nEOF`, `grep -E 'x|bash' <<EOF\nrm -rf ${OUT}/sub\nEOF`,
+    `printf '%s\\n' 'rm -rf ${OUT}/sub' | xargs -n1 sh`, `echo 'rm -rf ${OUT}/sub' || sh`, 'printf | sh',
+    `bash <<EOF\ncase $1 in a) echo;; esac\ncd ${OUT}\nEOF\nrm -rf build`,
+    // Un script con un heredoc anidado con sangría, o un renglón que abre dos: todo el cuerpo sigue siendo dato.
+    `cat > s.sh <<EOF\n  if x; then\n    cat <<-EOF\n\tuso\n\tEOF\n    rm -rf ${OUT}/sub\n  fi\nEOF`,
+    `cat > a <<A 3<<B\nx\nA\nrm -rf ${OUT}/sub\nB`]) {
+    passes(command)
+  }
+})
+
+// Los envoltorios son una lista (el porqué, en `LEADING`, `engine/hooks/shell-wrappers.js`): cada uno que se suma
 // nace en rojo hasta tener acá su ejemplo, y el ejemplo lo usa como se escribe, con sus banderas con valor. Se
 // recorren también los ejemplos, para que sacar uno de la lista no lo saque de la prueba.
 const WRAPPED = {
@@ -132,7 +183,7 @@ const WRAPPED = {
   nohup: 'nohup', nice: 'nice -n 5', xargs: 'xargs -n 1', timeout: 'timeout -s KILL 10', stdbuf: 'stdbuf -o L',
   ionice: 'ionice -c 2 -n 7', taskset: 'taskset -c 0,1', chrt: 'chrt -r 10', flock: 'flock -w 5 /var/lock/l',
   setsid: 'setsid -w', doas: 'doas -u root', unbuffer: 'unbuffer', su: 'su -g wheel root',
-  runuser: 'runuser -u nadie --', builtin: 'builtin', '!': '!',
+  runuser: 'runuser -u nadie --', builtin: 'builtin', busybox: 'busybox', pkexec: 'pkexec --user root', '!': '!',
 }
 const KEYWORDS = {
   if: (rm) => `if ${rm}; then :; fi`, elif: (rm) => `if false; then :; elif ${rm}; then :; fi`,
