@@ -80,6 +80,9 @@ Que la regla frene si alguna opción del mismo tramo fuerza (`-…f…` o `--for
 Son formas rebuscadas, que un agente no escribe para limpiar. Leer las opciones con su valor pide un parser de
 `git clean`, que es más de lo que este caso arregla.
 
+**Medido después del merge del #903, en los otros runners**, con el mismo paso (`git clean -d -f` desde `app`):
+Gemini 0.63.0 y Antigravity 1.4.7 lo frenaron, ofreciendo `git clean -d -f @ <banco>/app`, y `suelto.tmp` siguió ahí.
+
 ## Relacionados
 
 - 451: la sesión donde apareció.

@@ -206,3 +206,11 @@ ambos cambios» `exit 2`, «¿hago el merge?» `exit 2`.
   a work/probe», que no nombra el `git`, frenó sin tocar la rama.
 - **Gemini 0.63.0**, en un banco con la línea `piloto`, con `dir_path` como la manda. «traé master a work/probe»
   frenó ofreciendo `git merge @ <banco>/ops`, y «mergeá master en work/probe» hizo el fast-forward.
+
+**Upgrade real desde 0.115.1**, en la misma instancia que el 446. El bloqueo de 0.115.1 ofrecía pegar la ruta de la
+instancia (`<banco>/ops`). Con esa línea pegada, después del upgrade el merge desde la línea siguió pasando (`exit 0`).
+Sin ella, frenó ofreciendo `git merge @ <banco>/ops`.
+
+**Antigravity 1.4.7**, que no tiene hook del chat, con `CAUCE_RUNNER` en la línea `piloto`. «traé master a la rama
+work/probe» frenó ofreciendo `git merge @ <banco>/ops` y sin «Esto lo corregís vos». Con esa línea pegada, la misma
+sesión hizo el fast-forward (`f94fb01..7033f77`).
