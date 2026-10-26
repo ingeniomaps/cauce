@@ -143,10 +143,13 @@ function strayed(input, file, lands = file, sub = '') {
     && ![root, real(root)].some((base) => inside(base, one)) && !ours(one))
   if (!off) return null
   const twin = mine.find((one) => [one.source, real(one.source)].some((base) => inside(base, off)))
-  // El checkout principal de un repositorio de la línea es de la otra sesión igual que la instancia: un `git` que le
-  // cambia la rama no se corrige en el árbol de la línea, que está en otra rama (caso 453).
-  if (twin && SHARED.has(sub)) return { file, line, shared: sub, root: twin.source, checkout: twin.tree }
-  return { file, line, twin: twin && path.join(twin.tree, path.relative(real(twin.source), real(off))) }
+  const mirror = twin && path.join(twin.tree, path.relative(real(twin.source), real(off)))
+  // Un `git` de `SHARED` acá no se corrige en el árbol de la línea, que está en otra rama (caso 453). La pista es la
+  // carpeta que le corresponde en el árbol, si existe: una que sólo tiene el checkout, como una salida de build, no.
+  if (twin && SHARED.has(sub)) {
+    return { file, line, shared: sub, root: twin.source, checkout: fs.existsSync(mirror) ? mirror : twin.tree }
+  }
+  return { file, line, twin: mirror }
 }
 
 // Lo que un `git` no cambia del checkout donde corre: ni su rama, ni su árbol, ni su índice, ni su stash (caso 423).
@@ -227,11 +230,6 @@ function ordersShared(text, item, { relayed = false } = {}) {
     .test(String(text))
 }
 
-// En el checkout principal vale además nombrarlo como hasta el 453, por su carpeta: «actualizá app» lo destrababa, y
-// sin diálogo es la única forma que tiene la persona de pedirlo.
-const ordersCheckout = (checkouts) => (text, item, options) => ordersShared(text, item, options)
-  || (checkouts.has(item) && CHAT.named(text, checkouts.get(item)))
-
 // El bloqueo, con todo lo que salió de la línea junto. `found` lleva lo que devolvió `strayed`.
 function refusal(input, found) {
   if (!found.length) return ''
@@ -239,9 +237,9 @@ function refusal(input, found) {
   const shared = found.filter((one) => one.shared)
   // La ruta pegada antes del 449, o del 453 en el checkout principal, sigue aprobando su `git`: era la que se ofrecía.
   const filed = new Set(root ? AP.read(root) : [])
+  const unfiled = shared.filter((one) => !filed.has(one.file) && !filed.has(one.root))
   const held = [...AP.pendingNow(root, [...new Set(found.filter((one) => !one.shared).map((one) => one.file))], input),
-    ...AP.pendingNow(root, [...new Set(shared.filter((one) => !filed.has(one.file)).map(sharedItem))], input,
-      ordersCheckout(new Map(shared.filter((one) => one.checkout).map((one) => [sharedItem(one), one.file]))))]
+    ...AP.pendingNow(root, [...new Set(unfiled.map(sharedItem))], input, ordersShared)]
   if (!held.length) return ''
   const { line } = found[0]
   const where = found.map((one) => (one.checkout ? `${one.root} es el checkout de la sesión principal, y \`git `

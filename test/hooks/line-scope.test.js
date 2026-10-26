@@ -313,20 +313,45 @@ test('un git en el checkout principal de la línea se pregunta como uno en la in
     })()
     assert.ok(message.includes(`  git merge @ ${base}/app\n`), message)
     assert.doesNotMatch(message, /Esto lo corregís vos/)
-    assert.match(message, new RegExp(`si era para la línea, va en ${tree}`))
-    // La orden vale nombrando el subcomando, o la carpeta como antes del 453; preguntar o negar, no.
-    for (const text of ['haz el merge de master en app', 'actualizá app']) {
-      prompt(other, text, base)
-      assert.doesNotThrow(merge(), text)
-    }
-    for (const text of ['¿actualizo app?', 'no hagas el merge todavía']) {
-      prompt(other, text, base)
-      assert.throws(merge(), (error) => error.blocked && STRAYED.test(error.message), text)
+    assert.ok(message.includes(`si era para la línea, va en ${tree})`), message)
+    // La orden nombra el subcomando, como en la instancia: nombrar la carpeta dejaba que un pedido sobre otra cosa
+    // le cambiara la rama a la sesión principal (caso 423).
+    prompt(other, 'haz el merge de master en app', base)
+    assert.doesNotThrow(merge())
+    // El lugar es el checkout aunque el git corra desde una de sus carpetas, y la pista apunta a la misma del árbol.
+    for (const dir of [path.join(base, 'app', 'src'), path.join(tree, 'src')]) fs.mkdirSync(dir, { recursive: true })
+    assert.doesNotThrow(() => execute('shell-boundary',
+      shell(other, base, `git -C ${base}/app/src merge --ff-only master`)))
+    prompt(other, 'implementá la tarea', base)
+    const stash = (() => {
+      const input = shell(other, base, `git -C ${base}/app/src stash`, { agent_id: 'build' })
+      try { execute('shell-boundary', input) } catch (error) { return error.message }
+      return ''
+    })()
+    assert.ok(stash.includes(`  git stash @ ${base}/app\n`), stash)
+    assert.ok(stash.includes(`si era para la línea, va en ${tree}/src)`), stash)
+    // Y una que el árbol no tiene vuelve a su raíz.
+    fs.mkdirSync(path.join(base, 'app', 'dist'), { recursive: true })
+    assert.throws(() => execute('shell-boundary', shell(other, base, `git -C ${base}/app/dist stash`,
+      { agent_id: 'build' })), (error) => error.message.includes(`si era para la línea, va en ${tree})`))
+    for (const text of ['actualizá app', 'actualizá app?', 'arreglá el login de la app', '¿actualizo app?',
+      'no hagas el merge todavía', 'haz el merge de master en app, pero no todavía']) {
+      // Cada uno en su sesión: después de un bloqueo, el mensaje siguiente que no niega lo confirma.
+      const fresh = sessionId()
+      prompt(fresh, '/autobuild piloto', base)
+      prompt(fresh, text, base)
+      assert.throws(() => execute('shell-boundary', shell(fresh, base, ff)),
+        (error) => error.blocked && STRAYED.test(error.message), text)
     }
     // Lo que no le cambia la rama ni el árbol, como crear una rama, y un archivo, siguen corrigiéndose en el árbol.
     for (const command of [`git -C ${base}/app branch nueva`, 'echo y > app/x.js']) {
       assert.throws(() => execute('shell-boundary', shell(other, base, command, { agent_id: 'build' })),
         /Esto lo corregís vos/, command)
     }
+    // La carpeta del checkout que el bloqueo ofrecía pegar antes del 453 sigue aprobando su git, desde cualquiera de
+    // sus carpetas.
+    fs.appendFileSync(path.join(ops, 'planning', '.ops-approval'), `${base}/app\n`)
+    assert.doesNotThrow(() => execute('shell-boundary', shell(other, base, `git -C ${base}/app/src stash`,
+      { agent_id: 'build' })))
   })
 })
