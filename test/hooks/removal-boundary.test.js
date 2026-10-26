@@ -16,7 +16,7 @@ const os = require('node:os')
 const path = require('node:path')
 
 const { execute } = require('../../engine/hooks/run')
-const { LEADING, VALUED, POSITIONAL } = require('../../engine/hooks/shell-changes')
+const { LEADING, VALUED, POSITIONAL } = require('../../engine/hooks/shell-wrappers')
 
 const OUT = path.join(os.homedir(), 'fuera-de-las-raices')
 
@@ -110,7 +110,7 @@ test('un borrado o una escritura escondidos detrás de otro comando frenan como 
     'runuser -u nadie -- cp -l a b', "f() { :; }; eval true; sh -c 'echo x > out'"]) {
     passes(command)
   }
-  // Lo relativo de `su -`, `sudo -i` y `sudo -R` no se juzga (el porqué, en `shell-changes.js`). Y la carpeta de
+  // Lo relativo de `su -`, `sudo -i` y `sudo -R` no se juzga (el porqué, en `shell-wrappers.js`). Y la carpeta de
   // `env -C` o `sudo -i` vale sólo para su comando.
   for (const command of [`su - root -c 'rm -rf ${far}'`, `su -l root -c 'rm -rf ${far}'`,
     `su -c 'rm -rf ${far}' - root`, `sudo -i rm -rf ${far}`, `sudo -R /r rm -rf ${far}`,
@@ -124,7 +124,7 @@ test('un borrado o una escritura escondidos detrás de otro comando frenan como 
   refuses(`${'eval '.repeat(2000)}rm -rf ${OUT}/sub`, /anida más de 16 comandos/)
 })
 
-// Los envoltorios son una lista (el porqué, en `LEADING`, `engine/hooks/shell-changes.js`): cada uno que se suma
+// Los envoltorios son una lista (el porqué, en `LEADING`, `engine/hooks/shell-wrappers.js`): cada uno que se suma
 // nace en rojo hasta tener acá su ejemplo, y el ejemplo lo usa como se escribe, con sus banderas con valor. Se
 // recorren también los ejemplos, para que sacar uno de la lista no lo saque de la prueba.
 const WRAPPED = {

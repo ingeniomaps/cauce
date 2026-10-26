@@ -554,6 +554,11 @@
     "branches": 99,
     "functions": 100
   },
+  "engine/hooks/shell-wrappers.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/core/task-trees.js": {
     "lines": 100,
     "branches": 94,
