@@ -24,6 +24,40 @@ const { cdTarget, QUOTED_CD, REDIRECTIONS } = require('./shell-writes')
 // `unwrapped`.
 const LEADING = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs', 'if', 'elif', 'then',
   'else', 'while', 'until', 'do', '!'])
+// Las banderas de un prefijo que llevan su valor en la palabra siguiente, y cuántas palabras sueltas lleva antes del
+// comando: sin saltarlas, `env -u GIT_DIR git stash` o `timeout 10 git stash` tomaban el valor por el comando, y el
+// `git` no se juzgaba (caso 454).
+const VALUED = new Map([
+  ['sudo', ['-u', '-g', '-h', '-p', '-C', '-D', '-r', '-t', '-U', '--user', '--group', '--host', '--prompt',
+    '--chdir']],
+  ['env', ['-u', '-C', '-S', '--unset', '--chdir', '--split-string']],
+  ['nice', ['-n', '--adjustment']],
+  ['exec', ['-a']],
+  ['time', ['-f', '-o', '--format', '--output']],
+  ['xargs', ['-n', '-L', '-P', '-I', '-d', '-E', '-s', '-a', '--max-args', '--max-procs', '--delimiter', '--arg-file']],
+  ['timeout', ['-s', '-k', '--signal', '--kill-after']],
+])
+const POSITIONAL = new Map([['timeout', 1]])
+
+// El entorno que deja cada tramo para los que siguen. Lo que se asigna con un valor que no se lee —`+=`, `read`,
+// `printf -v`— queda como `UNKNOWN`, que lleva `$` para que nadie lo tome por una ruta. Lo que cambia el entorno sin
+// nombrar la variable —`source`, `eval`, `set -a`— no se ve.
+const UNKNOWN = '$(?)'
+const DECLARES = new Set(['export', 'declare', 'typeset', 'readonly', 'local'])
+const NAME = /^[A-Za-z_]\w*$/
+function declare(verb, rest, kept) {
+  const names = rest.filter((word) => NAME.test(word))
+  if (DECLARES.has(verb)) {
+    for (const word of rest) {
+      const set = word.match(/^([A-Za-z_]\w*)(\+?)=(.*)$/s)
+      if (set) kept[set[1]] = set[2] ? UNKNOWN : set[3]
+    }
+  } else if (verb === 'unset') for (const name of names) delete kept[name]
+  else if (['read', 'mapfile', 'readarray'].includes(verb)) for (const name of names) kept[name] = UNKNOWN
+  else if (verb === 'printf' && rest.includes('-v') && NAME.test(rest[rest.indexOf('-v') + 1] || '')) {
+    kept[rest[rest.indexOf('-v') + 1]] = UNKNOWN
+  }
+}
 const home = (raw) => raw.replace(/^~(?=$|\/)/, os.homedir()).replace(/^\$\{?HOME\}?(?=$|\/)/, os.homedir())
 
 // Los tramos de un comando, con cuántos subshells abre y cierra cada uno. No parte dentro de unas comillas ni
@@ -176,6 +210,10 @@ function steps(command, cwd) {
   const outer = []
   let base = cwd
   let lost = false
+  // Las variables que el comando deja puestas para lo que sigue, como `export GIT_DIR=…`, y las de afuera de cada
+  // subshell; las que van delante de un comando valen sólo para él.
+  let kept = {}
+  const scopes = []
   for (const { text, opens, closes } of pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3'))) {
     // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
     // `cd /otra 2>/dev/null` es un `cd`.
@@ -183,7 +221,10 @@ function steps(command, cwd) {
     const header = clean.match(DEFINES)
     if (header) lost = true
     const piece = header ? clean.slice(header[0].length) : clean
-    for (let level = 0; level < opens; level += 1) outer.push(base)
+    for (let level = 0; level < opens; level += 1) {
+      outer.push(base)
+      scopes.push({ ...kept })
+    }
     const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
     if (cd) {
       const to = cd[1]
@@ -195,10 +236,36 @@ function steps(command, cwd) {
     } else {
       const words = shellWords(unwrapped(withoutSubstitutions(piece)))
       let prefixed = false
-      while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || LEADING.has(words[0])
-        || (prefixed && words[0].startsWith('-')))) prefixed = LEADING.has(words.shift()) || prefixed
+      let leader = ''
+      let loose = 0
+      let inherited = { ...kept }
+      const set = {}
+      const isLeader = (word) => LEADING.has(word) || VALUED.has(word)
+      while (words.length && (/^[A-Za-z_]\w*\+?=/.test(words[0]) || isLeader(words[0])
+        || (prefixed && words[0].startsWith('-')) || loose)) {
+        const word = words.shift()
+        const assigned = word.match(/^([A-Za-z_]\w*)(\+?)=(.*)$/s)
+        if (isLeader(word)) {
+          leader = word
+          loose = POSITIONAL.get(word) || 0
+        } else if (assigned) set[assigned[1]] = assigned[2] ? UNKNOWN : assigned[3]
+        else if (!word.startsWith('-')) loose -= 1
+        else if ((VALUED.get(leader) || []).includes(word)) {
+          const value = words.shift()
+          if (leader === 'env' && (word === '-u' || word === '--unset')) delete inherited[value]
+          // `env -C` y `sudo -D` corren el comando en otra carpeta.
+          const moves = { env: ['-C', '--chdir'], sudo: ['-D', '--chdir'] }[leader] || []
+          if (moves.includes(word)) {
+            base = cdTarget(home(value), base)
+          }
+        } else if (leader === 'env' && ['-i', '--ignore-environment', '-'].includes(word)) inherited = {}
+        else if (word.startsWith('--chdir=')) base = cdTarget(home(word.slice('--chdir='.length)), base)
+        prefixed = prefixed || isLeader(word)
+      }
       const verb = path.basename(words[0] || '')
+      if (!verb) Object.assign(kept, set)
       const rest = words.slice(1).filter(Boolean)
+      declare(verb, rest, kept)
       // Un `cd` que no ocupa su tramo limpio: detrás de un `if`, con una bandera, con `pushd`. Se sigue si
       // nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
       if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
@@ -206,9 +273,12 @@ function steps(command, cwd) {
         const named = to.length === 1 ? home(to[0]) : null
         if (named && path.isAbsolute(named)) base = named
         else base = named ? cdTarget(named, base) : null
-      } else found.push({ verb, rest, base: lost ? null : base })
+      } else found.push({ verb, rest, base: lost ? null : base, env: { ...inherited, ...set } })
     }
-    for (let level = 0; level < closes && outer.length; level += 1) base = outer.pop()
+    for (let level = 0; level < closes && outer.length; level += 1) {
+      base = outer.pop()
+      kept = scopes.pop()
+    }
   }
   return found
 }

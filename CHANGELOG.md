@@ -26,6 +26,16 @@ diseño — eso vive en el commit y en el código.
   pedido sobre otra cosa —«arreglá el login de la app»— dejaba al agente cambiarle la rama a la sesión principal. La
   línea que ya tenías con la carpeta sigue valiendo. Un archivo escrito ahí, o un `git` que no le cambia la rama ni el
   árbol, siguen como antes.
+- **Desde una línea, un `git` con `--git-dir` o `GIT_DIR` de otro checkout se frena** (caso 454). Corrido desde el
+  árbol de la línea contra el repositorio del checkout principal, un `stash` terminaba en el de la sesión principal y se
+  llevaba lo de la línea, sin que nada lo frenara. Ahora cuenta también el checkout dueño del repositorio o del índice
+  —`--git-dir`, `--work-tree`, `-c core.worktree`, `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_COMMON_DIR`—,
+  también si se exporta antes, y se pregunta como cualquier `git` sobre él. Lo que no se puede ubicar —una variable sin
+  resolver, `$(…)`, la configuración por `GIT_CONFIG_*` o `--config-env`— frena hasta que se escriba con la ruta entera.
+- **Un prefijo con valor ya no esconde el comando** (caso 454). Con `sudo -u yo`, `env -u X`, `nice -n 5`,
+  `timeout 10`, `xargs -n 1`, `exec -a x` o `time -f …` delante, el valor se tomaba por el comando y lo de atrás no se
+  juzgaba: ni el `git` de una línea ni un `rm` fuera de las raíces. `env -C` y `sudo -D` cuentan como la carpeta donde
+  corre.
 
 ## [0.116.0] - 2026-10-25
 

@@ -225,6 +225,75 @@ test('la sesión de una línea no cambia con git el checkout de la principal, y 
   })
 })
 
+// Caso 454. El porqué, en `gitTargets` (`engine/hooks/line-scope.js`).
+test('un git desde el árbol de la línea con el repositorio de otro checkout también se frena', () => {
+  const { base, ops, tree } = session('cauce-line-scope-git-dir-')
+  withRoot(ops, () => {
+    const id = sessionId()
+    prompt(id, '/autobuild piloto', base)
+    const run = (command) => () => execute('shell-boundary', shell(id, tree, command, { agent_id: 'build' }))
+    const repo = `${base}/app/.git`
+    for (const command of [`git --git-dir=${repo} --work-tree=. stash`, `git --git-dir ${repo} stash`,
+      `GIT_DIR=${repo} git stash`, `env GIT_DIR=${repo} git stash`, `export GIT_DIR=${repo}; git stash`,
+      `GIT_DIR=${ops}/.git git switch -c x`, `GIT_WORK_TREE=${base}/app git checkout .`]) {
+      assert.throws(run(command), (error) => error.blocked && STRAYED.test(error.message), command)
+    }
+    assert.throws(run(`GIT_DIR=${repo} git stash`), (error) => error.message.includes(`  git stash @ ${base}/app\n`)
+      && error.message.includes(`si era para la línea, va en ${tree})`))
+    // Las otras formas de mover el repositorio o el índice, una variable que el comando resuelve, el entorno que se
+    // exporta en un grupo o una declaración, los prefijos con valor, una carpeta que no se sabe con el repositorio
+    // entero, y el árbol de la línea con el repositorio del checkout.
+    for (const command of [`GIT_INDEX_FILE=${repo}/index git reset`, `git -c core.worktree=${base}/app checkout .`,
+      `GIT_COMMON_DIR=${repo} git stash`, `D=${repo}; git --git-dir=$D stash`, `env -u X git -C ${base}/app stash`,
+      `sudo -u me git -C ${base}/app stash`, `timeout 10 git -C ${base}/app stash`,
+      `xargs -n 1 git -C ${base}/app stash`,
+      `exec -a x git -C ${base}/app stash`, `(export GIT_DIR=${repo}; git stash)`,
+      `if true; then export GIT_DIR=${repo}; git stash; fi`, `declare -x GIT_DIR=${repo}; git stash`,
+      `f() { :; }; GIT_DIR=${repo} git stash`, `f() { :; }; git -C ${base}/app stash`,
+      `git -C ${base}/app --work-tree=${tree} stash`, `env -C ${base}/app git stash`,
+      `env --chdir=${base}/app git stash`, `sudo -D ${base}/app git stash`]) {
+      assert.throws(run(command), (error) => error.blocked && error.message.includes(` @ ${base}/app\n`), command)
+    }
+    // Lo que no se puede ubicar se frena, y se corrige escribiéndolo entero.
+    for (const command of [`git --git-dir=$(git -C ${base}/app rev-parse --git-dir) stash`, `GIT_DIR+=/x; git stash`,
+      'read GIT_DIR < f; git stash', 'f() { :; }; git --git-dir=.git stash',
+      `X=${base}/app git --config-env=core.worktree=X checkout .`, `git -c core.worktree=../.. checkout .`,
+      `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.worktree GIT_CONFIG_VALUE_0=${base}/app git checkout .`]) {
+      assert.throws(run(command), (error) => error.blocked && /no se puede ubicar/.test(error.message)
+        && /Esto lo corregís vos/.test(error.message), command)
+    }
+    // Una ruta con `~` es la de la carpeta personal.
+    const saved = process.env.HOME
+    process.env.HOME = base
+    try {
+      assert.throws(run('GIT_DIR=~/app/.git git stash'), (error) => error.message.includes(`git stash @ ${base}/app`))
+    } finally { process.env.HOME = saved }
+    // El mismo checkout por dos caminos se nombra una vez.
+    const twice = (() => {
+      try { run(`git -C ${base}/app --work-tree=${base}/app stash`)() } catch (error) { return error.message }
+      return ''
+    })()
+    assert.equal(twice.split('es el checkout de la sesión principal').length, 2, twice)
+    // El `gitdir` de un árbol de `git worktree` puede ser relativo a su carpeta (git 2.48): se lee desde ahí.
+    const relative = path.join(repo, 'worktrees', 'relativo')
+    fs.mkdirSync(relative, { recursive: true })
+    fs.writeFileSync(path.join(relative, 'gitdir'), `${path.relative(relative, path.join(base, 'app', '.git'))}\n`)
+    assert.throws(run(`git --git-dir=${relative} stash`), (error) => error.message.includes(` @ ${base}/app\n`))
+    // El repositorio del árbol de la línea, que `git worktree` guarda dentro del `.git` del checkout, es de la línea.
+    const own = spawnSync('git', ['-C', tree, 'rev-parse', '--absolute-git-dir'], { encoding: 'utf8' }).stdout.trim()
+    // Una ruta que sale con `..` del repositorio de la línea es la que git usa.
+    assert.throws(run(`git --git-dir=${own}/../.. stash`), (error) => error.message.includes(` @ ${base}/app\n`))
+    for (const command of [`GIT_DIR=${repo} git status`, `git --git-dir=${tree}/.git stash`, 'FOO=1 git stash',
+      'printf GIT_DIR; git stash', `export GIT_DIR=${own}; git stash | head -3`,
+      `GIT_DIR=${ops}/.git git add planning/x.md`, `git --git-dir=${own} stash`, 'git commit -m "lee GIT_DIR=x"',
+      `(GIT_DIR=${repo}); git stash`, `export GIT_DIR=${repo}; unset GIT_DIR; git stash`,
+      `GIT_DIR=${repo} git status; git stash`, `export GIT_DIR=${repo}; env -u GIT_DIR git stash`,
+      `GIT_DIR=${repo} echo x`]) {
+      assert.doesNotThrow(run(command), command)
+    }
+  })
+})
+
 // Caso 449, con la orden que la frenaba en la sesión real: «haz el merge de main en work/manuel».
 test('un git en la instancia pasa si la persona lo pide, y su bloqueo no dice que lo corrige el agente', () => {
   const { base, ops } = session('cauce-line-scope-orden-')
