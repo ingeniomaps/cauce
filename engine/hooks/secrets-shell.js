@@ -12,8 +12,8 @@ const os = require('node:os')
 const path = require('node:path')
 const { commandOf, cwdOf, block, isCommit, unquoted, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
-const { REDIRECT, writesWithBase } = require('./shell-writes')
-const { asRead } = require('./shell-changes')
+const { REDIRECT } = require('./shell-writes')
+const { writes } = require('./shell-changes')
 const AP = require('./approval')
 const CHAT = require('./chat')
 
@@ -120,7 +120,7 @@ function writtenCredentials(input, command) {
   const found = new Map()
   // Sin el cuerpo de los heredocs, que es dato (`asRead`): leído como comandos, frenaba crear un script que nombra
   // una credencial.
-  for (const { raw, base } of writesWithBase(asRead(command), cwdOf(input))) {
+  for (const { raw, base } of writes(command, cwdOf(input))) {
     if (SETUP_ENV.test(path.basename(raw))) continue
     // Bajo un `cd` que no se resuelve no se sabe dónde cae, y una aprobación por archivo no tendría qué ruta nombrar:
     // se juzga por el nombre, que es lo que decide, y pasa sólo si la persona lo pidió en el chat nombrándolo.

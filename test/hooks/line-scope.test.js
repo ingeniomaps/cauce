@@ -256,7 +256,7 @@ test('un git desde el árbol de la línea con el repositorio de otro checkout ta
     }
     // Lo que no se puede ubicar se frena, y se corrige escribiéndolo entero.
     for (const command of [`git --git-dir=$(git -C ${base}/app rev-parse --git-dir) stash`, `GIT_DIR+=/x; git stash`,
-      'read GIT_DIR < f; git stash', 'f() { :; }; git --git-dir=.git stash',
+      'read GIT_DIR < f; git stash', 'printf -v GIT_DIR %s x; git stash', 'f() { :; }; git --git-dir=.git stash',
       `X=${base}/app git --config-env=core.worktree=X checkout .`, `git -c core.worktree=../.. checkout .`,
       `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.worktree GIT_CONFIG_VALUE_0=${base}/app git checkout .`]) {
       assert.throws(run(command), (error) => error.blocked && /no se puede ubicar/.test(error.message)
@@ -289,6 +289,29 @@ test('un git desde el árbol de la línea con el repositorio de otro checkout ta
       `(GIT_DIR=${repo}); git stash`, `export GIT_DIR=${repo}; unset GIT_DIR; git stash`,
       `GIT_DIR=${repo} git status; git stash`, `export GIT_DIR=${repo}; env -u GIT_DIR git stash`,
       `GIT_DIR=${repo} echo x`]) {
+      assert.doesNotThrow(run(command), command)
+    }
+  })
+})
+
+// Caso 455, desde una línea: el `GIT_DIR` de afuera y el `cd` de adentro cuentan para el `git` escondido.
+test('un git escondido detrás de otro comando se frena como uno escrito suelto', () => {
+  const { base, ops, tree } = session('cauce-line-scope-hidden-')
+  withRoot(ops, () => {
+    const id = sessionId()
+    prompt(id, '/autobuild piloto', base)
+    const run = (command) => () => execute('shell-boundary', shell(id, tree, command, { agent_id: 'build' }))
+    const git = `git -C ${base}/app stash`
+    for (const command of [`sh -c "${git}"`, `bash -lc '${git}'`, `eval "${git}"`, `env -S "${git}"`,
+      `stdbuf -oL ${git}`, `sudo -T 10 ${git}`, `flock /var/lock/l -c '${git}'`, `su me -c '${git}'`,
+      `GIT_DIR=${base}/app/.git sh -c 'git stash'`, `sh -c 'cd ${base}/app && git stash'`,
+      `sh -c "eval '${git}'"`, `(export GIT_DIR=${base}/app/.git; bash -c 'git stash')`,
+      `eval 'export GIT_DIR=${base}/app/.git'; git stash`]) {
+      assert.throws(run(command), (error) => error.blocked && error.message.includes(` @ ${base}/app\n`), command)
+    }
+    for (const command of [`ssh host '${git}'`, `docker exec app sh -c '${git}'`, `git commit -m "sh -c '${git}'"`,
+      `sh -c 'git -C ${base}/app status'`, `echo ${git}`, `bash -c 'git stash'`,
+      `export GIT_DIR=${base}/app/.git; su - me -c 'git stash'`, `GIT_DIR=${base}/app/.git eval true; git stash`]) {
       assert.doesNotThrow(run(command), command)
     }
   })

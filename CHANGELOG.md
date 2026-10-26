@@ -36,6 +36,12 @@ diseño — eso vive en el commit y en el código.
   `timeout 10`, `xargs -n 1`, `exec -a x` o `time -f …` delante, el valor se tomaba por el comando y lo de atrás no se
   juzgaba: ni el `git` de una línea ni un `rm` fuera de las raíces. `env -C` y `sudo -D` cuentan como la carpeta donde
   corre.
+- **Un comando escondido detrás de otro se juzga como escrito suelto** (caso 455). Lo que corre adentro de `sh -c`,
+  `bash -lc`, `eval`, `env -S`, `su -c` o `flock -c`, y lo que va detrás de `stdbuf`, `ionice`, `taskset`, `chrt`,
+  `flock`, `setsid`, `doas`, `unbuffer`, `runuser -u` o `sudo -T`, escapaba a los límites: el `git` de una línea sobre
+  el checkout principal, un `rm` o un `touch` fuera de las raíces, y una escritura con `>`, `tee` o `cp` —también la
+  de una credencial o de `ops.config.json`—. Lo que corre en otra máquina, como `ssh` o `docker exec`, sigue sin
+  juzgarse. Y `env -C` o `sudo -D` ya no cambian la carpeta de los comandos que siguen, sólo la del suyo.
 
 ## [0.116.0] - 2026-10-25
 

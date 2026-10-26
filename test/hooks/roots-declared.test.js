@@ -139,6 +139,8 @@ test('un fragmento o un comando sobre cualquiera de los dos archivos se frena: n
     /no puede verificar no autoriza/)
   blocked('ops-config-shell', shell(`echo '{"writableOutsideRoots":["~"]}' > ${localFile}`), /no dice con qué/)
   blocked('ops-config-shell', shell('sed -i s/x/y/ ops.config.local.json'), /no dice con qué/)
+  // Adentro de otro comando escribe igual (caso 455).
+  blocked('ops-config-shell', shell(`bash -c "echo '{}' > ${localFile}"`), /no dice con qué/)
   // El CLI que escribe la configuración no es una escritura que este guard vea, y no tiene por qué.
   for (const command of ['node tools/ops.js upgrade .', 'npx cauce init . --mode sidecar',
     'cat ops.config.local.json']) {
