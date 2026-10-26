@@ -2,14 +2,14 @@
 caso: 457
 titulo: La mutación que nombra una condición por su número —«pone en rojo la (5)»— se cuenta como una condición más, y una tarea de cinco condiciones cruza el umbral de R17 con siete
 estado: resuelto
-resuelto-en: 0.118.0
+resuelto-en: 0.117.1
 prioridad: media
 version-detectada: 0.117.0
 ---
 
 # 457 — La mutación que nombra una condición se cuenta como otra condición
 
-**🟢 resuelto en 0.118.0** · detectado en 0.117.0 · prioridad **media**: no rompe nada, pero `check` falla en rojo sobre tareas que
+**🟢 resuelto en 0.117.1** · detectado en 0.117.0 · prioridad **media**: no rompe nada, pero `check` falla en rojo sobre tareas que
 están dentro del umbral, y la salida que ofrece —`(sin partir: <razón>)`— obliga a escribir una razón falsa.
 
 ## Resumen
@@ -50,7 +50,7 @@ condición del que la cita. La aceptación entera, mutación incluida, llega com
 
 ## Cierre
 
-**Resuelto en 0.118.0.**
+**Resuelto en 0.117.1.**
 
 - **Contar marcadores distintos y no ocurrencias, o contar sólo los anteriores a `Mutación:`.** Se hizo lo primero:
   `acceptanceConditions` (`engine/planning/parser.js`) cuenta el conjunto de `(N)` distintos. Lo segundo se decidió
