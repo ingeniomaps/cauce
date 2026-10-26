@@ -14,6 +14,19 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.117.0] - 2026-10-25
+
+### Corregido
+
+- **Desde una línea de trabajo, un `git` que cambia el checkout principal de un repositorio de la línea se pregunta
+  como uno en la instancia** (caso 453). Poner al día ese checkout después de mergear la entrega se frenaba con «Esto
+  lo corregís vos», sin abrir el diálogo, y ofrecía pegar la carpeta entera. Ahora, en una sesión interactiva de
+  Claude Code, abre el diálogo de confirmación; en el chat, la orden tiene que nombrar el `git` —«merge», «pull»,
+  «stash»—, y la línea para pegar es `git merge @ <checkout>`. Nombrar sólo la carpeta ya no alcanza: con eso, un
+  pedido sobre otra cosa —«arreglá el login de la app»— dejaba al agente cambiarle la rama a la sesión principal. La
+  línea que ya tenías con la carpeta sigue valiendo. Un archivo escrito ahí, o un `git` que no le cambia la rama ni el
+  árbol, siguen como antes.
+
 ## [0.116.0] - 2026-10-25
 
 ### Cambiado

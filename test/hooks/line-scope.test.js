@@ -208,7 +208,8 @@ test('la sesión de una línea no cambia con git el checkout de la principal, y 
       `git -C ${ops} switch -c x`, `git -C ${ops} stash`, `cd ${ops} && git reset --hard`]) {
       assert.throws(run(command), (error) => error.blocked && STRAYED.test(error.message), command)
     }
-    assert.throws(run(`${app} switch -c tmp`), new RegExp(`${base}/app va en el árbol de la línea: ${tree}`))
+    assert.throws(run(`${app} switch -c tmp`),
+      new RegExp(`${base}/app es el checkout de la sesión principal.*si era para la línea, va en ${tree}`))
     for (const command of [`${app} status`, `${app} log --oneline`, `${app} diff`, `${app} stash list`, `${app} branch`,
       `${app} fetch`, `${app} branch --list tmp`, `${app} branch --show-current`, `${app} branch -vv`,
       `${app} worktree list`, `${app} remote -v`, `${app} config --get user.name`, `${app} tag`, `${app} tag -l 'v*'`,
@@ -285,5 +286,72 @@ test('con el diálogo nativo, un git en la instancia se pregunta en el diálogo'
     try { executeAll(['pre-shell'], input) } catch (error) { asked = error }
     assert.ok(asked && asked.ask, `no pidió el diálogo: ${asked && asked.message}`)
     assert.ok(asked.message.includes(`git merge @ ${ops}`), asked.message)
+  })
+})
+
+// Caso 453, con la orden que lo frenaba en la sesión real. El porqué, en `strayed` (`engine/hooks/line-scope.js`).
+test('un git en el checkout principal de la línea se pregunta como uno en la instancia', () => {
+  const { base, ops, tree } = session('cauce-line-scope-principal-')
+  withRoot(ops, () => {
+    const id = sessionId()
+    prompt(id, '/autobuild piloto', base)
+    const ff = `git -C ${base}/app merge --ff-only master`
+    prompt(id, 'Pon al dia el master del checkout principal', base)
+    const dialog = { hook_event_name: 'PreToolUse', permission_mode: 'auto', prompt_id: 'm1' }
+    let asked = null
+    try { executeAll(['pre-shell'], shell(id, base, ff, dialog)) } catch (error) { asked = error }
+    assert.ok(asked && asked.ask, `no pidió el diálogo: ${asked && asked.message}`)
+    assert.ok(asked.message.includes(`git merge @ ${base}/app`), asked.message)
+    // El que ve un subagente, sin diálogo ni nada pendiente que confirmar.
+    const other = sessionId()
+    prompt(other, '/autobuild piloto', base)
+    prompt(other, 'implementá la tarea', base)
+    const merge = (extra) => () => execute('shell-boundary', shell(other, base, ff, extra))
+    const message = (() => {
+      try { merge({ agent_id: 'build' })() } catch (error) { return error.message }
+      return ''
+    })()
+    assert.ok(message.includes(`  git merge @ ${base}/app\n`), message)
+    assert.doesNotMatch(message, /Esto lo corregís vos/)
+    assert.ok(message.includes(`si era para la línea, va en ${tree})`), message)
+    // La orden nombra el subcomando, como en la instancia: nombrar la carpeta dejaba que un pedido sobre otra cosa
+    // le cambiara la rama a la sesión principal (caso 423).
+    prompt(other, 'haz el merge de master en app', base)
+    assert.doesNotThrow(merge())
+    // El lugar es el checkout aunque el git corra desde una de sus carpetas, y la pista apunta a la misma del árbol.
+    for (const dir of [path.join(base, 'app', 'src'), path.join(tree, 'src')]) fs.mkdirSync(dir, { recursive: true })
+    assert.doesNotThrow(() => execute('shell-boundary',
+      shell(other, base, `git -C ${base}/app/src merge --ff-only master`)))
+    prompt(other, 'implementá la tarea', base)
+    const stash = (() => {
+      const input = shell(other, base, `git -C ${base}/app/src stash`, { agent_id: 'build' })
+      try { execute('shell-boundary', input) } catch (error) { return error.message }
+      return ''
+    })()
+    assert.ok(stash.includes(`  git stash @ ${base}/app\n`), stash)
+    assert.ok(stash.includes(`si era para la línea, va en ${tree}/src)`), stash)
+    // Y una que el árbol no tiene vuelve a su raíz.
+    fs.mkdirSync(path.join(base, 'app', 'dist'), { recursive: true })
+    assert.throws(() => execute('shell-boundary', shell(other, base, `git -C ${base}/app/dist stash`,
+      { agent_id: 'build' })), (error) => error.message.includes(`si era para la línea, va en ${tree})`))
+    for (const text of ['actualizá app', 'actualizá app?', 'arreglá el login de la app', '¿actualizo app?',
+      'no hagas el merge todavía', 'haz el merge de master en app, pero no todavía']) {
+      // Cada uno en su sesión: después de un bloqueo, el mensaje siguiente que no niega lo confirma.
+      const fresh = sessionId()
+      prompt(fresh, '/autobuild piloto', base)
+      prompt(fresh, text, base)
+      assert.throws(() => execute('shell-boundary', shell(fresh, base, ff)),
+        (error) => error.blocked && STRAYED.test(error.message), text)
+    }
+    // Lo que no le cambia la rama ni el árbol, como crear una rama, y un archivo, siguen corrigiéndose en el árbol.
+    for (const command of [`git -C ${base}/app branch nueva`, 'echo y > app/x.js']) {
+      assert.throws(() => execute('shell-boundary', shell(other, base, command, { agent_id: 'build' })),
+        /Esto lo corregís vos/, command)
+    }
+    // La carpeta del checkout que el bloqueo ofrecía pegar antes del 453 sigue aprobando su git, desde cualquiera de
+    // sus carpetas.
+    fs.appendFileSync(path.join(ops, 'planning', '.ops-approval'), `${base}/app\n`)
+    assert.doesNotThrow(() => execute('shell-boundary', shell(other, base, `git -C ${base}/app/src stash`,
+      { agent_id: 'build' })))
   })
 })
