@@ -13,7 +13,8 @@ const { unquoted, expandAssigned } = require('./input')
 
 // **Esto no puede ser completo y no se presenta como si lo fuera.** `eval`, una variable armada dos
 // líneas antes, un heredoc dentro de `bash -c`, un `python -c "open(...)"` o un script propio escriben
-// igual y ningún patrón los ve. Lee la forma habitual; presentarlo como un límite invitaría a confiar en él
+// igual y ningún patrón de acá los ve. Lo de adentro de `eval` y `bash -c` lo vuelve a leer `writes`, en
+// `shell-changes.js` (caso 455). Lee la forma habitual; presentarlo como un límite invitaría a confiar en él
 // más de lo que aguanta.
 //
 // El `|` después de `>` es el override de `noclobber`, no una tubería: `>| destino` escribe igual que

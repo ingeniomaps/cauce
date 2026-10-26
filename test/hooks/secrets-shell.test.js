@@ -119,7 +119,9 @@ test('secrets-shell frena escribir una credencial por shell como escritura, y no
   const root = planFirstRoot('ops-hook-escribe-shell-', WIP_CON_PLAN)
   const runs = (command) => ({ cwd: root, tool_input: { command } })
   for (const command of ['echo "//r/:_authToken=x" > .npmrc', 'cat > .npmrc <<EOF\n//r/:_authToken=x\nEOF',
-    'printf x >> ~/.netrc', 'tee .pypirc < plantilla', 'cp clave id_ed25519', 'cd sub && echo x > credentials']) {
+    'printf x >> ~/.netrc', 'tee .pypirc < plantilla', 'cp clave id_ed25519', 'cd sub && echo x > credentials',
+    // Adentro de otro comando escribe igual (caso 455).
+    "sh -c 'echo x > .npmrc'", 'eval "tee .pypirc < plantilla"']) {
     blocked('secrets-shell', runs(command), /archivo de credenciales que su herramienta mantiene/)
     assert.doesNotMatch(messageOf('secrets-shell', runs(command)), /lee /, command)
   }

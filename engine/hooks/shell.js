@@ -16,9 +16,9 @@ const {
   commandOf, cwdOf, block, writableRoots, outsideRoots, DECLARE_IT, opsRoot, withoutGitGlobals, gitDirectory, owns,
   asRun, assignedValues, toplevel, realPath,
 } = require('./input')
-const { writesWithBase, REDIRECTIONS } = require('./shell-writes')
+const { REDIRECTIONS } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
-const { steps, removals, creations, home, asRead } = require('./shell-changes')
+const { steps, removals, creations, home, asRead, writes } = require('./shell-changes')
 const { landing } = require('../core/files')
 const { beyond, reached, real, removed, refusal } = require('./boundary')
 const LS = require('./line-scope')
@@ -335,7 +335,7 @@ function shellBoundary(input) {
   const found = []
   const strayed = []
   // Sin el cuerpo de los heredocs, también con un delimitador como `END-1` (`asRead`).
-  for (const { raw, base } of writesWithBase(asRead(commandOf(input)), cwdOf(input))) {
+  for (const { raw, base } of writes(commandOf(input), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
     // no puede verificar no autoriza —el criterio que fijó el 031 para el índice—.

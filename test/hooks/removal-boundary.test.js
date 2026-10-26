@@ -16,6 +16,7 @@ const os = require('node:os')
 const path = require('node:path')
 
 const { execute } = require('../../engine/hooks/run')
+const { LEADING, VALUED, POSITIONAL } = require('../../engine/hooks/shell-changes')
 
 const OUT = path.join(os.homedir(), 'fuera-de-las-raices')
 
@@ -70,6 +71,86 @@ test('el paréntesis que cierra un subshell no queda pegado a la ruta que se nom
   const { refuses } = project('ops-hook-borra-parentesis-')
   refuses(`(rm -rf ${OUT}/sub)`, /fuera-de-las-raices\/sub, fuera de las raíces/)
   refuses(`(cd ${OUT} && rm -rf sub)`, /fuera-de-las-raices\/sub, fuera de las raíces/)
+})
+
+// Caso 455. Un comando que corre adentro de otro —el de `sh -c`, `eval`, `env -S`— o detrás de un envoltorio que la
+// lectura no conocía se juzga igual que escrito suelto. Lo que corre en otra máquina o es texto sigue pasando.
+test('un borrado o una escritura escondidos detrás de otro comando frenan como escritos sueltos', () => {
+  const { refuses, passes } = project('ops-hook-borra-escondido-')
+  const far = '../../../../../../../../no-es-de-nadie'
+  for (const command of [`sh -c 'rm -rf ${OUT}/sub'`, `bash -lc "rm -rf ${OUT}/sub"`, `eval "rm -rf ${OUT}/sub"`,
+    `zsh -c 'rm -rf ${OUT}/sub'`, `bash -o pipefail -c 'rm -rf ${OUT}/sub'`, `su me -c 'rm -rf ${OUT}/sub'`,
+    `runuser -l me --command='rm -rf ${OUT}/sub'`, `env --split-string='rm -rf ${OUT}/sub'`,
+    `sh -c "cd ${OUT} && rm -rf sub"`, `sh -c "eval 'rm -rf ${OUT}/sub'"`, `sh -c 'touch ${OUT}/x'`,
+    `bash --rcfile /dev/null -c 'rm -rf ${OUT}/sub'`, `sh -c -- 'rm -rf ${OUT}/sub'`, `su -lc 'rm -rf ${OUT}/sub'`,
+    `eval eval eval 'rm -rf ${OUT}/sub'`, `bash -euo pipefail -c 'rm -rf ${OUT}/sub'`, `bash -c -e 'rm -rf ${OUT}/sub'`,
+    `sudo -iu root rm -rf ${OUT}/sub`, `sudo -Eu root rm -rf ${OUT}/sub`, `flock --command='rm -rf ${OUT}/sub' /l`,
+    `env -S'rm -rf ${OUT}/sub'`, `runuser -u nadie -- rm -rf ${OUT}/sub`, `eval cd ${OUT}; rm -rf sub`,
+    `runuser -u nadie rm -rf ${OUT}/sub`, `runuser -u nadie -m -- rm -rf ${OUT}/sub`,
+    `bash -c -o pipefail 'rm -rf ${OUT}/sub'`, `env --chdir ${OUT} rm -rf sub`,
+    `bash -co pipefail 'rm -rf ${OUT}/sub'`, `bash -oc pipefail 'rm -rf ${OUT}/sub'`,
+    `bash -xoc pipefail 'rm -rf ${OUT}/sub'`, `builtin eval 'rm -rf ${OUT}/sub'`,
+    `if eval 'cd ${OUT}'; then rm -rf sub; fi`]) {
+    refuses(command, /fuera-de-las-raices.*fuera de las raíces/s)
+  }
+  for (const command of [`sh -c 'echo x > ${OUT}/f'`, `bash -c 'tee ${OUT}/f'`, `eval 'cp a ${OUT}/f'`,
+    `sh -c 'cd ${OUT} && echo x > f'`]) {
+    refuses(command, /escribe en .*fuera-de-las-raices/)
+  }
+  // Lo que escribe un `su -` cae en la carpeta personal del otro usuario: no se sabe dónde, y se frena. Una función
+  // definida antes no cambia cómo se leen las escrituras, adentro o afuera.
+  refuses(`su - root -c 'echo x > ${far}'`, /no se puede resolver/)
+  passes("f() { :; }; sh -c 'echo x > out'")
+  for (const command of [`ssh host 'rm -rf ${OUT}/sub'`, `docker exec app sh -c 'rm -rf ${OUT}/sub'`,
+    `git commit -m "sh -c 'rm -rf ${OUT}/sub'"`, `bash script.sh -c 'rm -rf ${OUT}/sub'`, `echo rm -rf ${OUT}/sub`,
+    "sh -c 'echo x 2>/dev/null'", "sh -c 'rm -rf build'", 'rm -f x 2> "/dev/null"', 'sh -c', 'runuser -u nadie',
+    'su nadie', `bash "rm -rf ${OUT}/sub"`,
+    // Lo que va detrás de `runuser -u … --` es el comando con sus palabras, no un shell (tercera revisión del 455).
+    `runuser -u nadie -- echo "a; rm -rf ${OUT}/sub"`, `runuser -u nadie -- psql -c "rm -rf ${OUT}/sub"`,
+    'runuser -u nadie -- cp -l a b', "f() { :; }; eval true; sh -c 'echo x > out'"]) {
+    passes(command)
+  }
+  // Lo relativo de `su -`, `sudo -i` y `sudo -R` no se juzga (el porqué, en `shell-changes.js`). Y la carpeta de
+  // `env -C` o `sudo -i` vale sólo para su comando.
+  for (const command of [`su - root -c 'rm -rf ${far}'`, `su -l root -c 'rm -rf ${far}'`,
+    `su -c 'rm -rf ${far}' - root`, `sudo -i rm -rf ${far}`, `sudo -R /r rm -rf ${far}`,
+    `sudo --chroot=/r rm -rf ${far}`, `env -C ${OUT} ls; rm -rf build`, `eval 'f() { :; }'; rm -rf ${far}`]) {
+    passes(command)
+  }
+  refuses(`sudo -i true; rm -rf ${far}`, /el comando borra/)
+  refuses(`env -C /x eval true; rm -rf ${far}`, /el comando borra/)
+  refuses(`sudo -i eval true; rm -rf ${far}`, /el comando borra/)
+  // Lo que anida sin fin no se puede leer, y se frena en vez de dejarlo pasar sin juzgar.
+  refuses(`${'eval '.repeat(2000)}rm -rf ${OUT}/sub`, /anida más de 16 comandos/)
+})
+
+// Los envoltorios son una lista (el porqué, en `LEADING`, `engine/hooks/shell-changes.js`): cada uno que se suma
+// nace en rojo hasta tener acá su ejemplo, y el ejemplo lo usa como se escribe, con sus banderas con valor. Se
+// recorren también los ejemplos, para que sacar uno de la lista no lo saque de la prueba.
+const WRAPPED = {
+  sudo: 'sudo -T 10 -R /x', env: 'env -a x -f .env -u Y', command: 'command', exec: 'exec -a x', time: 'time -f %e',
+  nohup: 'nohup', nice: 'nice -n 5', xargs: 'xargs -n 1', timeout: 'timeout -s KILL 10', stdbuf: 'stdbuf -o L',
+  ionice: 'ionice -c 2 -n 7', taskset: 'taskset -c 0,1', chrt: 'chrt -r 10', flock: 'flock -w 5 /var/lock/l',
+  setsid: 'setsid -w', doas: 'doas -u root', unbuffer: 'unbuffer', su: 'su -g wheel root',
+  runuser: 'runuser -u nadie --', builtin: 'builtin', '!': '!',
+}
+const KEYWORDS = {
+  if: (rm) => `if ${rm}; then :; fi`, elif: (rm) => `if false; then :; elif ${rm}; then :; fi`,
+  then: (rm) => `if true; then ${rm}; fi`, else: (rm) => `if false; then :; else ${rm}; fi`,
+  while: (rm) => `while ${rm}; do :; done`, until: (rm) => `until ${rm}; do :; done`,
+  do: (rm) => `for d in a; do ${rm}; done`,
+}
+test('cada envoltorio que la lectura conoce deja ver el borrado que lleva detrás', () => {
+  const { refuses } = project('ops-hook-borra-envoltorios-')
+  const rm = `rm -rf ${OUT}/sub`
+  const all = [...LEADING, ...VALUED.keys(), ...POSITIONAL.keys(), ...Object.keys(WRAPPED), ...Object.keys(KEYWORDS)]
+  for (const name of new Set(all)) {
+    const command = KEYWORDS[name] ? KEYWORDS[name](rm) : WRAPPED[name] && `${WRAPPED[name]} ${rm}`
+    assert.ok(command, `${name} no tiene ejemplo en esta prueba`)
+    refuses(command, REMOVES)
+  }
+  refuses(`flock /var/lock/l -c '${rm}'`, REMOVES)
+  refuses(`flock -c '${rm}' /var/lock/l`, REMOVES)
 })
 
 test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pasando', () => {
