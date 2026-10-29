@@ -2,7 +2,7 @@
   "$comment": [
     "Tres guards, no todos. El resto queda afuera por lo que dice AGENTS.md, «Acá no se instala nada».",
     "",
-    "`gh-identity` bloquea un `gh` que no lleve GH_TOKEN o GITHUB_TOKEN en la misma invocación. Vive",
+    "`gh-identity` bloquea un `gh` cuyo GH_TOKEN no llegue con valor: el `.env` se carga en la misma invocación. Vive",
     "en .claude/hooks/ y no en engine/ porque es la credencial de este repo: un guard del motor bajaría",
     "a toda empresa en su próximo upgrade. La razón por la que existe es que `gh` a secas NO falla —cae",
     "al keyring, resuelve a otra cuenta y las lecturas devuelven resultados igual—, así que la identidad",

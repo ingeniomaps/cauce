@@ -77,8 +77,21 @@ const analyzed = RUNS_A_STRING.test(body) ? body : withoutQuoted(body)
 // la prueba, no una corrida—. No reabre el falso positivo del grep: cuando no hay ejecutor lo
 // entrecomillado ya viene vacío, así que no queda ningún `gh` adentro que ver.
 const INVOKES_GH = /(?:^|[\n;&|("']|&&|\|\|)\s*(?:[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]*\s+)*gh(?:\s|$)/
-// Alcanza con que la asignación esté en la misma invocación: `export GH_TOKEN=...; gh ...` es válido.
-const CARRIES_TOKEN = /\b(?:GH_TOKEN|GITHUB_TOKEN)\s*=/
+// Una credencial que llega viva a `gh`, no una asignación escrita (caso 461). `GH_TOKEN=""`, o `"$X"` sin el `.env`
+// cargado antes en la misma invocación, llegan vacíos, y `gh` cae al keyring sin que nada lo diga. Sólo `GH_TOKEN`: el
+// wrapper de `gh` de esta máquina le saca `GITHUB_TOKEN` (medido: con el PAT ahí, `gh api user` da la otra cuenta).
+// Comillas simples no expanden, así que `'$X'` es el texto `$X`. `export GH_TOKEN=...; gh ...` sigue siendo válido.
+const TOKEN = /\bGH_TOKEN=(?:"([^"]*)"|'([^']*)'|([^\s;&|)]*))/g
+const LOADS_ENV = /(?:^|[\n;&|(]|&&|\|\|)\s*(?:\.|source)\s+(?:\.\/)?\.env(?=[\s;&|)]|$)/
+function carriesToken(text) {
+  return [...text.matchAll(TOKEN)].some((match) => {
+    const [, double = '', single = '', bare = ''] = match
+    const value = double || single || bare
+    if (!value) return false
+    if (!value.includes('$')) return true
+    return !single && LOADS_ENV.test(text.slice(0, match.index))
+  })
+}
 // Lo que no toca la red ni la identidad. R14 pide poder comprobar una versión sin ceremonia.
 const HARMLESS = /(?:^|[\n;&|(]|&&|\|\|)\s*gh\s+(?:--version|--help|help|version)(?:\s|$)/
 
@@ -88,7 +101,8 @@ const SWITCHES_IDENTITY = new RegExp(String.raw`(?:^|[\n;&|("']|&&|\|\|)\s*(?:[A
   + String.raw`gh\s+auth\s+(?:login|refresh|switch|setup-git|logout)\b`)
 if (SWITCHES_IDENTITY.test(analyzed)) {
   block('`gh auth` cambia la cuenta o la credencial, y en cauce la identidad es `ingeniomaps` con el `.env`: '
-    + 'usá `GH_TOKEN="$GITHUB_PAT_CAUCE" gh <subcomando>`. Si eso falla, se para y se dice; no se busca otra vía.')
+    + 'usá `set -a; . ./.env; set +a; GH_TOKEN="$GITHUB_PAT_CAUCE" gh <subcomando>`. Si eso falla, se para y se dice; '
+    + 'no se busca otra vía.')
 }
 
 // La clave SSH de esta máquina autentica como otra cuenta, sin permiso en `ingeniomaps/cauce`: el push se
@@ -101,11 +115,11 @@ if (body.split(/\n|;|&&|\|\||\|/).some((part) => WRITES_REMOTE.test(part) && SSH
     + 'de siempre (`git push origin <rama>`), cuyo helper lee el `.env`; también con workflows.')
 }
 
-if (INVOKES_GH.test(analyzed) && !CARRIES_TOKEN.test(command) && !HARMLESS.test(analyzed)) {
+if (INVOKES_GH.test(analyzed) && !carriesToken(command) && !HARMLESS.test(analyzed)) {
   block(
     "`gh` sin credencial explícita está prohibido en cauce: cae al keyring, que resuelve a otra cuenta.\n"
-    + '  Usá:  set -a; . ./.env; set +a\n'
-    + '        GH_TOKEN="$GITHUB_PAT_CAUCE" gh <subcomando>\n'
+    + '  Usá, en la misma llamada:  set -a; . ./.env; set +a; GH_TOKEN="$GITHUB_PAT_CAUCE" gh <subcomando>\n'
+    + '  Sin el `.env` cargado ahí la variable llega vacía, y `GITHUB_TOKEN` no llega: el wrapper de gh lo saca.\n'
     + '  Los nombres están en .env.example. Comprobá con `gh api user -q .login` → debe decir ingeniomaps.',
   )
 }

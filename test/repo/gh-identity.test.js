@@ -36,14 +36,32 @@ test('un `gh` sin credencial se bloquea', () => {
 
 test('un `gh` con la credencial en la misma línea pasa', () => {
   for (const command of [
-    'GH_TOKEN="$GITHUB_PAT_CAUCE" gh pr list',
     'set -a; . ./.env; set +a; GH_TOKEN="$GITHUB_PAT_CAUCE" gh api user',
-    'GITHUB_TOKEN=x gh run list',
+    'source .env && GH_TOKEN="${GITHUB_PAT_CAUCE}" gh pr list',
+    'set -a; . .env; set +a; export GH_TOKEN="$GITHUB_PAT_CAUCE"; gh pr list',
+    'GH_TOKEN=x gh run list',
     // R14 pide poder comprobar una versión sin ceremonia.
     'gh --version',
     'gh --help',
   ]) {
     assert.equal(correr(command).bloqueado, false, `no debería bloquear: ${command}`)
+  }
+})
+
+// Una asignación escrita no es una credencial que llega (caso 461). El porqué, en `carriesToken`.
+test('un `GH_TOKEN` vacío, sin el `.env` cargado antes, o un `GITHUB_TOKEN` se bloquean', () => {
+  for (const command of [
+    'GH_TOKEN="$GITHUB_PAT_CAUCE" gh pr create --repo ingeniomaps/cauce',
+    'GH_TOKEN=${GITHUB_PAT_CAUCE} gh api user',
+    'GH_TOKEN= gh pr list',
+    'GH_TOKEN="" gh pr list',
+    "set -a; . ./.env; set +a; GH_TOKEN='$GITHUB_PAT_CAUCE' gh pr list",
+    'GH_TOKEN="$GITHUB_PAT_CAUCE" gh pr list; set -a; . ./.env; set +a',
+    'cat .env.example; GH_TOKEN="$GITHUB_PAT_CAUCE" gh pr list',
+    'GITHUB_TOKEN=x gh run list',
+    'set -a; . ./.env; set +a; GITHUB_TOKEN="$GITHUB_PAT_CAUCE" gh api user',
+  ]) {
+    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
   }
 })
 
@@ -167,7 +185,7 @@ test('cambiar la identidad o la credencial de gh se bloquea aunque lleve GH_TOKE
   ]) {
     assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
   }
-  assert.equal(correr('GH_TOKEN="$GITHUB_PAT_CAUCE" gh api user -q .login').bloqueado, false)
+  assert.equal(correr('set -a; . ./.env; set +a; GH_TOKEN="$GITHUB_PAT_CAUCE" gh api user -q .login').bloqueado, false)
 })
 
 // Aprobar una corrida o una review es la API con la credencial del proyecto, nunca un botón: el navegador abre la
