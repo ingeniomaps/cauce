@@ -20,7 +20,10 @@
     },
     {
       "source": "rules/cauce.md",
-      "target": ".agents/plugins/cauce/rules/cauce.md"
+      "target": ".agents/plugins/cauce/rules/cauce.md",
+      "frontmatter": {
+        "trigger": ["always_on", "model_decision", "glob", "manual"]
+      }
     },
     {
       "source": "../../shared/skills/autobuild/SKILL.md",

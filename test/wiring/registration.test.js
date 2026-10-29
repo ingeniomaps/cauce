@@ -134,3 +134,23 @@ test('la confianza de Codex sin CODEX_HOME se busca en el home, y un hooks.json 
     }
   }
 })
+
+// La regla del plugin sin `trigger` (caso 459). Por qué importa, en `frontmatterProblems`.
+test('la regla del plugin de Antigravity se instala con trigger, y doctor da error si lo pierde', () => {
+  const project = antigravityProject('cauce-regla-trigger-')
+  assert.equal(project.runCli(['automation', 'install', project.target, 'antigravity']).status, 0)
+  const rule = path.join(path.dirname(project.target), '.agents', 'plugins', 'cauce', 'rules', 'cauce.md')
+  const { frontmatter } = require('../../engine/core/frontmatter')
+  assert.equal(frontmatter(fs.readFileSync(rule, 'utf8')).trigger, 'always_on')
+  assert.doesNotMatch(doctorWithHome(project.home, project.target).errors.join('\n'), /trigger/)
+
+  fs.writeFileSync(rule, fs.readFileSync(rule, 'utf8').replace(/^---\n[\s\S]*?\n---\n+/, ''))
+  const errors = doctorWithHome(project.home, project.target).errors.join('\n')
+  assert.match(errors, /rules\/cauce\.md: .*trigger.*always_on, model_decision, glob o manual/)
+
+  // Sin el archivo, el que avisa es «falta», no éste; y un runner sin artefactos no tiene nada que mirar.
+  fs.rmSync(rule)
+  assert.doesNotMatch(doctorWithHome(project.home, project.target).errors.join('\n'), /trigger/)
+  const { registrationProblems } = require('../../engine/automation/registration')
+  assert.deepEqual(registrationProblems({ install: project.target }, {}), [])
+})
