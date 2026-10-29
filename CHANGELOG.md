@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.117.2] - 2026-10-28
+
+### Corregido
+
+- **La regla del plugin de Antigravity ahora se aplica** (caso 459). Se instalaba sin `trigger` en el frontmatter,
+  `agy` no la cargaba, y la sesión trabajaba sin las reglas del proyecto ni la instrucción de leer `AGENTS.md` y el
+  protocolo. Ahora lleva `trigger: always_on`, y `automation doctor` da error si la regla lo pierde. `upgrade` no reinstala
+  los adaptadores: corré `automation install <ops> antigravity`, y después `agy plugin validate .agents/plugins/cauce`
+  tiene que pasar. Si habías editado el archivo a mano y no quedó igual al
+  de Cauce, `install` frena porque es del toolkit: repetí con `--force`.
+
 ## [0.117.1] - 2026-10-26
 
 ### Corregido

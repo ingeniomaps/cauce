@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Cauce
 
 Lee y cumple `{{OPS_DIR}}AGENTS.md`, `{{OPS_DIR}}planning/PROTOCOL.md` y las reglas que rigen este proyecto

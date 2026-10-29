@@ -12,11 +12,27 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const { frontmatter } = require('../core/frontmatter')
 
 // Qué sobra fuera de esta instalación. No se borra desde acá: es configuración del usuario, fuera del proyecto. Y
 // se mira que sea un puente de Cauce: un plugin ajeno que se llame igual no es asunto de este doctor.
 function registrationProblems(paths, runner) {
-  return [...strayProblems(paths, runner), ...trustProblems(paths, runner)]
+  return [...strayProblems(paths, runner), ...trustProblems(paths, runner), ...frontmatterProblems(paths, runner)]
+}
+
+// Un artefacto que el runner sólo carga con cierto campo en su frontmatter, y sin él lo ignora sin avisar: la regla
+// del plugin de `agy` sin `trigger` queda fuera y la sesión trabaja sin las reglas del proyecto (caso 459, medido con
+// `agy plugin validate` 1.4.8). Qué campo y qué valores lo declara el manifiesto, en `frontmatter` del artefacto.
+function frontmatterProblems(paths, runner) {
+  return (runner.artifacts || []).filter((item) => item.frontmatter).flatMap((item) => {
+    let text = ''
+    try { text = fs.readFileSync(path.resolve(paths.install, item.target), 'utf8') } catch { return [] }
+    const values = frontmatter(text)
+    return Object.entries(item.frontmatter).filter(([key, allowed]) => !allowed.includes(values[key]))
+      .map(([key, allowed]) => `${item.target}: sin ${key} válido en el frontmatter `
+        + `(${allowed.slice(0, -1).join(', ')} o ${allowed.at(-1)}): ${runner.command} no lo carga. `
+        + 'Reinstalá el adaptador')
+  })
 }
 
 function strayProblems(paths, runner) {
