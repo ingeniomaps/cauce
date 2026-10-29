@@ -1,14 +1,15 @@
 ---
 caso: 461
 titulo: El guard de identidad de gh deja pasar un GH_TOKEN vacío, y gh cae a la cuenta del keyring sin que nada lo frene
-estado: abierto
+estado: resuelto
+resuelto-en: 0.117.2
 prioridad: media
 version-detectada: 0.117.1
 ---
 
 # 461 — El guard de identidad de `gh` deja pasar un `GH_TOKEN` vacío
 
-**🔴 abierto** · detectado en 0.117.1 · prioridad **media**: no viaja en el paquete —es herramienta de este
+**🟢 resuelto en 0.117.2** · detectado en 0.117.1 · prioridad **media**: no viaja en el paquete —es herramienta de este
 repositorio—, pero deja pasar justo el error que el guard existe para frenar. Las lecturas salen con la identidad
 equivocada sin avisar, y la escritura falla recién en GitHub.
 
@@ -103,8 +104,8 @@ pero ese caso trata de otra cosa.
 
 ## Cierre
 
-Arreglado en la rama `fix/gh-identity-empty-token-461`. No viaja en el paquete (`.claude/` no está en `files`), así que
-no lleva entrada de CHANGELOG.
+**Resuelto en 0.117.2.** No viaja en el paquete (`.claude/` no está en `files`), así que no lleva entrada de CHANGELOG.
+Se mergeó antes de que saliera 0.117.2, que era la versión abierta (la del caso 459), y por eso queda en ella.
 
 - **1. Valor vacío.** Se hizo: `carriesToken` (`.claude/hooks/gh-identity.js`) rechaza `GH_TOKEN=` y `GH_TOKEN=""`.
 - **2. Referencia sin el `.env` cargado antes.** Se hizo: `"$X"` o `${X}` pasan sólo si un `. ./.env`, `. .env` o
