@@ -49,16 +49,13 @@ diseño — eso vive en el commit y en el código.
   ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal. Una ruta con espacios
   se lee entera sólo con `git` como primera palabra del comando. También se reconocen `--no-advice`, `--no-lazy-fetch` y
   `--attr-source`, que escondían el verbo.
-
 - **Un guard que falla frena en vez de dejar pasar** (caso 467). Salía con 1, que Claude Code no toma como freno. Ahora
   sale con 2 y nombra el guard. Si un guard tiene un defecto, frena la sesión hasta arreglarlo. `stop` y los del mensaje
   de la persona siguen sin frenar.
-
 - **Un guard del proyecto puede avisar sin frenar** (caso 466). Saliendo en 0, lo que escribe por stderr le llega a la
   sesión, recortado a 2000 caracteres. **Si un guard tuyo usa stderr para depurar, ahora eso lo lee la sesión.** En
   Antigravity llega antes del turno siguiente, con un hook nuevo: reinstalá el runner. En Gemini le llega a la persona y no
   al agente, porque no tiene otro canal.
-
 - **Un `git worktree` de la instancia responde como la instancia** (caso 465). `plan-first` ya no le pide plan a lo que la
   instancia posee en ese árbol, y `ops-config` sí frena la llave de push en su `ops.config.json`.
 
