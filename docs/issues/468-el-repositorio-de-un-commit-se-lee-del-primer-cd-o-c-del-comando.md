@@ -76,6 +76,7 @@ Caso 464 (la ruta entrecomillada), caso 261 (el destino de un `cd` por variable)
 - **`(cd "/o" && git commit)`.** Le tocaba a otro: caso 473.
 - **Tradeoff, cinco lugares usan `gitDirectory`.** Se recorrieron por `test/hooks`, y por el barrido de abajo.
 - **Tradeoff, un `cd` condicional.** Sigue en el primero, como antes.
+- **Prioridad, «sube a alta si aparece en los diarios».** La condición sigue en pie para lo que no se arregló: pasó al 473 con su medición.
 
 ### Lista de cierre
 
@@ -85,8 +86,8 @@ Caso 464 (la ruta entrecomillada), caso 261 (el destino de un `cd` por variable)
 4. hecho: mutaciones de esta versión en una copia, todas en rojo: lo posterior siempre se ignora, lo posterior siempre cuenta, un `git` entre comillas después, escapes que separan el `cd`, commit sin tapar, ruta y `cd` sin `shellWord`.
 5. hecho: 135 905 comandos generados contra el motor de `6ab83bcd`, con esta versión. Los 31 585 que difieren corrieron por `run.js`: de exit 2 a 0 hay 6870, y en ninguno el verbo queda como subcomando.
 6. hecho: sesión real de `claude -p`: `git -C W/app commit -m x && cd /tmp` se frenó sin crear commit, con el motor de la pasada anterior.
-7. hecho: Claude Code 2.1.316.
-8. hecho: con el motor final, por el hook instalado: exit 2. Repetida en sesión, el modelo se negó a correr el comando, así que no midió el guard. Sin correr: los demás runners, que usan esta misma lectura del motor.
+7. hecho: Claude Code 2.1.316. Gemini CLI 0.63.0 y `agy` 1.4.12, en sesiones reales con el motor final: `git -C W/app commit -m x && cd /tmp` se frenó en los dos por `live-commit`.
+8. hecho: con el motor final en Gemini y `agy`, y por el hook instalado de Claude: exit 2. Repetida en sesión de Claude, el modelo se negó a correr ese comando. Sin correr: Codex, por decisión.
 9. no aplica: lee un comando; no coordina nada.
 10. hecho: `approval.js`, `ai-signature.js`, `live-commit.js`, `shell.js`, `stagedForCommit`.
 11. hecho: diez pasadas junto con el 469. Las seis primeras hallaron regresiones, y las dos siguientes, sobre 4196 y 2481 formas, nada que impida en los guards. Sus últimas formas, `git -c user.name="A B" reset --hard` y parecidas, llevaron a leer el valor de `-c` entero salvo que pueda ejecutar algo, y ese cambio tuvo su pasada final.

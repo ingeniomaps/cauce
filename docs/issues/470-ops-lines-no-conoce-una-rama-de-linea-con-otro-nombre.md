@@ -18,10 +18,10 @@ mal puesto, y el conteo contra la rama viva desaparece.
 
 ## Síntoma
 
-Salida real, en una instancia con la línea `mini` en la rama `line/manuel-mini` (2026-10-31):
+Salida real, en una instancia con la línea `mini` en la rama `line/persona-mini` (2026-10-31):
 
 ```
-(line/mini)  el árbol está en line/manuel-mini, no en line/mini  sin rama viva contra qué contar
+(line/mini)  el árbol está en line/persona-mini, no en line/mini  sin rama viva contra qué contar
 ```
 
 ## Causa raíz

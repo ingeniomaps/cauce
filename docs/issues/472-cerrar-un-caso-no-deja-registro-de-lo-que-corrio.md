@@ -52,8 +52,8 @@ Caso 464.
 
 **Se decidió no construirlo**, porque el daño que lo motivó no puede llegar a ningún lado.
 
-- **La línea falsa del punto 13.** Fue texto y nada más: `npm run ci` en rojo no dejó commitear ni el código ni esa línea. `verify` corre la puerta sobre lo que se commitea, y `npm run ci` corre además en `.github/workflows/ci.yml:57`, que el ruleset exige.
-- **Medido:** `node --test test/hooks/known-red.test.js` comprueba que un commit con la suite en rojo se frena. Y en la tanda del 464 ningún commit salió con la puerta en rojo: los siete pasaron por `verify` con la línea ya verdadera.
+- **La línea falsa del punto 13.** Fue texto y nada más. Lo que puede estar en rojo tiene quien lo frene, en dos lugares distintos: `verify` corre `test`, `lint`, `typecheck` y `build` sobre lo que se commitea (`engine/hooks/verify.js`), y lo que agrega `npm run ci` —`check`, `dead-code` y cobertura— lo corre `.github/workflows/ci.yml` en el PR, que el ruleset exige. O sea que una línea falsa sobre cobertura puede llegar a un commit local, y no a `main`.
+- **Medido:** `node --test test/hooks/known-red.test.js` comprueba que un commit con la suite en rojo se frena.
 - **Lo que el comando agregaría.** Una suma del árbol que hay que excluir de sí misma, y que cualquier commit posterior invalida. Paga por el único punto que ya tiene un mecanismo que lo sostiene.
 - **Los otros puntos.** «Seis pasadas» cuando eran ocho no lo habría atrapado: es lo que muestra este mismo caso, porque una revisión no deja rastro que un script compruebe.
 

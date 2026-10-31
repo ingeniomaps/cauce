@@ -46,7 +46,8 @@ diseño — eso vive en el commit y en el código.
 - **Un `git commit` con la ruta entre comillas ya no se saltea los guards** (caso 464). `git -C "$dir" commit`, `cd "$dir"
   && git commit` y `git -C "a b" commit` caían o no se reconocían como commit, y el commit salía sin `verify`,
   `governance` ni `dependencies`. Ahora esos commits se juzgan: **algunos que pasaban van a empezar a frenarse.** Si la
-  ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal. Una ruta con espacios
+  ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal, salvo que lleve
+  además un espacio, que todavía no se lee. Una ruta con espacios
   se lee entera sólo con `git` como primera palabra de un comando simple. `git -c user.name="A B" push -f` ya no esconde el verbo. También se reconocen `--no-advice`, `--no-lazy-fetch` y
   `--attr-source`, que escondían el verbo.
 - **Un guard que falla frena en vez de dejar pasar** (caso 467). Salía con 1, que Claude Code no toma como freno. Ahora

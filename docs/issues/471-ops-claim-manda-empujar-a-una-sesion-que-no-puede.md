@@ -47,17 +47,17 @@ Una instancia que lanza programadores con `CAUCE_DELEGATED=1`, en varias corrida
   - sin `CAUCE_DELEGATED`: `commiteá y empujá claims/t1.md…` y `export CAUCE_RUNNER=a`;
   - con `CAUCE_DELEGATED=1`: sólo `export CAUCE_RUNNER=b`.
 - **Callarlo también sin permiso de push.** Se decidió que no: `ops claim` lo corre también una persona, y `runner.allowPush` en falso es lo normal. Ahí el consejo sigue siendo cierto, porque empuja ella.
-- **Si otro flujo depende del texto.** Se buscó: sólo `test/planning/claims.test.js` lo lee.
+- **Si otro flujo depende del texto.** Se buscó: sólo lo leen las pruebas, `test/planning/claims.test.js` y `claims-delegated.test.js`.
 
 ### Lista de cierre
 
 1. hecho: la salida del comando antes del cambio, en ese test.
 2. hecho: `fix/guards-464-467`.
-3. hecho: `test/planning/claims.test.js`, vista en rojo.
+3. hecho: `test/planning/claims-delegated.test.js`, vista en rojo con el consejo de vuelta.
 4. hecho: consejo siempre y consejo nunca, las dos en rojo.
 5. hecho: las dos salidas de arriba, lado a lado; la aserción de ausencia es la que se vio en rojo.
-6. hecho: `ops claim` en un banco.
-7. no aplica: es un comando del motor.
+6. hecho: `ops claim` en un banco, y en una sesión real de `claude -p` con `CAUCE_DELEGATED=1`: salió `tarea-medida tomada` y `export CAUCE_RUNNER=…`, sin el consejo de empujar.
+7. hecho: la sesión de arriba.
 8. hecho: corrieron las dos ramas.
 9. no aplica: no coordina nada nuevo.
 10. hecho: el `grep` de arriba.
@@ -68,4 +68,4 @@ Una instancia que lanza programadores con `CAUCE_DELEGATED=1`, en varias corrida
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
 
-**Sin probar:** una sesión delegada real; `CAUCE_DELEGATED` lo exporta quien la lanza.
+**Sin probar:** nada.

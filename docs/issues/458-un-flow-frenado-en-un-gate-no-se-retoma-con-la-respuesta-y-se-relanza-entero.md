@@ -282,7 +282,7 @@ decida es el uso previsto del recorrido.
   aviso en el log si la retoma es de otro día. Un cambio en `organization/` sigue sin verse, como decía el caso.
 - **Tradeoff, copia por agente.** Se hizo con la suma (punto 1).
 - **Tradeoff, tamaño.** La decisión de qué reutilizar y el bloque de respuestas van en el include. `flow.js` creció
-  igual, de 575 a 635 líneas, dentro de la razón que ya tiene registrada en `test/repo/repo.test.js`.
+  igual, de 575 a 653 líneas, dentro de la razón que ya tiene registrada en `test/repo/repo.test.js`.
 - **Tradeoff, `flow-eval` no se mueve.** Se sostiene con la comparación de la aceptación 1: sus casos no usan
   `resume`, y sus prompts son los de antes.
 - **Prioridad, «sube a alta si se paga más de una vez al mes».** Quedó sin objeto: retomar ya no paga lo que cerró.

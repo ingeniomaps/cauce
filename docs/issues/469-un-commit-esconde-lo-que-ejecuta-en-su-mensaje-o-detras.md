@@ -89,8 +89,8 @@ Encontrado y no previsto:
 4. hecho: mutaciones de esta versión en una copia, todas en rojo: lo posterior es mensaje, tubería a `sh` oculta, heredoc dentro de otra cadena, sin ancla, de punta a punta, delimitador sólo simple, sólo `-m` suelto, sin `--message`, mensaje siempre tapado, escape como sustitución, anidada sin mostrar, sustitución sin leer, herestring como heredoc, `-c` que ejecuta tomado entero. La que sobrevivió antes mostró una condición que sobraba, y se quitó.
 5. hecho: el barrido del 468, 135 905 comandos, y los 15 000 de mensajes reales, contra `6ab83bcd` y con esta versión.
 6. hecho: sesiones reales. Se frenaron la orden dentro del mensaje y la orden después del commit, cada una en una corrida; en la otra el modelo se negó a correrla, y eso no mide el guard. El mensaje que cita verbos pasó en una rama de trabajo, en las dos.
-7. hecho: Claude Code 2.1.316.
-8. hecho: con el motor final, las dos órdenes por el hook instalado: exit 2. Sin correr: los demás runners.
+7. hecho: Claude Code 2.1.316. Gemini CLI 0.63.0 y `agy` 1.4.12, en sesiones reales con el motor final: la orden dentro del mensaje y `git -c user.name="A B" push -f` después de un commit se frenaron en los dos, y en Claude la segunda también. En `agy` pasó el mensaje que cita verbos. En Gemini ese mismo mensaje lo dejó pasar el hook, con el guard del proyecto corrido, y lo negó su propia política de `--allowed-tools`.
+8. hecho: repetida con el motor final en los tres runners. Sin correr: Codex, por decisión.
 9. no aplica: lee un comando; no coordina nada.
 10. hecho: quienes leen `asRun` en `shell.js` y `workers.js`, ejercidos por `test/hooks`.
 11. hecho: diez pasadas junto con el 468. Las dos anteriores a los últimos cambios, sobre 4196 y 2481 formas, no hallaron nada que impida en los guards, Sus últimas formas, `git -c user.name="A B" reset --hard` y parecidas, llevaron a leer el valor de `-c` entero salvo que pueda ejecutar algo, y ese cambio tuvo su pasada final.

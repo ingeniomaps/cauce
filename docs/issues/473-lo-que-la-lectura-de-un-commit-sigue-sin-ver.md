@@ -16,7 +16,7 @@ Los guards leen un comando con expresiones y un lector de opciones. Cuál `cd` c
 
 ## Síntoma
 
-Se le pregunta a `run.js pre-shell` en una rama de trabajo, sin ejecutar nada. Salida real, 2026-10-31, corrida fila por fila: exit 0 con el motor anterior y con éste. En la rama viva las que commitean frenan por `live-commit`.
+Se le pregunta a `run.js pre-shell` en una rama de trabajo, sin ejecutar nada. Salida real, 2026-10-31, corrida fila por fila: exit 0 con el motor anterior y con éste. En la rama viva también pasan las que leen otro repositorio —`cd /etc; cd R`, `echo git -C /etc`, `git -C /etc status`—, porque los guards se abstienen; las otras frenan por `live-commit`.
 
 | Comando | Por qué pasa |
 |---|---|
