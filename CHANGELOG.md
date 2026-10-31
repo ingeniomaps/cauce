@@ -58,6 +58,8 @@ diseño — eso vive en el commit y en el código.
   al agente, porque no tiene otro canal.
 - **Un `git worktree` de la instancia responde como la instancia** (caso 465). `plan-first` ya no le pide plan a lo que la
   instancia posee en ese árbol, y `ops-config` sí frena la llave de push en su `ops.config.json`.
+- **`ops claim` ya no le ordena empujar a una sesión delegada** (caso 471). Con `CAUCE_DELEGATED=1` calla ese consejo,
+  y lo publica quien la lanzó.
 
 ### Cambiado
 
