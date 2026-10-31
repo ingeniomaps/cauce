@@ -70,6 +70,14 @@ test('reconocer el worktree no abre el límite de raíces', () => {
   blocked('workspace-boundary', writes(at, path.join(at.tree, 'planning', 'n.md')), /fuera de las raíces/)
 })
 
+test('en embedded con una raíz que contiene al worktree, sólo se exime lo que la instancia posee', () => {
+  const at = sidecar('cauce-wt-embebido-raiz-', WIP_IDLE, 'embedded')
+  const roots = [{ name: 'main', path: '..' }]
+  fs.writeFileSync(path.join(at.root, 'ops.config.json'), JSON.stringify({ ...at.config, workspaceRoots: roots }))
+  assert.doesNotThrow(() => execute('plan-first', writes(at, path.join(at.tree, 'planning', 'n.md'))))
+  blocked('plan-first', writes(at, path.join(at.tree, 'src', 'x.js')), /sin plan/)
+})
+
 test('instanceTreeOf reconoce el árbol aunque el archivo todavía no exista, y no responde dentro de la raíz', () => {
   const at = sidecar('cauce-wt-arbol-')
   assert.equal(instanceTreeOf(at.root, path.join(at.tree, 'a', 'b', 'c.md')), at.tree)

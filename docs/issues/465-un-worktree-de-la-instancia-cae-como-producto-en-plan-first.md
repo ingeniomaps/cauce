@@ -93,7 +93,7 @@ Caso 394 (la línea en cuyo árbol cae un archivo), caso 260 (el plan con el id 
 - **`ops-config` no veía la llave.** Se hizo. `ops-wt/ops.config.json` con `allowPush: true`: por el shim real da exit 2 sin WIP, y con WIP lo cubre la prueba, que antes pasaba en 0. Por shell, igual.
 - **Recorrer los demás guards.** Se hizo. En `generated`, `secrets`, `integration-snapshot`, `migrations` y `engine`, la revisión independiente no encontró asimetría sobre seis rutas. Un `.ops-approval` en el worktree no se lee: el motor lee sólo el de la raíz.
 - **Tradeoff, costo.** Medido por la revisión: unos 4 ms por llamada, sólo con la ruta fuera de la raíz.
-- **Tradeoff, embedded.** Comprobado: el límite de raíces sigue frenando ese worktree. Es lo que dice la prueba «reconocer el worktree no abre el límite de raíces».
+- **Tradeoff, embedded.** Contestado con dos pruebas de `test/hooks/instance-worktree.test.js`: con la raíz `.`, el worktree queda fuera de las raíces y lo frena `workspace-boundary`; con una raíz que lo contiene, su `planning/` se exime y `src/x.js` sigue pidiendo plan.
 - **Tradeoff, carpeta ajena con `planning/`.** Se hizo, con prueba: sigue frenando.
 - **Prioridad, baja.** Queda sin objeto.
 
@@ -111,9 +111,9 @@ Encontrado y no previsto, por las dos revisiones:
 3. hecho: `test/hooks/instance-worktree.test.js`, vista en rojo.
 4. hecho: mutaciones en una copia, cada una en rojo. La que sobrevivió mostró que una condición sobraba, y se quitó.
 5. hecho: las filas de `plan-first` antes y después por el shim, y la aserción de que el producto y una carpeta ajena siguen frenando.
-6. hecho: shim instalado en un banco con worktree real, repetido con el motor final.
-7. no aplica: la decisión es del motor; no depende de un modelo.
-8. hecho: corrieron `plan-first` y `ops-config` por el shim. Sin correr: un recorrido real, por lo que dice la línea de abajo, y el modo embedded con un worktree que `plan-first` declare producto.
+6. hecho: shim instalado en un banco con worktree real, y una sesión de `claude -p` con `CAUCE_DELEGATED=1`, para que su mensaje no cuente como pedido de la persona: la nota en `ops-wt/planning/reports/` se creó, y `app/nota.js` se frenó con «cambia el producto sin plan».
+7. hecho: la decisión es del motor, y se vio en una sesión real de Claude Code.
+8. hecho: corrieron `plan-first` y `ops-config` por el shim, y `plan-first` en sesión. Embedded, por prueba y no en sesión. Sin correr: un `autobuild` entero, que llama al mismo guard.
 9. hecho: dos árboles, dos ramas, un repositorio ajeno y un worktree dentro de la raíz.
 10. hecho: se recorrieron `generated`, `secrets`, `integration-snapshot`, `migrations` y `engine`, y `.ops-approval`.
 11. hecho: dos pasadas sobre este código. Hallaron los enlaces y el filtro por nombre, ya arreglados; la última no halló nada que impida.
@@ -123,7 +123,4 @@ Encontrado y no previsto, por las dos revisiones:
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
 
-**Sin probar:** esta rama en una sesión de agente. Se intentó, y no mide: `plan-first` exime lo que la persona pide en el chat
-(caso 098), así que en una sesión de `claude -p` también pasó un archivo de `app/`, sin plan y sin que el pedido nombrara la ruta.
-Sólo actúa dentro de un recorrido, y correr un `autobuild` real para esto cuesta unos USD 7. Se midió por el shim instalado, que es
-el mismo código que el recorrido llama. Con un worktree sin `ops.config.json` (`--orphan`), crear el archivo frena con un error de lectura: es el lado que frena, y no se corrigió.
+**Sin probar:** un `autobuild` entero, y embedded en una sesión real; la sesión delegada ejerce el mismo guard por el mismo camino.
