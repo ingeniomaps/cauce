@@ -59,6 +59,9 @@ diseño — eso vive en el commit y en el código.
   Antigravity llega antes del turno siguiente, con un hook nuevo: reinstalá el runner. En Gemini le llega a la persona y no
   al agente, porque no tiene otro canal.
 
+- **Un `git worktree` de la instancia responde como la instancia** (caso 465). `plan-first` ya no le pide plan a lo que la
+  instancia posee en ese árbol, y `ops-config` sí frena la llave de push en su `ops.config.json`.
+
 ### Cambiado
 
 - **El gate de `plan` en `product-development` ya no frena por una validación que la corrida no puede tener**

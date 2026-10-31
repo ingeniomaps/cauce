@@ -309,6 +309,11 @@
     "branches": 84,
     "functions": 100
   },
+  "engine/hooks/instance-tree.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/hooks/jira.js": {
     "lines": 100,
     "branches": 80,

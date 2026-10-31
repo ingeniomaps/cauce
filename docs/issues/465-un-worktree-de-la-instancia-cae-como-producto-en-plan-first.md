@@ -1,14 +1,15 @@
 ---
 caso: 465
 titulo: Un worktree de la instancia dentro de una raíz de producto no se reconoce como instancia
-estado: abierto
+estado: resuelto
+resuelto-en: 0.118.0
 prioridad: baja
 version-detectada: 0.117.2
 ---
 
 # 465 — Un worktree de la instancia cae como producto en plan-first
 
-**🔴 abierto** · detectado en 0.117.2 · prioridad **baja**: sólo se da en sidecar con una raíz que contenga al worktree, como
+**🟢 resuelto en 0.118.0** · detectado en 0.117.2 · prioridad **baja**: sólo se da en sidecar con una raíz que contenga al worktree, como
 `..`, y la salida existe: un WIP con plan. Sube a media si el reconocimiento del worktree se vuelve el camino habitual para
 mejorar el proceso, porque ahí también importa la llave de `ops.config.json` de abajo.
 
@@ -83,3 +84,46 @@ propios. Esa misma rama registró ediciones por terminal, que este guard no ve.
 ## Relacionados
 
 Caso 394 (la línea en cuyo árbol cae un archivo), caso 260 (el plan con el id de la instancia).
+
+## Cierre
+
+**Resuelto en 0.118.0**, con el reconocimiento en `engine/hooks/instance-tree.js`: mismo `git-common-dir` que la raíz, y otra raíz de árbol.
+
+- **`plan-first` frenaba de más.** Se hizo. Por el shim real, sin WIP: `ops-wt/planning/reports/n.md` y `ops-wt/automatization/bin/n.js` pasaron de exit 2 a 0. `app/x.js` sigue en 2.
+- **`ops-config` no veía la llave.** Se hizo. `ops-wt/ops.config.json` con `allowPush: true`: por el shim real da exit 2 sin WIP, y con WIP lo cubre la prueba, que antes pasaba en 0. Por shell, igual.
+- **Recorrer los demás guards.** Se hizo. En `generated`, `secrets`, `integration-snapshot`, `migrations` y `engine`, la revisión independiente no encontró asimetría sobre seis rutas. Un `.ops-approval` en el worktree no se lee: el motor lee sólo el de la raíz.
+- **Tradeoff, costo.** Medido por la revisión: unos 4 ms por llamada, sólo con la ruta fuera de la raíz.
+- **Tradeoff, embedded.** Comprobado: el límite de raíces sigue frenando ese worktree. Es lo que dice la prueba «reconocer el worktree no abre el límite de raíces».
+- **Tradeoff, carpeta ajena con `planning/`.** Se hizo, con prueba: sigue frenando.
+- **Prioridad, baja.** Queda sin objeto.
+
+Las mutaciones, en una copia, cada una en rojo: cualquier repo es la instancia, no reconocer, todo el worktree exento, no mirar worktrees, sin resolver enlaces, sin mirar adentro.
+
+Encontrado y no previsto, por las dos revisiones:
+
+- **Por un enlace se salteaba la llave**: `lnk → ops-wt`, y un `alias.json` hacia el archivo. Se arregló, y un worktree dentro de la raíz también.
+- **Filtrar por nombre daba otra asimetría**: `test/fix/ops.config.json` frenaba en el worktree y no en el principal. Se quitó.
+
+### Lista de cierre
+
+1. hecho: la tabla de ocho filas de este caso, medida en un banco antes de tocar el código.
+2. hecho: `fix/guards-464-467`.
+3. hecho: `test/hooks/instance-worktree.test.js`, vista en rojo.
+4. hecho: mutaciones en una copia, cada una en rojo. La que sobrevivió mostró que una condición sobraba, y se quitó.
+5. hecho: las filas de `plan-first` antes y después por el shim, y la aserción de que el producto y una carpeta ajena siguen frenando.
+6. hecho: shim instalado en un banco con worktree real, repetido con el motor final.
+7. no aplica: la decisión es del motor; no depende de un modelo.
+8. hecho: corrieron `plan-first` y `ops-config` por el shim. Sin correr: un recorrido real, por lo que dice la línea de abajo, y el modo embedded con un worktree que `plan-first` declare producto.
+9. hecho: dos árboles, dos ramas, un repositorio ajeno y un worktree dentro de la raíz.
+10. hecho: se recorrieron `generated`, `secrets`, `integration-snapshot`, `migrations` y `engine`, y `.ops-approval`.
+11. hecho: dos pasadas sobre este código. Hallaron los enlaces y el filtro por nombre, ya arreglados; la última no halló nada que impida.
+12. hecho: pasada uno por uno.
+13. hecho: `npm run ci` en exit 0.
+14. hecho: arriba, contra el caso entero.
+15. hecho: arriba y la línea de abajo.
+16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
+
+**Sin probar:** esta rama en una sesión de agente. Se intentó, y no mide: `plan-first` exime lo que la persona pide en el chat
+(caso 098), así que en una sesión de `claude -p` también pasó un archivo de `app/`, sin plan y sin que el pedido nombrara la ruta.
+Sólo actúa dentro de un recorrido, y correr un `autobuild` real para esto cuesta unos USD 7. Se midió por el shim instalado, que es
+el mismo código que el recorrido llama. Con un worktree sin `ops.config.json` (`--orphan`), crear el archivo frena con un error de lectura: es el lado que frena, y no se corrigió.
