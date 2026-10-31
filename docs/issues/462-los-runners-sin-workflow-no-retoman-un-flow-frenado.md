@@ -1,14 +1,15 @@
 ---
 caso: 462
 titulo: Los runners que corren /flow por instrucciones y no por workflow no tienen cómo retomar un recorrido frenado en un gate
-estado: abierto
+estado: aplazado
+reabrir-si: una instancia cuenta un recorrido de Codex, Gemini o Antigravity relanzado entero después de contestar un gate en otra sesión
 prioridad: baja
 version-detectada: 0.118.0
 ---
 
 # 462 — Los runners sin workflow no retoman un flow frenado
 
-**🔴 abierto** · detectado en 0.118.0 · prioridad **baja**: es la misma pérdida que el 458 arregló para Claude Code
+**⏸ aplazado** · detectado en 0.118.0 · prioridad **baja**: es la misma pérdida que el 458 arregló para Claude Code
 —relanzar paga otra vez lo que ya cerró—, pero en runners donde el recorrido corre dentro de una sola conversación,
 y ahí casi siempre la persona contesta en la misma sesión, que sigue sola. Sube a media el día que una instancia
 cuente un recorrido de Codex, Gemini o Antigravity relanzado entero después de contestar un gate en otra sesión.
@@ -79,3 +80,7 @@ Al cerrar el 458, recorriendo qué runners reciben `flow`.
 ## Relacionados
 
 - 458 — la retoma en el workflow de Claude Code, de donde sale el motor que este caso reusaría.
+
+## Aplazado
+
+Decidido el 2026-10-31. Agrega texto que esos runners cargan en cada sesión, y una variante de `ops flow resume save` que protege menos que la de Claude Code, para un caso que nadie contó todavía. La condición para reabrirlo es la que este mismo caso escribió para subir de prioridad.

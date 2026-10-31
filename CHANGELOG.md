@@ -47,7 +47,7 @@ diseño — eso vive en el commit y en el código.
   && git commit` y `git -C "a b" commit` caían o no se reconocían como commit, y el commit salía sin `verify`,
   `governance` ni `dependencies`. Ahora esos commits se juzgan: **algunos que pasaban van a empezar a frenarse.** Si la
   ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal. Una ruta con espacios
-  se lee entera sólo con `git` como primera palabra del comando. También se reconocen `--no-advice`, `--no-lazy-fetch` y
+  se lee entera sólo con `git` como primera palabra de un comando simple. `git -c user.name="A B" push -f` ya no esconde el verbo. También se reconocen `--no-advice`, `--no-lazy-fetch` y
   `--attr-source`, que escondían el verbo.
 - **Un guard que falla frena en vez de dejar pasar** (caso 467). Salía con 1, que Claude Code no toma como freno. Ahora
   sale con 2 y nombra el guard. Si un guard tiene un defecto, frena la sesión hasta arreglarlo. `stop` y los del mensaje
@@ -58,11 +58,13 @@ diseño — eso vive en el commit y en el código.
   al agente, porque no tiene otro canal.
 - **Un `git worktree` de la instancia responde como la instancia** (caso 465). `plan-first` ya no le pide plan a lo que la
   instancia posee en ese árbol, y `ops-config` sí frena la llave de push en su `ops.config.json`.
+
 - **`ops claim` ya no le ordena empujar a una sesión delegada** (caso 471). Con `CAUCE_DELEGATED=1` calla ese consejo,
   y lo publica quien la lanzó.
 - **`ops lines` dice qué hacer cuando no reconoce la rama viva** (caso 470). Un repositorio que vive en otra rama que
   `main` o `master`, sin `HEAD` en el remoto, se quedaba sin conteo y sin explicación: ahora nombra
   `git remote set-head <remoto> --auto`.
+
 - **Lo que un commit ejecuta ya no se esconde en su mensaje** (casos 468 y 469). `git commit -m "$(git push -f)"` y `git
   commit -m x; sh -c '…'` pasaban sin que ningún guard los viera, y `git commit -m x && cd /etc` se leía como de otro
   repositorio. Un mensaje que sólo cita comandos sigue pasando, también por `-m "$(cat <<'EOF' …)"`.

@@ -1,14 +1,14 @@
 ---
 caso: 472
 titulo: La lista de cierre de un caso se puede escribir sin haber corrido lo que afirma
-estado: abierto
+estado: descartado
 prioridad: media
 version-detectada: 0.117.2
 ---
 
 # 472 — La lista de cierre se puede escribir sin haber corrido lo que afirma
 
-**🔴 abierto** · detectado en 0.117.2 · prioridad **media**: no rompe nada del producto, porque `docs/issues/` no viaja en el paquete. Lo que cuesta es que el cierre se lea como verificado sin estarlo, y que la persona tenga que preguntar cada vez.
+**⚪ descartado** · detectado en 0.117.2 · prioridad **media**: no rompe nada del producto, porque `docs/issues/` no viaja en el paquete. Lo que cuesta es que el cierre se lea como verificado sin estarlo, y que la persona tenga que preguntar cada vez.
 
 ## Resumen
 
@@ -47,3 +47,14 @@ Lo que encontró defectos en esa tanda fue ejecutar: ocho revisiones independien
 ## Relacionados
 
 Caso 464.
+
+## Cierre
+
+**Se decidió no construirlo**, porque el daño que lo motivó no puede llegar a ningún lado.
+
+- **La línea falsa del punto 13.** Fue texto y nada más: `npm run ci` en rojo no dejó commitear ni el código ni esa línea. `verify` corre la puerta sobre lo que se commitea, y `npm run ci` corre además en `.github/workflows/ci.yml:57`, que el ruleset exige.
+- **Medido:** `node --test test/hooks/known-red.test.js` comprueba que un commit con la suite en rojo se frena. Y en la tanda del 464 ningún commit salió con la puerta en rojo: los siete pasaron por `verify` con la línea ya verdadera.
+- **Lo que el comando agregaría.** Una suma del árbol que hay que excluir de sí misma, y que cualquier commit posterior invalida. Paga por el único punto que ya tiene un mecanismo que lo sostiene.
+- **Los otros puntos.** «Seis pasadas» cuando eran ocho no lo habría atrapado: es lo que muestra este mismo caso, porque una revisión no deja rastro que un script compruebe.
+
+Queda lo que sí sirve: la lista por escrito, y que `AGENTS.md` pida repetir una prueba real después del último cambio.

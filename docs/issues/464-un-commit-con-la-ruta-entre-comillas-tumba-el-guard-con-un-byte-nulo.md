@@ -118,7 +118,7 @@ todavía no conoce).
   - `git -C 'R' commit`, `cd "R" && git commit` y `git -c "a=b" -C "R" commit`: igual.
   - `git commit -m "cd /otro && git -C /otro commit"`: exit 2 antes y después, leyendo el cwd.
 - **El prototipo de este caso.** Se decidió que no. Se construyó primero con regex, y las revisiones le encontraron regresiones. `engine/hooks/git-globals.js` es un lector lineal, porque la regex tardaba 24,3 s con 26 `-C`.
-- **La ruta con espacios.** Se hizo, sólo con `git` como primera palabra del comando. Era peor de lo que este caso decía: `git -C "a b" commit` no se reconocía como commit. En otra posición se lee como antes, y eso es el caso 468: leerla ahí dejaba pasar lo que el shell vuelve a parsear.
+- **La ruta con espacios.** Se hizo, sólo con `git` como primera palabra de un comando simple. Era peor de lo que este caso decía: `git -C "a b" commit` no se reconocía como commit. En otra posición se lee como antes: leerla ahí dejaba pasar lo que el shell vuelve a parsear.
 - **La variable, `git -C "$PWD"`.** Se hizo: deja de lanzar. Sale exit 2, «no se pudo leer el índice… Si usaste una variable en `git -C`, escribí la ruta literal». No se expande, igual que sin comillas.
 - **Comentario falso de `gitDirectory`.** Se reemplazó.
 - **Tradeoff, el mensaje leído como orden.** Se probó: mensajes con `cd` y `-C` citados siguen leyendo el cwd.
@@ -128,7 +128,7 @@ todavía no conoce).
 Encontrado y no previsto:
 
 - **Lo que las revisiones hallaron en mis arreglos.** Pasaban de exit 2 a 0: `git -C "R"/. push --force`, `git -C "$(git push --force …)" status`, una continuación de línea, `git -C R;git commit`, `git -c alias.p='!git push --force' p`, `bash -c "git -C R …"`, `foo 'git -C ' ; git push -f ; foo ' x'`, `eval git -C 'x push -f'` y `eval true \; git -C 'x push -f'`. Todas tienen prueba y las 50 formas se compararon con el motor anterior: quedan iguales, salvo tres que pasan a frenar.
-- **Un valor entre comillas sólo se toma entero si adentro no hay nada que el shell interprete**, y con `git` como primera palabra. Es la regla que cerró esa serie.
+- **Un valor entre comillas sólo se toma entero si adentro no hay nada que el shell interprete**, y con `git` como primera palabra de un comando simple. Es la regla que cerró esa serie.
 - **`git --no-advice push -f` pasaba en los dos motores.** Se sumaron `--no-advice`, `--no-lazy-fetch` y `--attr-source`, comprobados con el binario local.
 - **`input.js` llegó a las 500 líneas.** La lectura de comillas salió a `engine/hooks/quoting.js`.
 - **Dos casos propios.** 468: se lee el primer `cd` o `-C` del comando. 469: un commit esconde lo que ejecuta adentro.
@@ -139,7 +139,7 @@ Comparación con el motor anterior, sin ejecutar nada, sobre 68 040 comandos gen
 
 1. hecho: tabla de nueve formas por `run.js`, guardada antes de tocar el código, con el rojo previo de cada una.
 2. hecho: `fix/guards-464-467`.
-3. hecho: `test/hooks/command-reading.test.js`, vista en rojo antes del arreglo.
+3. hecho: `test/hooks/git-command-reading.test.js`, vista en rojo antes del arreglo.
 4. hecho: mutaciones en una copia, todas en rojo: primera palabra siempre y nunca, asignación con separador, valor interpretado, `-c` como palabra, directorio fuera de la primera palabra, máscara siempre y nunca, `shellWord`. Las que sobrevivieron sumaron su caso o se quitó lo que sobraba.
 5. hecho: 50 formas lado a lado contra el motor de `91dbdc9e`.
 6. hecho: sesión real de `claude -p`: `git -C "W/app" commit -m x` y `git -C "W/mi carpeta" commit -m x` se frenaron sin crear commit. Antes, la primera creó `bdb7606`.
