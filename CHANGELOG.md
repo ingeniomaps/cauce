@@ -14,6 +14,45 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.118.0] - 2026-10-29
+
+### Agregado
+
+- **Un `/flow` que frena en un gate se retoma con la respuesta, sin volver a pagar lo que ya cerró** (caso 458).
+  - **Al frenar**, el recorrido deja `planning/reports/<fecha>-<recorrido>-retoma.json` con lo que cada etapa ya
+    estableció, y dice cómo retomar.
+  - **Cómo se retoma**: `/flow {"flow": "<recorrido>", "resume": "<esa ruta>", "answers": "<lo que contestó la
+    persona>"}`.
+  - **Qué corre**: las etapas que cerraron salen del archivo. La que frenó vuelve a correr con las respuestas y con
+    su análisis anterior.
+  - **Si una respuesta invalida una etapa cerrada**, sumá `"rerun": ["<etapa>"]`: se relanzan esa etapa y las que
+    dependen de ella.
+  - **Retomas que no corresponden**: una de otro recorrido, otra intención u otras etapas se rechaza diciendo qué
+    difiere. Una que alguien editó a mano se rechaza también.
+  - **Antes**, la única salida era relanzar el recorrido entero, y las respuestas pasadas aparte se ignoraban sin
+    aviso. Ahora `answers` sin `resume` frena y lo dice.
+  - **Lo que contestó la persona cierra su acción humana**: si con la respuesta el gate se cumple, la fila que ese
+    gate había abierto en `planning/human/` pasa a `resuelta`.
+  - **Comando nuevo**: `ops flow resume save|show <archivo> [ops-root]` sella y lee el archivo, y es lo que corre el
+    recorrido. No hace falta usarlo a mano.
+
+### Corregido
+
+- **`/flow {...}` con argumentos estructurados ya no se lee como intención cuando llegan como texto** (caso 458).
+  Una sesión puede pasar el JSON como cadena, y `flow` lo tomaba entero por la intención y corría el recorrido por
+  defecto desde cero. Ahora un texto que es un objeto JSON se lee como argumentos; cualquier otro sigue siendo la
+  intención.
+
+### Cambiado
+
+- **El gate de `plan` en `product-development` ya no frena por una validación que la corrida no puede tener**
+  (caso 460). Pedía que los dueños hubieran validado el plan que esa misma etapa acababa de escribir, así que frenaba
+  siempre, y relanzar con las respuestas producía otro plan sin validar. Ahora exige estimaciones, dependencias y
+  criterios de integración explícitos, y la capacidad declarada por escrito por quien la tiene, con horas y duración:
+  sin eso sigue frenando, por chico que sea el plan. La
+  validación de los dueños que falte queda como condición, con quién la da, en `planning/human/`. Promover la épica
+  sigue siendo la firma humana.
+
 ## [0.117.2] - 2026-10-28
 
 ### Corregido

@@ -269,6 +269,11 @@
     "branches": 53,
     "functions": 100
   },
+  "engine/flows/resume.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
+  },
   "engine/hooks/approval.js": {
     "lines": 100,
     "branches": 100,

@@ -206,7 +206,9 @@ test('flow no deja pasar una opinión del modelo como evidencia', () => {
 })
 
 test('flow acepta la intención suelta, con prefijo de equipo o estructurada', () => {
-  const block = flowWorkflow.match(/const input = [\s\S]*?const INTENT = [^\n]*\n/)[0].replace(/\bconst /g, 'var ')
+  const parse = flowWorkflow.match(/const ARGS = [\s\S]*?\n\}\)\(\)\n/)[0]
+  const block = `${parse}${flowWorkflow.match(/const input = [\s\S]*?const INTENT = [^\n]*\n/)[0]}`
+    .replace(/\bconst /g, 'var ')
   const resolve = new Function('args', `${block} return { CANDIDATE, INTENT, raw }`)
 
   // Sin prefijo, todo el texto es la intención.
@@ -224,6 +226,10 @@ test('flow acepta la intención suelta, con prefijo de equipo o estructurada', (
   assert.equal(structured.CANDIDATE, 'acme-soporte')
   assert.equal(structured.INTENT, 'algo: con dos puntos')
   assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
+  // Los mismos argumentos como texto JSON son argumentos, no la intención (caso 458).
+  const asText = resolve(JSON.stringify({ intent: 'algo', flow: 'acme-soporte' }))
+  assert.equal(asText.CANDIDATE, 'acme-soporte')
+  assert.equal(asText.INTENT, 'algo')
 })
 
 test('flow declara qué deja cada recorrido y ramifica según eso', () => {

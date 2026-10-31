@@ -191,7 +191,7 @@ test('la evaluación de un recorrido lo ejecuta en vez de imitarlo', () => {
 // para medirse. Necesita trabajar sobre el banco, y eso exige que sepa correr en otra raíz.
 test('un recorrido puede correr sobre la raíz que se le nombra', () => {
   const flow = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
-  assert.match(flow, /const WORKDIR = String\(\(typeof args === 'string' \? '' : \(args \|\| \{\}\)\.root\)/)
+  assert.match(flow, /const WORKDIR = String\(\(typeof ARGS === 'string' \? '' : \(ARGS \|\| \{\}\)\.root\)/)
   assert.match(flow, /const P = `\$\{WORKDIR\}\/planning`/, 'y escribe ahí, no en la raíz de invocación')
   assert.equal(/\$\{ROOT\}/.test(flow), false, 'ninguna ruta quedó atada a la raíz de invocación')
 })
