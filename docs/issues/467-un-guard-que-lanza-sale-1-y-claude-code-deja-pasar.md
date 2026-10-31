@@ -1,14 +1,15 @@
 ---
 caso: 467
 titulo: Un guard que lanza un error inesperado sale con 1, y Claude Code deja correr la herramienta
-estado: abierto
+estado: resuelto
+resuelto-en: 0.118.0
 prioridad: alta
 version-detectada: 0.117.2
 ---
 
 # 467 — Un guard que lanza sale 1, y Claude Code deja pasar
 
-**🔴 abierto** · detectado en 0.117.2 · prioridad **alta**: un defecto cualquiera dentro de un guard apaga todos los que siguen
+**🟢 resuelto en 0.118.0** · detectado en 0.117.2 · prioridad **alta**: un defecto cualquiera dentro de un guard apaga todos los que siguen
 en ese evento, sin frenar nada. Se vio en una sesión real de Claude Code: un commit salió en la rama viva sin pasar por los guards.
 
 ## Resumen
@@ -86,3 +87,42 @@ Al revisar el 464, que decía «falla cerrado» mirando sólo el puente de Antig
 ## Relacionados
 
 Caso 464 (el error que hoy lo dispara), caso 428 (la misma salida, para los guards del proyecto).
+
+## Cierre
+
+**Resuelto en 0.118.0.**
+
+- **Salir con 2 ante un error inesperado.** Se hizo con `exitCodeOf` (`engine/hooks/run.js`), cerrado por defecto: frena todo salvo lo declarado en `CANNOT_STOP`, también un guard que no existía al escribirlo.
+- **`stop` y `prompt` afuera.** Se hizo: `stop`, `planning-drift`, `prompt`, `chat`, `prompt-notice` y `rules-notice` siguen saliendo con 1, y escriben `ERROR:` en vez de `BLOQUEADO:`.
+- **El mensaje dice que el guard falló.** Se hizo: «el guard destructive falló sin llegar a juzgar: …». También con un error congelado o que no es un `Error`.
+- **`onFailure: block`.** Se decidió que no: sirve a un solo runner.
+- **Tradeoff, un guard roto frena toda la sesión.** Se midió en la sesión real de abajo, y el mensaje nombra el guard. Es la conducta que pide R27.
+- **Tradeoff, la prueba no puede depender del 464.** Se hizo: `test/hooks/guard-failure.test.js` dispara el error con un byte nulo en la ruta.
+- **Falta una sesión real.** Se hizo, en los dos sentidos, con Claude Code 2.1.316 y `claude -p --model haiku`, en un banco instalado:
+  - **Antes**, con el motor de 0.117.2: `git -C "R" commit -m x` creó el commit `bdb7606` en `master`.
+  - **Después**, con una copia del motor cuyo guard `destructive` lanza a propósito: «BLOQUEADO: el guard destructive falló sin llegar a juzgar: guard roto a propósito», y el comando no corrió.
+
+Encontrado y no previsto:
+
+- **El retorno nuevo de `executeAll` rompió la salida del caso 419.** Restaurar un `ops.config.json` ilegible pasaba de exit 0 a 2. Lo encontró la revisión, y tiene prueba propia.
+
+### Lista de cierre
+
+1. hecho: el commit `bdb7606` creado en `master` con el motor anterior, y `BLOQUEADO … args[1]` con exit 1.
+2. hecho: `fix/guards-464-467`.
+3. hecho: `test/hooks/guard-failure.test.js`, vista en rojo.
+4. hecho: mutaciones en una copia, cada una en rojo: exit 1, exit 2 siempre, sin nombrar el guard, mutar el error, sin nombres exento, `restoresConfig` sin valor.
+5. hecho: exit 1 antes y exit 2 después sobre el mismo comando, y las pruebas de que `stop` y `chat` no cambian.
+6. hecho: sesión real, con un guard roto a propósito en una copia del motor.
+7. hecho: Claude Code. Antigravity no pasa por esta salida.
+8. hecho: repetida con el motor final. Sin correr: Gemini y Codex con un guard que falla.
+9. no aplica: es una salida de un proceso; no coordina nada.
+10. hecho: quien dependía del retorno de `executeAll`: `restoresConfig` y el puente. El primero estaba roto y se arregló.
+11. hecho: tres pasadas tocaron `run.js`. La primera halló la salida rota, un error congelado y `run` sin nombres, ya arreglados; las siguientes no hallaron nada en este archivo.
+12. hecho: pasada uno por uno. Se quitó de la prueba la razón que ya está en `exitCodeOf`, y un `eslint-disable` en un repo sin linter.
+13. hecho: `npm run ci` en exit 0.
+14. hecho: arriba, contra el caso entero.
+15. hecho: arriba y la línea de abajo.
+16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
+
+**Sin probar:** qué hacen Gemini y Codex con un exit 2 de un guard que falló, que su documentación describe como bloqueo.

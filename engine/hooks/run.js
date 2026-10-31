@@ -287,7 +287,10 @@ function executeAll(names, input) {
     try {
       execute(name, input)
     } catch (error) {
-      if (!error.blocked || !CF.takeAsk(input)) throw error
+      if (!error || !error.blocked) {
+        throw new Error(`el guard ${name} falló sin llegar a juzgar: ${(error && error.message) || error}`)
+      }
+      if (!CF.takeAsk(input)) throw error
       asked.push(error.message)
     }
   }
@@ -307,19 +310,29 @@ function askOutput(message) {
     hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: message } })
 }
 
+// Un guard que falla no contestó, y lo que no contesta no autoriza (R27): Claude Code sólo frena con un 2. Se exime lo
+// que no puede frenar por un defecto propio: en `stop` ataría la sesión a no poder cerrar, y en `prompt` se tragaría el
+// mensaje de la persona (caso 467).
+const CANNOT_STOP = new Set(['prompt', 'prompt-notice', 'stop',
+  ...hookGroups.prompt, ...hookGroups['prompt-notice'], ...hookGroups.stop])
+const exitCodeOf = (names, error) => (
+  error.blocked || !names.length || !names.every((name) => CANNOT_STOP.has(name)) ? 2 : 1)
+
 // Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
 // sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
-  readInput().then((input) => executeAll(process.argv.slice(2), input)).catch((error) => {
+  const names = process.argv.slice(2)
+  readInput().then((input) => executeAll(names, input)).catch((error) => {
     if (error.ask) {
       process.stdout.write(askOutput(error.message))
       return
     }
-    console.error(`BLOQUEADO: ${error.message}`)
-    process.exit(error.blocked ? 2 : 1)
+    const code = exitCodeOf(names, error)
+    console.error(`${code === 2 ? 'BLOQUEADO' : 'ERROR'}: ${error.message}`)
+    process.exit(code)
   })
 }
 
 module.exports = {
-  execute, executeAll, guards, hookGroups, hookMetadata,
+  execute, executeAll, exitCodeOf, guards, hookGroups, hookMetadata,
 }

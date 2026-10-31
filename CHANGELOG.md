@@ -50,6 +50,10 @@ diseño — eso vive en el commit y en el código.
   se lee entera sólo con `git` como primera palabra del comando. También se reconocen `--no-advice`, `--no-lazy-fetch` y
   `--attr-source`, que escondían el verbo.
 
+- **Un guard que falla frena en vez de dejar pasar** (caso 467). Salía con 1, que Claude Code no toma como freno. Ahora
+  sale con 2 y nombra el guard. Si un guard tiene un defecto, frena la sesión hasta arreglarlo. `stop` y los del mensaje
+  de la persona siguen sin frenar.
+
 ### Cambiado
 
 - **El gate de `plan` en `product-development` ya no frena por una validación que la corrida no puede tener**
