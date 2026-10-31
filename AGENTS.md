@@ -343,6 +343,49 @@ no alcanzaba la divergencia que lo había originado y que el 089 mezclaba dos es
 de su reproducción; los dos se leían bien, y de ahí salieron tres casos nuevos. Arreglar sobre el
 diagnóstico sin correrlo habría cerrado lo que el caso decía, no lo que pasaba.
 
+## Revisar los casos
+
+Cuando la persona dice «revisá los casos», «revisá los nuevos» o «revisá este caso», se hace esto entero y sin que
+tenga que enumerarlo. Es el paso 1 del recorrido, aplicado a una tanda. **Revisar no es construir:** se corrige el
+`.md` en el lugar y no se crea rama, commit ni PR. Construir empieza cuando lo pide.
+
+El alcance, si no lo nombra: los que están `abierto` y los nuevos sin trackear. Los `aplazado` no se listan salvo que
+se cumpla su `reabrir-si`. Antes de reescribir se guarda el original en el scratchpad.
+
+Por cada caso, en orden:
+
+1. **Sanear.** Sin empresa, ruta, clave de ticket ni línea de una instancia, y el home se escribe `$HOME`, nunca como ruta absoluta.
+   `test/repo/foreign-names.test.js` mira sólo lo trackeado, así que un caso nuevo se contrasta a mano contra sus
+   hashes antes del primer commit.
+2. **Contrastar las citas.** Cada `archivo:línea` se abre en el fuente actual y se corrige.
+3. **Reproducir.** Con la salida real pegada, en un banco o con el arnés, sin gastar modelo si se puede. Si exige
+   agentes reales, se dice por qué y cuánto cuesta, y esa corrida se pregunta. Lo que no se reprodujo queda dicho así.
+4. **Comprobar lo que afirma**, no sólo su defecto. Lo escribió quien lo sufrió, y lo que suele fallar es un mecanismo
+   dado por cierto, un alcance mal medido o un tradeoff falso.
+5. **Probar el fix contra su propia reproducción.** Si lo que propone alcanza, si usa algo que existe y qué deja sin
+   nombrar.
+6. **Buscar quién depende de lo que toca.** Otros archivos y consumidores, y qué decisión de un caso anterior revierte.
+7. **Decidir si vale.** Si pasa de verdad, a quién le sirve, con qué alcance y cuánto cuesta. La prioridad se corrige
+   con esa razón. Un caso que no lo vale se propone descartar, con el dato que lo sostiene.
+8. **Nombrar riesgos y retrocesos.** Qué puede romper el arreglo y cómo se comprueba que no lo hizo, en «Tradeoffs».
+9. **Separar las decisiones.** Lo que cambia el producto o baja a las instancias se le pregunta a la persona, con una
+   recomendación. Lo demás se decide acá.
+
+Después, sobre la tanda:
+
+10. **Organizar.** Reportan lo que tocaron; organizar es de esta revisión. Se **une** lo que es el mismo defecto y pide
+    la misma decisión, y el número absorbido no se reusa. Compartir área o causa no alcanza (`docs/issues/README.md`,
+    «Uno por archivo»). Se **parte** lo que mezcla dos defectos, y lo descubierto al revisar sale como caso propio.
+11. **Ordenar el trabajo.** Prioridad y dependencias entre casos.
+12. **Entregar.** Primero lo que frena un commit; después una tabla por caso con si es real, si vale, qué hacer y el
+    riesgo de retroceso; lo que se corrigió de cada uno, con la evidencia; lo que no se pudo comprobar; las decisiones
+    pendientes; y el orden. Todo en la respuesta.
+
+Un caso que escribe esta misma sesión pasa por lo mismo, y sale ya con hechos, valor, riesgos y regresiones.
+
+Al construir un caso revisado, antes del primer cambio se escribe el plan y se guarda la línea de base: la salida
+actual sobre el mismo caso, incluido el rojo previo.
+
 ## Cerrar un caso de `docs/issues/`
 
 **Cerrar es un acto con su propio contraste, no la consecuencia de que el código esté listo.** Un caso
@@ -377,7 +420,8 @@ aparecía y no que lo viejo se hubiera ido— se cerró, se publicó y volvió c
 esa mitad no alcanza vive en R29; acá está sólo cuándo se aplica.
 
 `test/repo/issues.test.js` comprueba que la sección exista, que el estado del frontmatter coincida con el
-encabezado y —desde 0.75.0— que el cierre nombre su prueba. **No comprueba que el cierre sea honesto**, y
+encabezado, que `resuelto-en` no se adelante a la versión abierta, —desde 0.75.0— que el cierre nombre su prueba y
+—desde 0.118.0— que traiga su línea `**Sin probar:**`. **No comprueba que el cierre sea honesto**, y
 decirlo es parte de la puerta: una que se presenta como más fuerte de lo que es enseña a no creerle al
 resto. El contraste rige desde 0.65.0 y la prueba nombrada desde 0.75.0; los casos cerrados antes se
 quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo que el contraste
@@ -385,6 +429,43 @@ tenía que haber encontrado en su momento.
 
 El estado se escribe en dos lugares —el frontmatter y el encabezado que se lee primero— y los dos se
 tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archivo.
+
+### Qué tiene que estar para darlo por cerrado
+
+Antes de escribir el estado se recorre esto entero. Cuando la persona pregunta si queda algún hueco o prueba sin hacer,
+la respuesta sale de acá, ítem por ítem. Lo que no aplica se dice con su razón.
+
+El arreglo:
+
+1. Hay línea de base: la salida de antes sobre el mismo caso, incluido el rojo previo.
+2. Está en una rama propia.
+3. La prueba se vio en rojo y después en verde.
+4. La mutación de lo que el caso dice cuidar, corrida en una copia, la pone roja.
+5. Si quita o reemplaza algo, hay aserción de ausencia vista en rojo, o la salida de antes y la de después lado a lado (R29).
+
+La prueba real:
+
+6. Se ejerció en un banco o una sesión real, sin dobles, y se midió que lo viejo se fue, no sólo que lo nuevo aparece.
+7. Lo que depende de un modelo, un runner o un sistema externo se corrió ahí. Si no se pudo, se dice por qué.
+8. «Probado» enumera qué caminos corrieron y cuáles no.
+9. Lo que coordina se corrió con dos de cada cosa —dos runners, dos raíces, dos ramas con historia distinta—: con una sola,
+   «el mío» y «el primero» dan lo mismo.
+
+Sin regresiones:
+
+10. Se buscó quién dependía de lo que cambió, y cada uno se corrigió o se declaró.
+11. Hubo revisión independiente del diff entero, y otra sobre lo que esa revisión arregló.
+12. Se hizo la pasada de comentarios (R11).
+13. `npm run ci` pasa, con los archivos nuevos ya stageados.
+
+El cierre escrito:
+
+14. `## Cierre` recorre el caso entero con sus cuatro destinos, también lo que no dejó diff (README, «Contra qué se recorre el
+    cierre»).
+15. Nombra qué se corrió y qué devolvió y lo que el enunciado no preveía, y lleva la línea `**Sin probar:** …`, aunque diga
+    `nada`.
+16. El estado coincide en sus dos lugares, `resuelto-en` es la versión abierta, y hay entrada en el CHANGELOG.
+17. Los commits van por naturaleza, sin nombres reales ni firmas de IA.
 
 ## Convenciones
 

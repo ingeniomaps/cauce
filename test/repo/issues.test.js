@@ -100,6 +100,35 @@ test('un caso resuelto dice qué se corrió para saber que funciona', () => {
   assert.deepEqual(faltan, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${faltan.join('\n  ')}`)
 })
 
+// Una frase suelta sobre lo que no se probó no se distingue de la cita de un tradeoff que el mismo cierre contesta,
+// así que buscarlas fabrica huecos. Con una línea fija, «¿qué quedó sin probar?» se contesta con un grep. Mide que la
+// línea esté, no que sea cierta.
+const SIN_PROBAR = /^\*\*Sin probar:\*\* \S/m
+test('un caso resuelto dice qué quedó sin probar', () => {
+  const resueltos = cases()
+    .filter((one) => one.estado === 'resuelto' && alcanzado(version(one.resueltoEn), [0, 118, 0]))
+  const faltan = resueltos
+    .filter((one) => !SIN_PROBAR.test((one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''))
+    .map((one) => `${one.name}: el cierre no trae «**Sin probar:** …», aunque diga «nada»`)
+  assert.ok(resueltos.length > 0, 'ningún caso alcanzó la convención: no está midiendo nada')
+  assert.deepEqual(faltan, [], `cierres sin su línea:\n  ${faltan.join('\n  ')}`)
+})
+
+// Un caso se cierra en la rama, antes de publicar, así que `resuelto-en` puede ir adelante del paquete. Sólo puede ser
+// la versión abierta: otra es un número que ninguna release va a cumplir.
+test('un resuelto-en más nuevo que el paquete es la versión abierta del CHANGELOG', () => {
+  const root = path.resolve(ISSUES, '..', '..')
+  const published = version(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version)
+  const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8')
+  const open = (changelog.match(/^## \[(\d+\.\d+\.\d+)\]/m) || [])[1]
+  assert.ok(open, 'el CHANGELOG no tiene ninguna versión que leer')
+  const next = [published[0], published[1], published[2] + 1]
+  const wrong = cases()
+    .filter((one) => one.estado === 'resuelto' && alcanzado(version(one.resueltoEn), next) && one.resueltoEn !== open)
+    .map((one) => `${one.name}: resuelto-en ${one.resueltoEn}, y la versión abierta es ${open}`)
+  assert.deepEqual(wrong, [], `versiones que no van a salir:\n  ${wrong.join('\n  ')}`)
+})
+
 // La tabla de `docs/issues/README.md`: los cuatro estados con el glifo que a cada uno le toca en el
 // encabezado. Por qué uno fuera de ella se rechaza en vez de ignorarse está escrito allá, al pie de la
 // tabla; acá sólo se comprueba.
