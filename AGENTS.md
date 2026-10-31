@@ -420,8 +420,8 @@ aparecía y no que lo viejo se hubiera ido— se cerró, se publicó y volvió c
 esa mitad no alcanza vive en R29; acá está sólo cuándo se aplica.
 
 `test/repo/issues.test.js` comprueba que la sección exista, que el estado del frontmatter coincida con el
-encabezado, que `resuelto-en` no se adelante a la versión abierta, —desde 0.75.0— que el cierre nombre su prueba y
-—desde 0.118.0— que traiga su línea `**Sin probar:**`. **No comprueba que el cierre sea honesto**, y
+encabezado, que `resuelto-en` no se adelante a la versión abierta, —desde 0.75.0— que el cierre nombre su prueba,
+—desde 0.118.0— que traiga su línea `**Sin probar:**`, y —desde el caso 464— su lista de cierre sin puntos pendientes. **No comprueba que el cierre sea honesto**, y
 decirlo es parte de la puerta: una que se presenta como más fuerte de lo que es enseña a no creerle al
 resto. El contraste rige desde 0.65.0 y la prueba nombrada desde 0.75.0; los casos cerrados antes se
 quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo que el contraste
@@ -432,30 +432,41 @@ tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archi
 
 ### Qué tiene que estar para darlo por cerrado
 
-Antes de escribir el estado se recorre esto entero. Cuando la persona pregunta si queda algún hueco o prueba sin hacer,
-la respuesta sale de acá, ítem por ítem. Lo que no aplica se dice con su razón.
+**La lista se recorre por escrito, y el estado se cambia al último.** El `## Cierre` lleva un bloque `### Lista de cierre` con
+los 16 puntos, cada uno como `N. hecho: <con qué>` o `N. no aplica: <razón>`. Lo que todavía no está se escribe
+`N. pendiente: <qué falta>`, y mientras haya uno el caso sigue `abierto`. `issues.test.js` lo exige desde el caso 464: mide que
+cada punto tenga su línea, no que sea cierta.
+
+Va escrita porque como lista para leer no alcanzó: el 2026-10-31 se cerraron cuatro casos en la misma sesión que la había
+escrito, marcando el estado primero, con tres puntos sin hacer. Cuando la persona pregunta si queda algún hueco o prueba sin
+hacer, la respuesta sale de este bloque.
 
 El arreglo:
 
 1. Hay línea de base: la salida de antes sobre el mismo caso, incluido el rojo previo.
 2. Está en una rama propia.
 3. La prueba se vio en rojo y después en verde.
-4. La mutación de lo que el caso dice cuidar, corrida en una copia, la pone roja.
+4. La mutación de lo que el caso dice cuidar, corrida en una copia, la pone roja. La que sobrevive se contesta: suma un caso, o
+   lo que mutó sobraba y se quita.
 5. Si quita o reemplaza algo, hay aserción de ausencia vista en rojo, o la salida de antes y la de después lado a lado (R29).
 
 La prueba real:
 
 6. Se ejerció en un banco o una sesión real, sin dobles, y se midió que lo viejo se fue, no sólo que lo nuevo aparece.
-7. Lo que depende de un modelo, un runner o un sistema externo se corrió ahí. Si no se pudo, se dice por qué.
-8. «Probado» enumera qué caminos corrieron y cuáles no.
+7. Lo que depende de un modelo, un runner o un sistema externo se corrió ahí. **Lo que el propio caso pide correr no se mueve a
+   `Sin probar`**: o se corre, o el caso sigue abierto, o la persona decide cerrarlo sin eso y el punto lo dice.
+8. «Probado» enumera qué caminos corrieron y cuáles no. Una prueba real hecha antes del último cambio al código se repite.
 9. Lo que coordina se corrió con dos de cada cosa —dos runners, dos raíces, dos ramas con historia distinta—: con una sola,
    «el mío» y «el primero» dan lo mismo.
 
 Sin regresiones:
 
 10. Se buscó quién dependía de lo que cambió, y cada uno se corrigió o se declaró.
-11. Hubo revisión independiente del diff entero, y otra sobre lo que esa revisión arregló.
-12. Se hizo la pasada de comentarios (R11).
+11. **La última versión del código tuvo revisión independiente.** Si una revisión cambia el código, se revisa lo que cambió, y
+    se sigue hasta una pasada sin nada que impida entregar. Reescribir por un hallazgo es código nuevo, no un arreglo menor: lo
+    que el 464 dejó claro es que cada reescritura trajo regresiones que la anterior no tenía, con las pruebas en verde. Lo
+    que la pasada halle y ya pasara antes del cambio no impide entregar: sale como caso propio.
+12. Se hizo la pasada de comentarios (R11), uno por uno, sobre el diff entero.
 13. `npm run ci` pasa, con los archivos nuevos ya stageados.
 
 El cierre escrito:
@@ -465,7 +476,8 @@ El cierre escrito:
 15. Nombra qué se corrió y qué devolvió y lo que el enunciado no preveía, y lleva la línea `**Sin probar:** …`, aunque diga
     `nada`.
 16. El estado coincide en sus dos lugares, `resuelto-en` es la versión abierta, y hay entrada en el CHANGELOG.
-17. Los commits van por naturaleza, sin nombres reales ni firmas de IA.
+
+Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales ni firmas de IA.
 
 ## Convenciones
 

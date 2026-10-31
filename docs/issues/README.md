@@ -70,7 +70,8 @@ salida, la mutación vista en rojo, el número medido—; «la suite pasa» no c
 lo que ya había se rompió y no que esto funcione. Vale igual si se decidió no arreglarlo: ahí se prueba
 el dato que sostiene la decisión. El porqué vive en el `AGENTS.md` de la raíz.
 
-Desde 0.118.0 el cierre lleva además una línea propia, `**Sin probar:** …`, aunque diga `nada`.
+Desde 0.118.0 el cierre lleva además una línea propia, `**Sin probar:** …`, aunque diga `nada`. Y desde el caso 464, el
+bloque `### Lista de cierre`, con los 16 puntos que enumera el `AGENTS.md`. Se escribe antes de cambiar el estado.
 
 ## Qué lleva adentro
 

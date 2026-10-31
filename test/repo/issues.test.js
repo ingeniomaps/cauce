@@ -114,6 +114,39 @@ test('un caso resuelto dice qué quedó sin probar', () => {
   assert.deepEqual(faltan, [], `cierres sin su línea:\n  ${faltan.join('\n  ')}`)
 })
 
+// Una lista para leer no se cumplió: se cerraron casos con puntos sin hacer en la misma sesión que la escribió. Escrita
+// punto por punto, saltearse uno se ve. Mide que cada punto tenga su línea, no que sea cierta. Rige por
+// número de caso y
+// no por versión, porque 458 y 460 ya salen en 0.118.0 y rellenarlos sería escribir de memoria.
+const CLOSING_POINTS = 16
+function closingListProblems(cierre) {
+  const opens = cierre.indexOf('### Lista de cierre\n')
+  if (opens < 0) return ['sin «### Lista de cierre»']
+  const block = cierre.slice(opens).split('\n**Sin probar:**')[0]
+  const lines = [...block.matchAll(/^(\d+)\. (hecho|no aplica|pendiente): \S/gm)]
+  const seen = new Map(lines.map((line) => [Number(line[1]), line[2]]))
+  const problems = []
+  for (let point = 1; point <= CLOSING_POINTS; point += 1) {
+    if (!seen.has(point)) problems.push(`el punto ${point} no tiene su línea`)
+    else if (seen.get(point) === 'pendiente') problems.push(`el punto ${point} está pendiente`)
+  }
+  return problems
+}
+test('un caso resuelto recorrió la lista de cierre punto por punto', () => {
+  const faltan = cases().filter((one) => one.estado === 'resuelto' && Number(one.caso) >= 464).flatMap((one) => {
+    const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
+    return closingListProblems(cierre).map((problem) => `${one.name}: ${problem}`)
+  })
+  assert.deepEqual(faltan, [], `cierres sin recorrer la lista:\n  ${faltan.join('\n  ')}`)
+})
+
+test('la lista que exige la puerta tiene tantos puntos como la que escribe AGENTS.md', () => {
+  const agents = fs.readFileSync(path.join(ISSUES, '..', '..', 'AGENTS.md'), 'utf8')
+  const start = agents.indexOf('### Qué tiene que estar para darlo por cerrado')
+  const section = agents.slice(start, agents.indexOf('## Convenciones'))
+  assert.equal(new Set(section.match(/^\d+\. /gm)).size, CLOSING_POINTS)
+})
+
 // Un caso se cierra en la rama, antes de publicar, así que `resuelto-en` puede ir adelante del paquete. Sólo puede ser
 // la versión abierta: otra es un número que ninguna release va a cumplir.
 test('un resuelto-en más nuevo que el paquete es la versión abierta del CHANGELOG', () => {
