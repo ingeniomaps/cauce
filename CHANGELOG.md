@@ -60,6 +60,9 @@ diseño — eso vive en el commit y en el código.
   instancia posee en ese árbol, y `ops-config` sí frena la llave de push en su `ops.config.json`.
 - **`ops claim` ya no le ordena empujar a una sesión delegada** (caso 471). Con `CAUCE_DELEGATED=1` calla ese consejo,
   y lo publica quien la lanzó.
+- **`ops lines` dice qué hacer cuando no reconoce la rama viva** (caso 470). Un repositorio que vive en otra rama que
+  `main` o `master`, sin `HEAD` en el remoto, se quedaba sin conteo y sin explicación: ahora nombra
+  `git remote set-head <remoto> --auto`.
 
 ### Cambiado
 
