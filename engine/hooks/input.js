@@ -15,6 +15,8 @@ const { writableOutsideRoots } = require('../config/paths')
 const { withTaskTrees } = require('../core/task-trees')
 const LT = require('../core/line-trees')
 const { unreadableConfig } = require('./unreadable-config')
+const { eachQuoted, shellWord, unquoted } = require('./quoting')
+const { directoryFlag, withoutGitGlobals } = require('./git-globals')
 
 // Cuánto se espera el primer byte de stdin. El runner escribe su JSON al lanzar el hook, así que en el
 // camino real ya está en el búfer cuando Node termina de arrancar: el plazo sólo cubre una máquina
@@ -179,25 +181,6 @@ function configOf(root) {
   }
 }
 
-// Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
-// comando. Vive acá porque la usan tres lugares por razones distintas, y cada uno explica la suya donde
-// la llama.
-//
-// Dónde empieza y dónde termina una cadena lo dice el shell, y tiene dos formas de barra invertida que acá
-// hay que leer igual que él. Dentro de comillas dobles, `\"` no cierra: sin eso `"\"test\|jest"` terminaba
-// en la segunda comilla y dejaba `jest` a la vista de un `grep` que sólo lo busca (caso 312). Fuera de
-// comillas, `\"` no abre: es una comilla literal. Las dos van juntas porque arreglar sólo la primera es
-// peor que no arreglar ninguna — en `echo \"a\" ; rm -rf x ; echo "b"` la cadena pasaría a empezar en una
-// comilla que no abre nada y se llevaría puesto el `rm`. Las simples `'…'` no cambian: no admiten escape.
-//
-// Un comentario tampoco abre cadenas, y queda a la vista entero: una comilla suelta en uno escondía el
-// renglón siguiente. Se deja en vez de sacarlo porque `#` también aparece en `${x/ #/y}`, y ahí sacarlo
-// escondería lo que sigue. Lo que esta lectura todavía no conoce está en el caso 328.
-const QUOTED = /\\.|'[^']*'|"(?:[^"\\]|\\[\s\S])*"|(?<![^\s;&|()<>])#[^\n]*/g
-const eachQuoted = (text, replace) => text.replace(QUOTED,
-  (found, offset) => (found[0] === '\\' || found[0] === '#' ? found : replace(found, offset)))
-const unquoted = (command) => eachQuoted(String(command), () => '\u0000')
-
 // El comando tal como se va a ejecutar: sin lo entrecomillado que es dato y no orden. En un commit lo es
 // todo —el mensaje—; fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y
 // por eso no se vaciaba nunca. Pero tampoco es orden el patrón de un `sed` ni el texto de un `grep`, y
@@ -267,45 +250,27 @@ function expandAssigned(command) {
     (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
 }
 
-// Lo que `git` admite entre el verbo y el subcomando. La lista sale de su propia línea de uso
-// —`git --help`, 2.43.0—, y las que llevan el valor en un token aparte se consumen de a dos:
-// comprobado ahí mismo que `--git-dir`, `--work-tree` y `--namespace` aceptan la forma separada y no
-// sólo la que lleva `=`.
-//
-// Existe porque cada patrón resolvía la posición por su cuenta y cada arreglo puntual dejaba el
-// siguiente: primero el prefijo de entorno en `isCommit`, después el `-C` en `isCommit` y en
-// `gitDirectory`. Lo que quedaba era todo lo demás — con `-C`, `-c` o `-P` delante pasaban las reglas
-// de `destructive` que miran un subcomando y la prohibición de stagear todo, sin decir nada.
-//
-// `--git-dir /tmp/.git` era la única forma que igual bloqueaba, y por la razón equivocada: la ruta
-// termina en `.git`, así que el patrón encontraba el verbo dentro de `/tmp/.git push`. Una regla que
-// acierta por dónde termina una ruta ajena no está cubriendo nada.
-const GIT_GLOBAL = String.raw`(?:-[Cc]\s+\S+`
-  + String.raw`|--(?:git-dir|work-tree|namespace|config-env)(?:=\S*|\s+\S+)`
-  + String.raw`|--exec-path=\S*`
-  + String.raw`|-[pP]|--paginate|--no-pager|--no-replace-objects|--bare`
-  + String.raw`|--(?:literal|glob|noglob|icase)-pathspecs|--no-optional-locks)`
-const GIT_GLOBALS = new RegExp(String.raw`\bgit(?:\s+${GIT_GLOBAL})+`, 'g')
-
-// Sólo se sacan las que van **antes** del subcomando: después significan otra cosa —`git commit -C
-// <commit>` reusa el mensaje de otro commit— y el ancla en `git` es lo que las deja afuera.
-const withoutGitGlobals = (command) => String(command).replace(GIT_GLOBALS, 'git')
-
 // Sobre qué repositorio se lee el índice. En un commit se mira el comando con el mensaje vaciado, por
 // la misma razón por la que `destructive` lo hace: un mensaje que menciona `git -C $VAR` no está
 // eligiendo un repositorio, lo está citando. Sin esto, el commit que explica este arreglo se bloquea a
 // sí mismo — pasó al escribirlo.
-//
-// El precio es una ruta entrecomillada en el propio `-C` de un commit —`git -C "mi carpeta" commit`—,
-// que se pierde y cae al cwd. Es más raro que un mensaje que cita un comando, y el cwd de un commit
-// suele ser el repositorio correcto; el caso contrario deja al guard leyendo un índice ajeno.
+// En un commit se busca con lo entrecomillado tapado, del mismo largo, y la ruta se lee del original en ese
+// lugar: así una
+// ruta entre comillas se lee, y un mensaje que cita un comando no (caso 464). Fuera de un commit no se tapa, porque lo
+// entrecomillado puede ejecutarse: `bash -c "git -C <otro> add ."` opera sobre ese otro.
 function gitDirectory(given, cwd) {
   const command = expandAssigned(given)
-  const text = isCommit(command) ? unquoted(command) : command
-  const run = text.match(new RegExp(String.raw`(?:^|\s)git(?:\s+${GIT_GLOBAL})+`))
-  const flag = run && run[0].match(/-C\s+(['"]?)([^\s'";&|]+)\1/)
-  const cd = text.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
-  return path.resolve(cwd, flag ? flag[2] : cd ? cd[2] : '.')
+  const masked = isCommit(command) ? eachQuoted(command, (quoted) => '\u0000'.repeat(quoted.length)) : command
+  const flag = directoryFlag(masked)
+  if (flag) return path.resolve(cwd, shellWord(command.slice(flag.start, flag.end)))
+  if (masked === command) {
+    const plain = command.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
+    return path.resolve(cwd, plain ? plain[2] : '.')
+  }
+  const cd = masked.match(/(?:^|[;&|\n]\s*)cd\s+([^\s;&|]+)/)
+  if (!cd) return path.resolve(cwd, '.')
+  const end = cd.index + cd[0].length
+  return path.resolve(cwd, shellWord(command.slice(end - cd[1].length, end)))
 }
 
 // Lo que un shell admite delante del verbo: asignaciones de entorno, `env` y `sudo`. `VAR=1 git commit`

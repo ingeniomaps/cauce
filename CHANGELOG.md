@@ -43,6 +43,13 @@ diseño — eso vive en el commit y en el código.
   defecto desde cero. Ahora un texto que es un objeto JSON se lee como argumentos; cualquier otro sigue siendo la
   intención.
 
+- **Un `git commit` con la ruta entre comillas ya no se saltea los guards** (caso 464). `git -C "$dir" commit`, `cd "$dir"
+  && git commit` y `git -C "a b" commit` caían o no se reconocían como commit, y el commit salía sin `verify`,
+  `governance` ni `dependencies`. Ahora esos commits se juzgan: **algunos que pasaban van a empezar a frenarse.** Si la
+  ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal. Una ruta con espacios
+  se lee entera sólo con `git` como primera palabra del comando. También se reconocen `--no-advice`, `--no-lazy-fetch` y
+  `--attr-source`, que escondían el verbo.
+
 ### Cambiado
 
 - **El gate de `plan` en `product-development` ya no frena por una validación que la corrida no puede tener**

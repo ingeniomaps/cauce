@@ -344,6 +344,11 @@
     "branches": 88,
     "functions": 100
   },
+  "engine/hooks/quoting.js": {
+    "lines": 100,
+    "branches": 85,
+    "functions": 100
+  },
   "engine/hooks/run.js": {
     "lines": 91,
     "branches": 70,
@@ -547,6 +552,11 @@
   "engine/hooks/test-evidence-shell.js": {
     "lines": 100,
     "branches": 97,
+    "functions": 100
+  },
+  "engine/hooks/git-globals.js": {
+    "lines": 100,
+    "branches": 96,
     "functions": 100
   },
   "engine/hooks/governance.js": {
