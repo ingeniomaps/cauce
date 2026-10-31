@@ -465,7 +465,8 @@ Sin regresiones:
 11. **La última versión del código tuvo revisión independiente.** Si una revisión cambia el código, se revisa lo que cambió, y
     se sigue hasta una pasada sin nada que impida entregar. Reescribir por un hallazgo es código nuevo, no un arreglo menor: lo
     que el 464 dejó claro es que cada reescritura trajo regresiones que la anterior no tenía, con las pruebas en verde. Lo
-    que la pasada halle y ya pasara antes del cambio no impide entregar: sale como caso propio.
+    que la pasada halle y ya pasara antes del cambio no impide entregar: sale como caso propio. Tampoco un comando armado
+    a propósito para esconder algo que nadie escribiría haciendo su trabajo: se anota. Sin ese corte la pasada no termina.
 12. Se hizo la pasada de comentarios (R11), uno por uno, sobre el diff entero.
 13. `npm run ci` pasa, con los archivos nuevos ya stageados.
 
