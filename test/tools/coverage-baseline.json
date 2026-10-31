@@ -64,6 +64,11 @@
     "branches": 93,
     "functions": 100
   },
+  "engine/automation/probe-bridge.js": {
+    "lines": 100,
+    "branches": 76,
+    "functions": 100
+  },
   "engine/automation/project-guards.js": {
     "lines": 96,
     "branches": 88,
