@@ -63,6 +63,9 @@ diseño — eso vive en el commit y en el código.
 - **`ops lines` dice qué hacer cuando no reconoce la rama viva** (caso 470). Un repositorio que vive en otra rama que
   `main` o `master`, sin `HEAD` en el remoto, se quedaba sin conteo y sin explicación: ahora nombra
   `git remote set-head <remoto> --auto`.
+- **Lo que un commit ejecuta ya no se esconde en su mensaje** (casos 468 y 469). `git commit -m "$(git push -f)"` y `git
+  commit -m x; sh -c '…'` pasaban sin que ningún guard los viera, y `git commit -m x && cd /etc` se leía como de otro
+  repositorio. Un mensaje que sólo cita comandos sigue pasando, también por `-m "$(cat <<'EOF' …)"`.
 
 ### Cambiado
 

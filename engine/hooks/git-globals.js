@@ -22,6 +22,8 @@
 // `--git-dir /tmp/.git` era la única forma que igual bloqueaba, y por la razón equivocada: la ruta
 // termina en `.git`, así que el patrón encontraba el verbo dentro de `/tmp/.git push`. Una regla que
 // acierta por dónde termina una ruta ajena no está cubriendo nada.
+const { masked, segments } = require('./quoting')
+
 const VALUED = '--(?:git-dir|work-tree|namespace|config-env|attr-source)'
 const FLAG = new RegExp(`-[Cc](?=\\s|\\\\\\n)|${VALUED}(?:=|(?=\\s|\\\\\\n))`
   + '|--exec-path=|(?:-[pP]|--(?:paginate|no-pager|no-replace-objects|bare|no-optional-locks|no-advice|no-lazy-fetch'
@@ -29,12 +31,22 @@ const FLAG = new RegExp(`-[Cc](?=\\s|\\\\\\n)|${VALUED}(?:=|(?=\\s|\\\\\\n))`
 const TAKES_VALUE = new RegExp(`^(?:-[Cc]|${VALUED}=?|--exec-path=)$`)
 const SPACE = /\s/
 const ENDS_WORD = /[;&|()<>]/
+const RUNS_CONFIG = /alias\.|!|\bgit\b/i
 const INTERPRETED = /[;&|<>()$`\n\\'"]/
 
 function plainEnd(text, start) {
   let at = start
   while (at < text.length && !SPACE.test(text[at])) at += 1
   return at
+}
+
+function closingQuote(text, open) {
+  if (text[open] === "'") return text.indexOf("'", open + 1)
+  for (let at = open + 1; at < text.length; at += 1) {
+    if (text[at] === '\\') at += 1
+    else if (text[at] === '"') return at
+  }
+  return -1
 }
 
 function wordEnd(text, start) {
@@ -44,8 +56,9 @@ function wordEnd(text, start) {
     if (ENDS_WORD.test(text[at])) return at
     if (text[at] === '\\') at += 2
     else if (text[at] === "'" || text[at] === '"') {
-      const close = text.indexOf(text[at], at + 1)
-      if (close < 0 || INTERPRETED.test(text.slice(at + 1, close))) return plainEnd(text, start)
+      const close = closingQuote(text, at)
+      const inside = close < 0 ? '' : text.slice(at + 1, close).replace(/\\[\s\S]/g, '')
+      if (close < 0 || INTERPRETED.test(inside)) return plainEnd(text, start)
       at = close + 1
     } else at += 1
   }
@@ -77,10 +90,9 @@ function scanGlobals(text, from, whole = true) {
     let value = null
     if (TAKES_VALUE.test(flag)) {
       const valueAt = flag.endsWith('=') ? next : skipSpace(text, next)
-      // El valor de `-c` puede ser código: `alias.p='!git push -f'` corre. Se corta en el primer espacio, y
-      // lo de adentro
-      // queda a la vista.
-      next = flag === '-c' || !whole ? plainEnd(text, valueAt) : wordEnd(text, valueAt)
+      next = whole ? wordEnd(text, valueAt) : plainEnd(text, valueAt)
+      // Un valor de `-c` que puede ser código se lee como antes, cortado en el espacio: lo que sobra queda a la vista.
+      if (flag === '-c' && RUNS_CONFIG.test(text.slice(valueAt, next))) next = plainEnd(text, valueAt)
       if (next === valueAt && !flag.endsWith('=')) break
       value = { start: valueAt, end: next }
     }
@@ -90,22 +102,33 @@ function scanGlobals(text, from, whole = true) {
   return { globals, end }
 }
 
-// El valor entero sólo se toma con `git` como primera palabra de todo el comando. En cualquier otro lugar puede ser
-// argumento de algo que vuelve a leerlo —`eval git -C 'x push -f'`, `ssh h true \; git …`, `echo git … | bash`—, y un
-// separador no dice nada: también se re-parsea. Ahí se lee como antes, y lo que eso deja sin leer es el caso 468.
+// El valor entero sólo se toma con `git` como primera palabra de un comando simple. Si no, puede ser argumento de algo
+// que vuelve a leerlo —`eval git -C 'x push -f'`, `ssh h true \; git …`, `echo git … | bash`—, y ahí se lee como antes.
 const COMMAND_HEAD = /^\s*(?:(?:env|sudo)\s+)*(?:[A-Za-z_]\w*=[^\s;&|()<>'"\\`$]*\s+)*$/
-const isCommandHead = (text, at) => COMMAND_HEAD.test(text.slice(0, at))
+// Si cada `git` encabeza su comando simple. Se recorre una vez y hacia adelante: los `git` llegan en orden, y partir el
+// comando por cada uno costaba minutos con miles de ellos.
+function commandHeads(text) {
+  const hidden = masked(text)
+  const parts = segments(text)
+  let index = 0
+  return (at) => {
+    while (index < parts.length && parts[index].end <= at) index += 1
+    const own = parts[index]
+    return Boolean(own) && own.start <= at && COMMAND_HEAD.test(hidden.slice(own.start, at))
+  }
+}
 
 // Sólo se sacan las que van **antes** del subcomando: después significan otra cosa —`git commit -C
 // <commit>` reusa el mensaje de otro commit— y el ancla en `git` es lo que las deja afuera.
 const withoutGitGlobals = (command) => {
   const text = String(command)
+  const isHead = commandHeads(text)
   let out = ''
   let copied = 0
   for (const found of text.matchAll(/\bgit(?=\s)/g)) {
     const start = found.index + found[0].length
     if (start <= copied) continue
-    const { globals, end } = scanGlobals(text, start, isCommandHead(text, found.index))
+    const { globals, end } = scanGlobals(text, start, isHead(found.index))
     if (globals.length) {
       out += text.slice(copied, start)
       copied = end
@@ -118,9 +141,10 @@ const withoutGitGlobals = (command) => {
 // hasta un separador
 // o una comilla, y si las comillas no cierran ahí, no hay valor y cuenta la carpeta de la sesión.
 function directoryFlag(text) {
+  const isHead = commandHeads(text)
   for (const found of text.matchAll(/(?:^|\s)git(?=\s)/g)) {
     const gitAt = found.index + found[0].length - 3
-    const head = isCommandHead(text, gitAt)
+    const head = isHead(gitAt)
     const { globals } = scanGlobals(text, gitAt + 3, head)
     if (globals.length) {
       const directory = globals.find(({ flag }) => flag === '-C')
@@ -134,4 +158,24 @@ function directoryFlag(text) {
   return null
 }
 
-module.exports = { directoryFlag, withoutGitGlobals }
+// Lo que un shell admite delante del verbo: asignaciones de entorno, `env` y `sudo`. `VAR=1 git commit`
+// empieza por la asignación, así que un ancla que sólo acepta el principio del comando o un separador
+// no ve el `git` que viene después.
+//
+// Falla en los dos sentidos y uno no avisa. Del lado ruidoso, el mensaje del commit vuelve a juzgarse
+// como comando. Del silencioso —el que importa— los tres guards que sólo corren sobre un commit dejan
+// de correr: gobernanza, dependencias y generados. Cualquier variable delante alcanza, y la ironía es
+// que el prefijo que el procedimiento manda escribir para un commit de gobernanza es
+// `OPS_GOVERNANCE_OVERRIDE=1`: escrito ahí, el guard no lee el override, directamente no se ejecuta.
+// El ancla admite el salto de línea y el `(` por lo mismo que admite `;`: los tres abren un comando. El
+// salto es el que más caro salía —dos líneas en un solo Bash es como se escriben dos pasos— y el léxico
+// de `shell.js` ya lo declaraba separador; acá faltaba (caso 165).
+const PREFIX = String.raw`(?:^|[;&|(\n]\s*)(?:(?:env|sudo)\s+)*`
+  + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
+const COMMIT = new RegExp(PREFIX + String.raw`git\s+commit(?:\s|$)`)
+
+function isCommit(command) {
+  return COMMIT.test(withoutGitGlobals(command))
+}
+
+module.exports = { directoryFlag, isCommit, withoutGitGlobals }

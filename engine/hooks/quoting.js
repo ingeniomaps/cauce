@@ -29,4 +29,23 @@ const shellWord = (word) => word.replace(/"((?:[^"\\]|\\[\s\S])*)"|'([^']*)'|\\\
     return escaped === undefined ? '' : escaped
   })
 
-module.exports = { eachQuoted, shellWord, unquoted }
+// El comando con lo entrecomillado tapado, del mismo largo: lo que se encuentre acá se lee del original en ese lugar.
+const masked = (command) => eachQuoted(command, (quoted) => '\u0000'.repeat(quoted.length))
+
+// Los comandos simples de una línea de shell, como rangos. Buscar sobre lo tapado y saltear los escapes es lo que hace
+// que `'a; b'` y `a\; b` no separen: los dos los vuelve a leer otro programa, y ahí un separador no dice nada.
+function segments(command) {
+  const text = masked(command)
+  const found = []
+  let start = 0
+  for (let at = 0; at <= text.length; at += 1) {
+    if (text[at] === '\\') at += 1
+    else if (at === text.length || /[;&|\n()]/.test(text[at])) {
+      if (at > start) found.push({ start, end: at })
+      start = at + 1
+    }
+  }
+  return found
+}
+
+module.exports = { eachQuoted, masked, segments, shellWord, unquoted }

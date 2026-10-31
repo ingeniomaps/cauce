@@ -1,0 +1,282 @@
+'use strict'
+
+// Cómo se lee un comando de git: sus opciones, el repositorio de un commit y lo que un commit ejecuta (casos 464, 468 y
+// 469). Lo demás de la lectura de comandos es de `command-reading.test.js`.
+
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const I = require('../../engine/hooks/input')
+
+// Lo entrecomillado de un commit se vacía porque es el mensaje, y eso se llevaba también la ruta: quedaba `<cwd>/\0`,
+// y Node lanzaba al pasársela a git (caso 464).
+test('la ruta entrecomillada de un commit se lee, y la que cita el mensaje no', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('git -C "/otro" commit -m x'), '/otro')
+  assert.equal(at("git -C '/otro' commit -m x"), '/otro')
+  assert.equal(at('cd "/otro" && git commit -m x'), '/otro')
+  assert.equal(at('git -c "a=b" -C "/otro" commit -m x'), '/otro')
+  assert.equal(at('git -C "/mi carpeta" commit -m x'), '/mi carpeta')
+  assert.equal(at('cd "/mi carpeta" && git commit -m x'), '/mi carpeta')
+  assert.equal(at('git commit -m "cd /otro && git -C /otro commit"'), '/sesion')
+  assert.equal(at("git commit -m 'git -C \"/otro\" commit'"), '/sesion')
+  assert.equal(at('git commit -C "HEAD"'), '/sesion')
+  assert.equal(at('git commit -m "a" -C "HEAD"'), '/sesion')
+})
+
+// El valor es la palabra entera del shell: leerlo hasta la primera comilla dejaba `git/. add -A`, y ningún guard
+// reconocía ese verbo.
+test('un valor de git con comillas y algo más pegado se lee entero', () => {
+  const clean = I.withoutGitGlobals
+  assert.equal(clean('git -C "/r"/. add -A'), 'git add -A')
+  assert.equal(clean('git -C "/r"/. push --force origin main'), 'git push --force origin main')
+  assert.equal(clean("git -C /r/'a b'/c reset --hard"), 'git reset --hard')
+  assert.equal(clean('git --git-dir "/r"/.git commit -m x'), 'git commit -m x')
+  assert.equal(I.isCommit('git -C "/a\\"b" commit -m x'), true)
+  assert.equal(I.gitDirectory('git -C "/r"/. commit -m x', '/sesion'), '/r')
+  assert.equal(I.gitDirectory("cd '/r'/'a b' && git commit -m x", '/sesion'), '/r/a b')
+})
+
+// Una palabra que el shell ejecuta por dentro no se salta entera: lo que lleva adentro tiene que verse (caso 464).
+test('lo que corre dentro del valor de una opción de git queda a la vista', () => {
+  const clean = I.withoutGitGlobals
+  assert.match(clean('git -C "$(git push --force origin main; echo .)" status'), /git push --force/)
+  assert.match(clean('git -C "`git push -f origin main`" status'), /git push -f/)
+  assert.match(clean('git -c x="$(git reset --hard)" status'), /git reset --hard/)
+  assert.match(clean('git -C "sin cerrar add -A'), /add -A/)
+  assert.match(clean("git -C 'sin cerrar add -A"), /add -A/)
+})
+
+test('una continuación de línea después del valor no esconde el verbo', () => {
+  assert.equal(I.withoutGitGlobals('git -C a\\\n push -f origin main'), 'git push -f origin main')
+  assert.equal(I.withoutGitGlobals('git -C "a"\\\n add -A'), 'git add -A')
+})
+
+test('las opciones que no van antes del subcomando, o no son de git, quedan como estaban', () => {
+  const clean = I.withoutGitGlobals
+  assert.equal(clean('git commit -C HEAD'), 'git commit -C HEAD')
+  assert.equal(clean('git -C a'), 'git')
+  assert.equal(clean('git -C'), 'git -C')
+  assert.equal(clean('git -C '), 'git -C ')
+  assert.equal(clean('git -pfoo status'), 'git -pfoo status')
+  assert.equal(clean('git --exec-path=/x status && git -P log'), 'git status && git log')
+  assert.equal(clean('/tmp/.git -C a push'), '/tmp/.git push')
+})
+
+test('leer las opciones de git cuesta lineal, con muchas opciones o mucho texto', () => {
+  const started = Date.now()
+  I.gitDirectory(`git${' -C .'.repeat(2000)} commit -m "x"`, '/sesion')
+  I.withoutGitGlobals(`git${' -c a=1'.repeat(2000)} status`)
+  I.gitDirectory(`git commit -m ${'"a" '.repeat(20000)}`, '/sesion')
+  const spent = Date.now() - started
+  assert.ok(spent < 1000, `tardó ${spent} ms`)
+})
+
+// La palabra termina donde termina para el shell: `ruta;` se leía como un repositorio ajeno y los guards se abstenían.
+test('el valor de una opción de git termina en un separador sin comillas', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('git -C /r;git commit -m x'), '/r')
+  assert.equal(at('git -C /r&&git commit -m x'), '/r')
+  assert.equal(at('git -C "/r"; git status'), '/r')
+  assert.equal(at('git -C /r|git status'), '/r')
+  assert.match(I.withoutGitGlobals('git -C a;git push -f'), /git push -f/)
+  assert.equal(I.isCommit('git -C /r;git commit -m x'), true)
+})
+
+test('lo que corre sin comillas dentro de un valor, o tras abrir un comentario, queda a la vista', () => {
+  const clean = I.withoutGitGlobals
+  assert.match(clean("git -C $(sh<<<'git push -f') status"), /push -f/)
+  assert.match(clean("git -C x$(sh<<<'git add -A') status"), /add -A/)
+  assert.match(clean("git -C `sh<<<'git reset --hard'` status"), /reset --hard/)
+  assert.match(clean("git -C #'\ngit push -f\n'"), /git push -f/)
+  assert.match(clean("git -C a;sh<<<'git push -f'"), /git push -f/)
+  assert.match(clean("git -C $'a' push -f"), /push -f/)
+})
+
+test('una ruta entre comillas se lee como la recibe git', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('git -C "/a\\b" commit -m x'), '/a\\b')
+  assert.equal(at('git -C "/a\\"b" commit -m x'), '/a"b')
+})
+
+test('las opciones que git admite antes del subcomando no esconden el verbo', () => {
+  const clean = I.withoutGitGlobals
+  assert.equal(clean('git --no-advice push -f'), 'git push -f')
+  assert.equal(clean('git --no-lazy-fetch push -f'), 'git push -f')
+  assert.equal(clean('git --attr-source=HEAD push -f'), 'git push -f')
+  assert.equal(clean('git --attr-source HEAD push -f'), 'git push -f')
+})
+
+// `git -c alias.p='!orden' p` ejecuta la orden: el valor de `-c` no se salta entero.
+test('lo que un alias de -c ejecuta queda a la vista', () => {
+  const clean = I.withoutGitGlobals
+  assert.match(clean("git -c alias.p='!git push --force origin main' p"), /git push --force/)
+  assert.match(clean('git -c alias.r="!git reset --hard" r'), /git reset --hard/)
+  assert.match(clean("git -c alias.a='!git add -A' a"), /git add -A/)
+})
+
+test('fuera de un commit, lo entrecomillado que opera sobre otro repositorio se sigue leyendo', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('bash -c "true; git -C /otro add -A"'), '/otro')
+  assert.equal(at('eval "true; git -C /otro add ."'), '/otro')
+  assert.equal(at('git -C "/a b" status'), '/a b')
+  assert.equal(at("cd 'a b' && git status"), '/sesion', 'fuera de un commit, el cd se lee como antes')
+})
+
+// La comilla de cierre de un texto que nombra `git -C` no abre un valor: leída así, se tragaba la orden siguiente.
+test('un valor entre comillas no se traga lo que el shell interpreta', () => {
+  const clean = I.withoutGitGlobals
+  assert.match(clean("foo 'git -C ' ; git push -f origin main ; foo ' x'"), /git push -f/)
+  assert.match(clean('foo "git --git-dir " ; git reset --hard ; foo " x"'), /git reset --hard/)
+  assert.match(clean(`sh -c "git -C '$(git push -f origin main)' status"`), /git push -f/)
+  assert.match(clean('sh -c "git --git-dir=\'`git push -f origin main`\' status"'), /git push -f/)
+})
+
+test('con git como argumento de otro, lo entrecomillado se vuelve a leer y queda a la vista', () => {
+  const clean = I.withoutGitGlobals
+  assert.match(clean("eval git -C 'x push -f'"), /push -f/)
+  assert.match(clean('eval git -C "x reset --hard"'), /reset --hard/)
+  assert.match(clean("echo git -C 'x push -f' | bash"), /push -f/)
+  assert.match(clean("ssh h git -C 'x push -f'"), /push -f/)
+  assert.equal(clean('A=1 git -C "a b" push -f'), 'A=1 git push -f')
+  assert.equal(clean('sudo env git -C "a b" push -f'), 'sudo env git push -f')
+  assert.equal(clean('true; git -C "a b" push -f'), 'true; git push -f')
+  assert.match(clean("eval true \\; git -C 'x push -f origin b'"), /push -f/)
+  assert.match(clean("eval \\( git -C 'x clean -fd' \\)"), /clean -fd/)
+  assert.match(clean("ssh h true \\; git -C 'x reset --hard'"), /reset --hard/)
+  assert.match(clean("echo a\\; git -C 'x add -A' | bash"), /add -A/)
+  assert.match(clean("A=x;eval git -C 'x push -f'"), /push -f/)
+  assert.equal(I.gitDirectory('time git -C /r;git status', '/sesion'), '/r')
+  assert.notEqual(I.gitDirectory("eval git -C '/tmp -C /inst' add -A", '/sesion'), '/tmp -C /inst')
+})
+
+// El repositorio de un commit es el del `git` que commitea: leer el primer `cd` del comando lo daba por ajeno
+// (caso 468).
+test('el repositorio de un commit se lee de su propio segmento', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('git commit -m x && cd /etc'), '/sesion')
+  assert.equal(at('git commit -m x; cd "/etc"'), '/sesion')
+  assert.equal(at('cd /etc; cd /r && git commit -m x'), '/etc', 'el primero: cuál corrió no se sabe sin ejecutar')
+  assert.equal(at('git commit -m x; git -C /r status'), '/r', 'otro git después también se juzga')
+  assert.equal(at("git commit -m x; cd /r; sh -c 'git commit -m y'"), '/r', 'también uno entre comillas')
+  assert.equal(at('(cd "/o" && git commit -m x)'), '/sesion', 'como antes: tras un paréntesis no se lee')
+  assert.equal(at('git -C /r status; git -C /otro commit -m x'), '/r', 'el add de antes también corre en /r')
+  assert.equal(at('git commit -m "a; cd /etc"'), '/sesion', 'un separador entre comillas no separa')
+  assert.equal(at('echo a\\; cd /etc && git commit -m x'), '/sesion', 'uno escapado tampoco')
+})
+
+test('un commit después de otra orden se reconoce con la ruta entre comillas', () => {
+  assert.equal(I.isCommit('true; git -C "a b" commit -m x'), true)
+  assert.equal(I.isCommit('cd /r && git -C "a b" commit -m x'), true)
+  assert.equal(I.isCommit('(git -C "a b" commit -m x)'), true)
+  assert.equal(I.isCommit('eval true \\; git -C "a b" push -f'), false)
+  assert.match(I.withoutGitGlobals("eval true \\; git -C 'x push -f'"), /push -f/)
+  assert.match(I.withoutGitGlobals("ssh h 'true; git -C \"x push -f\"'"), /push -f/)
+})
+
+// Lo que un commit ejecuta no es su mensaje (caso 469). El heredoc con el delimitador entre comillas sí lo es:
+// no expande.
+test('lo que un commit ejecuta queda a la vista, y su mensaje no', () => {
+  const run = I.asRun
+  assert.match(run('git commit -m "$(git push -f origin main)"'), /git push -f/)
+  assert.match(run('git commit -m "`git push -f origin main`"'), /git push -f/)
+  assert.match(run("git commit -m x; sh -c 'git reset --hard'"), /git reset --hard/)
+  assert.match(run("true; git -C 'a b' commit -m x; echo 'git push -f' | sh"), /git push -f/)
+  assert.match(I.withoutGitGlobals(run('git commit -m x && git -c "a=b c" push -f')), /git push -f/)
+  assert.match(I.withoutGitGlobals(run('git commit -m x; git -C . -c "u=A B" push -f')), /git push -f/)
+  assert.match(I.withoutGitGlobals(run('git commit -m x; git -c u=A -c "e=a b" reset --hard')), /git reset --hard/)
+  for (const value of ['user.name="A B"', 'core.sshCommand="ssh -i k"', 'http.extraHeader="X: y"', '"user.name=A B"',
+    '"user.name=\\"A B\\""']) {
+    assert.equal(I.withoutGitGlobals(`git -c ${value} push -f origin b`), 'git push -f origin b', value)
+    const chained = `git commit -m x && GIT_TRACE=1 git -c ${value} reset --hard`
+    assert.match(I.withoutGitGlobals(run(chained)), /git reset --hard/)
+  }
+  assert.equal(I.withoutGitGlobals("git -c alias.p='push -f' p"), "git -f' p", 'un alias se corta como antes')
+  assert.match(I.withoutGitGlobals('git -c core.sshCommand="git push -f" fetch'), /git push -f/)
+  assert.match(I.withoutGitGlobals(run(`git commit -m x; git -c alias.p='!git push -f' p`)), /git push -f/)
+  assert.match(run('git commit -m x && bash -c "git push -f"'), /git push -f/)
+  const inert = [
+    'git commit -m "explica git push -f y rm -rf"',
+    "git commit -m 'explica git push -f'",
+    `git commit -m "$(cat <<'EOF'\nexplica git push -f y $(rm -rf x)\nEOF\n)"`,
+    `git commit -F - <<'EOF'\nexplica 'git push -f'; y "rm -rf x"\nEOF`,
+    'git commit -m "uno" -m "explica git reset --hard"',
+    'git commit -m x; echo "git push -f"',
+    `git commit -m "$(cat <<'EOF'\nun "git push -f"; y 'rm -rf x'\nEOF\n)"`,
+  ]
+  for (const command of inert) assert.doesNotMatch(run(command), /git (push|reset)|rm -rf/, command)
+  assert.match(run('git commit -m "$(cat <<EOF\ntexto $(git push -f)\nEOF\n)"'), /git push -f/)
+})
+
+test('un cd que puede no mover al shell no cambia el repositorio del commit', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('(cd /etc); git commit -m x'), '/sesion')
+  assert.equal(at('x=$(cd /etc && pwd); git commit -m x'), '/sesion')
+  assert.equal(at('cd /r || cd /etc; git commit -m x'), '/r')
+  assert.equal(at('(cd /etc; true) && git commit -m x'), '/sesion')
+  assert.equal(at('git -C /r status; cd /nope; git commit -m x'), '/r')
+  assert.equal(at('git -C . add -A; git -C /otro commit -m x'), '/sesion')
+  assert.equal(at('git -C /r status; cd /o && ls; cd /r && git commit -m x'), '/r')
+  assert.equal(at('git -C /r diff; (ls && cd /o); git commit -m x'), '/r')
+  assert.equal(at('git -C /r log; cd /o && git log; cd - && git commit -m x'), '/r')
+})
+
+test('un heredoc que no cierra el mensaje no tapa lo que sigue', () => {
+  const trap = `git commit -m "$(cat <<'E'\nx\nE\n) tail"\ngit push -f origin main\necho "\nE\n)"`
+  assert.match(I.asRun(trap), /git push -f/)
+  assert.match(I.asRun(`git commit -m "$(cat <<'E'\nx\nE\n)$(git push -f)"`), /git push -f/)
+  assert.match(I.asRun(`git commit -m "$(cat <<'E' | sh\ngit push -f\nE\n)"`), /git push -f/)
+})
+
+test('de un mensaje queda a la vista sólo lo que corre', () => {
+  const run = I.asRun
+  assert.doesNotMatch(run('git commit -m "fix \\`git push -f\\` docs"'), /git push/)
+  assert.doesNotMatch(run('git commit -m "fix \\$(git push -f) docs"'), /git push/)
+  assert.doesNotMatch(run(`git commit -m "$(printf 'no usar git push -f')"`), /git push/)
+  assert.doesNotMatch(run(`git commit -m "$(echo 'git add -A')"`), /git add/)
+  assert.doesNotMatch(run(`git commit -m "$(cat <<'END-MSG'\nno usar git push -f\nEND-MSG\n)"`), /git push/)
+  assert.doesNotMatch(run(`git commit -m "$(cat <<\\EOF\nno usar git push -f\nEOF\n)"`), /git push/)
+  assert.doesNotMatch(run('git commit -m "v$(date +%F): no usar git push -f"'), /git push/)
+  assert.match(run('git commit -m "v$(date +%F): no usar git push -f"'), /date \+%F/)
+  assert.match(run('git commit -m "$(echo $(true); git push -f)"'), /git push -f/, 'anidada, entera')
+  assert.match(run(`git commit -m "a << b"; sh -c 'git push -f'`), /git push -f/)
+  assert.match(run(`git commit -m x <<< y; sh -c 'git push -f'`), /git push -f/)
+})
+
+test('leer muchos git en un comando cuesta lineal', () => {
+  const many = 'git status; '.repeat(5000)
+  const started = Date.now()
+  I.withoutGitGlobals(many)
+  I.gitDirectory(`${many}git commit -m x`, '/sesion')
+  const spent = Date.now() - started
+  assert.ok(spent < 2000, `tardó ${spent} ms`)
+})
+
+test('un comentario o un texto que parece un heredoc no tapa lo que corre', () => {
+  const run = I.asRun
+  assert.match(run(`git commit -m x # "$(cat <<\\EOF\ngit push -f origin main\nEOF\n)"`), /git push -f/)
+  assert.match(run(`git commit -m '"$(cat <<\\EOF'\ngit push -f origin main\nEOF\n)"`), /git push -f/)
+  assert.match(run(`git commit -m 'a -m "$(cat <<"EOF'\ngit push -f\necho "\nEOF\n)"`), /git push -f/)
+  assert.doesNotMatch(run(`git commit --message="$(cat <<'EOF'\nun "git push -f"\nEOF\n)"`), /git push/)
+  assert.doesNotMatch(run(`git commit -am "$(cat <<'EOF'\nun "git push -f"\nEOF\n)"`), /git push/)
+  assert.doesNotMatch(run(`git commit -sm "$(cat <<\\EOF\nun "git push -f"\nEOF\n)"`), /git push/)
+})
+
+test('la aritmética y el texto alrededor de una sustitución anidada no se leen como orden', () => {
+  const run = I.asRun
+  assert.doesNotMatch(run('git commit -m "$((1+1)) no usar git push -f"'), /git push/)
+  assert.doesNotMatch(run('git commit -m "$(echo $(date)) no usar git push -f"'), /git push/)
+})
+
+test('con varios commits en un comando se lee el repositorio como antes', () => {
+  const at = (command) => I.gitDirectory(command, '/sesion')
+  assert.equal(at('git -C /a status; git -C /otro commit -m a; git commit -m b'), '/a')
+  assert.equal(at('git commit -m a; git commit -m b'), '/sesion')
+})
+
+// Con el espacio cortaba el valor de `-C`: lo que quedaba no era un `git commit`, y ningún guard de commit corría.
+test('un commit con la ruta entrecomillada y con espacios sigue siendo un commit', () => {
+  assert.equal(I.isCommit('git -C "/mi carpeta" commit -m x'), true)
+  assert.equal(I.isCommit("git -C '/mi carpeta' commit -m x"), true)
+  assert.equal(I.isCommit('git --git-dir "/mi carpeta/.git" commit -m x'), true)
+  assert.equal(I.isCommit('git -C "/mi carpeta" status'), false)
+})
