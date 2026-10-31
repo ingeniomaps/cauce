@@ -54,6 +54,11 @@ diseño — eso vive en el commit y en el código.
   sale con 2 y nombra el guard. Si un guard tiene un defecto, frena la sesión hasta arreglarlo. `stop` y los del mensaje
   de la persona siguen sin frenar.
 
+- **Un guard del proyecto puede avisar sin frenar** (caso 466). Saliendo en 0, lo que escribe por stderr le llega a la
+  sesión, recortado a 2000 caracteres. **Si un guard tuyo usa stderr para depurar, ahora eso lo lee la sesión.** En
+  Antigravity llega antes del turno siguiente, con un hook nuevo: reinstalá el runner. En Gemini le llega a la persona y no
+  al agente, porque no tiene otro canal.
+
 ### Cambiado
 
 - **El gate de `plan` en `product-development` ya no frena por una validación que la corrida no puede tener**

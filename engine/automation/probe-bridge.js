@@ -34,7 +34,10 @@ function probeBridge(paths, runner) {
         : {})
       const result = spawnSync(process.execPath, [script, event], { cwd, input: payload, encoding: 'utf8' })
       let response = {}
-      try { response = JSON.parse((result.stdout || '').trim()) } catch { response = {} }
+      let answered = true
+      try { response = JSON.parse((result.stdout || '').trim()) } catch { answered = false }
+      // `pre-invocation` no decide nada: sano es contestar un JSON, vacío si no hay aviso que entregar.
+      if (event === 'pre-invocation' && answered && !response.decision) continue
       // Cada evento tiene su respuesta sana: `stop` cierra la sesión —eso es funcionar— y el resto deja
       // pasar. El puente falla cerrado, así que `deny` en una llamada inocua es que algo se rompió antes
       // de poder juzgarla, y `continue` es el camino de error del propio `stop`.

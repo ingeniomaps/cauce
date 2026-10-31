@@ -1,14 +1,15 @@
 ---
 caso: 466
 titulo: Un guard del proyecto que sale 0 no puede avisarle a la sesión, y el motor le dice que avise así
-estado: abierto
+estado: resuelto
+resuelto-en: 0.118.0
 prioridad: media
 version-detectada: 0.117.2
 ---
 
 # 466 — Un guard que sale 0 no puede avisarle a la sesión
 
-**🔴 abierto** · detectado en 0.117.2 · prioridad **media**: un guard en modo aviso no avisa a nadie, y es la salida que el propio
+**🟢 resuelto en 0.118.0** · detectado en 0.117.2 · prioridad **media**: un guard en modo aviso no avisa a nadie, y es la salida que el propio
 motor le recomienda a quien pide confirmación. No apaga una defensa que frene: se pierde lo que se quiso decir sin frenar.
 
 ## Resumen
@@ -92,3 +93,61 @@ Una instancia con un guard propio en modo aviso, que encontró el aviso sólo en
 
 Caso 428 (los guards del proyecto en el motor), caso 315 (el aviso de reglas a la sesión, que sale por `UserPromptSubmit` y sólo
 en Claude: `automatization/runners/claude/settings.json:33`).
+
+## Cierre
+
+**Resuelto en 0.118.0.** Antigravity, donde nació el caso, no se resolvió con el canal que el caso proponía.
+
+- **Que un 0 pueda avisar sin frenar.** Se hizo. `judge` devuelve lo que el guard dijo por stderr, recortado a 2000 caracteres, y `executeAll` lo devuelve.
+- **El canal de cada runner.** Se hizo distinto en Antigravity:
+  - **Claude y Codex**: `hookSpecificOutput.additionalContext` y `systemMessage`.
+  - **Gemini**: el mismo JSON, donde sólo `systemMessage` está documentado en `BeforeTool`.
+  - **Antigravity**: `injectSteps` con `ephemeralMessage` en un hook nuevo de `PreInvocation`. La tabla de arriba decía `reason` junto con `allow`, y se midió que no llega.
+- **Decisión, stderr.** Se hizo. Lo que un guard mande en JSON como `additionalContext` sigue sin llegar: el contrato es stderr, y `template/AGENTS.md` y el encabezado de `project-guards.js` lo dicen.
+- **El mensaje de `project-guards.js`.** Se corrigió: dice «que salga en 0 y lo diga por stderr».
+- **El aviso y el `ask` en un solo JSON.** Se hizo en `askOutput`.
+- **Sesiones reales en `claude` y `agy`.** Se hicieron, abajo.
+- **Tradeoff, un guard ruidoso.** Se hizo el tope, con prueba.
+- **Tradeoff, logs por stderr.** Va en el CHANGELOG.
+- **Tradeoff, avisar no frena.** Sigue así: un guard que frena gana sobre el aviso de otro, con prueba.
+
+Medido. Antes, por el shim: `exit 0 stdout=[] stderr=[]`. Después, con una pregunta que no nombra el aviso:
+
+- **Claude Code 2.1.316**: el modelo citó «[guards/avisa.sh] CLAVE-AZUL-7: falta el sello de la tarea».
+- **`agy` 1.4.12**, por canal:
+  - `reason` junto con `allow`: NINGUNO, tres de tres.
+  - `injectSteps` con `systemMessage` en `PreInvocation`: NINGUNO, cuatro de cuatro, con el hook corriendo y el aviso entregado.
+  - `userMessage`: una de una, descartado porque se presenta como si lo dijera la persona.
+  - `ephemeralMessage`, el elegido: lo citó en todas, también con el motor final.
+- **Gemini CLI 0.63.0**, sesión real con `--allowed-tools`: la persona ve `Hook system message: [guards/avisa.sh] CLAVE-AZUL-7: …`, y el
+  modelo contesta NINGUNO. Es lo que dice su documentación: en `BeforeTool` no hay canal hacia el agente.
+- **`agy` con `PreInvocation` lento**, 15 s contra un tope de 10: la sesión sigue y contesta NINGUNO. Se pierde ese aviso y nada se niega.
+
+Encontrado y no previsto:
+
+- **Mandar `reason` en un `allow` rompía `automation install`**: `probeBridge` lo lee como falla. Se quitó, además de no servir.
+- **El aviso espera a `PreInvocation` en un archivo temporal por conversación.** Sin `conversationId` no se guarda, para no entregárselo a otra sesión, y una entrada rota en ese evento no niega el turno.
+- **`agy` corre sin `--dangerously-skip-permissions`.** El modo de esta sesión la frenó. Sin esa bandera y sin `--mode auto`, que no está disponible en esta máquina, el comando corrió igual.
+
+### Lista de cierre
+
+1. hecho: `exit 0 stdout=[] stderr=[]` antes de tocar el código, y el aviso perdido en `agy` medido tres de tres.
+2. hecho: `fix/guards-464-467`.
+3. hecho: `test/hooks/project-guards.test.js`, vista en rojo.
+4. hecho: mutaciones en una copia, cada una en rojo: perder el aviso, sin recorte, no escribirlo, sin `systemMessage`, perderlo con `ask`, otro campo inyectado, no borrar el aviso, sin conversación, entrada rota que niega.
+5. hecho: antes y después sobre el mismo guard. Un guard callado no agrega salida, con prueba.
+6. hecho: sesiones reales en Claude y en `agy`.
+7. hecho: lo que el caso pedía, `claude` y `agy`, se corrió. Gemini y Codex no los pedía.
+8. hecho: repetidas con el motor final, también Gemini. Sin correr: Codex, por decisión.
+9. hecho: el aviso se entrega por conversación; la prueba cubre dos y que el aviso de una no le llegue a la otra.
+10. hecho: quien lee la salida del hook y `probeBridge`, que se corrigió para `pre-invocation`.
+11. hecho: dos pasadas sobre el puente. Hallaron el `deny` con entrada rota y el archivo compartido sin conversación, ya arreglados; la última no halló nada que impida.
+12. hecho: pasada uno por uno; se quitó de la prueba la razón que ya está en `hook.js`.
+13. hecho: `npm run ci` en exit 0.
+14. hecho: arriba, contra el caso entero.
+15. hecho: arriba y la línea de abajo.
+16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
+
+**Sin probar:** Codex, por decisión. No se entrega, y queda dicho: en Gemini al agente; en `stop`, y con un `ask` en Antigravity.
+`probeBridge` sólo comprueba que `pre-invocation` conteste un JSON sin `decision`: un puente que rompa sólo `pendingNotices`
+no lo ve. `upgrade` solo no agrega el hook nuevo: `automation doctor` lo avisa y reinstalar lo deja.

@@ -276,7 +276,7 @@ function resolve(names) {
 // todos los motivos (caso 221).
 function executeAll(names, input) {
   // Antes que cualquier guard, porque todos frenan sin la configuración: es la salida de cuando no se puede leer.
-  if (restoresConfig(input)) return
+  if (restoresConfig(input)) return []
   // La línea que la sesión dice llevar, antes de que los guards de límites la lean (caso 422).
   LS.remember(input)
   const asked = []
@@ -295,19 +295,31 @@ function executeAll(names, input) {
     }
   }
   // Los del proyecto, después de los de Cauce y antes de cualquier diálogo: si uno frena, frena (caso 428).
-  PG.runProjectGuards(names, input, hookGroups)
+  const notices = PG.runProjectGuards(names, input, hookGroups)
   if (asked.length) {
     const error = new Error(asked.join('\n\n'))
     error.ask = true
+    error.notices = notices
     throw error
   }
+  return notices
 }
 
 // Lo que Claude Code lee para abrir su diálogo; el motivo es lo que la persona ve, o lo que el agente
 // recibe como error si no hay diálogo.
-function askOutput(message) {
+function askOutput(message, notices = []) {
+  const context = notices.length ? { additionalContext: notices.join('\n') } : {}
   return JSON.stringify({ hookSpecificOutput: {
-    hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: message } })
+    hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: message, ...context } })
+}
+
+// El aviso de un guard que dejó pasar (caso 466). `additionalContext` es lo que le llega a la sesión y sólo existe
+// antes de una herramienta; `systemMessage` le llega a la persona, y es lo único que Gemini documenta en `BeforeTool`.
+function noticeOutput(names, notices) {
+  const text = notices.join('\n')
+  const before = PG.eventsOf(names, hookGroups).some((event) => event.startsWith('pre-'))
+  return JSON.stringify({ systemMessage: text,
+    ...(before ? { hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: text } } : {}) })
 }
 
 // Un guard que falla no contestó, y lo que no contesta no autoriza (R27): Claude Code sólo frena con un 2. Se exime lo
@@ -322,9 +334,12 @@ const exitCodeOf = (names, error) => (
 // sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
   const names = process.argv.slice(2)
-  readInput().then((input) => executeAll(names, input)).catch((error) => {
+  readInput().then((input) => {
+    const notices = executeAll(names, input)
+    if (notices.length) process.stdout.write(noticeOutput(names, notices))
+  }).catch((error) => {
     if (error.ask) {
-      process.stdout.write(askOutput(error.message))
+      process.stdout.write(askOutput(error.message, error.notices))
       return
     }
     const code = exitCodeOf(names, error)
@@ -334,5 +349,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  execute, executeAll, exitCodeOf, guards, hookGroups, hookMetadata,
+  askOutput, execute, executeAll, exitCodeOf, guards, hookGroups, hookMetadata,
 }

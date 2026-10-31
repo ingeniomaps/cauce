@@ -106,7 +106,8 @@ siquiera están acá — los lee el motor desde el paquete.
 - **Agregar un guard propio**: creá `automatization/hooks/guard-<nombre>.sh` y declaralo en `guards` de
   `ops.config.json`, en su evento (`pre-shell`, `pre-files`, `pre-read`, `pre-mcp` o `stop`). El motor lo corre en
   todos los runners; registrado en la configuración de uno solo, corre sólo en ése, y en Antigravity no hay dónde.
-  Sobrevive a cada actualización, porque el toolkit no lo conoce.
+  Sobrevive a cada actualización, porque el toolkit no lo conoce. Sale en 2 para frenar, y en 0 con algo en stderr para
+  avisar sin frenar.
 - **Desactivar un guard**: quitalo de esa configuración, que es del proyecto. El archivo sigue ahí.
 - **Cambiar un comportamiento**: agregá el tuyo, no edites el del toolkit.
 
