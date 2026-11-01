@@ -73,7 +73,7 @@ Caso 464, caso 468.
 - **El mensaje por `$(cat <<'EOF' …)`.** Se decidió como proponía el caso: el heredoc con delimitador citado que cierra el mensaje se tapa entero. Una sesión real commiteó en una rama de trabajo un mensaje que cita `git push -f`, `git reset --hard` y `rm -rf`.
 - **Mensajes inertes.** Siguen sin frenar: `-m "fix \`git push -f\` docs"`, `-m "v$(date +%F): no usar git push -f"`, `-m "$(printf 'no usar git push -f')"`.
 - **Tradeoff, los mensajes de este repositorio.** Se comprobó con 3000 mensajes reales en cinco formas: 15 000 comandos. Se leen distinto 954: en ninguno quedan más verbos peligrosos a la vista, y en 12 quedan menos.
-- **Hacerlo junto con el 468.** Se hizo.
+- **Hacerlo junto con el 468.** Se hizo por partes: el repositorio se terminó después, en `commit-repo.js`.
 
 Encontrado y no previsto:
 

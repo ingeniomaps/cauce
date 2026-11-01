@@ -12,32 +12,30 @@ version-detectada: 0.117.2
 
 ## Resumen
 
-Los guards leen un comando con expresiones y un lector de opciones. Cuál `cd` corrió, o qué ejecuta un heredoc, no se sabe sin un parser de shell. Cada intento de leer más en esta tanda abrió otra forma de esconder una orden, así que estas formas quedaron como estaban.
+Los guards leen un comando con expresiones y un lector de opciones. Qué ejecuta un heredoc, o un alias, no se sabe sin un parser de shell. Cada intento de leer más en esta tanda abrió otra forma de esconder una orden, así que estas formas quedaron como estaban.
 
 ## Síntoma
 
-Se le pregunta a `run.js pre-shell` en una rama de trabajo, sin ejecutar nada. Salida real, 2026-10-31, corrida fila por fila: exit 0 con el motor anterior y con éste. En la rama viva también pasan las que leen otro repositorio —`cd /etc; cd R`, `echo git -C /etc`, `git -C /etc status`—, porque los guards se abstienen; las otras frenan por `live-commit`.
+Se le pregunta a `run.js pre-shell` en una rama de trabajo, sin ejecutar nada. Salida real, 2026-10-31, corrida fila por fila: exit 0 con el motor anterior y con éste. 
 
 | Comando | Por qué pasa |
 |---|---|
-| `cd /etc; cd R && git commit -m x` | se lee el primer `cd` |
-| `(cd R && git commit -m x)`, con la sesión fuera de `R` | tras un paréntesis no se lee |
-| `echo git -C /etc && git commit -m x` | se lee el primer `git -C` del comando, aunque sea de otro |
-| `git -C /etc status; git commit -m x` | igual, y el commit corre en la sesión |
 | `git commit -m "$(cat <<EOF` con `$(orden)` en el cuerpo | `commandOf` quita el cuerpo del heredoc antes de leer |
 | `git commit -F - <<'EOF'`, y una línea `sh -c '…'` después del cierre | el heredoc se lleva el resto del comando |
 
 Frenan sin ejecutar nada peligroso, a propósito: `git tag -m 'cita un verbo'` después de un commit, igual que solo, y `$(git log --grep='cita un verbo')`.
 
-También pasan, y `RUNS_CONFIG` en `git-globals.js` no las distingue: `git -c user.name="Git Bot" commit -m x`, porque el valor nombra `git`; `git -C "$PWD/a b" commit -m x`, porque la variable no se expande; y un `-c alias.p='push -f' p` o un `-c core.sshCommand='…' fetch`, que corren algo sin que el comando lo diga.
+También pasan: un `-c alias.p='push -f' p` o un `-c core.sshCommand='…' fetch`, que corren algo sin que el comando lo diga.
+
+Frena de más, porque con dudas se juzga la sesión: `(cd F && git commit)` con la sesión en la instancia, igual que antes del 468; `cd F || cd R; git commit`; `pushd F; git commit`; `eval git -C F commit`; y `cd F && git -C "$PWD/a b" add -A`, porque fuera de un commit `$PWD` no se sigue.
 
 ## Causa raíz
 
-`gitDirectory` (`engine/hooks/input.js`) y `commitAsRun` (`engine/hooks/as-run.js`).
+`commitAsRun` (`engine/hooks/as-run.js`) y `commandOf` (`engine/hooks/input.js`).
 
 ## Fix propuesto
 
-Hipótesis: un parser de shell propio, sin dependencias, que entienda subshells, heredocs y sustituciones, y que reemplace estas lecturas de una vez. Es un proyecto aparte. Antes de empezarlo se mide cuántas de estas formas aparecen en los `journal.jsonl` de las corridas: si no aparecen, no se hace.
+Hipótesis: un parser de shell propio, sin dependencias, que entienda heredocs y sustituciones, y que reemplace estas lecturas de una vez. Es un proyecto aparte. Antes de empezarlo se mide cuántas de estas formas aparecen en los `journal.jsonl` de las corridas: si no aparecen, no se hace.
 
 ## Tradeoffs
 
@@ -49,4 +47,4 @@ Las revisiones de los casos 464, 468 y 469.
 
 ## Relacionados
 
-Casos 464, 468, 469.
+Casos 464, 469. El 468 cerró lo que era de repositorio: `engine/hooks/commit-repo.js`.

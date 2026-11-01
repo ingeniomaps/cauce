@@ -119,7 +119,7 @@ todavía no conoce).
   - `git commit -m "cd /otro && git -C /otro commit"`: exit 2 antes y después, leyendo el cwd.
 - **El prototipo de este caso.** Se decidió que no. Se construyó primero con regex, y las revisiones le encontraron regresiones. `engine/hooks/git-globals.js` es un lector lineal, porque la regex tardaba 24,3 s con 26 `-C`.
 - **La ruta con espacios.** Se hizo, sólo con `git` como primera palabra de un comando simple. Era peor de lo que este caso decía: `git -C "a b" commit` no se reconocía como commit. En otra posición se lee como antes: leerla ahí dejaba pasar lo que el shell vuelve a parsear.
-- **La variable, `git -C "$PWD"`.** Se hizo: deja de lanzar. Sale exit 2, «no se pudo leer el índice… Si usaste una variable en `git -C`, escribí la ruta literal». No se expande, igual que sin comillas. Con un espacio en el resto de la ruta, `git -C "$PWD/a b" commit`, no frena: está en el 473.
+- **La variable, `git -C "$PWD"`.** Se hizo: deja de lanzar. Sale exit 2, «no se pudo leer el índice… Si usaste una variable en `git -C`, escribí la ruta literal». No se expande, igual que sin comillas. Con `$PWD`, se lee: el 468 lo expande.
 - **Comentario falso de `gitDirectory`.** Se reemplazó.
 - **Tradeoff, el mensaje leído como orden.** Se probó: mensajes con `cd` y `-C` citados siguen leyendo el cwd.
 - **Tradeoff, commits que empiezan a frenarse.** Ocurre, y está en el CHANGELOG.
