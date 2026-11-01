@@ -46,8 +46,7 @@ diseño — eso vive en el commit y en el código.
 - **Un `git commit` con la ruta entre comillas ya no se saltea los guards** (caso 464). `git -C "$dir" commit`, `cd "$dir"
   && git commit` y `git -C "a b" commit` caían o no se reconocían como commit, y el commit salía sin `verify`,
   `governance` ni `dependencies`. Ahora esos commits se juzgan: **algunos que pasaban van a empezar a frenarse.** Si la
-  ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal, salvo que lleve
-  además un espacio, que todavía no se lee. Una ruta con espacios
+  ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal. Una ruta con espacios
   se lee entera sólo con `git` como primera palabra de un comando simple. `git -c user.name="A B" push -f` ya no esconde el verbo. También se reconocen `--no-advice`, `--no-lazy-fetch` y
   `--attr-source`, que escondían el verbo.
 - **Un guard que falla frena en vez de dejar pasar** (caso 467). Salía con 1, que Claude Code no toma como freno. Ahora
@@ -66,9 +65,13 @@ diseño — eso vive en el commit y en el código.
   `main` o `master`, sin `HEAD` en el remoto, se quedaba sin conteo y sin explicación: ahora nombra
   `git remote set-head <remoto> --auto`.
 
-- **Lo que un commit ejecuta ya no se esconde en su mensaje** (casos 468 y 469). `git commit -m "$(git push -f)"` y `git
-  commit -m x; sh -c '…'` pasaban sin que ningún guard los viera, y `git commit -m x && cd /etc` se leía como de otro
-  repositorio. Un mensaje que sólo cita comandos sigue pasando, también por `-m "$(cat <<'EOF' …)"`.
+- **Lo que un commit ejecuta ya no se esconde en su mensaje** (caso 469). `git commit -m "$(git push -f)"` y `git commit
+  -m x; sh -c '…'` pasaban sin que ningún guard los viera. Un mensaje que sólo cita comandos sigue pasando, también por
+  `-m "$(cat <<'EOF' …)"`.
+- **Los guards de commit juzgan el repositorio donde el commit corre** (caso 468). Se seguía el primer `cd` o `-C` del
+  comando, y `cd /etc; cd repo && git commit`, `echo git -C /etc && git commit` o `git commit && cd /etc` quedaban sin
+  juzgar. **Algunos commits que pasaban van a empezar a frenarse.** Si no se puede saber cuál `cd` corrió, se juzga el
+  candidato que sea de la sesión, y `(cd otro && git commit)` se juzga en la sesión: `git -C otro commit` no deja dudas.
 
 ### Cambiado
 

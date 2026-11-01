@@ -31,8 +31,8 @@ const FLAG = new RegExp(`-[Cc](?=\\s|\\\\\\n)|${VALUED}(?:=|(?=\\s|\\\\\\n))`
 const TAKES_VALUE = new RegExp(`^(?:-[Cc]|${VALUED}=?|--exec-path=)$`)
 const SPACE = /\s/
 const ENDS_WORD = /[;&|()<>]/
-const RUNS_CONFIG = /alias\.|!|\bgit\b/i
-const INTERPRETED = /[;&|<>()$`\n\\'"]/
+const RUNS_CONFIG = /alias\.|!|\bgit\b/
+const INTERPRETED = /[;&|<>()`\n\\'"]/
 
 function plainEnd(text, start) {
   let at = start

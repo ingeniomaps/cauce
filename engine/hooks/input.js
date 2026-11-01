@@ -15,7 +15,7 @@ const { writableOutsideRoots } = require('../config/paths')
 const { withTaskTrees } = require('../core/task-trees')
 const LT = require('../core/line-trees')
 const { unreadableConfig } = require('./unreadable-config')
-const { masked, segments, shellWord, unquoted } = require('./quoting')
+const { shellWord, unquoted } = require('./quoting')
 const { directoryFlag, isCommit, withoutGitGlobals } = require('./git-globals')
 const { asRun } = require('./as-run')
 
@@ -229,30 +229,15 @@ function expandAssigned(command) {
     (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
 }
 
-// Sobre qué repositorio se lee el índice. En un commit se mira el comando con el mensaje vaciado, por
-// la misma razón por la que `destructive` lo hace: un mensaje que menciona `git -C $VAR` no está
-// eligiendo un repositorio, lo está citando. Sin esto, el commit que explica este arreglo se bloquea a
-// sí mismo — pasó al escribirlo.
-// En un commit se lee con lo entrecomillado tapado: así una ruta entre comillas se lee y un mensaje que cita un comando
-// no (caso 464). Y lo que venga después del commit no lo cambia de repositorio, salvo que sea otro `git`, que también
-// se juzga (caso 468). Cuál de varios `cd` corrió no se sabe sin ejecutar: se lee el primero, y el resto está
-// en el 473.
-// Fuera de un commit no se tapa, porque lo entrecomillado puede ejecutarse.
-function gitDirectory(given, cwd) {
+// En un commit, `commit-repo.js` dice cuáles pueden ser, y con `input` se juzga el primero que sea de la
+// sesión. Fuera de
+// un commit lo entrecomillado puede ejecutarse, así que no se tapa.
+function gitDirectory(given, cwd, input) {
   const command = expandAssigned(given)
   if (isCommit(command)) {
-    const hidden = masked(command)
-    const parts = segments(command)
-    const own = parts.findIndex(({ start, end }) => isCommit(command.slice(start, end).trimStart()))
-    const later = parts.slice(own + 1).some(({ start, end }) => /\bgit\s/.test(command.slice(start, end)))
-    const end = own >= 0 && !later ? parts[own].end : command.length
-    const seen = hidden.slice(0, end)
-    const flag = directoryFlag(seen)
-    if (flag) return path.resolve(cwd, shellWord(command.slice(flag.start, flag.end)))
-    const cd = seen.replace(/\\[\s\S]/g, '\u0000\u0000').match(/(?:^|[;&|\n]\s*)cd\s+([^\s;&|]+)/)
-    if (!cd) return path.resolve(cwd, '.')
-    const stop = cd.index + cd[0].length
-    return path.resolve(cwd, shellWord(command.slice(stop - cd[1].length, stop)))
+    const { directoriesOf } = require('./commit-repo')
+    const found = directoriesOf(command, path.resolve(cwd))
+    return (input && found.find((one) => owns(input, one))) || found[0]
   }
   const flag = directoryFlag(command)
   if (flag) return path.resolve(cwd, shellWord(command.slice(flag.start, flag.end)))
@@ -301,7 +286,7 @@ function stagedFiles(dir) {
 // Y con `input`, sólo sobre un repositorio de la sesión: el commit en uno ajeno vuelve `foreign` y sin
 // nada staged, y cada guard lo deja pasar. Por qué, en `owns`.
 function stagedForCommit(command, cwd, input) {
-  const dir = gitDirectory(command, cwd)
+  const dir = gitDirectory(command, cwd, input)
   if (input && !owns(input, dir)) return { dir, staged: [], foreign: true }
   if (/\bgit\s+add\b/.test(withoutGitGlobals(unquoted(command)))) {
     block('El comando stagea y commitea a la vez, así que este guard lee el índice de antes de stagear '

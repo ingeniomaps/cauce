@@ -108,7 +108,7 @@ function aiSignature(input) {
   const commit = isCommit(command) || WRITES_HISTORY.test(command)
   const publishes = PUBLISHES.test(command)
   if (!commit && !publishes) return
-  const dir = commit ? gitDirectory(command, cwdOf(input)) : cwdOf(input)
+  const dir = commit ? gitDirectory(command, cwdOf(input), input) : cwdOf(input)
   if (commit && !owns(input, dir)) return
   // El mensaje viaja casi siempre en un heredoc, y ahí es donde hay que mirar: por qué, en `rawCommandOf`.
   const found = signatureIn(messageOf(rawCommandOf(input), dir, publishes))

@@ -300,7 +300,7 @@ function gitAdd(input) {
   // sí se ejecuta, así que ahí no se vacía.
   const command = withoutGitGlobals(asRun(raw))
   // Stagear por nombre es una regla de los repositorios de la sesión; por qué no alcanza a otro, en `owns`.
-  if (!owns(input, gitDirectory(raw, cwdOf(input)))) return
+  if (!owns(input, gitDirectory(raw, cwdOf(input), input))) return
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
   // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
   // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
