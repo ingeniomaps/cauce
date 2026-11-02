@@ -276,7 +276,7 @@ function resolve(names) {
 // todos los motivos (caso 221).
 function executeAll(names, input) {
   // Antes que cualquier guard, porque todos frenan sin la configuración: es la salida de cuando no se puede leer.
-  if (restoresConfig(input)) return
+  if (restoresConfig(input)) return []
   // La línea que la sesión dice llevar, antes de que los guards de límites la lean (caso 422).
   LS.remember(input)
   const asked = []
@@ -287,39 +287,67 @@ function executeAll(names, input) {
     try {
       execute(name, input)
     } catch (error) {
-      if (!error.blocked || !CF.takeAsk(input)) throw error
+      if (!error || !error.blocked) {
+        throw new Error(`el guard ${name} falló sin llegar a juzgar: ${(error && error.message) || error}`)
+      }
+      if (!CF.takeAsk(input)) throw error
       asked.push(error.message)
     }
   }
   // Los del proyecto, después de los de Cauce y antes de cualquier diálogo: si uno frena, frena (caso 428).
-  PG.runProjectGuards(names, input, hookGroups)
+  const notices = PG.runProjectGuards(names, input, hookGroups)
   if (asked.length) {
     const error = new Error(asked.join('\n\n'))
     error.ask = true
+    error.notices = notices
     throw error
   }
+  return notices
 }
 
 // Lo que Claude Code lee para abrir su diálogo; el motivo es lo que la persona ve, o lo que el agente
 // recibe como error si no hay diálogo.
-function askOutput(message) {
+function askOutput(message, notices = []) {
+  const context = notices.length ? { additionalContext: notices.join('\n') } : {}
   return JSON.stringify({ hookSpecificOutput: {
-    hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: message } })
+    hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: message, ...context } })
 }
+
+// El aviso de un guard que dejó pasar (caso 466). `additionalContext` es lo que le llega a la sesión y sólo existe
+// antes de una herramienta; `systemMessage` le llega a la persona, y es lo único que Gemini documenta en `BeforeTool`.
+function noticeOutput(names, notices) {
+  const text = notices.join('\n')
+  const before = PG.eventsOf(names, hookGroups).some((event) => event.startsWith('pre-'))
+  return JSON.stringify({ systemMessage: text,
+    ...(before ? { hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: text } } : {}) })
+}
+
+// Un guard que falla no contestó, y lo que no contesta no autoriza (R27): Claude Code sólo frena con un 2. Se exime lo
+// que no puede frenar por un defecto propio: en `stop` ataría la sesión a no poder cerrar, y en `prompt` se tragaría el
+// mensaje de la persona (caso 467).
+const CANNOT_STOP = new Set(['prompt', 'prompt-notice', 'stop',
+  ...hookGroups.prompt, ...hookGroups['prompt-notice'], ...hookGroups.stop])
+const exitCodeOf = (names, error) => (
+  error.blocked || !names.length || !names.every((name) => CANNOT_STOP.has(name)) ? 2 : 1)
 
 // Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
 // sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
-  readInput().then((input) => executeAll(process.argv.slice(2), input)).catch((error) => {
+  const names = process.argv.slice(2)
+  readInput().then((input) => {
+    const notices = executeAll(names, input)
+    if (notices.length) process.stdout.write(noticeOutput(names, notices))
+  }).catch((error) => {
     if (error.ask) {
-      process.stdout.write(askOutput(error.message))
+      process.stdout.write(askOutput(error.message, error.notices))
       return
     }
-    console.error(`BLOQUEADO: ${error.message}`)
-    process.exit(error.blocked ? 2 : 1)
+    const code = exitCodeOf(names, error)
+    console.error(`${code === 2 ? 'BLOQUEADO' : 'ERROR'}: ${error.message}`)
+    process.exit(code)
   })
 }
 
 module.exports = {
-  execute, executeAll, guards, hookGroups, hookMetadata,
+  askOutput, execute, executeAll, exitCodeOf, guards, hookGroups, hookMetadata,
 }

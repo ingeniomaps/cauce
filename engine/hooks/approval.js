@@ -46,7 +46,7 @@ function locate(raw, input, { shell = false } = {}) {
   const text = shell ? raw.replace(/(^|\s)git(?:\s+-C\s+\S+)+/g, '$1git') : raw
   const targets = [...text.matchAll(/(?:\s-C\s+|(?:^|[;&|\n]\s*)cd\s+)(['"]?)([^\s'";&|]+)\1/g)].map((one) => one[2])
   const sure = new Set(targets).size <= 1 && !targets.some((one) => /[$`*?~]/.test(one))
-  return { dir: gitDirectory(text, cwdOf(input)), sure }
+  return { dir: gitDirectory(text, cwdOf(input), input), sure }
 }
 
 function inRepo(dir) {

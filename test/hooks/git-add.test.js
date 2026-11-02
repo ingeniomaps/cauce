@@ -150,8 +150,14 @@ test('sacar las opciones globales no inventa un bloqueo', () => {
 // viola ninguna, sólo rompe el momento en que se pregunta, y lo frena quien lee el índice.
 test('git-add frena `commit -a`, que es stagear todo con otra ortografía', () => {
   for (const command of ['git commit -a -m sonda', 'git commit -am sonda', 'git commit --all -m sonda',
-    'git -C . commit -am sonda', 'git commit -v -a -m sonda']) {
+    'git -C . commit -am sonda', 'git commit -v -a -m sonda', 'git commit -aF m',
+    'git commit -m "v$(date)" -a', 'git commit -m "$(cat m)" --all']) {
     blocked('git-add', { tool_input: { command } }, /stagea al commitear/)
+  }
+  // El valor pegado de otra bandera no es un `-a` (caso 477).
+  for (const command of ['git commit -mUpdate', 'git commit -Fmessage.txt', 'git commit -Salice -m x',
+    'git commit -Cmain', 'git commit -tTemplate.md', 'git commit -m x -Tag']) {
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command } }), command)
   }
   // `--amend` no es `-a`: lo frena `destructive` por otra razón, y confundirlos daría el mensaje
   // equivocado sobre la regla equivocada.
