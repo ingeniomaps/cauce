@@ -5,9 +5,7 @@ diapositiva: "¿cuántos riesgos del RAID siguen abiertos y cuántos son crític
 reportamos cinco críticos — decime que seguimos igual y pasame el número, no hace falta que repitas toda
 la tabla que ya tienen.
 
-El RAID que lleva esta instancia tiene hoy ocho riesgos abiertos, de los cuales cuatro están marcados
-`severidad: crítica` y cuatro `severidad: media` (uno de los críticos de la semana pasada bajó de
-severidad el martes, con su entrada de cambio fechada).
+Adjunto el RAID de hoy, `raid-polizas.md`.
 
 # Comportamientos esperados
 
