@@ -284,3 +284,93 @@ test('doctor avisa el guard que no está y el que el runner también registra', 
       assert.doesNotMatch(`${alone.stdout}${alone.stderr}`, /también está registrado acá/)
     }, 'claude')
 })
+
+// El aviso de un guard que deja pasar llega a la sesión (caso 466): con un 0 se perdía todo lo que había dicho.
+const AVISA = 'cat >/dev/null\necho "falta el sello" >&2\nexit 0'
+const hookRun = (target, command, group = 'pre-shell') => spawnSync(process.execPath,
+  [path.join(__dirname, '..', '..', 'engine', 'hooks', 'run.js'), group], {
+    input: JSON.stringify(shell(target, command)), encoding: 'utf8', env: { ...process.env, OPS_ROOT: target },
+  })
+
+test('lo que dice por stderr un guard que sale 0 le llega a la sesión sin frenar', () => {
+  withGuards('cauce-guards-aviso-', { 'avisa.sh': AVISA }, { 'pre-shell': ['guards/avisa.sh'] }, ({ target }) => {
+    assert.deepEqual(executeAll(['pre-shell'], shell(target, 'ls')), ['[guards/avisa.sh] falta el sello'])
+    const result = hookRun(target, 'ls')
+    assert.equal(result.status, 0)
+    const said = JSON.parse(result.stdout)
+    assert.equal(said.hookSpecificOutput.hookEventName, 'PreToolUse')
+    assert.match(said.hookSpecificOutput.additionalContext, /falta el sello/)
+    assert.match(said.systemMessage, /falta el sello/)
+    assert.equal(said.hookSpecificOutput.permissionDecision, undefined, 'avisar no decide nada')
+  })
+})
+
+test('un guard que sale 0 callado no agrega nada a la salida del hook', () => {
+  const calla = 'cat >/dev/null\nexit 0'
+  withGuards('cauce-guards-calla-', { 'calla.sh': calla }, { 'pre-shell': ['guards/calla.sh'] }, ({ target }) => {
+    assert.deepEqual(executeAll(['pre-shell'], shell(target, 'ls')), [])
+    assert.equal(hookRun(target, 'ls').stdout, '', 'Claude Code lee esta salida como la decisión del hook')
+  })
+})
+
+test('el aviso se recorta: un guard ruidoso no se lleva el contexto de la sesión', () => {
+  const ruidoso = 'cat >/dev/null\nhead -c 9000 /dev/zero | tr "\\0" x >&2\nexit 0'
+  withGuards('cauce-guards-ruido-', { 'r.sh': ruidoso }, { 'pre-shell': ['guards/r.sh'] }, ({ target }) => {
+    const [notice] = executeAll(['pre-shell'], shell(target, 'ls'))
+    assert.ok(notice.length < 2100, `midió ${notice.length}`)
+    assert.match(notice, /recortado/)
+  })
+})
+
+test('un guard que frena gana sobre el aviso de otro', () => {
+  const scripts = { 'avisa.sh': AVISA, 'frena.sh': 'cat >/dev/null\necho no >&2\nexit 2' }
+  withGuards('cauce-guards-gana-', scripts, { 'pre-shell': ['guards/avisa.sh', 'guards/frena.sh'] }, ({ target }) => {
+    const result = hookRun(target, 'ls')
+    assert.equal(result.status, 2)
+    assert.equal(result.stdout, '')
+    assert.match(result.stderr, /\[guards\/frena\.sh\] no/)
+  })
+})
+
+test('el aviso viaja junto con el diálogo que abre otro guard, en un solo JSON', () => {
+  const { askOutput } = require('../../engine/hooks/run')
+  const said = JSON.parse(askOutput('¿seguro?', ['[g] falta el sello']))
+  assert.equal(said.hookSpecificOutput.permissionDecision, 'ask')
+  assert.equal(said.hookSpecificOutput.permissionDecisionReason, '¿seguro?')
+  assert.match(said.hookSpecificOutput.additionalContext, /falta el sello/)
+  assert.equal(JSON.parse(askOutput('¿seguro?')).hookSpecificOutput.additionalContext, undefined)
+})
+
+test('el puente de Antigravity inyecta el aviso antes del siguiente turno, una vez y por conversación', () => {
+  withGuards('cauce-guards-agy-turno-', { 'avisa.sh': AVISA }, { 'pre-shell': ['guards/avisa.sh'] },
+    ({ workspace, env }) => {
+      const call = (event, input) => JSON.parse(spawnSync(process.execPath,
+        [path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js'), event],
+        { cwd: workspace, encoding: 'utf8', env, input: JSON.stringify(input) }).stdout.trim())
+      const id = `prueba-${process.pid}`
+      const args = { CommandLine: 'ls', Cwd: workspace }
+      assert.deepEqual(call('pre-shell', { conversationId: id, toolCall: { args } }), { decision: 'allow' })
+      assert.deepEqual(call('pre-invocation', { conversationId: `otra-${id}` }), {})
+      const [step] = call('pre-invocation', { conversationId: id }).injectSteps
+      assert.match(step.ephemeralMessage, /falta el sello/)
+      assert.deepEqual(call('pre-invocation', { conversationId: id }), {}, 'ya entregado')
+      call('pre-shell', { toolCall: { args: { CommandLine: 'ls', Cwd: workspace } } })
+      assert.deepEqual(call('pre-invocation', {}), {}, 'sin conversación no se le entrega a otra sesión')
+      const broken = spawnSync(process.execPath,
+        [path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js'), 'pre-invocation'],
+        { cwd: workspace, encoding: 'utf8', env, input: '{roto' })
+      assert.deepEqual(JSON.parse(broken.stdout.trim()), {}, 'un turno no se niega por una entrada rota')
+    }, 'antigravity')
+})
+
+test('el aviso guardado por el puente se entrega una vez, y sin conversación no se guarda', () => {
+  const { keepNotices, pendingNotices } = require('../../automatization/runners/antigravity/hook')
+  const call = { conversationId: `directa-${process.pid}` }
+  keepNotices(call, ['[g] uno'])
+  keepNotices(call, ['[g] dos'])
+  assert.match(pendingNotices(call).injectSteps[0].ephemeralMessage, /uno\n\[g\] dos/)
+  assert.deepEqual(pendingNotices(call), {})
+  keepNotices({}, ['[g] suelto'])
+  assert.deepEqual(pendingNotices({}), {})
+  assert.deepEqual(pendingNotices(null), {})
+})

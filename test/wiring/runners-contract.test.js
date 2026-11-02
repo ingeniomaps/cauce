@@ -280,5 +280,10 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 70 desde el 2026-10-25: quien registra las decisiones de Review lee antes las pendientes con `tools/ops.js human`
   // (caso 448), el mismo comando que la parada del 351 le dicta a la persona, ahora dictado al agente desde la raíz.
-  assert.equal(hits, 70, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 74 desde el 2026-10-29: la retoma de `flow` (caso 458) dicta `tools/ops.js flow resume show` en el contrato y
+  // `tools/ops.js flow resume save` al frenar, los dos anclados a `${WORKDIR}` como el resto del manifiesto; el
+  // rechazo de una retoma ilegible le dicta `show` a la persona, texto de un mensaje como el del 308; y el encabezado
+  // del include nombra `planning/reports/` en prosa.
+  assert.equal(hits, 74, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
