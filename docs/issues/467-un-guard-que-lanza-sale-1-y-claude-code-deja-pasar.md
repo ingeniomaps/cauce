@@ -50,6 +50,8 @@ rama viva `master` y con un archivo stageado. Costó USD 0,03 entre las dos:
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 `engine/hooks/run.js:319`: `process.exit(error.blocked ? 2 : 1)`. Está así desde el primer commit del motor (`185f2717`).
 
 El mismo problema ya se encontró una vez, sólo para una forma: el encabezado de `engine/hooks/project-guards.js` y el caso 428
@@ -114,8 +116,8 @@ Encontrado y no previsto:
 4. hecho: mutaciones en una copia, cada una en rojo: exit 1, exit 2 siempre, sin nombrar el guard, mutar el error, sin nombres exento, `restoresConfig` sin valor.
 5. hecho: exit 1 antes y exit 2 después sobre el mismo comando, y las pruebas de que `stop` y `chat` no cambian.
 6. hecho: sesión real, con un guard roto a propósito en una copia del motor.
-7. hecho: Claude Code. Gemini CLI 0.63.0 y `agy` 1.4.12, en sesiones reales con el motor final, con una copia del motor cuyo guard lanza: «el guard destructive falló sin llegar a juzgar», y el comando no corrió. Gemini lo muestra como `Tool execution blocked`; `agy`, como `denied by pre-tool hook`.
-8. hecho: repetida con el motor final en los tres runners. Sin correr: Codex, por decisión.
+7. hecho: Claude Code. Gemini CLI 0.63.0 y `agy` 1.4.12, en sesiones reales con el motor de `31a5e77a`, con una copia del motor cuyo guard lanza: «el guard destructive falló sin llegar a juzgar», y el comando no corrió. Gemini lo muestra como `Tool execution blocked`; `agy`, como `denied by pre-tool hook`.
+8. hecho: repetida con el motor de `31a5e77a` en los tres runners; esos archivos no cambiaron después. Sin correr: Codex, por decisión.
 9. no aplica: es una salida de un proceso; no coordina nada.
 10. hecho: quien dependía del retorno de `executeAll`: `restoresConfig` y el puente. El primero estaba roto y se arregló.
 11. hecho: tres pasadas tocaron `run.js`. La primera halló la salida rota, un error congelado y `run` sin nombres, ya arreglados; las siguientes no hallaron nada en este archivo.

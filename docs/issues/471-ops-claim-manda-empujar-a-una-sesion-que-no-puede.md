@@ -23,6 +23,8 @@ y empujar», y `planning/claims/<slug>.md` queda sin commitear hasta el cierre.
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 `engine/cli/claims.js:103`:
 
 ```js

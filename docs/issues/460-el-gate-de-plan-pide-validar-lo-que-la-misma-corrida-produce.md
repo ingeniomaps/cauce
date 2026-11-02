@@ -33,6 +33,8 @@ decide el guion.
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 - `flows/system/product-development/flow.json:92`: el gate de `plan` es una validación posterior a la producción de
   la etapa, no una condición que la etapa pueda establecer con su entrada.
 - `automatization/workflows/flow.js:313-321`: cada etapa produce y juzga su propio gate en la misma llamada. No hay un

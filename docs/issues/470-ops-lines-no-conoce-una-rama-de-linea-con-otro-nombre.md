@@ -26,6 +26,8 @@ Salida real, en una instancia con la línea `mini` en la rama `line/persona-mini
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 - `engine/core/line-trees.js:21`: `const BRANCH = 'line/'`, sin forma de que la instancia declare otro nombre.
 - `engine/cli/lines.js:319` y `:326`: el aviso y el conteo comparan contra ese nombre.
 

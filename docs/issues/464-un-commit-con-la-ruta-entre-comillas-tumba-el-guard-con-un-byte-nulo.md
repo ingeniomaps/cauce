@@ -54,6 +54,8 @@ Qué hace el runner con un exit 1, según su documentación pública, consultada
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 Antes el caso la ponía en `asRun`, y no es ahí. La traza dice:
 
 - `stagedFiles` (`engine/hooks/input.js:340`), llamada desde `stagedForCommit`, lanza en `dependencies`, `governance` y
@@ -118,7 +120,7 @@ todavía no conoce).
   - `git -C 'R' commit`, `cd "R" && git commit` y `git -c "a=b" -C "R" commit`: igual.
   - `git commit -m "cd /otro && git -C /otro commit"`: exit 2 antes y después, leyendo el cwd.
 - **El prototipo de este caso.** Se decidió que no. Se construyó primero con regex, y las revisiones le encontraron regresiones. `engine/hooks/git-globals.js` es un lector lineal, porque la regex tardaba 24,3 s con 26 `-C`.
-- **La ruta con espacios.** Se hizo, sólo con `git` como primera palabra de un comando simple. Era peor de lo que este caso decía: `git -C "a b" commit` no se reconocía como commit. En otra posición se lee como antes: leerla ahí dejaba pasar lo que el shell vuelve a parsear.
+- **La ruta con espacios.** Se hizo, sólo con `git` como primera palabra de un comando simple. Era peor de lo que este caso decía: `git -C "a b" commit` no se reconocía como commit. En otra posición se lee como antes: leerla ahí dejaba pasar lo que el shell vuelve a parsear. Desde el 479 también detrás de una palabra de bloque o un envoltorio.
 - **La variable, `git -C "$PWD"`.** Se hizo: deja de lanzar. Sale exit 2, «no se pudo leer el índice… Si usaste una variable en `git -C`, escribí la ruta literal». No se expande, igual que sin comillas. Con `$PWD`, se lee: el 468 lo expande.
 - **Comentario falso de `gitDirectory`.** Se reemplazó.
 - **Tradeoff, el mensaje leído como orden.** Se probó: mensajes con `cd` y `-C` citados siguen leyendo el cwd.
@@ -143,8 +145,8 @@ Comparación con el motor anterior, sin ejecutar nada, sobre 68 040 comandos gen
 4. hecho: mutaciones en una copia, todas en rojo: primera palabra siempre y nunca, asignación con separador, valor interpretado, `-c` como palabra, directorio fuera de la primera palabra, máscara siempre y nunca, `shellWord`. Las que sobrevivieron sumaron su caso o se quitó lo que sobraba.
 5. hecho: 50 formas lado a lado contra el motor de `91dbdc9e`.
 6. hecho: sesión real de `claude -p`: `git -C "W/app" commit -m x` y `git -C "W/mi carpeta" commit -m x` se frenaron sin crear commit. Antes, la primera creó `bdb7606`.
-7. hecho: Claude Code 2.1.316. Gemini CLI 0.63.0 y `agy` 1.4.12, en sesiones reales con el motor final: `git -C "W/app" commit -m x` se frenó en los dos sin crear commit.
-8. hecho: repetida con el motor final en los tres runners. Sin correr: Codex, por decisión.
+7. hecho: Claude Code 2.1.316. Gemini CLI 0.63.0 y `agy` 1.4.12, en sesiones reales con el motor de ese momento, anterior a 468 y 473-479: `git -C "W/app" commit -m x` se frenó en los dos sin crear commit.
+8. hecho: repetida con el motor de ese momento en los tres runners; sobre el motor de hoy, por hook. Sin correr: Codex, por decisión.
 9. no aplica: lee un comando; no coordina nada.
 10. hecho: `gitDirectory` lo usan `approval.js`, `ai-signature.js`, `live-commit.js`, `shell.js` y `stagedForCommit`, ejercidos por `test/hooks`; `withoutGitGlobals`, toda la lectura de comandos.
 11. hecho: Ocho pasadas independientes. Las siete primeras hallaron regresiones y se arreglaron. La última, sobre esta versión, corrió 2838 de 39 683 diferencias por `run.js`: sus 135 casos de 2 a 0 son de una sola forma, un commit en una ruta con espacios que esconde una orden, y esa forma ya pasaba sin espacios (caso 469). Después, un barrido completo sin ejecutar nada: 76 950 comandos generados, 16 142 donde los motores leen distinto, todos por `run.js`. De exit 2 a 0 hay 2676, todos con `git` como primera palabra y con el verbo dentro del valor, como `git -C 'x push -f'`, donde git no lo corre: eran falsos positivos del motor anterior. Y una revisión de lo movido después: nada que impida.
@@ -154,4 +156,4 @@ Comparación con el motor anterior, sin ejecutar nada, sobre 68 040 comandos gen
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
 
-**Sin probar:** Codex, por decisión. Los dos restos de esta lectura quedaron en el 473.
+**Sin probar:** Codex, por decisión. Los dos restos de esta lectura quedaron en el 473, que los cerró.

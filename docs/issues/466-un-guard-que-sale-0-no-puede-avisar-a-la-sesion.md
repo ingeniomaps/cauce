@@ -50,6 +50,8 @@ pedían (2026-10-31). El programador corría en `agy` y no los vio.
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 - `judge` (`engine/hooks/project-guards.js:70-75`): con un 0, `said` no se usa y `decisionOf` sólo busca lo que frena.
 - `executeAll` (`engine/hooks/run.js`) no devuelve nada, y los dos que lo llaman responden sin mensaje: `run.js` no escribe y el
   puente devuelve `{ decision: 'allow' }` (`automatization/runners/antigravity/hook.js`, `evaluate`).
@@ -138,7 +140,7 @@ Encontrado y no previsto:
 5. hecho: antes y después sobre el mismo guard. Un guard callado no agrega salida, con prueba.
 6. hecho: sesiones reales en Claude y en `agy`.
 7. hecho: lo que el caso pedía, `claude` y `agy`, se corrió. Gemini y Codex no los pedía.
-8. hecho: repetidas con el motor final, también Gemini. Sin correr: Codex, por decisión.
+8. hecho: repetidas con el motor de `31a5e77a`, también Gemini; esos archivos no cambiaron después. Sin correr: Codex, por decisión.
 9. hecho: el aviso se entrega por conversación; la prueba cubre dos y que el aviso de una no le llegue a la otra.
 10. hecho: quien lee la salida del hook y `probeBridge`, que se corrigió para `pre-invocation`.
 11. hecho: dos pasadas sobre el puente. Hallaron el `deny` con entrada rota y el archivo compartido sin conversación, ya arreglados; la última no halló nada que impida.

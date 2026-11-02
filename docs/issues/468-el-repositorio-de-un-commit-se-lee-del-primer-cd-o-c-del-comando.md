@@ -69,14 +69,14 @@ Caso 464 (la ruta entrecomillada), caso 261 (el destino de un `cd` por variable)
 
 ## Cierre
 
-**Resuelto en 0.118.0, entero.** Un primer cierre lo arregló en parte, y el resto pasó al 473; volvió acá y se terminó.
+**Resuelto en 0.118.0.** Un primer cierre lo arregló en parte, y el resto pasó al 473, que lo cerró.
 
 - **`git commit -m x && cd /etc` y `git commit -m x; cd "/etc"`.** Se hizo: lo que viene después no cambia el repositorio.
 - **`echo git -C /etc && git commit -m x`.** Se hizo: ese `git` no corre.
 - **`cd /etc; cd R && git commit -m x`.** Se hizo distinto de lo que proponía. «El último `cd`» no alcanza, porque uno puede no correr: `engine/hooks/commit-repo.js` simula el comando entero, mira si la carpeta existe, y cada `git` se juzga donde corre.
-- **`(cd "/o" && git commit)`.** Se hizo distinto: un subshell deja dudas, y con dudas se juzga el candidato que sea de la sesión. Una sesión fuera de la instancia que entra a ella por un subshell ahora se frena. Frena de más con la sesión en la instancia y el commit en otro lado, igual que antes, y queda en el 473.
+- **`(cd "/o" && git commit)`.** Se hizo distinto: un subshell deja dudas, y con dudas se juzga el candidato que sea de la sesión. Una sesión fuera de la instancia que entra a ella por un subshell ahora se frena. Lo que frenaba de más con la sesión en la instancia lo cerró el 473: el subshell se simula, 2 → 0.
 - **Tradeoff, cinco lugares usan `gitDirectory`.** Se hizo: los cinco le pasan `input`, y sus guards eligen entre los candidatos.
-- **Tradeoff, un `cd` condicional.** Se hizo: `cd a || cd b`, `false && cd x;`, `cd x &`, `true | cd x` y `pushd` dejan dudas. `cd x || exit 1` no.
+- **Tradeoff, un `cd` condicional.** Se hizo: `false && cd x;`, `cd x &` y `true | cd x` dejan dudas. `cd x || exit 1` no. `cd a || cd b` y `pushd` dudaban acá, y el 473 los simula.
 - **Prioridad, «sube a alta si aparece en los diarios».** Queda sin objeto.
 
 Encontrado y no previsto:
@@ -95,7 +95,7 @@ Encontrado y no previsto:
 5. hecho: 3456 comandos contra `8d54944f`, con la sesión en la instancia y en un repo ajeno. Los 564 que difieren corrieron por `run.js`, y después por `bash` con un `git` falso que anota dónde cae. De los 76 que dejan de frenar, ninguno escribe en la instancia. De los 516 que pasan a frenar, 34 son `commit` o `add` que no la tocan: el resto de la lista está en el 473.
 6. hecho: hook instalado y sesiones reales. `cd /tmp; cd W/app && git commit` y `echo git -C /tmp && git -C W/app commit` se frenaron por `live-commit`, sin crear commit.
 7. hecho: Claude Code 2.1.316, Gemini CLI 0.63.0 y `agy` 1.4.12. El commit en un repo ajeno pasó y se creó en Gemini y `agy`; en Claude lo frena Claude Code mismo, antes del hook, y ahí se midió por el hook: exit 0.
-8. hecho: con el motor final, salvo las últimas correcciones de falsos frenos, medidas por las pruebas y el barrido. Sin correr: Codex, por decisión.
+8. hecho: con el motor de ese momento, anterior a 473-479, salvo las últimas correcciones de falsos frenos, medidas por las pruebas y el barrido. Sin correr: Codex, por decisión.
 9. hecho: dos carpetas de sesión, un repo propio y uno ajeno, en cada corrida.
 10. hecho: los cinco que usan `gitDirectory`, por `test/hooks`.
 11. hecho: cuatro pasadas sobre `commit-repo.js`. La última no halló regresiones, sólo falsos frenos, ya arreglados y comprobados con pruebas, mutaciones y barrido, sin otra pasada.

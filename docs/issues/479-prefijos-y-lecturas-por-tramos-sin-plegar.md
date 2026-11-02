@@ -27,6 +27,8 @@ La forma en una línea de `nice rm -rf /etc/foo` y `echo a > /etc/x` da 2.
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 Por revisar. Candidatas: `verbOf` y `readTokens` (`engine/hooks/secrets-shell.js`), que no saltean palabras de bloque ni `timeout`; el ancla `AT` de `engine/hooks/workers.js:26`; y `steps` y `writes` (`engine/hooks/shell-changes.js`), que leen de `rawCommandOf`, sin plegar.
 
 ## Fix propuesto
@@ -90,17 +92,26 @@ Ampliación, a pedido de la persona, con lo que quedaba de los guards y lo que f
 Se decidió que no:
 
 - **`for r in a b; do git -C $r commit`.** Sigue frenando. Se intentó expandir la lista, y como el guard juzga una sola carpeta, un commit en `master` del segundo repositorio pasaba. El mensaje ya dice que se escriba la ruta literal.
-- **`f() { git commit; }; git add a; f`.** Sigue frenando, y no es de más: da lo mismo que `git add a; git commit`.
+- **`f() { git commit -m x; }; git add a; f`.** Sigue frenando, y no es de más: da lo mismo que `git add a; git commit`.
 - **`bash archivo.sh`.** No se lee: abrir scripts haría frenar los de cada proyecto y baja a las instancias. Lo decide una persona.
 - **`cat .env` si el pedido lo nombra.** Pasa: lo que la persona pide no se frena, y un guard no distingue quién escribió el texto.
 
 Declarado:
 
-- **`bash -c "cd a && git commit -m x"; git commit -m y`** pasa de 2 a 0. Se juzga sólo el primer commit, igual que `git -C a commit; git commit -m y`, que ya daba 0. Antes frenaba por leer mal el repositorio.
+- **`bash -c "cd a && git commit -m x"; git commit -m y`** pasa de 2 a 0. Se juzga sólo el primer commit, igual que `git -C a commit; git commit -m y`, que ya daba 0. Antes frenaba por leer mal el repositorio. Vale con `a` dentro de la sesión: con un repositorio fuera, o `a` inexistente, sigue en 2.
 - **`echo "; git commit -m x" | env sh`,** con `| /bin/sh` o `| timeout 5 sh`, pasa de 2 a 0: `FEEDS_SHELL` no los reconoce.
 - **`node x.js`,** cualquier programa no anotado como de sólo lectura: sus comillas se siguen leyendo como orden.
 - **`env -C a git commit` y `sudo -D a git commit`** frenan juzgando la raíz.
 - **Un `bash -c` con un mensaje de 1 MB** pasa de 1 s a 4,6 s.
+
+La revisión del diff entero contra `main` sumó:
+
+- **`git archive HEAD | tar -x -C "$T" && cd "$T" && git init && git add f && git commit`** daba 2 en la instancia: 2 → 0. Lo mismo con `merge-base`, `ls-remote`, `for-each-ref`, `reflog`, `pull`, `push`, `worktree add` y otros que no tocan su índice.
+- **`git commit; ls`** en rama viva no era un commit: 0 → 2.
+- **`timeout 60 git -C "a b" commit`** y detrás de `then`: 0 → 2.
+- **`{ (rm -rf /etc/foo); }`**: 0 → 2.
+
+Declarado: `git worktree add -f ../z main && cd ../z && git commit`, forzado a propósito, pasa de 2 a 0. Texto citado en rama viva como `gh issue create --body "a; git commit; b"` pasa de 0 a 2, igual que ya hacía `git commit x` ahí.
 
 Esa tanda: 27 mutaciones en una copia, todas en rojo; seis pruebas en rojo con el motor anterior; 14044 comandos reales contra el motor anterior, 0 y 0. La comparación de una versión intermedia halló 11 regresiones en un `for`, y la revisión, otras tres: se quitó esa lectura y se ancló el `sh -c`. Sesiones: los 7 que frenan frenaron en Claude, Gemini y `agy`, sin commit; `bash -c "… -m 'cita git push -f'"` y `echo` pasaron en los tres.
 
@@ -109,18 +120,18 @@ Esa tanda: 27 mutaciones en una copia, todas en rojo; seis pruebas en rojo con e
 1. hecho: las filas, medidas con el motor stageado antes de tocar el código.
 2. hecho: `fix/guards-464-467`.
 3. hecho: `test/hooks/line-continuation.test.js`: cuatro pruebas en rojo con el motor anterior, en verde con éste.
-4. hecho: 20 mutaciones en una copia, todas en rojo, incluido el nombre del runner. Una sobrevivió, las banderas en `unwrapped`, y sumó su prueba con `stdbuf -oL docker run`. Sobre el motor final, el 2026-11-02, se repitieron todas las tandas de 473 a 479: 110 en rojo, ninguna sobrevive, y 14 ya no aplican porque ese código se reescribió.
+4. hecho: 20 mutaciones en una copia, todas en rojo, incluido el nombre del runner. Una sobrevivió, las banderas en `unwrapped`, y sumó su prueba con `stdbuf -oL docker run`. Sobre el motor final, el 2026-11-02, se repitieron todas las tandas de 473 a 479: 110 en rojo, ninguna sobrevive, y 14 ya no aplican porque ese código se reescribió. El último ajuste sumó 8, en rojo.
 5. hecho: `verbOf` y `WRAPPED` cambiaron de lectura: tabla de arriba y revisiones lado a lado.
-6. hecho: en banco, la tabla de arriba. 14003 comandos reales de las sesiones de este repositorio, motor anterior → éste final: 0 pasan a frenar y 0 dejan de frenar. Motor final contra `07a8eba1`, toda la tanda: 14044 comandos reales, 3 pasan a frenar y 9 dejan de frenar. Ocho son `git add` y `commit` dentro de un `(cd X && …)` o un `for`, que caen en otra carpeta (caso 473). El noveno es un script de banco de esta tanda, con un `git init` y un commit. De los 3, uno es un script de esta tanda cuyo texto nombra `git push -f`, y dos juntan `git add` y commit en una forma que ahora se lee.
+6. hecho: en banco, la tabla de arriba. 14003 comandos reales de las sesiones de este repositorio, motor anterior → éste final: 0 pasan a frenar y 0 dejan de frenar. Motor final contra `07a8eba1`, toda la tanda: 14044 comandos reales, 3 pasan a frenar y 9 dejan de frenar. Ocho son `git add` y `commit` dentro de un `(cd X && …)` o un `for`, que caen en otra carpeta (caso 473). El noveno es un script de banco de esta tanda, con un `git init` y un commit. De los 3, uno es un script de esta tanda cuyo texto nombra `git push -f`, y dos juntan `git add` y commit en una forma que ahora se lee. El último ajuste, contra el anterior: 14071 comandos, 0 pasan a frenar y 3 dejan de frenar, los tres `git archive` a una copia desechable.
 7. hecho: Claude Code 2.1.316, Gemini CLI 0.63.0 y `agy` 1.4.12 frenaron `cross-env CI=1 npx jest` y `timeout 60 git commit` en rama viva, sin crear commit. `nice ⏎ rm` y `echo a > ⏎` frenaron en Gemini y `agy`; en Claude frenó la escritura, y en el `rm` se negó el modelo. `timeout 5 ⏎ cat .env` y `then ⏎ cat .env` con el comando en un archivo frenaron en Gemini y `agy`; en Claude se negó el modelo. Codex quedó excluido por el pedido.
-8. hecho: las sesiones corrieron antes del último ajuste de `RUNNER`, que sólo afina el nombre del runner, y `cross-env CI=1 npx jest` se repitió después en los tres. Sobre el motor final se repitieron el 2026-11-02, de a un runner y comprobando antes los hooks del banco, 19 comandos de los casos 473 a 479 y 9 de la ampliación, en Claude Code 2.1.316, Gemini CLI 0.63.0 y `agy` 1.4.12. Frenó todo lo que debía, sin crear commit, salvo `timeout 5 \`, salto, `cat .env` en Claude, donde se negó el modelo. `bash -c "… -m 'cita git push -f'"` y `echo` pasaron, como deben.
+8. hecho: las sesiones corrieron antes del último ajuste de `RUNNER`, que sólo afina el nombre del runner, y `cross-env CI=1 npx jest` se repitió después en los tres. Sobre el motor anterior al último ajuste se repitieron el 2026-11-02, de a un runner y comprobando antes los hooks del banco, 19 comandos de los casos 473 a 479 y 9 de la ampliación, en Claude Code 2.1.316, Gemini CLI 0.63.0 y `agy` 1.4.12. Frenó todo lo que debía, sin crear commit, salvo `timeout 5 \`, salto, `cat .env` en Claude, donde se negó el modelo. `bash -c "… -m 'cita git push -f'"` y `echo` pasaron, como deben. Después cambiaron `ONLY_READS`, el fin de `git commit`, la ruta con espacios y `{ (`: se repitieron 12 comandos en los tres. Frenó lo que debía, y un commit en rama de trabajo pasó. En `agy` el modelo se negó con el heredoc y la firma se cortó por tiempo: esas dos, ahí, sólo por el hook.
 9. no aplica: no coordina nada entre raíces ni ramas.
 10. hecho: `isCommit` lo leen `live-commit`, `governance`, `dependencies`, `verify` y `ai-signature`, revisados con envoltorio. `LEADING` tiene su comparador en `removal-boundary`, donde `cross-env` sumó su ejemplo. `test/hooks` pasa.
-11. hecho: tres pasadas. Cada una halló un falso freno de la versión anterior, ya arreglado: `command -v jest`, `xargs -a jest…` y `nohup ./jest.sh`.  Sobre el diff entero de la tanda, contra `07a8eba1`, una pasada: nada impide en las matrices, y halló que el último ajuste dejaba de frenar `npx jest-cli` y `./jest.js`. Arreglado, y con otra pasada sobre eso: nada impide. La ampliación del 479 tuvo dos pasadas más.
+11. hecho: tres pasadas. Cada una halló un falso freno de la versión anterior, ya arreglado: `command -v jest`, `xargs -a jest…` y `nohup ./jest.sh`.  Sobre el diff entero de la tanda, contra `07a8eba1`, una pasada: nada impide en las matrices, y halló que el último ajuste dejaba de frenar `npx jest-cli` y `./jest.js`. Arreglado, y con otra pasada sobre eso: nada impide. La ampliación del 479 tuvo dos pasadas más, y el diff entero contra `main` y estos cierres, una cada uno: hallaron que `git archive`, `pull` y otros arrastraban el juicio a la instancia, y líneas de cierres que el motor desmentía. Arreglado, y una pasada sobre eso: nada impide.
 12. hecho: pasada uno por uno sobre el diff entero de la tanda, 2026-11-01. Corrigió tres: una razón repetida en `ai-signature.js`, otra en `shell-changes.js` y una lista vieja en `workers.js`. Antes de esa fecha este punto se había marcado sin hacerla en 477, 478 y 479. Se repitió el 2026-11-02 sobre la ampliación del 479: quitó una razón repetida entre `as-run.js` y `git-globals.js`.
 13. hecho: `npm run ci` en exit 0, con todo stageado.
 14. hecho: arriba, contra el caso entero.
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.118.0, con su entrada en el CHANGELOG.
 
-**Sin probar:** Codex, por decisión de la persona. `cat .env` detrás de un prefijo en una sesión de Claude Code: se negó el modelo, sólo por el hook.
+**Sin probar:** Codex, por decisión de la persona. `cat .env` detrás de un prefijo en una sesión de Claude Code: se negó el modelo, sólo por el hook. `gh --body-file -` por `pre-shell` sin `--repo`: frena antes R10.

@@ -54,6 +54,8 @@ worktree. No se midió si un commit de ese archivo lo frena `governance`, ni qu�
 
 ## Causa raíz
 
+Líneas de la versión detectada.
+
 - `opsOwned` (`engine/hooks/files.js:182-186`): la ruta relativa a la raíz de ops empieza con `../`, así que da `false` en la
   `:184`.
 - `isProduct` (`engine/hooks/files.js:198-209`): no está fuera de las raíces (`:207`) y sí de la raíz de ops (`:208`), así que
