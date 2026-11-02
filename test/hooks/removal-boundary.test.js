@@ -184,6 +184,7 @@ const WRAPPED = {
   ionice: 'ionice -c 2 -n 7', taskset: 'taskset -c 0,1', chrt: 'chrt -r 10', flock: 'flock -w 5 /var/lock/l',
   setsid: 'setsid -w', doas: 'doas -u root', unbuffer: 'unbuffer', su: 'su -g wheel root',
   runuser: 'runuser -u nadie --', builtin: 'builtin', busybox: 'busybox', pkexec: 'pkexec --user root', '!': '!',
+  'cross-env': 'cross-env CI=1',
 }
 const KEYWORDS = {
   if: (rm) => `if ${rm}; then :; fi`, elif: (rm) => `if false; then :; elif ${rm}; then :; fi`,
