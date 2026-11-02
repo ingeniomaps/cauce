@@ -43,7 +43,7 @@ archivo y sin parsearlo:
 | `estado` | Encabezado | Qué significa |
 |---|---|---|
 | `abierto` | `**🔴 abierto**` | Reproducido y sin arreglar. |
-| `resuelto` | `**🟢 resuelto en <versión>**` | Arreglado y publicado. `resuelto-en` dice en qué versión. |
+| `resuelto` | `**🟢 resuelto en <versión>**` | Arreglado y cerrado. `resuelto-en` dice en qué versión sale. |
 | `descartado` | `**⚪ descartado**` | Se decidió no arreglarlo. El cuerpo dice por qué; no se borra. |
 | `aplazado` | `**⏸ aplazado**` | Se hace cuando se cumpla una condición, y todavía no. `reabrir-si` dice cuál. |
 
@@ -60,13 +60,18 @@ eso, inventar uno dejaba al caso afuera de todas las comprobaciones —las demá
 `resuelto`— sin que nada avisara. El cuarto, `aplazado`, entró en 0.113.0 con el 391. El glifo de `descartado` nació en el 046 pidiendo que se declarara
 acá; hasta 0.87.0 no estaba, y era convención de hecho.
 
-Un caso se marca `resuelto` **cuando la versión que lo arregla está publicada**, no cuando el PR
-mergea: mientras tanto sigue mordiendo a todo el que instale.
+Un caso se marca `resuelto` **en su rama, con la versión abierta del CHANGELOG**: el cierre viaja junto con el arreglo, y
+marcarlo después pediría un commit más por cada release sólo para cambiar estados. Mientras esa versión no salga, el
+defecto sigue mordiendo a todo el que instale: si `resuelto-en` es más nuevo que `package.json`, todavía no se publicó.
+`issues.test.js` comprueba que ese número sea el de la versión abierta.
 
 Y no se marca sin haberlo probado corriendo. El `## Cierre` nombra qué se corrió y qué devolvió —la
 salida, la mutación vista en rojo, el número medido—; «la suite pasa» no cuenta, porque dice que nada de
 lo que ya había se rompió y no que esto funcione. Vale igual si se decidió no arreglarlo: ahí se prueba
 el dato que sostiene la decisión. El porqué vive en el `AGENTS.md` de la raíz.
+
+Desde 0.118.0 el cierre lleva además una línea propia, `**Sin probar:** …`, aunque diga `nada`. Y desde el caso 464, el
+bloque `### Lista de cierre`, con los 16 puntos que enumera el `AGENTS.md`. Se escribe antes de cambiar el estado.
 
 ## Qué lleva adentro
 

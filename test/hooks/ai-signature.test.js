@@ -50,6 +50,28 @@ test('un commit firmado por un asistente se frena, y uno sin firma o con un coau
     blocked('ai-signature', at(`git -C ${root} commit -m "fix: x" -m "${trailer}"`), SIGNED)
     fs.writeFileSync(path.join(root, 'MENSAJE'), `fix: x\n\n${trailer}\n`)
     blocked('ai-signature', at('git commit -F MENSAJE'), SIGNED)
+    fs.writeFileSync(path.join(root, '-'), `fix: x\n\n${trailer}\n`)
+    assert.doesNotThrow(() => execute('ai-signature', at('git commit -F - < m')), 'un - no es un archivo')
+    for (const flag of ['-F -', '--file=-', '--file -', '-F-', '-aF -', '-aF-']) {
+      blocked('ai-signature', at(`git commit ${flag} <<'EOF'\nfix: x\n\n${trailer}\nEOF`), SIGNED)
+      assert.doesNotThrow(() => execute('ai-signature', at(`git commit ${flag} <<EOF\nfix: x\nEOF`)), flag)
+      const after = `git commit ${flag} <<EOF\nfix: x\nEOF\n${trailer}\n`
+      assert.doesNotThrow(() => execute('ai-signature', at(after)), flag)
+      const elsewhere = `git commit ${flag} < m; cat <<EOF\n${trailer}\nEOF`
+      assert.doesNotThrow(() => execute('ai-signature', at(elsewhere)), flag)
+    }
+    blocked('ai-signature', at(`git commit -m"fix: x\n\n${trailer}"`), SIGNED)
+    blocked('ai-signature', at(`printf 'x\\n\\n${trailer}\\n' | git commit -F -`), SIGNED)
+    blocked('ai-signature', at(`echo "${trailer}" | git commit -F -`), SIGNED)
+    fs.writeFileSync(path.join(root, 'firmado.txt'), `x\n\n${trailer}\n`)
+    blocked('ai-signature', at('cat firmado.txt | git commit -F -'), SIGNED)
+    for (const clean of [`printf 'x\\n' | git commit -F -`, 'cat limpio.txt | git commit -F -',
+      `printf '${trailer}' | grep -v x; git commit -F - < m`, `date | git commit -F -`]) {
+      assert.doesNotThrow(() => execute('ai-signature', at(clean)), clean)
+    }
+    blocked('ai-signature', at(`git commit -am "fix: x\n\n${trailer}"`), SIGNED)
+    blocked('ai-signature', at(`git commit -m \\\n  "fix: x\n\n${trailer}"`), SIGNED)
+    blocked('ai-signature', at(`gh pr create --body-file - <<'EOF'\nx\n\n${trailer}\nEOF`), /texto de este/)
     blocked('ai-signature', at(`git merge --no-ff rama -m "merge" -m "${trailer}"`), /comando de git/)
     blocked('ai-signature', at(`git tag -a v1 -m "v1" -m "${trailer}"`), /comando de git/)
 

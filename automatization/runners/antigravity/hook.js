@@ -2,6 +2,7 @@
 'use strict'
 
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 
 // Dónde quedó la raíz ops respecto de la carpeta que Antigravity abre. Lo completa
@@ -212,6 +213,31 @@ function elsewhere(input, markers = MARKERS) {
   return !paths.some((one) => within(one, workspace))
 }
 
+// `agy` 1.4.12 no le muestra al modelo el `reason` de un `allow` ni un `systemMessage` inyectado; sí
+// `ephemeralMessage`,
+// en `PreInvocation`, que corre antes del siguiente turno (caso 466). El aviso espera ahí, por conversación.
+function noticesFile(input) {
+  const id = String((input && input.conversationId) || '').replace(/[^a-zA-Z0-9_-]/g, '_')
+  return id ? path.join(os.tmpdir(), `cauce-agy-avisos-${id}`) : ''
+}
+
+function keepNotices(input, notices) {
+  const file = noticesFile(input)
+  if (!file) return
+  try { fs.appendFileSync(file, `${notices.join('\n')}\n`) } catch { /* un aviso no frena nada */ }
+}
+
+function pendingNotices(input) {
+  const file = noticesFile(input)
+  if (!file) return {}
+  let text = ''
+  try {
+    text = fs.readFileSync(file, 'utf8').trim()
+    fs.unlinkSync(file)
+  } catch { return {} }
+  return text ? { injectSteps: [{ ephemeralMessage: `Aviso de un guard del proyecto:\n${text}` }] } : {}
+}
+
 function evaluate(event, input) {
   if (elsewhere(input)) return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   try {
@@ -222,8 +248,11 @@ function evaluate(event, input) {
     if (!hooks.hookGroups[event]) throw new Error(`Evento Antigravity desconocido: ${event || '(vacío)'}`)
     const missing = undescribed(event, input, normalized)
     if (missing) throw new Error(missing)
-    hooks.executeAll([event], normalized)
-    return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
+    const notices = hooks.executeAll([event], normalized)
+    if (event === 'stop') return { decision: 'stop' }
+    if (!notices.length) return { decision: 'allow' }
+    keepNotices(input, notices)
+    return { decision: 'allow' }
   } catch (error) {
     return refusal(event, error.message, error.blocked)
   }
@@ -238,12 +267,13 @@ async function main(event = process.argv[2]) {
     input = await engine.readInput(process.stdin, engine.FIRST_BYTE_MS, usage)
   } catch (error) {
     // El lector del motor marca `blocked` lo que no pudo leer, porque para un guard eso es bloquear. Acá
-    // es el puente sin nada que juzgar, y en `stop` eso deja cerrar: reintentar no arregla la entrada.
-    return respond(refusal(event, error.message, false))
+    // es el puente sin nada que juzgar, y en `stop` eso deja cerrar: reintentar no arregla la entrada. `pre-invocation`
+    // no juzga nada: sin entrada, no hay aviso que entregar.
+    return respond(event === 'pre-invocation' ? {} : refusal(event, error.message, false))
   }
-  respond(evaluate(event, input))
+  respond(event === 'pre-invocation' ? pendingNotices(input) : evaluate(event, input))
 }
 
 if (require.main === module) main()
 
-module.exports = { evaluate, findRoot, normalize, inputReader }
+module.exports = { evaluate, findRoot, normalize, inputReader, keepNotices, pendingNotices }
