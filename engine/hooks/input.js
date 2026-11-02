@@ -15,6 +15,9 @@ const { writableOutsideRoots } = require('../config/paths')
 const { withTaskTrees } = require('../core/task-trees')
 const LT = require('../core/line-trees')
 const { unreadableConfig } = require('./unreadable-config')
+const { shellWord, unquoted, withoutContinuations, withoutHeredocBodies } = require('./quoting')
+const { directoryFlag, isCommit, withoutGitGlobals } = require('./git-globals')
+const { asRun } = require('./as-run')
 
 // Cuánto se espera el primer byte de stdin. El runner escribe su JSON al lanzar el hook, así que en el
 // camino real ya está en el búfer cuando Node termina de arrancar: el plazo sólo cubre una máquina
@@ -79,6 +82,14 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
   })
 }
 
+// El comando como llegó, con el cuerpo de sus heredocs. Lo quieren el guard que juzga justamente el dato —el mensaje de
+// un commit viaja ahí— y los que leen por tramos, que necesitan el cuerpo que corre un shell (`asRead`, caso 456).
+function rawCommandOf(input) {
+  const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
+    || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
+  return String(Array.isArray(value) ? value.join(' ') : value)
+}
+
 // El cuerpo de un heredoc es entrada estándar: no se ejecuta, se escribe. Juzgarlo como comando frenaba
 // documentar lo que los guards vigilan — escribir un archivo que explica por qué borrar la raíz es
 // catastrófico se bloqueaba por nombrarlo—, y la salida era cambiar de herramienta, que es el rodeo que
@@ -91,21 +102,10 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
 // el destino va antes del `<<`.
 //
 // Lo que se pierde: un cuerpo que después alguien ejecuta. `cat > script.sh <<EOF` no ejecuta nada al
-// escribirse y el guard verá el comando de verdad cuando alguien corra el script; el borde filoso es
-// `$(cat <<EOF …)`, donde el cuerpo sí corre y ya no se mira. Es el mismo trato que con el mensaje de un
-// commit: se frena la forma habitual, no al que quiere pasar.
-const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
-
-// El comando como llegó, con el cuerpo de sus heredocs. Lo quieren el guard que juzga justamente el dato —el mensaje de
-// un commit viaja ahí— y los que leen por tramos, que necesitan el cuerpo que corre un shell (`asRead`, caso 456).
-function rawCommandOf(input) {
-  const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
-    || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
-  return String(Array.isArray(value) ? value.join(' ') : value)
-}
-
+// escribirse y el guard verá el comando de verdad cuando alguien corra el script. Lo que sí corre al armarlo
+// se conserva, en `withoutHeredocBodies`.
 function commandOf(input) {
-  return rawCommandOf(input).replace(HEREDOC, '<<$1$2$3$2$4')
+  return withoutContinuations(withoutHeredocBodies(rawCommandOf(input)))
 }
 
 function fileOf(input) {
@@ -179,47 +179,6 @@ function configOf(root) {
   }
 }
 
-// Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
-// comando. Vive acá porque la usan tres lugares por razones distintas, y cada uno explica la suya donde
-// la llama.
-//
-// Dónde empieza y dónde termina una cadena lo dice el shell, y tiene dos formas de barra invertida que acá
-// hay que leer igual que él. Dentro de comillas dobles, `\"` no cierra: sin eso `"\"test\|jest"` terminaba
-// en la segunda comilla y dejaba `jest` a la vista de un `grep` que sólo lo busca (caso 312). Fuera de
-// comillas, `\"` no abre: es una comilla literal. Las dos van juntas porque arreglar sólo la primera es
-// peor que no arreglar ninguna — en `echo \"a\" ; rm -rf x ; echo "b"` la cadena pasaría a empezar en una
-// comilla que no abre nada y se llevaría puesto el `rm`. Las simples `'…'` no cambian: no admiten escape.
-//
-// Un comentario tampoco abre cadenas, y queda a la vista entero: una comilla suelta en uno escondía el
-// renglón siguiente. Se deja en vez de sacarlo porque `#` también aparece en `${x/ #/y}`, y ahí sacarlo
-// escondería lo que sigue. Lo que esta lectura todavía no conoce está en el caso 328.
-const QUOTED = /\\.|'[^']*'|"(?:[^"\\]|\\[\s\S])*"|(?<![^\s;&|()<>])#[^\n]*/g
-const eachQuoted = (text, replace) => text.replace(QUOTED,
-  (found, offset) => (found[0] === '\\' || found[0] === '#' ? found : replace(found, offset)))
-const unquoted = (command) => eachQuoted(String(command), () => '\u0000')
-
-// El comando tal como se va a ejecutar: sin lo entrecomillado que es dato y no orden. En un commit lo es
-// todo —el mensaje—; fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y
-// por eso no se vaciaba nunca. Pero tampoco es orden el patrón de un `sed` ni el texto de un `grep`, y
-// leerlos como tal frenaba un `sed` por la frase que reemplazaba (caso 259).
-//
-// La lista es de los que **sólo leen** su argumento, y no de los que ejecutan: un ejecutor que nadie
-// anotó sigue leyéndose como orden, que es el lado que frena (R27). Y aun para éstos el texto vuelve a ser
-// orden si lleva una sustitución adentro o si el comando se lo pasa a un shell por una tubería.
-const DATA_ONLY = new Set(['sed', 'grep', 'egrep', 'fgrep', 'rg', 'echo', 'printf', 'jq'])
-const FEEDS_SHELL = /\|&?\s*(?:sudo\s+)?(?:(?:ba|z|da|k|mk|a)?sh|eval|xargs|source|\.)(?=\s|$)/
-function asRun(command) {
-  const raw = String(command)
-  if (isCommit(raw)) return unquoted(raw)
-  if (FEEDS_SHELL.test(unquoted(raw))) return raw
-  return eachQuoted(raw, (quoted, offset) => {
-    if (quoted[0] === '"' && /\$\(|`/.test(quoted)) return quoted
-    const simple = unquoted(raw.slice(0, offset)).split(/[;&|\n(]/).pop()
-    const first = simple.trim().split(/\s+/).find((word) => !/^[A-Za-z_]\w*=/.test(word))
-    return DATA_ONLY.has(first) ? '\u0000' : quoted
-  })
-}
-
 // Las variables que el propio comando asigna, puestas donde un `cd` o un `git -C` las usa. `T=$(mktemp -d)
 // && cd $T` es como se arma una copia desechable, y sin expandirla el destino quedaba «sin resolver»: el
 // guard de límites frenaba la mutación en una copia, que es la práctica que R23 pide (caso 261).
@@ -267,65 +226,22 @@ function expandAssigned(command) {
     (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
 }
 
-// Lo que `git` admite entre el verbo y el subcomando. La lista sale de su propia línea de uso
-// —`git --help`, 2.43.0—, y las que llevan el valor en un token aparte se consumen de a dos:
-// comprobado ahí mismo que `--git-dir`, `--work-tree` y `--namespace` aceptan la forma separada y no
-// sólo la que lleva `=`.
-//
-// Existe porque cada patrón resolvía la posición por su cuenta y cada arreglo puntual dejaba el
-// siguiente: primero el prefijo de entorno en `isCommit`, después el `-C` en `isCommit` y en
-// `gitDirectory`. Lo que quedaba era todo lo demás — con `-C`, `-c` o `-P` delante pasaban las reglas
-// de `destructive` que miran un subcomando y la prohibición de stagear todo, sin decir nada.
-//
-// `--git-dir /tmp/.git` era la única forma que igual bloqueaba, y por la razón equivocada: la ruta
-// termina en `.git`, así que el patrón encontraba el verbo dentro de `/tmp/.git push`. Una regla que
-// acierta por dónde termina una ruta ajena no está cubriendo nada.
-const GIT_GLOBAL = String.raw`(?:-[Cc]\s+\S+`
-  + String.raw`|--(?:git-dir|work-tree|namespace|config-env)(?:=\S*|\s+\S+)`
-  + String.raw`|--exec-path=\S*`
-  + String.raw`|-[pP]|--paginate|--no-pager|--no-replace-objects|--bare`
-  + String.raw`|--(?:literal|glob|noglob|icase)-pathspecs|--no-optional-locks)`
-const GIT_GLOBALS = new RegExp(String.raw`\bgit(?:\s+${GIT_GLOBAL})+`, 'g')
-
-// Sólo se sacan las que van **antes** del subcomando: después significan otra cosa —`git commit -C
-// <commit>` reusa el mensaje de otro commit— y el ancla en `git` es lo que las deja afuera.
-const withoutGitGlobals = (command) => String(command).replace(GIT_GLOBALS, 'git')
-
-// Sobre qué repositorio se lee el índice. En un commit se mira el comando con el mensaje vaciado, por
-// la misma razón por la que `destructive` lo hace: un mensaje que menciona `git -C $VAR` no está
-// eligiendo un repositorio, lo está citando. Sin esto, el commit que explica este arreglo se bloquea a
-// sí mismo — pasó al escribirlo.
-//
-// El precio es una ruta entrecomillada en el propio `-C` de un commit —`git -C "mi carpeta" commit`—,
-// que se pierde y cae al cwd. Es más raro que un mensaje que cita un comando, y el cwd de un commit
-// suele ser el repositorio correcto; el caso contrario deja al guard leyendo un índice ajeno.
-function gitDirectory(given, cwd) {
+// En un commit, `commit-repo.js` dice cuáles pueden ser, y con `input` se juzga el primero que sea de la
+// sesión. Fuera de
+// un commit lo entrecomillado puede ejecutarse, así que no se tapa.
+function gitDirectory(given, cwd, input) {
   const command = expandAssigned(given)
-  const text = isCommit(command) ? unquoted(command) : command
-  const run = text.match(new RegExp(String.raw`(?:^|\s)git(?:\s+${GIT_GLOBAL})+`))
-  const flag = run && run[0].match(/-C\s+(['"]?)([^\s'";&|]+)\1/)
-  const cd = text.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
-  return path.resolve(cwd, flag ? flag[2] : cd ? cd[2] : '.')
-}
-
-// Lo que un shell admite delante del verbo: asignaciones de entorno, `env` y `sudo`. `VAR=1 git commit`
-// empieza por la asignación, así que un ancla que sólo acepta el principio del comando o un separador
-// no ve el `git` que viene después.
-//
-// Falla en los dos sentidos y uno no avisa. Del lado ruidoso, el mensaje del commit vuelve a juzgarse
-// como comando. Del silencioso —el que importa— los tres guards que sólo corren sobre un commit dejan
-// de correr: gobernanza, dependencias y generados. Cualquier variable delante alcanza, y la ironía es
-// que el prefijo que el procedimiento manda escribir para un commit de gobernanza es
-// `OPS_GOVERNANCE_OVERRIDE=1`: escrito ahí, el guard no lee el override, directamente no se ejecuta.
-// El ancla admite el salto de línea y el `(` por lo mismo que admite `;`: los tres abren un comando. El
-// salto es el que más caro salía —dos líneas en un solo Bash es como se escriben dos pasos— y el léxico
-// de `shell.js` ya lo declaraba separador; acá faltaba (caso 165).
-const PREFIX = String.raw`(?:^|[;&|(\n]\s*)(?:(?:env|sudo)\s+)*`
-  + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
-const COMMIT = new RegExp(PREFIX + String.raw`git\s+commit(?:\s|$)`)
-
-function isCommit(command) {
-  return COMMIT.test(withoutGitGlobals(command))
+  const flag = directoryFlag(command)
+  const written = flag && shellWord(command.slice(flag.start, flag.end))
+  // Un `$PWD` depende de los `cd` de antes, igual que un commit: se simula en vez de tomar el primer `cd`.
+  if (isCommit(command) || /^\$(?:PWD|\{PWD\})(?=\/|$)/.test(written || '')) {
+    const { directoriesOf } = require('./commit-repo')
+    const found = directoriesOf(command, path.resolve(cwd))
+    return (input && found.find((one) => owns(input, one))) || found[0]
+  }
+  if (flag) return path.resolve(cwd, written)
+  const plain = command.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
+  return path.resolve(cwd, plain ? plain[2] : '.')
 }
 
 // Un índice vacío y un índice ilegible no son la misma respuesta: la primera autoriza a seguir, la
@@ -369,7 +285,7 @@ function stagedFiles(dir) {
 // Y con `input`, sólo sobre un repositorio de la sesión: el commit en uno ajeno vuelve `foreign` y sin
 // nada staged, y cada guard lo deja pasar. Por qué, en `owns`.
 function stagedForCommit(command, cwd, input) {
-  const dir = gitDirectory(command, cwd)
+  const dir = gitDirectory(command, cwd, input)
   if (input && !owns(input, dir)) return { dir, staged: [], foreign: true }
   if (/\bgit\s+add\b/.test(withoutGitGlobals(unquoted(command)))) {
     block('El comando stagea y commitea a la vez, así que este guard lee el índice de antes de stagear '
