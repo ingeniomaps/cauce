@@ -15,7 +15,7 @@ const { writableOutsideRoots } = require('../config/paths')
 const { withTaskTrees } = require('../core/task-trees')
 const LT = require('../core/line-trees')
 const { unreadableConfig } = require('./unreadable-config')
-const { shellWord, unquoted } = require('./quoting')
+const { shellWord, unquoted, withoutContinuations, withoutHeredocBodies } = require('./quoting')
 const { directoryFlag, isCommit, withoutGitGlobals } = require('./git-globals')
 const { asRun } = require('./as-run')
 
@@ -82,6 +82,14 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
   })
 }
 
+// El comando como llegó, con el cuerpo de sus heredocs. Lo quieren el guard que juzga justamente el dato —el mensaje de
+// un commit viaja ahí— y los que leen por tramos, que necesitan el cuerpo que corre un shell (`asRead`, caso 456).
+function rawCommandOf(input) {
+  const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
+    || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
+  return String(Array.isArray(value) ? value.join(' ') : value)
+}
+
 // El cuerpo de un heredoc es entrada estándar: no se ejecuta, se escribe. Juzgarlo como comando frenaba
 // documentar lo que los guards vigilan — escribir un archivo que explica por qué borrar la raíz es
 // catastrófico se bloqueaba por nombrarlo—, y la salida era cambiar de herramienta, que es el rodeo que
@@ -94,21 +102,10 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
 // el destino va antes del `<<`.
 //
 // Lo que se pierde: un cuerpo que después alguien ejecuta. `cat > script.sh <<EOF` no ejecuta nada al
-// escribirse y el guard verá el comando de verdad cuando alguien corra el script; el borde filoso es
-// `$(cat <<EOF …)`, donde el cuerpo sí corre y ya no se mira. Es el mismo trato que con el mensaje de un
-// commit: se frena la forma habitual, no al que quiere pasar.
-const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
-
-// El comando como llegó, con el cuerpo de sus heredocs. Lo quieren el guard que juzga justamente el dato —el mensaje de
-// un commit viaja ahí— y los que leen por tramos, que necesitan el cuerpo que corre un shell (`asRead`, caso 456).
-function rawCommandOf(input) {
-  const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
-    || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
-  return String(Array.isArray(value) ? value.join(' ') : value)
-}
-
+// escribirse y el guard verá el comando de verdad cuando alguien corra el script. Lo que sí corre al armarlo
+// se conserva, en `withoutHeredocBodies`.
 function commandOf(input) {
-  return rawCommandOf(input).replace(HEREDOC, '<<$1$2$3$2$4')
+  return withoutContinuations(withoutHeredocBodies(rawCommandOf(input)))
 }
 
 function fileOf(input) {
@@ -234,13 +231,15 @@ function expandAssigned(command) {
 // un commit lo entrecomillado puede ejecutarse, así que no se tapa.
 function gitDirectory(given, cwd, input) {
   const command = expandAssigned(given)
-  if (isCommit(command)) {
+  const flag = directoryFlag(command)
+  const written = flag && shellWord(command.slice(flag.start, flag.end))
+  // Un `$PWD` depende de los `cd` de antes, igual que un commit: se simula en vez de tomar el primer `cd`.
+  if (isCommit(command) || /^\$(?:PWD|\{PWD\})(?=\/|$)/.test(written || '')) {
     const { directoriesOf } = require('./commit-repo')
     const found = directoriesOf(command, path.resolve(cwd))
     return (input && found.find((one) => owns(input, one))) || found[0]
   }
-  const flag = directoryFlag(command)
-  if (flag) return path.resolve(cwd, shellWord(command.slice(flag.start, flag.end)))
+  if (flag) return path.resolve(cwd, written)
   const plain = command.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
   return path.resolve(cwd, plain ? plain[2] : '.')
 }

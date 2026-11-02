@@ -24,6 +24,48 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
   blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } }, /fuera de las raíces/)
 })
 
+// Una sustitución corre aunque el comando de afuera sólo imprima (caso 475). Lo citado no corre, y lo que sólo lee no
+// se juzga: frenar eso es lo que enseñaría a apagar el guard.
+test('lo que una sustitución borra o crea fuera de las raíces se frena', () => {
+  const root = tempRoot('ops-hook-sustitucion-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [{ name: 'r', path: '.' }] }))
+  const at = (command) => ({ cwd: root, tool_input: { command } })
+  for (const command of ['echo $(rm -rf /etc/foo)', 'x=$(rm -rf /etc/foo)', 'echo "$(rm -rf /etc/foo)"',
+    'echo `rm -rf /etc/foo`', 'echo $(echo $(rm -rf /etc/foo))', 'echo $(true; rm -rf /etc/foo)',
+    'cd $(rm -rf /etc/foo; echo .)', 'x=$(mkdir -p /etc/foo)', 'echo $(echo a > /etc/foo)',
+    "sh -c 'echo $(rm -rf /etc/foo)'", 'echo "$(rm -rf "/etc/foo")"', 'echo $((1 + $(rm -rf /etc/foo)))',
+    'echo $(if true; then rm -rf /etc/foo; fi)', 'echo "it\'s $(rm -rf /etc/foo) it\'s"']) {
+    blocked('shell-boundary', at(command), /fuera de las raíces/)
+  }
+  for (const command of ["echo '$(rm -rf /etc/foo)'", 'echo "\\$(rm -rf /etc/foo)"', 'echo \\$\\(rm -rf /etc/foo\\)',
+    'x=$(ls /etc)', 'x=$(cat /etc/hosts | wc -l)', 'x=$(cd /etc && pwd); echo $x', 'x=$(cd /etc); rm -rf foo',
+    'echo $(rm -rf sub)', 'x=$(mktemp -d)', 'echo $((1 + 2))', 'rm -f $(ls /etc)']) {
+    assert.doesNotThrow(() => execute('shell-boundary', at(command)), command)
+  }
+})
+
+// Un grupo detrás de una palabra de bloque corre igual, y lo que un cuerpo sin comillas sustituye corre al armarlo.
+test('lo que corre en un grupo de un bloque o en el cuerpo de un heredoc se juzga (caso 477)', () => {
+  const root = tempRoot('ops-hook-grupo-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [{ name: 'r', path: '.' }] }))
+  const at = (command) => ({ cwd: root, tool_input: { command } })
+  for (const word of ['then', 'else', 'elif', 'do', 'if', 'while', 'until', '!', 'then !']) {
+    blocked('shell-boundary', at(`x; ${word} (rm -rf /etc/foo); y`), /fuera de las raíces/)
+    blocked('shell-boundary', at(`x; ${word} { rm -rf /etc/foo; }; y`), /fuera de las raíces/)
+  }
+  for (const command of ['cat <<EOF\n$(rm -rf /etc/foo)\nEOF', 'cat > a <<EOF\n`rm -rf /etc/foo`\nEOF',
+    "cat <<EOF\nit's $(rm -rf /etc/foo)\nEOF", 'cat <<-EOF\n$(rm -rf /etc/foo)\n\tEOF']) {
+    blocked('shell-boundary', at(command), /fuera de las raíces/)
+  }
+  for (const command of ["cat <<'EOF'\n$(rm -rf /etc/foo)\nEOF", 'cat <<"EOF"\n$(rm -rf /etc/foo)\nEOF',
+    'cat <<\\EOF\n$(rm -rf /etc/foo)\nEOF', 'cat <<EOF\n\\$(rm -rf /etc/foo)\nEOF', 'cat <<EOF\nrm -rf /etc/foo\nEOF',
+    'cat <<EOF\nit\'s $(ls /etc)\nEOF', 'if a; then (ls /etc); fi', 'echo then (rm']) {
+    assert.doesNotThrow(() => execute('shell-boundary', at(command)), command)
+  }
+})
+
 test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible', () => {
   const root = tempRoot('ops-hook-exempt-')
   fs.mkdirSync(path.join(root, 'planning'))

@@ -17,6 +17,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { block, expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
+const { heredocRuns, withoutContinuations } = require('./quoting')
 const { cdTarget, QUOTED_CD, REDIRECTIONS, writesWithBase } = require('./shell-writes')
 const {
   SAME_SHELL, LEADING, VALUED, POSITIONAL, MOVES, AWAY, RUNS, hidden, reads, output, options,
@@ -146,15 +147,42 @@ function shellWords(text) {
   return word === null ? words : [...words, word]
 }
 
-// Lo que una sustitución lee no es lo que el comando toca: queda como una variable sin resolver. De adentro
-// hacia afuera, hasta que no quede ninguna: en `$(ls /a | tail -n +$(cat n))` la de afuera también se va.
-function withoutSubstitutions(text) {
-  let last = text
-  for (let next = last.replace(/\$\([^()]*\)|`[^`]*`/g, '$'); next !== last;) {
-    last = next
-    next = last.replace(/\$\([^()]*\)|`[^`]*`/g, '$')
+// Las sustituciones más externas de un tramo, con lo que corre adentro. Dentro de una, las comillas vuelven a empezar:
+// `"$(rm "/a b")"` es una sola. Una comilla simple o una barra la vuelven dato; una doble, no.
+function substitutionsIn(text) {
+  const found = []
+  const open = []
+  let start = -1
+  const running = () => open.includes('$')
+  for (let at = 0; at < text.length; at += 1) {
+    const char = text[at]
+    const top = open[open.length - 1]
+    if (char === '\\') at += 1
+    else if (char === "'" && top !== '"') at = Math.max(at, text.indexOf("'", at + 1))
+    else if (char === '"') {
+      if (top === '"') open.pop()
+      else open.push('"')
+    } else if (char === '`' && !running()) {
+      let end = at + 1
+      while (end < text.length && text[end] !== '`') end += text[end] === '\\' ? 2 : 1
+      found.push({ start: at, end: end + 1, script: text.slice(at + 1, end) })
+      at = end
+    } else if (char === '$' && text[at + 1] === '(') {
+      if (!running()) start = at
+      open.push('$')
+      at += 1
+    } else if (char === '(' && top !== '"') open.push('(')
+    else if (char === ')' && top !== '"' && open.length) {
+      open.pop()
+      if (top === '$' && !running()) found.push({ start, end: at + 1, script: text.slice(start + 2, at) })
+    }
   }
-  return last
+  return found
+}
+
+// Lo que una sustitución lee no es lo que el comando toca: queda como una variable sin resolver.
+function withoutSubstitutions(text) {
+  return substitutionsIn(text).reduceRight((rest, { start, end }) => `${rest.slice(0, start)}$${rest.slice(end)}`, text)
 }
 
 // Dos lecturas que no van en la común, `commandOf`: puestas ahí, cada una le cambiaba el veredicto a
@@ -188,6 +216,10 @@ function withoutBodies(text, closing = false) {
     if (closing) at += 1
     const before = line.slice(0, opener.index)
     if (feedsShell(before, after)) kept[kept.length - 1] = before + fed(body.join('\n')) + after
+    // Lo que el cuerpo sustituye sí corre: por qué, en `heredocLine`.
+    else if (!/\\|['"]/.test(opener[0])) {
+      kept[kept.length - 1] = [before + opener[0], ...heredocRuns(body.join('\n')), after].join(' ')
+    }
   }
   return kept.join('\n')
 }
@@ -200,8 +232,8 @@ function withoutBodies(text, closing = false) {
 // Dos pasadas, y la primera se lleva también el terminador: así un cuerpo con un heredoc anidado con sangría, o un
 // renglón que abre dos, no deja nada suelto. Es lo que hacían la lectura común y ésta una detrás de la otra, cuando
 // a esta lectura le llegaba el comando ya sin cuerpos.
-const asRead = (command) => withoutBodies(withoutBodies(String(command)
-  .replace(/(?<!\\)\r?\n(?:[ \t\r]*\n)+/g, '\n'), true)).replace(EXPORTED, '$1')
+const asRead = (command) => withoutContinuations(withoutBodies(withoutBodies(String(command)
+  .replace(/(?<!\\)\r?\n(?:[ \t\r]*\n)+/g, '\n'), true))).replace(EXPORTED, '$1')
 
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
 // la carpeta al cerrarse: sin eso, `(cd /otra && ls); rm -rf build` juzgaba `build` dentro de `/otra`.
@@ -221,7 +253,7 @@ const DEFINES = /^\s*(?:function\s+[^\s(){}$=]+(?:\s*\(\s*\))?|[^\s(){}$=]+\s*\(
 // espacios o de paréntesis que no sea la última, y con ochenta mil tardaba segundos. La llave que cierra un
 // grupo no hace falta sacarla: va en su propio tramo.
 function unwrapped(text) {
-  const open = text.trim().replace(/^[({]+\s*/, '')
+  const open = text.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*[({]+\s*/, '')
   let end = open.length
   while (end && open[end - 1] === ')') end -= 1
   return open.slice(0, end).trimEnd()
@@ -259,6 +291,10 @@ function steps(command, cwd, env = {}, depth = 0) {
     for (let level = 0; level < opens; level += 1) {
       outer.push(base)
       scopes.push({ ...kept })
+    }
+    // Una sustitución corre en su propio proceso, como un `sh -c`: su `cd` no mueve lo que sigue.
+    for (const { script } of substitutionsIn(piece)) {
+      found.push(...steps(script, lost ? null : base, { ...kept }, depth + 1))
     }
     const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
     if (cd) {

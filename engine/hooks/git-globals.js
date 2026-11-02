@@ -22,7 +22,7 @@
 // `--git-dir /tmp/.git` era la única forma que igual bloqueaba, y por la razón equivocada: la ruta
 // termina en `.git`, así que el patrón encontraba el verbo dentro de `/tmp/.git push`. Una regla que
 // acierta por dónde termina una ruta ajena no está cubriendo nada.
-const { masked, segments } = require('./quoting')
+const { eachQuoted, masked, segments, shellWord, unquoted } = require('./quoting')
 
 const VALUED = '--(?:git-dir|work-tree|namespace|config-env|attr-source)'
 const FLAG = new RegExp(`-[Cc](?=\\s|\\\\\\n)|${VALUED}(?:=|(?=\\s|\\\\\\n))`
@@ -92,7 +92,9 @@ function scanGlobals(text, from, whole = true) {
       const valueAt = flag.endsWith('=') ? next : skipSpace(text, next)
       next = whole ? wordEnd(text, valueAt) : plainEnd(text, valueAt)
       // Un valor de `-c` que puede ser código se lee como antes, cortado en el espacio: lo que sobra queda a la vista.
-      if (flag === '-c' && RUNS_CONFIG.test(text.slice(valueAt, next))) next = plainEnd(text, valueAt)
+      // El alias y el programa no hace falta cortarlos: `configRuns` los muestra enteros.
+      const written = text.slice(valueAt, next)
+      if (flag === '-c' && !RUNS_PROGRAM.test(written) && RUNS_CONFIG.test(written)) next = plainEnd(text, valueAt)
       if (next === valueAt && !flag.endsWith('=')) break
       value = { start: valueAt, end: next }
     }
@@ -120,6 +122,28 @@ function commandHeads(text) {
 
 // Sólo se sacan las que van **antes** del subcomando: después significan otra cosa —`git commit -C
 // <commit>` reusa el mensaje de otro commit— y el ancla en `git` es lo que las deja afuera.
+// Lo que un `-c` hace correr sin que el comando lo diga: un alias, o la configuración que nombra un programa. Se deja
+// delante del `git`, a la vista de los guards. Un nombre de clave y no una lista de valores, porque lo que hay que ver
+// es la orden, sea cual sea (caso 473).
+const RUNS_PROGRAM = new RegExp(String.raw`^["']?(?:alias\.[^=]+`
+  + String.raw`|[\w.-]*(?:command|pager|editor|program|helper|fsmonitor|external|textconv|driver))=`, 'i')
+function configRuns(text, globals, end) {
+  const wordsEnd = globals.reduce((far, { value }) => (value ? Math.max(far, wordEnd(text, value.start)) : far), end)
+  const subcommand = (text.slice(skipSpace(text, wordsEnd)).match(/^[^\s;&|)]+/) || [''])[0]
+  return globals.flatMap(({ flag, value }) => {
+    if (flag !== '-c' || !value) return []
+    const stop = Math.max(wordEnd(text, value.start), value.end)
+    const word = shellWord(text.slice(value.start, stop))
+    if (!RUNS_PROGRAM.test(text.slice(value.start, stop))) return []
+    const alias = word.match(/^alias\.([^=]+)=/i)
+    // Git no distingue mayúsculas en la clave.
+    if (alias && alias[1].toLowerCase() !== subcommand.toLowerCase()) return []
+    const run = word.slice(word.indexOf('=') + 1)
+    if (run.startsWith('!')) return [run.slice(1)]
+    return [alias ? `git ${run}` : run]
+  })
+}
+
 const withoutGitGlobals = (command) => {
   const text = String(command)
   const isHead = commandHeads(text)
@@ -130,7 +154,8 @@ const withoutGitGlobals = (command) => {
     if (start <= copied) continue
     const { globals, end } = scanGlobals(text, start, isHead(found.index))
     if (globals.length) {
-      out += text.slice(copied, start)
+      const runs = configRuns(text, globals, end)
+      out += text.slice(copied, found.index) + runs.map((one) => `${one} ; `).join('') + text.slice(found.index, start)
       copied = end
     }
   }
@@ -170,12 +195,63 @@ function directoryFlag(text) {
 // El ancla admite el salto de línea y el `(` por lo mismo que admite `;`: los tres abren un comando. El
 // salto es el que más caro salía —dos líneas en un solo Bash es como se escriben dos pasos— y el léxico
 // de `shell.js` ya lo declaraba separador; acá faltaba (caso 165).
-const PREFIX = String.raw`(?:^|[;&|(\n]\s*)(?:(?:env|sudo)\s+)*`
+// Una palabra de bloque abre un comando igual que un separador: `then git commit` también commitea (caso 474). Un `)`
+// abre sólo el cuerpo de una función: suelto es prosa, `# 2) git commit`.
+// Y un envoltorio no cambia lo que corre: `timeout 60 git commit` commitea (caso 479). Una bandera con valor se lleva
+// su palabra, sin alternativa: si la misma palabra pudiera ser las dos cosas, la expresión volvería atrás sin fin.
+// `command` va sin banderas: `command -v git` pregunta si existe.
+const flagsOf = (valued) => String.raw`(?:\s+(?:${valued})\s+\S+|\s+(?!(?:${valued})\s)-\S+)*`
+const WRAPPER = String.raw`(?:env${flagsOf('-u|-C|-S')}|sudo${flagsOf('-u|-g|-h|-p|-C|-D')}`
+  + String.raw`|time${flagsOf('-f|-o')}`
+  + String.raw`|nice${flagsOf('-n')}|nohup|exec${flagsOf('-a')}|command|cross-env|stdbuf${flagsOf('-i|-o|-e')}`
+  + String.raw`|timeout${flagsOf('-s|-k')}\s+\S+)`
+const PREFIX = String.raw`(?:^|[;&|(\n]\s*|\)\s*\{\s+)`
+  + String.raw`(?:(?:then|else|elif|if|do|while|until|\{|!|function\s+[\w-]+)\s+)*`
+  + String.raw`(?:${WRAPPER}\s+)*`
   + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
-const COMMIT = new RegExp(PREFIX + String.raw`git\s+commit(?:\s|$)`)
-
-function isCommit(command) {
-  return COMMIT.test(withoutGitGlobals(command))
+// Sólo el `sh -c` que encabeza su comando corre acá: el de un `docker exec` o un `ssh` corre en otra máquina.
+const SHELL_C = String.raw`(?:\S*\/)?(?:ba|z|da|k)?sh\s+(?:-\w+\s+)*-\w*c`
+const COMMIT = new RegExp(PREFIX + String.raw`(?:${SHELL_C}\s+['"]\s*)?git\s+commit(?:\s|$)`)
+const SHELL_SCRIPT = new RegExp(String.raw`^(\s*(?:[A-Za-z_]\w*=\S*\s+)*(?:${WRAPPER}\s+)*${SHELL_C})\s+`
+  + String.raw`('[^']*'|"(?:[^"\\]|\\[\s\S])*")\s*$`)
+// El comando simple que sólo le pasa un script a un shell, con lo que corre.
+function shellScriptOf(part) {
+  const found = part.match(SHELL_SCRIPT)
+  return found && { head: found[1], script: shellWord(found[2]) }
 }
 
-module.exports = { directoryFlag, isCommit, withoutGitGlobals }
+// Lo citado de lo que sólo muestra o busca es dato: `echo 'x; git commit'` no commitea. Vuelve a ser orden si lleva una
+// sustitución o si la línea se le pasa a un shell. La lista es de los que sólo leen: uno que nadie anotó sigue
+// leyéndose como orden, que es el lado que frena (R27).
+const DATA_ONLY = new Set(['sed', 'grep', 'egrep', 'fgrep', 'rg', 'echo', 'printf', 'jq'])
+const FEEDS_SHELL = /\|&?\s*(?:sudo\s+)?(?:(?:ba|z|da|k|mk|a)?sh|eval|xargs|source|\.)(?=\s|$)/
+const LEADS = new RegExp(`^(?:${WRAPPER}\\s+)*`)
+function withoutQuotedData(raw) {
+  if (FEEDS_SHELL.test(unquoted(raw))) return raw
+  // Un solo recorrido, hacia adelante: buscar el verbo desde el principio por cada cadena costaba minutos con miles.
+  const hidden = masked(raw)
+  let start = 0
+  let scanned = 0
+  let first
+  return eachQuoted(raw, (quoted, offset) => {
+    for (; scanned < offset; scanned += 1) {
+      if (';&|\n('.includes(hidden[scanned])) {
+        start = scanned + 1
+        first = undefined
+      }
+    }
+    if (quoted[0] === '"' && /\$\(|`/.test(quoted)) return quoted
+    first ??= hidden.slice(start, offset).trim().replace(LEADS, '').split(/\s+/)
+      .find((word) => word && !/^[A-Za-z_]\w*=/.test(word))
+    return DATA_ONLY.has(first) ? '\u0000' : quoted
+  })
+}
+
+function isCommit(command) {
+  // Primero lo barato: leer lo citado cuesta, y casi ningún comando commitea.
+  return COMMIT.test(withoutGitGlobals(command)) && COMMIT.test(withoutGitGlobals(withoutQuotedData(String(command))))
+}
+
+module.exports = {
+  directoryFlag, FEEDS_SHELL, isCommit, shellScriptOf, withoutGitGlobals, withoutQuotedData, WRAPPER,
+}

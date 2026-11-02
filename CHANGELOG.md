@@ -68,6 +68,30 @@ diseño — eso vive en el commit y en el código.
 - **Lo que un commit ejecuta ya no se esconde en su mensaje** (caso 469). `git commit -m "$(git push -f)"` y `git commit
   -m x; sh -c '…'` pasaban sin que ningún guard los viera. Un mensaje que sólo cita comandos sigue pasando, también por
   `-m "$(cat <<'EOF' …)"`.
+- **Los guards ven lo que un heredoc o un `-c` ejecutan, y dejan de frenar lo que cae en otro repositorio** (caso 473).
+  Ahora frenan una `$(orden)` en el cuerpo de un heredoc sin comillas, lo que venga después de cerrarlo, un cuerpo que
+  recibe un shell, y lo que corre un alias o un `core.sshCommand` pasados con `-c`. Dejan de frenar `(cd F && git commit)`,
+  `cd F || cd R`, `pushd F` y `cd F && git -C "$PWD/a b" add -A` cuando el commit cae fuera de la instancia. Un `cd` dentro
+  de un bloque deja dudas, y con dudas se juzga la sesión.
+- **Un commit dentro de un bloque o una función se juzga donde cae** (caso 474). `if cd repo; then git commit; fi`,
+  `pushd repo; if …; then git commit; fi` y una función que commitea quedaban sin juzgar, igual que el commit tras un `cd`
+  que no entra. **Algunos que pasaban van a frenarse**: `for r in a b; do git -C $r commit; done` y una función con el
+  commit y un `git add` fuera piden separar los pasos o escribir la ruta. Además, `secrets-shell` ya no pierde lo que va
+  junto a un commit: `git commit -m x; cat ".env"` frena, y el mensaje sigue siendo dato.
+- **Lo que una sustitución borra o crea fuera de las raíces se frena** (caso 475). `echo $(rm -rf /etc/foo)` pasaba. Lo
+  citado con comilla simple y lo que sólo lee siguen pasando.
+- **Una línea continuada con `\` se lee como una sola** (caso 478). `git \<salto> push -f`, `git add \<salto> -A` o un
+  `--amend` en otra línea pasaban sin que frenara nada. 
+- **Un prefijo ya no esconde lo que corre detrás** (caso 479). `then cat .env`, `timeout 5 cat .env`,
+  `cross-env CI=1 npx jest` y `timeout 60 git commit` en rama viva frenan. Dejan de frenar en falso `./jest.sh`,
+  `jest-junit` y `time grep "git add -A" src`.
+  También frenan `time -p git commit`, `bash -c "git commit …"`, `npx -y jest`, `pnpm dlx jest` y la firma que llega a
+  `-F -` por un `printf`, un `echo` o un `cat`. `echo "…; git commit"` deja de frenar.
+- **Más formas de un comando se leen como corren** (caso 477). Frenan `bash -c "git push -f …; git commit …"`,
+  `git commit -m "$(cat .env)"`, `then (rm …)`, un `$(rm …)` en el cuerpo de un heredoc sin comillas, y `--amend` o `-a`
+  después de un mensaje con heredoc. La firma se mira en `-F-`, `-aF -` y `-m"…"`. Lo citado en un programa que nadie
+  anotó como de sólo lectura, como `node -e`, que además nombra un commit se lee como orden.
+- **La firma de IA se mira también en `git commit -F -` con un heredoc** (caso 476), y desde el 479, también la que llega por una tubería.
 - **Los guards de commit juzgan el repositorio donde el commit corre** (caso 468). Se seguía el primer `cd` o `-C` del
   comando, y `cd /etc; cd repo && git commit`, `echo git -C /etc && git commit` o `git commit && cd /etc` quedaban sin
   juzgar. **Algunos commits que pasaban van a empezar a frenarse.** Si no se puede saber cuál `cd` corrió, se juzga el

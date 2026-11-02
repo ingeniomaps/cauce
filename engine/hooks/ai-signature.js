@@ -21,12 +21,14 @@
 // - Pasa también si la persona lo pidió en el chat nombrando la firma. Lo que ella pide directo no se frena.
 //
 // Lo que no ve, y no se presenta como si lo viera: el mensaje que se escribe en el editor, sin `-m`; un archivo
-// de mensaje cuya ruta sale de una variable; y una herramienta que firme de una forma que no está en la lista.
+// de mensaje cuya ruta sale de una variable; el que llega a `-F -` por una tubería desde otra cosa que un `printf`, un
+// `echo` o un `cat`; y una herramienta que firme de una forma que no está en la lista.
 // Es una lista de lo que frena, no de lo que habilita, y queda corta igual.
 
 const fs = require('node:fs')
 const path = require('node:path')
 const CHAT = require('./chat')
+const { masked } = require('./quoting')
 const { NEGATED } = require('./live-commit')
 const { block, commandOf, rawCommandOf, cwdOf, isCommit, gitDirectory, owns, opsRoot, configOf } = require('./input')
 
@@ -54,8 +56,11 @@ const PUBLISHES = /\bgh\s+(?:(?:pr|issue)\s+(?:create|edit|comment|review|merge)
 const WRITES_HISTORY = /\bgit\b[^;&|\n]*\s(?:merge|tag)\b/
 
 // Dónde va el texto. Las formas largas no se confunden con nada; `-m` es de git y `-b`/`-t`/`-n` de `gh`.
-const INLINE = /(?:^|\s)(--message|--body|--title|--notes|-m|-b|-t|-n)(?:=|\s+)/g
-const FROM_FILE = /(?:^|\s)(?:--file|--body-file|--notes-file|-F)(?:=|\s+)(['"]?)([^\s'"$`]+)\1/g
+const INLINE = /(?:^|\s)(--message|--body|--title|--notes|-[a-zA-Z]*m|-b|-t|-n)(?:=|(?:\s|\\\n)+|(?<=m)(?=["']))/g
+const FROM_FILE = /(?:^|\s)(?:(?:--file|--body-file|--notes-file)(?:=|\s+)|-[a-zA-Z]*F(?:=|\s*))(['"]?)([^\s'"$`]+)\1/g
+// `-F -` lee la entrada: el heredoc de su misma línea.
+const FED_BY_HEREDOC = new RegExp(String.raw`^[^\n;&|]*<<-?\s*\\?['"]?([A-Za-z_][\w.-]*)['"]?[^\n]*\n`
+  + String.raw`([\s\S]*?)(?:\n[ \t]*\1[ \t]*(?:\n|$)|$)`)
 
 // El valor que sigue a una bandera: el cuerpo de un heredoc, una cadena entre comillas o una palabra.
 function valueAt(text) {
@@ -69,6 +74,20 @@ function valueAt(text) {
   return (text.match(/^\S+/) || [''])[0]
 }
 
+// Lo que le llega a `-F -` por una tubería, si está escrito ahí: un `printf`, un `echo` o un `cat` de un archivo.
+function fedByPipe(before, dir) {
+  const hidden = masked(before)
+  const pipe = hidden.lastIndexOf('|')
+  if (pipe < 0 || /[;&\n]/.test(hidden.slice(pipe))) return ''
+  const start = Math.max(...[...';&|\n'].map((one) => hidden.lastIndexOf(one, pipe - 1))) + 1
+  const left = before.slice(start, pipe).trim()
+  const shown = left.match(/^(?:printf|echo)(?:\s+-[a-zA-Z]+)*\s+([\s\S]*)$/)
+  if (shown) return valueAt(shown[1]).replace(/\\n/g, '\n')
+  const file = left.match(/^cat\s+([^\s'"$`]+)$/)
+  if (!file) return ''
+  try { return fs.readFileSync(path.resolve(dir, file[1]), 'utf8') } catch { return '' }
+}
+
 // Todo el texto que el comando publica, en el orden en que queda: los `-m` de un commit son párrafos.
 function messageOf(raw, dir, short) {
   const parts = []
@@ -77,6 +96,12 @@ function messageOf(raw, dir, short) {
     parts.push(valueAt(raw.slice(found.index + found[0].length)))
   }
   for (const found of raw.matchAll(FROM_FILE)) {
+    if (found[2] === '-') {
+      const fed = raw.slice(found.index + found[0].length).match(FED_BY_HEREDOC)
+      if (fed) parts.push(fed[2])
+      else parts.push(fedByPipe(raw.slice(0, found.index), dir))
+      continue
+    }
     try { parts.push(fs.readFileSync(path.resolve(dir, found[2]), 'utf8')) } catch { /* no se puede leer acá */ }
   }
   return parts.join('\n\n')

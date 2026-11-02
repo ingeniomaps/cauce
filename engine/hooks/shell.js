@@ -211,9 +211,8 @@ function rulesOf(input) {
 // podía commitear sin apagar el guard.
 //
 // Se vacía **sólo** en un commit. En cualquier otro comando lo que va entre comillas sí se ejecuta:
-// `bash -c "git push origin main"` y `eval "git reset --hard"` siguen cayendo, comprobado. Queda afuera
-// la sustitución dentro del propio mensaje —`git commit -m "$(...)"` corre y ya no se ve—, que es
-// evasión y no la forma habitual.
+// `bash -c "git push origin main"` y `eval "git reset --hard"` siguen cayendo, comprobado. Lo que una
+// sustitución corre dentro del propio mensaje queda a la vista, en `commitAsRun`.
 function destructive(input) {
   const raw = commandOf(input)
   // Las opciones globales de `git` se sacan acá y no en cada regla: toda regla de abajo que mire un
@@ -311,7 +310,7 @@ function gitAdd(input) {
   // La misma regla con otra ortografía: `-a` stagea todo lo seguido sin nombrar una ruta, y encima lo
   // hace al commitear —después de este hook—, así que los guards que leen el índice tampoco lo ven.
   // `--amend` queda afuera: empieza con dos guiones y lo frena `destructive`, por otra razón.
-  if (new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s(?:-[a-z]*a[a-z]*|--all)\b`).test(command)) {
+  if (new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s(?:-[a-z]*a[a-zA-Z]*|--all)\b`).test(command)) {
     block("'git commit -a' stagea al commitear, después de este guard: nadie llega a revisar el diff "
       + 'staged, ni vos ni los guards que lo miran. Stageá las rutas por nombre y commiteá aparte.')
   }

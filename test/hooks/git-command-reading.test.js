@@ -158,7 +158,7 @@ test('el repositorio de un commit se lee de su propio segmento', () => {
   const at = (command) => I.gitDirectory(command, '/sesion')
   assert.equal(at('git commit -m x && cd /etc'), '/sesion')
   assert.equal(at('git commit -m x; cd "/etc"'), '/sesion')
-  assert.equal(at('(cd "/o" && git commit -m x)'), '/sesion', 'con dudas y sin sesión a la que comparar, la carpeta')
+  assert.equal(at('(cd "/o" && git commit -m x)'), '/o', 'el subshell lleva su propia carpeta')
   assert.equal(at('git commit -m "a; cd /etc"'), '/sesion', 'un separador entre comillas no separa')
   assert.equal(at('echo a\\; cd /etc && git commit -m x'), '/sesion', 'uno escapado tampoco')
 })
@@ -183,18 +183,36 @@ test('lo que un commit ejecuta queda a la vista, y su mensaje no', () => {
   assert.match(I.withoutGitGlobals(run('git commit -m x && git -c "a=b c" push -f')), /git push -f/)
   assert.match(I.withoutGitGlobals(run('git commit -m x; git -C . -c "u=A B" push -f')), /git push -f/)
   assert.match(I.withoutGitGlobals(run('git commit -m x; git -c u=A -c "e=a b" reset --hard')), /git reset --hard/)
-  for (const value of ['user.name="A B"', 'core.sshCommand="ssh -i k"', 'http.extraHeader="X: y"', '"user.name=A B"',
+  for (const value of ['user.name="A B"', 'http.extraHeader="X: y"', '"user.name=A B"',
     '"user.name=\\"A B\\""']) {
     assert.equal(I.withoutGitGlobals(`git -c ${value} push -f origin b`), 'git push -f origin b', value)
     const chained = `git commit -m x && GIT_TRACE=1 git -c ${value} reset --hard`
     assert.match(I.withoutGitGlobals(run(chained)), /git reset --hard/)
   }
   assert.equal(I.isCommit('git -c user.name="Git Bot" commit -m x'), true, 'un nombre no es una orden')
-  assert.equal(I.withoutGitGlobals("git -c alias.p='push -f' p"), "git -f' p", 'un alias se corta como antes')
+  assert.match(I.withoutGitGlobals("git -c alias.p='push -f' p"), /git push -f/, 'lo que corre el alias se ve')
+  assert.match(I.withoutGitGlobals("git -c alias.a='!git reset --hard' a"), /git reset --hard/)
+  assert.equal(I.withoutGitGlobals("git -c alias.p='push -f' commit -m x"), 'git commit -m x', 'sin usar no corre')
+  assert.equal(I.withoutGitGlobals("git -c alias.a='!rm -rf x' a"), 'rm -rf x ; git a', 'con `!` lo corre el shell')
+  assert.match(I.withoutGitGlobals("git -c core.sshCommand='rm -rf x' fetch"), /rm -rf x/)
+  assert.match(I.withoutGitGlobals('git -c core.pager="git push -f" log'), /git push -f/)
+  assert.equal(I.isCommit("git -c alias.c='commit -m x' c"), true)
+  assert.match(I.withoutGitGlobals("git -c alias.p='!git push -f' \\\n  p"), /git push -f/, 'en otra línea')
+  assert.match(I.withoutGitGlobals("git -c alias.Pf='!git push -f' pf"), /git push -f/, 'sin distinguir mayúsculas')
+  assert.equal(I.withoutGitGlobals('git -c core.quotePath=off status'), 'git status', 'un valor común es dato')
   assert.match(I.withoutGitGlobals('git -c core.sshCommand="git push -f" fetch'), /git push -f/)
   assert.match(I.withoutGitGlobals(run(`git commit -m x; git -c alias.p='!git push -f' p`)), /git push -f/)
   assert.match(run('git commit -m x && bash -c "git push -f"'), /git push -f/)
+  assert.match(run('cat <<EOF | sh\ngit push -f\nEOF'), /git push -f/, 'un cuerpo que recibe un shell es una orden')
+  assert.match(run('bash <<EOF\ngit push -f\nEOF'), /git push -f/)
+  const pushAfter = `# it's\ncat > m <<'EOF'\nfix: don't\nEOF\ngit commit -F m && git push origin main && git log '%h'`
+  assert.match(run('git commit -m "texto <<EOF"\ngit push -f\nEOF'), /git push -f/, 'en una cadena no abre nada')
+  assert.match(run(pushAfter), /git push origin main/, 'las comillas de un comentario o un cuerpo no cuentan')
+  assert.match(run(`# usa <<EOF\ngit push -f origin main\nEOF`), /git push -f/, 'un comentario no abre un heredoc')
   const inert = [
+    `# it's\ngit commit -F - <<'EOF'\ncita git push -f\nEOF`,
+    `git status # it's\ngit commit -m "$(cat <<'EOF'\ncita git push -f\nEOF\n)"`,
+    `cat > a <<'EOF'\nit's\nEOF\ngit commit -F - <<'EOF'\ncita git push -f\nEOF`,
     'git commit -m "explica git push -f y rm -rf"',
     "git commit -m 'explica git push -f'",
     `git commit -m "$(cat <<'EOF'\nexplica git push -f y $(rm -rf x)\nEOF\n)"`,
@@ -211,7 +229,8 @@ test('un cd que puede no mover al shell no cambia el repositorio del commit', ()
   const at = (command) => I.gitDirectory(command, '/sesion')
   assert.equal(at('(cd /etc); git commit -m x'), '/sesion')
   assert.equal(at('x=$(cd /etc && pwd); git commit -m x'), '/sesion')
-  assert.equal(at('cd /r || cd /etc; git commit -m x'), '/sesion')
+  assert.equal(at('cd /no-existe || cd /etc; git commit -m x'), '/etc', 'el primero no entra, el segundo sí')
+  assert.equal(at('cd /etc || cd /no-existe; git commit -m x'), '/etc', 'el primero entra, el segundo no corre')
   assert.equal(at('(cd /etc; true) && git commit -m x'), '/sesion')
   assert.equal(at('git -C /r status; cd /o && ls; cd /r && git commit -m x'), '/r')
   assert.equal(at('git -C /r diff; (ls && cd /o); git commit -m x'), '/sesion')
@@ -329,7 +348,45 @@ test('con dudas sobre el cd, se juzga el candidato que sea de la sesión', () =>
     assert.equal(at(`git commit -m x; cd ${root}; sh -c 'git commit -m y'`), root)
     assert.equal(at(`cd ${other} && git commit -m x`, root), other, 'sin dudas, el ajeno es ajeno')
     assert.equal(at(`false && cd ${other}; git commit -m x`, root), root, 'si false falla, el cd no corre')
-    assert.equal(at(`pushd ${other}; git commit -m x`, root), root, 'pushd también mueve, y no se simula')
+    assert.equal(at(`pushd ${other}; git commit -m x`, root), other, 'pushd mueve como cd')
+    assert.equal(at(`pushd ${other}; popd; git commit -m x`, root), root, 'y popd vuelve')
+    assert.equal(at(`cd ${other}; pushd ${root}; popd; git commit -m x`, root), other, 'a donde estaba, sin dudas')
+    assert.equal(at(`(cd ${other} && git commit -m x)`, root), other, 'el subshell no deja dudas')
+    assert.equal(at(`(cd ${other}); git commit -m x`, root), root, 'y al cerrarse no mueve')
+    assert.equal(at(`(cd ${other} && git commit -m x); git -C ${root} status`, root), other)
+    assert.equal(at(`{ cd ${other}; git commit -m x; }`, root), other, 'las llaves sí mueven')
+    assert.equal(at(`cd ${other} || cd ${root}; git commit -m x`, root), other, 'existe: el segundo no corre')
+    assert.equal(at(`if true; then cd ${other}; fi; git commit -m x`, root), root, 'un then deja dudas')
+    assert.equal(at(`if true; then cd ${root}; fi; git commit -m x`), root, 'y su cd es candidato')
+    assert.equal(at(`if false; then\n  cd ${other}\nfi\ngit commit -m x`, root), root, 'también en otra línea')
+    assert.equal(at(`case "$r" in a) cd ${other};; esac; git commit -m x`, root), root, 'un case no se sabe si corre')
+    assert.equal(at(`case "$r" in a) echo;; esac; cd ${other} && git commit -m x`, root), other, 'el && da certeza')
+    assert.equal(at(`case "$r" in a) echo;; esac; cd ${other} && true; git commit -m x`, root), other)
+    assert.equal(at(`if a; then cd ${other} && git commit -m x; fi; git commit -m y`, root), root, 'el fi duda')
+    assert.equal(at(`f() { cd ${other}; }; git commit -m x`, root), root, 'una función sin llamar no mueve')
+    assert.equal(at(`{ cd ${other}; }; git commit -m x`, root), root, 'puede ir a un tubo')
+    assert.equal(at(`{ cd ${other} && npm test; } 2>&1 | tail -5; git commit -m x`, root), root, 'otro proceso')
+    assert.equal(at(`{ cd ${other}; npm test; } & git commit -m x`, root), root)
+    assert.equal(at(`{ if a; then cd ${other}; fi; git commit -m x; }`, root), root, 'un bloque tras la llave')
+    assert.equal(at(`{ if a; then cd ${other}; fi; }; git commit -m x`, root), root)
+    assert.equal(at(`if a; then if b; then true; fi; cd ${other}; fi; git commit -m x`, root), root, 'anidado')
+    assert.equal(at(`if a\nthen\n if b\n then\n  cd ${other}\n fi\n git commit -m x\nfi`, root), root)
+    assert.equal(at(`test -d x && { cd ${other} && git commit -m x; }; git commit -m y`, root), root, 'ni un {')
+    assert.equal(at(`cd ${other} && cat > m <<EOF\ndone x\nthen\nEOF\ngit commit -m x`, root), other, 'cuerpo')
+    assert.equal(at(`cat > m <<EOF\ncd ${other}\nEOF\ngit commit -m x`, root), root, 'un cuerpo no mueve')
+    assert.equal(at(`if a; then cd ${other}; git commit -m x; fi`, root), other, 'adentro de su rama, sí')
+    assert.equal(at(`if a; then echo; fi; cd ${other}; git commit -m x`, root), other, 'un bloque que no mueve no duda')
+    assert.equal(at(`cd ${other}; if a; then echo; fi; git commit -m x`, root), other)
+    assert.equal(at(`for f in a; do echo; done\ncd ${other}\ngit commit -m x`, root), other)
+    assert.equal(at(`if a; then echo; fi && cd ${other} && git commit -m x`, root), other)
+    fs.mkdirSync(path.join(root, 'sub'), { recursive: true })
+    assert.equal(at(`if a; then cd ${other}; fi; cd sub && git commit -m x`, root), root, 'relativo duda')
+    assert.equal(at(`if a; then cd ${other}; fi; cd ${other}; git commit -m x`, root), other, 'absoluto y existe, no')
+    assert.equal(at(`# 1) ajeno\ncd ${other} && git commit -m x`, root), other, 'un comentario no deja dudas')
+    assert.equal(at(`# a; cd ${other}\ngit commit -m x`, root), root, 'ni mueve')
+    assert.equal(at(`cd ${other}; git -C "$PWD" add -A`, root), other, 'un $PWD sale de los cd de antes')
+    assert.equal(at(`cd ${other}/no; git -C "$PWD" add -A`, root), root, 'el cd que no entra no cuenta')
+    assert.equal(at(`false && cd ${other}; git -C "$PWD" add -A`, root), root, 'con dudas, también la sesión')
     assert.equal(at(`git commit -m x && cd ${root}`), other, 'lo que viene después no commitea')
     assert.equal(at(`pushd ${root}; git commit -m x`), root, 'pushd es un candidato')
     // Frenar de más también es un defecto: un commit en un repositorio ajeno no le toca a esta sesión.
@@ -375,4 +432,37 @@ test('con dudas sobre el cd, se juzga el candidato que sea de la sesión', () =>
     if (previous === undefined) delete process.env.OPS_ROOT
     else process.env.OPS_ROOT = previous
   }
+})
+
+// El cuerpo de un heredoc es dato, salvo lo que corre: sin comillas en el delimitador, una sustitución se ejecuta.
+test('lo que un heredoc ejecuta, y lo que viene después de cerrarlo, queda a la vista', () => {
+  const read = (command) => I.commandOf({ tool_input: { command } })
+  const run = (command) => I.asRun(read(command))
+  assert.match(run('git commit -m "$(cat <<EOF\ntexto $(git push -f)\nEOF\n)"'), /git push -f/)
+  assert.match(run('git commit -F - <<EOF\ntexto `git reset --hard`\nEOF'), /git reset --hard/)
+  assert.match(run('cat <<EOF\n$(git push -f)\nEOF'), /git push -f/)
+  assert.match(run(`git commit -F - <<'EOF'\nx\nEOF\nsh -c 'git push -f origin main'`), /git push -f/)
+  assert.match(run(`git commit -F - <<'EOF'\nx\nEOF\ngit push -f origin main`), /git push -f/)
+  // Lo que corre en el mensaje no parte el commit: lo que sigue sigue siendo suyo.
+  assert.match(run('git commit -m "v$(date)" --amend'), /git commit -m \S* --amend ; date/)
+  assert.match(run(`git commit -m "$(cat <<'EOF'\nfix: x\nEOF\n)" --amend`), /git commit -m \S* --amend/)
+  assert.match(run('git commit -m "$(cat <<EOF\nfix: x\nEOF\n)" --amend'), /git commit -m \S* --amend/)
+  // El commit de otro shell no vuelve dato lo que ese shell corre (caso 477).
+  assert.match(run('bash -c "git push -f origin main; git commit -m x"'), /git push -f/)
+  assert.match(run('git status; sh -c "git push -f origin main; git commit -m x"'), /git push -f/)
+  assert.doesNotMatch(run('git commit -m "cita git push -f"'), /git push/)
+  assert.doesNotMatch(run('FOO="a b" git commit -m "cita git push -f"'), /git push/)
+  const inert = [
+    `git commit -F - <<'EOF'\ncita git push -f y $(rm -rf x)\nEOF`,
+    'git commit -F - <<EOF\ncita git push -f\nEOF',
+    'git commit -F - <<EOF\nescapado \\$(git push -f) y \\`rm -rf x\\`\nEOF',
+    'cat > a.sh <<EOF\ngit push -f\nEOF',
+    `cat > a.sh <<'EOF'\n$(git push -f)\nEOF`,
+    `git commit -m "$(cat <<'EOF'\ncita "git push -f"; y $(rm -rf x)\nEOF\n)"`,
+    `git commit -F - <<'END-MSG'\ncita "git push -f"\nEND-MSG`,
+    'git commit -F - <<\\EOF\ncita $(git push -f)\nEOF',
+    `git commit -F - . <<'EOF'\ncita git push -f\nEOF`,
+    `grep -r foo . <<'EOF'\ncita git push -f\nEOF`,
+  ]
+  for (const command of inert) assert.doesNotMatch(run(command), /git push|rm -rf/, command)
 })
