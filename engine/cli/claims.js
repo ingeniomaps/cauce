@@ -99,8 +99,11 @@ function claim(dir, slug, cli) {
   console.log(`✓ ${slug} tomada por ${me}`)
   if (!cli.has('--json')) {
     // Un reclamo sin empujar no protege de nada: el otro runner lee lo que hay en su copia. Decirlo acá
-    // es lo único que separa «tomé la tarea» de «creí que la había tomado».
-    console.log(`  commiteá y empujá ${CL.DIR}/${slug}.md para que el equipo lo vea`)
+    // es lo único que separa «tomé la tarea» de «creí que la había tomado». Lo de una sesión delegada lo publica quien
+    // la lanzó: su rol le prohíbe empujar, y la orden contraria cada una la anotaba como desvío (caso 471).
+    if (process.env.CAUCE_DELEGATED !== '1') {
+      console.log(`  commiteá y empujá ${CL.DIR}/${slug}.md para que el equipo lo vea`)
+    }
     // Y con qué id volver. Este dato lo imprimía `ops worktree` al crear el árbol; en sidecar no se crea
     // ninguno, así que ese comando no corre nunca y el id no quedaba escrito en el único momento en que
     // alguien lo tiene delante: ahora, que se acaba de guardar en el reclamo.
