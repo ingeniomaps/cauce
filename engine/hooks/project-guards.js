@@ -12,7 +12,10 @@
 // en stdout la decisión en JSON de un hook de Claude Code —`decision: block`, `continue: false`, o
 // `permissionDecision` en `deny` o `ask`— también frena: un guard traído así desde `.claude/settings.json` dejaba
 // pasar todo. El `ask` frena porque acá no hay diálogo que abrir en los cuatro runners, y dejarlo pasar sería tomar la
-// pregunta por un sí. Lo demás frena también: un guard que no está, que no se puede ejecutar, que sale con otro código
+// pregunta por un sí. Un 0 con algo en stderr deja pasar y eso le llega a la sesión como aviso (caso 466), que es más
+// de lo que da Claude Code, donde ese stderr no lo ve nadie.
+//
+// Lo demás frena también: un guard que no está, que no se puede ejecutar, que sale con otro código
 // o que no termina a tiempo no dijo que sí, y dejarlo pasar apagaría la defensa sin que nadie se entere (R27). Claude
 // Code, en cambio, sigue de largo ante un error que no es 2; un guard que dependía de eso cambia de conducta al pasar
 // acá, y es a propósito.
@@ -27,6 +30,11 @@ const { GUARD_EVENTS, validateGuards } = require('../config/validate')
 // a los del motor, así que tres guards de 20 s cada uno lo pasaban, y qué hace `agy` con un hook vencido no está
 // medido. Es un objeto y no una constante para que la prueba mida el corte sin esperar los 20 s.
 const limits = { timeoutMs: 20000 }
+
+// Un aviso viaja en cada llamada, así que uno ruidoso se pagaría en contexto todo el resto de la sesión.
+const NOTICE_MAX = 2000
+const noticeOf = (name, said) => (said.length > NOTICE_MAX
+  ? `[${name}] ${said.slice(0, NOTICE_MAX)}… (recortado)` : `[${name}] ${said}`)
 
 // El evento que corre una invocación. Antigravity llama al motor con el nombre del grupo; Claude, Codex y Gemini
 // llaman `pre-read`, `pre-mcp` y `stop` por su único guard (`secrets-read`, `jira-adf`, `planning-drift`), así que un
@@ -71,7 +79,7 @@ function judge(file, event, input, root, deadline) {
   if (result.status === 0) {
     const decided = decisionOf(result.stdout)
     if (decided) block(`[${name}] ${decided}`)
-    return
+    return said ? noticeOf(name, said) : ''
   }
   if (result.status === 2) block(`[${name}] ${said || 'el guard del proyecto frenó sin decir por qué'}`)
   block(`[${name}] el guard que declara guards.${event} en ops.config.json ${failureOf(result, said)}, y un guard `
@@ -92,7 +100,7 @@ function decisionOf(stdout) {
   }
   if (specific.permissionDecision === 'ask') {
     return `${specific.permissionDecisionReason || 'el guard del proyecto pide confirmar'} — pide confirmación, y acá `
-      + 'frena: los guards del proyecto no abren diálogo. Si alcanza con avisar, que salga en 0 sin JSON.'
+      + 'frena: los guards del proyecto no abren diálogo. Si alcanza con avisar, que salga en 0 y lo diga por stderr.'
   }
   return ''
 }
@@ -109,20 +117,23 @@ function failureOf(result, said = '') {
   return result.signal ? `lo cortó ${result.signal}` : `salió con ${result.status}${said ? `: ${said}` : ''}`
 }
 
-// Corre los guards del proyecto de los eventos de esta invocación. Sin raíz ops no hay configuración que los declare.
+// Corre los guards del proyecto de los eventos de esta invocación y devuelve lo que avisaron.
+// Sin raíz ops no hay configuración que los declare.
 //
 // En `stop`, `stop_hook_active` dice que la sesión ya está siguiendo porque un hook de cierre la frenó: volver a frenar
 // ahí la encierra en un bucle, y con un guard roto —que frena siempre— ese bucle no termina por nada que el guard
 // juzgue. Claude Code manda el campo para eso, y lo que ya se frenó una vez no se vuelve a preguntar.
 function runProjectGuards(names, input, groups) {
   const events = eventsOf(names, groups).filter((event) => event !== 'stop' || !input.stop_hook_active)
-  if (!events.length) return
+  if (!events.length) return []
   const root = opsRoot(input)
-  if (!root) return
+  if (!root) return []
+  const notices = []
   for (const event of events) {
     const deadline = Date.now() + limits.timeoutMs
-    for (const file of declaredFor(root, event, input)) judge(file, event, input, root, deadline)
+    for (const file of declaredFor(root, event, input)) notices.push(judge(file, event, input, root, deadline))
   }
+  return notices.filter(Boolean)
 }
 
 module.exports = { limits, eventsOf, failureOf, runProjectGuards }

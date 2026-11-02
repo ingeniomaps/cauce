@@ -20,6 +20,9 @@
         ]
       }
     ],
+    "PreInvocation": [
+      { "type": "command", "command": "node hook.js pre-invocation", "timeout": 10 }
+    ],
     "Stop": [
       { "type": "command", "command": "node hook.js stop", "timeout": 120 }
     ]
