@@ -29,6 +29,7 @@ const CHAT = require('./chat')
 const AP = require('./approval')
 const { writes } = require('./shell-changes')
 const { confirmedOnly, real } = require('./boundary')
+const { instanceTreeOf } = require('./instance-tree')
 const { writableOutsideRoots, resolvePath, LOCAL_CONFIG } = require('../config/paths')
 
 const INSTANCE_CONFIG = 'ops.config.json'
@@ -194,12 +195,29 @@ function targets(input) {
   return root ? [INSTANCE_CONFIG, LOCAL_CONFIG].map((name) => ({ root, file: path.join(root, name) })) : []
 }
 
+// Lo que llega a un `ops.config.json` en un worktree de la instancia se junta después con el que decide, así que se
+// juzga igual (caso 465). El archivo local no: es de cada carpeta, y el motor sólo lee el de la raíz.
+function inWorktrees(root, paths) {
+  return paths.filter((one) => path.basename(real(one)) === INSTANCE_CONFIG).flatMap((file) => {
+    const tree = instanceTreeOf(root, real(file), { inside: true })
+    return tree ? [{ root: tree, file: path.join(tree, INSTANCE_CONFIG) }] : []
+  })
+}
+
 function opsConfig(input) {
-  for (const { root, file } of targets(input)) judgeWrite(input, root, file)
+  const found = targets(input)
+  const paths = filesOf(input).map((raw) => path.resolve(cwdOf(input), raw))
+  const all = found.length ? [...found, ...inWorktrees(found[0].root, paths)] : found
+  for (const { root, file } of all) judgeWrite(input, root, file)
 }
 
 function opsConfigShell(input) {
-  for (const { root, file } of targets(input)) judgeCommand(input, root, file)
+  const found = targets(input)
+  const paths = writes(rawCommandOf(input), cwdOf(input))
+    .filter(({ raw, base }) => path.isAbsolute(raw) || base !== null)
+    .map(({ raw, base }) => path.resolve(base || '/', raw))
+  const all = found.length ? [...found, ...inWorktrees(found[0].root, paths)] : found
+  for (const { root, file } of all) judgeCommand(input, root, file)
 }
 
 // Con `ops.config.json` ilegible ningún guard decide, y frenar todo dejaba la sesión sin herramientas, también sin la

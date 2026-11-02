@@ -89,7 +89,7 @@
         "delivery-plan",
         "ownership-and-capacity"
       ],
-      "exitGate": "Los equipos dueños validaron estimaciones, capacidad, dependencias y criterios de integración."
+      "exitGate": "Estimaciones, dependencias y criterios de integración están explícitos, y la capacidad la declaró por escrito quien la tiene —cuántas horas por semana y durante cuánto tiempo—. Si la capacidad no consta, el gate no se cumple, por chico que sea el plan: estimarla o darla por alcanzable es suponerla. Que los dueños validen el plan que esta etapa escribió no se puede cumplir dentro de la corrida que lo escribe; la validación que falte queda como condición, con quién la da, y no frena."
     },
     {
       "id": "build",
