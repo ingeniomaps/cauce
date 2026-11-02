@@ -51,11 +51,16 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
     // Y con el comodín antes del patrón, que el README nombra y el guard leía como si fuera el patrón (caso 342).
     "rg -g '.env*' KEY", "rg --glob '.env*' KEY .", "grep --include='*.env' -rn KEY .",
     // El verbo se busca detrás de prefijos con sus banderas, con ruta, dentro de un subshell y entre tramos vacíos.
-    'xargs -0 cat .env', '/bin/cat .env', '(cat .env)', 'true; ; cat .env']) {
+    'xargs -0 cat .env', '/bin/cat .env', '(cat .env)', 'true; ; cat .env',
+    // Lo que va junto a un commit corre: sólo su mensaje es dato.
+    'git commit -m "$(cat .env)"', 'git commit -m "$(cat \'.env\')"', 'git commit -m "a $(cat .env) b"',
+    'git commit -m x; cat ".env"', 'if a; then git commit -m x; fi; cat ".env"']) {
     blocked('secrets-shell', runs(command), /lee .*credencial/)
   }
   for (const command of ['cat .env.example', 'ls -la .env', 'test -f .env', 'rm .env', 'cp .env.example .env',
-    'git add .env.example', 'git commit -m "no leer el .env; cat .env"', 'grep -r TOKEN src', 'ls .env*',
+    'git commit -m "$(cat msg.txt)"', 'git add .env.example',
+    'git commit -m "no leer el .env; cat .env"', 'if a; then git commit -m "cat .env"; fi',
+    'grep -r TOKEN src', 'ls .env*',
     'cat *.md']) {
     assert.doesNotThrow(() => execute('secrets-shell', runs(command)), command)
   }

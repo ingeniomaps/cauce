@@ -100,6 +100,68 @@ test('un caso resuelto dice qué se corrió para saber que funciona', () => {
   assert.deepEqual(faltan, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${faltan.join('\n  ')}`)
 })
 
+// Una frase suelta sobre lo que no se probó no se distingue de la cita de un tradeoff que el mismo cierre contesta,
+// así que buscarlas fabrica huecos. Con una línea fija, «¿qué quedó sin probar?» se contesta con un grep. Mide que la
+// línea esté, no que sea cierta.
+const SIN_PROBAR = /^\*\*Sin probar:\*\* \S/m
+test('un caso resuelto dice qué quedó sin probar', () => {
+  const resueltos = cases()
+    .filter((one) => one.estado === 'resuelto' && alcanzado(version(one.resueltoEn), [0, 118, 0]))
+  const faltan = resueltos
+    .filter((one) => !SIN_PROBAR.test((one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''))
+    .map((one) => `${one.name}: el cierre no trae «**Sin probar:** …», aunque diga «nada»`)
+  assert.ok(resueltos.length > 0, 'ningún caso alcanzó la convención: no está midiendo nada')
+  assert.deepEqual(faltan, [], `cierres sin su línea:\n  ${faltan.join('\n  ')}`)
+})
+
+// Una lista para leer no se cumplió: se cerraron casos con puntos sin hacer en la misma sesión que la escribió. Escrita
+// punto por punto, saltearse uno se ve. Mide que cada punto tenga su línea, no que sea cierta. Rige por
+// número de caso y
+// no por versión, porque 458 y 460 ya salen en 0.118.0 y rellenarlos sería escribir de memoria.
+const CLOSING_POINTS = 16
+function closingListProblems(cierre) {
+  const opens = cierre.indexOf('### Lista de cierre\n')
+  if (opens < 0) return ['sin «### Lista de cierre»']
+  const block = cierre.slice(opens).split('\n**Sin probar:**')[0]
+  const lines = [...block.matchAll(/^(\d+)\. (hecho|no aplica|pendiente): \S/gm)]
+  const seen = new Map(lines.map((line) => [Number(line[1]), line[2]]))
+  const problems = []
+  for (let point = 1; point <= CLOSING_POINTS; point += 1) {
+    if (!seen.has(point)) problems.push(`el punto ${point} no tiene su línea`)
+    else if (seen.get(point) === 'pendiente') problems.push(`el punto ${point} está pendiente`)
+  }
+  return problems
+}
+test('un caso resuelto recorrió la lista de cierre punto por punto', () => {
+  const faltan = cases().filter((one) => one.estado === 'resuelto' && Number(one.caso) >= 464).flatMap((one) => {
+    const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
+    return closingListProblems(cierre).map((problem) => `${one.name}: ${problem}`)
+  })
+  assert.deepEqual(faltan, [], `cierres sin recorrer la lista:\n  ${faltan.join('\n  ')}`)
+})
+
+test('la lista que exige la puerta tiene tantos puntos como la que escribe AGENTS.md', () => {
+  const agents = fs.readFileSync(path.join(ISSUES, '..', '..', 'AGENTS.md'), 'utf8')
+  const start = agents.indexOf('### Qué tiene que estar para darlo por cerrado')
+  const section = agents.slice(start, agents.indexOf('## Convenciones'))
+  assert.equal(new Set(section.match(/^\d+\. /gm)).size, CLOSING_POINTS)
+})
+
+// Un caso se cierra en la rama, antes de publicar, así que `resuelto-en` puede ir adelante del paquete. Sólo puede ser
+// la versión abierta: otra es un número que ninguna release va a cumplir.
+test('un resuelto-en más nuevo que el paquete es la versión abierta del CHANGELOG', () => {
+  const root = path.resolve(ISSUES, '..', '..')
+  const published = version(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version)
+  const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8')
+  const open = (changelog.match(/^## \[(\d+\.\d+\.\d+)\]/m) || [])[1]
+  assert.ok(open, 'el CHANGELOG no tiene ninguna versión que leer')
+  const next = [published[0], published[1], published[2] + 1]
+  const wrong = cases()
+    .filter((one) => one.estado === 'resuelto' && alcanzado(version(one.resueltoEn), next) && one.resueltoEn !== open)
+    .map((one) => `${one.name}: resuelto-en ${one.resueltoEn}, y la versión abierta es ${open}`)
+  assert.deepEqual(wrong, [], `versiones que no van a salir:\n  ${wrong.join('\n  ')}`)
+})
+
 // La tabla de `docs/issues/README.md`: los cuatro estados con el glifo que a cada uno le toca en el
 // encabezado. Por qué uno fuera de ella se rechaza en vez de ignorarse está escrito allá, al pie de la
 // tabla; acá sólo se comprueba.

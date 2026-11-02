@@ -207,6 +207,8 @@ function usage() {
   ops flow list [ops-root]
   ops flow check <flow> [ops-root]
   ops flow show <flow> [ops-root]
+  ops flow resume save <archivo> --hash <suma> [ops-root]
+  ops flow resume show <archivo> [ops-root]
 
 Códigos de salida:
   2  no se llegó a la pregunta: el comando no existe, falta un argumento, o la raíz no es lo que dice ser.
@@ -274,7 +276,7 @@ async function run(cli) {
   else if (command === 'automation') W.automation(arg[1], arg[2], arg[3], cli)
   else if (command === 'learn') CAT.learn(arg[1], cli)
   else if (command === 'evaluate') CAT.evaluate(arg[1], arg[2], cli)
-  else if (command === 'flow') CAT.flow(arg[1], arg[2], arg[3], cli)
+  else if (command === 'flow') CAT.flow(arg[1], arg[2], arg[3], cli, arg[4])
 }
 
 run(parse(process.argv.slice(2))).catch((error) => fail(error.message, REFUSED))

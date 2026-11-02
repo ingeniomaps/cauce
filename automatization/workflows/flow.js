@@ -18,11 +18,23 @@ export const meta = {
 {{INCLUDE:shared/workflow-root.js}}
 {{INCLUDE:shared/inbox.js}}
 {{INCLUDE:shared/human.js}}
+{{INCLUDE:shared/flow-resume.js}}
+
+// Los argumentos estructurados pueden llegar como texto: en una prueba real del caso 458 la sesión pasó el JSON
+// entero como cadena, `flow` lo tomó por la intención y corrió el recorrido por defecto desde cero. Una cadena que
+// es un objeto JSON se lee como tal; cualquier otra sigue siendo la intención.
+const ARGS = (() => {
+  if (typeof args !== 'string' || !args.trim().startsWith('{')) return args
+  try {
+    const parsed = JSON.parse(args)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : args
+  } catch { return args }
+})()
 
 // Dónde trabaja el recorrido. Normalmente es la raíz donde se lo invocó; `args.root` existe para
 // correrlo sobre otra instancia —el banco desechable con el que `flow-eval` lo mide—, porque un
 // recorrido que sólo sabe escribir en su propio planning/ no se puede medir sin ensuciarlo.
-const WORKDIR = String((typeof args === 'string' ? '' : (args || {}).root) || ROOT).replace(/\/+$/, '')
+const WORKDIR = String((typeof ARGS === 'string' ? '' : (ARGS || {}).root) || ROOT).replace(/\/+$/, '')
 const P = `${WORKDIR}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = humanWhere(P)
@@ -35,13 +47,26 @@ const REPORTS = `${P}/reports`
 //   /flow feasibility-review: quiero cobrar con tarjeta   equipo elegido por prefijo
 //   /flow {"flow": "acme-soporte", "intent": "..."}    argumentos estructurados
 //
+// Y una cuarta, para retomar lo que frenó en un gate: {"flow", "resume": "<retoma>", "answers": "..."}, con
+// "rerun": [...] si una respuesta invalida una etapa que ya había cerrado. La ruta la dice la corrida al frenar.
+//
 // El prefijo se toma como candidato y se confirma más abajo contra los equipos que existen: si no es
 // uno, el texto completo era la intención y nadie tuvo que aprenderse una sintaxis.
-const input = typeof args === 'string' ? { intent: args } : (args || {})
+const input = typeof ARGS === 'string' ? { intent: ARGS } : (ARGS || {})
 const raw = String(input.intent || '').trim()
 const prefix = raw.match(/^([a-z][a-z0-9-]*)\s*:\s*(.+)$/s)
 const CANDIDATE = String(input.flow || (prefix ? prefix[1] : '') || 'product-development')
 const INTENT = (input.flow || !prefix ? raw : prefix[2]).trim()
+// Retomar una corrida que frenó en un gate: el archivo que dejó, lo que la persona contestó y, si una respuesta
+// invalida una etapa que ya había cerrado, cuáles relanzar. Qué se relanza lo decide quien retoma: el recorrido no
+// sabe qué respuesta mueve qué etapa.
+const RESUME = String(input.resume || '').trim()
+// Las respuestas pueden venir como objeto (`{"D1": "sí"}`) si los argumentos llegaron como JSON: se pasan como JSON y
+// no como «[object Object]».
+const ANSWERS = (typeof input.answers === 'object' && input.answers !== null
+  ? JSON.stringify(input.answers, null, 2) : String(input.answers || '')).trim()
+// Una etapa suelta también es una lista: `"rerun": "shape"` se ignoraba y la etapa salía de la retoma igual.
+const RERUN = [].concat(input.rerun ?? []).map(String).filter((id) => id.trim())
 
 const MANIFEST = {
   // `exists` es lo único obligatorio: el mismo agente responde "no hay tal equipo" sin poder llenar
@@ -60,6 +85,8 @@ const MANIFEST = {
     // `dependsOn`, que se arregló mirando sólo las claves de las etapas.
     completion: { type: 'array', items: { type: 'string' } },
     conditionalAgents: { type: 'array', items: { type: 'string' } },
+    resume: RESUME_SCHEMA,
+    resumeError: { type: 'string', maxLength: 1000 },
     // Con los nombres que ya hay en el INBOX, lo que el recorrido escribe al final no repite uno.
     inbox: INBOX_HEADS,
     // La fecha, del mismo comando que trae los nombres (caso 115).
@@ -178,7 +205,17 @@ const openConditions = (entries) => entries.flatMap((entry) => (entry.openQuesti
 
 {{INCLUDE:shared/workflow-finish.js}}
 
-if (!INTENT) return stop('sin-intencion', 'pasá la intención a evaluar en args.intent')
+if (!INTENT && !RESUME) return stop('sin-intencion', 'pasá la intención a evaluar en args.intent')
+// Sin respuestas, la etapa que frenó vuelve a correr con lo mismo y frena igual: es pagarla dos veces.
+if (RESUME && !ANSWERS && !RERUN.length) {
+  return stop('sin-respuestas', 'para retomar, pasá en args.answers lo que contestó la persona, o en args.rerun ' +
+    'qué etapas relanzar')
+}
+// Y al revés: sin retoma no hay a qué etapa entregarlas, e ignorarlas en silencio era el defecto del caso 458.
+if (!RESUME && (ANSWERS || RERUN.length)) {
+  return stop('sin-retoma', 'answers y rerun son para retomar: pasá también args.resume, la ruta que dejó la corrida ' +
+    'que frenó')
+}
 
 phase('Contract')
 
@@ -204,6 +241,9 @@ const contract = await agent(
   `5. "node tools/ops.js lines ${WORKDIR} --json" — copy into lines every non-empty line field under ` +
   `trees and every name field under declared, verbatim. If it refuses —the instance is not in git—, ` +
   `lines is [].\n` +
+  (RESUME ? `6. node tools/ops.js flow resume show "${RESUME}" — copy what it printed into resume, every field ` +
+    `byte for byte: the run checks it against its hash. If the command fails, leave resume out and copy the error ` +
+    `it printed into resumeError.\n` : '') +
   `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
   `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +
@@ -226,7 +266,7 @@ if (!contract.name || !contract.stages || !contract.guardrails) {
   return stop('contrato-incompleto', `el manifiesto de ${CANDIDATE} no trae nombre, etapas o guardrails`)
 }
 const FLOW = CANDIDATE
-const GOAL = INTENT
+const GOAL = INTENT || (contract.resume ? contract.resume.intent : '')
 
 const owners = (contract.owners || []).map((owner) => `${owner.domain}=${owner.agent}`).join(', ')
 // Qué recorridos existen. Va en las reglas comunes y no sólo en la etapa que enruta: cualquier etapa
@@ -295,6 +335,20 @@ function levels(stages) {
   return out
 }
 
+// Qué sale de la retoma sin volver a correr, y qué recibe lo que vuelve a correr: `resumePlan` y `resumeBlock`.
+const REUSED = new Map()
+if (RESUME) {
+  const plan = resumePlan(RESUME, contract.resume, {
+    flow: FLOW, intent: INTENT, stages: discovery, rerun: RERUN, ancestors, error: contract.resumeError,
+  })
+  if (plan.stop) return stop(plan.stop, plan.detail)
+  plan.reused.forEach((entry, id) => REUSED.set(id, entry))
+  if (contract.resume.today !== contract.today) {
+    log(`La retoma es del ${contract.resume.today}: lo que reutiliza se escribió ese día, no hoy.`)
+  }
+  log(`Retomando ${RESUME}: ${[...REUSED.keys()].join(', ') || 'ninguna etapa'} sale(n) de la retoma.`)
+}
+
 const runStage = (stage, index) => {
   const visible = handoffs.filter((entry) => ancestors(stage, index).includes(entry.id))
   const open = openConditions(visible)
@@ -337,7 +391,7 @@ const runStage = (stage, index) => {
     `En summary va, en esos 800 caracteres, lo que la etapa siguiente necesita ` +
     `para decidir —no un resumen de tu análisis, sino lo que le cambia el trabajo—, porque eso se le ` +
     `reenvía a cada etapa posterior. El límite va en caracteres y no en palabras porque es lo que el ` +
-    `esquema mide.`,
+    `esquema mide.${RESUME ? resumeBlock(stage, contract.resume, ANSWERS, RERUN, HUMAN) : ''}`,
     { schema: STAGE, label: `stage:${stage.id}` })
 }
 
@@ -345,8 +399,9 @@ const runStage = (stage, index) => {
 // para: las hermanas que corrieron con ella entran igual al handoff —su trabajo está hecho y pagado— y
 // lo que se abandona son los niveles siguientes.
 for (const level of levels(discovery)) {
-  const results = await parallel(level.map((one) =>
-    () => runStage(one.stage, one.index).then((result) => ({ stage: one.stage, result }))))
+  const results = await parallel(level.map((one) => (REUSED.has(one.stage.id)
+    ? async () => ({ stage: one.stage, result: REUSED.get(one.stage.id) })
+    : () => runStage(one.stage, one.index).then((result) => ({ stage: one.stage, result })))))
   for (const one of results) {
     if (!one || !one.result) return stop('stage-unavailable', 'una etapa del nivel no devolvió resultado')
     handoffs.push({ id: one.stage.id, agent: one.stage.agent, ...one.result })
@@ -424,7 +479,30 @@ if (blocked.length) {
     `${established}`,
     { label: 'partial-report' },
   )
-  return stop('gate-no-cumplido', `${blocked[0].stage}: ${blocked[0].missing}`)
+  // Y lo que permite retomar sin volver a pagar lo que ya cerró. Si no se pudo guardar, el freno vale igual: lo que
+  // se pierde es la retoma, no el bloqueo.
+  const payload = {
+    flow: FLOW, intent: GOAL, today: contract.today || '', stages: discovery.map((stage) => stage.id),
+    stoppedAt: blocked[0].stage, handoffs: handoffs.map(resumeHandoff),
+  }
+  const file = `${REPORTS}/${contract.today || 'retoma'}-${FLOW}-retoma.json`
+  const saved = await agent(
+    `Write the JSON below, byte for byte, to ${file} with your file-writing tool —if that file already exists, ` +
+    `do not overwrite it: add -2, -3… before .json—. Then, from ${WORKDIR}, run "node tools/ops.js flow resume ` +
+    `save "<the file you wrote>" --hash ${resumeHash(payload)}" and report the path it printed. The command checks ` +
+    `the file against the hash and refuses any change, so do not edit, reformat or summarize the JSON. Do not pass ` +
+    `it through the shell. If the command fails, set saved=false and put its error in path.\n\n` +
+    `${JSON.stringify(payload, null, 2)}`,
+    { schema: { type: 'object', additionalProperties: false, required: ['saved', 'path'], properties: {
+      saved: { type: 'boolean' }, path: { type: 'string' },
+    } }, label: 'resume-save' },
+  )
+  if (saved && saved.saved) {
+    log(`Para retomar sin volver a pagar lo que cerró: /flow {"flow": "${FLOW}", "resume": "${saved.path}", ` +
+      '"answers": "<lo que contestó la persona>"}. Si una respuesta invalida una etapa cerrada, sumá "rerun": [...].')
+  } else log(`No se pudo guardar la retoma: ${saved ? saved.path : 'sin resultado'}. Retomar es relanzar entero.`)
+  return stop('gate-no-cumplido', `${blocked[0].stage}: ${blocked[0].missing}`,
+    saved && saved.saved ? { resume: saved.path } : {})
 }
 
 // Quien sintetiza lee el análisis entero. El resumen de control ya hizo su trabajo viajando entre

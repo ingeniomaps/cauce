@@ -51,6 +51,8 @@ function baseScript() {
       criteria: ['C1 el duplicado se rechaza'], stories: ['rechazar duplicado (→ C1)'],
     },
     'closing-check': { passed: true, details: 'check verde' },
+    // Lo que contesta quien guarda la retoma al frenar (caso 458).
+    'resume-save': { saved: true, path: '/w/planning/reports/2026-09-12-feasibility-review-retoma.json' },
   }
 }
 
