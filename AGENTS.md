@@ -375,7 +375,7 @@ Después, sobre la tanda:
 
 10. **Organizar.** Reportan lo que tocaron; organizar es de esta revisión. Se **une** lo que es el mismo defecto y pide
     la misma decisión, y el número absorbido no se reusa. Compartir área o causa no alcanza (`docs/issues/README.md`,
-    «Uno por archivo»). Se **parte** lo que mezcla dos defectos, y lo descubierto al revisar sale como caso propio.
+    «Uno por archivo»). Se **parte** lo que mezcla dos defectos. Lo descubierto al revisar sale como caso propio si tiene peso propio; si no, se anota en el caso que lo encontró.
 11. **Ordenar el trabajo.** Prioridad y dependencias entre casos.
 12. **Entregar.** Primero lo que frena un commit; después una tabla por caso con si es real, si vale, qué hacer y el
     riesgo de retroceso; lo que se corrigió de cada uno, con la evidencia; lo que no se pudo comprobar; las decisiones
@@ -465,8 +465,10 @@ Sin regresiones:
 11. **La última versión del código tuvo revisión independiente.** Si una revisión cambia el código, se revisa lo que cambió, y
     se sigue hasta una pasada sin nada que impida entregar. Reescribir por un hallazgo es código nuevo, no un arreglo menor: lo
     que el 464 dejó claro es que cada reescritura trajo regresiones que la anterior no tenía, con las pruebas en verde. Lo
-    que la pasada halle y ya pasara antes del cambio no impide entregar: sale como caso propio. Tampoco un comando armado
-    a propósito para esconder algo que nadie escribiría haciendo su trabajo: se anota. Sin ese corte la pasada no termina.
+    que este cambio empeora se arregla en la misma tanda, no se manda a otro caso. Lo que la pasada halle y ya pasara antes
+    no impide entregar: se anota en este cierre, y sale como caso propio sólo si tiene peso propio y pide otra decisión.
+    Tampoco impide un comando armado a propósito para esconder algo que nadie escribiría haciendo su trabajo: se anota. Sin
+    ese corte la pasada no termina.
 12. Se hizo la pasada de comentarios (R11), uno por uno, sobre el diff entero.
 13. `npm run ci` pasa, con los archivos nuevos ya stageados.
 
