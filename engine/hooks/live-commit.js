@@ -56,7 +56,7 @@ function liveCommit(input) {
   if (process.env.CI) return
   const command = commandOf(input)
   if (!isCommit(command)) return
-  const dir = gitDirectory(command, cwdOf(input))
+  const dir = gitDirectory(command, cwdOf(input), input)
   if (!owns(input, dir)) return
   const root = opsRoot(input)
   if (root && (configOf(root).runner || {}).commitToLiveBranch === true) return

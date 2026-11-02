@@ -14,6 +14,101 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.118.0] - 2026-11-02
+
+### Agregado
+
+- **Un `/flow` que frena en un gate se retoma con la respuesta, sin volver a pagar lo que ya cerró** (caso 458).
+  - **Al frenar**, el recorrido deja `planning/reports/<fecha>-<recorrido>-retoma.json` con lo que cada etapa ya
+    estableció, y dice cómo retomar.
+  - **Cómo se retoma**: `/flow {"flow": "<recorrido>", "resume": "<esa ruta>", "answers": "<lo que contestó la
+    persona>"}`.
+  - **Qué corre**: las etapas que cerraron salen del archivo. La que frenó vuelve a correr con las respuestas y con
+    su análisis anterior.
+  - **Si una respuesta invalida una etapa cerrada**, sumá `"rerun": ["<etapa>"]`: se relanzan esa etapa y las que
+    dependen de ella.
+  - **Retomas que no corresponden**: una de otro recorrido, otra intención u otras etapas se rechaza diciendo qué
+    difiere. Una que alguien editó a mano se rechaza también.
+  - **Antes**, la única salida era relanzar el recorrido entero, y las respuestas pasadas aparte se ignoraban sin
+    aviso. Ahora `answers` sin `resume` frena y lo dice.
+  - **Lo que contestó la persona cierra su acción humana**: si con la respuesta el gate se cumple, la fila que ese
+    gate había abierto en `planning/human/` pasa a `resuelta`.
+  - **Comando nuevo**: `ops flow resume save|show <archivo> [ops-root]` sella y lee el archivo, y es lo que corre el
+    recorrido. No hace falta usarlo a mano.
+
+### Corregido
+
+- **`/flow {...}` con argumentos estructurados ya no se lee como intención cuando llegan como texto** (caso 458).
+  Una sesión puede pasar el JSON como cadena, y `flow` lo tomaba entero por la intención y corría el recorrido por
+  defecto desde cero. Ahora un texto que es un objeto JSON se lee como argumentos; cualquier otro sigue siendo la
+  intención.
+
+- **Un `git commit` con la ruta entre comillas ya no se saltea los guards** (caso 464). `git -C "$dir" commit`, `cd "$dir"
+  && git commit` y `git -C "a b" commit` caían o no se reconocían como commit, y el commit salía sin `verify`,
+  `governance` ni `dependencies`. Ahora esos commits se juzgan: **algunos que pasaban van a empezar a frenarse.** Si la
+  ruta está en una variable que no se asigna en el mismo comando, frena y pide escribirla literal. Una ruta con espacios
+  se lee entera sólo con `git` como primera palabra de un comando simple. `git -c user.name="A B" push -f` ya no esconde el verbo. También se reconocen `--no-advice`, `--no-lazy-fetch` y
+  `--attr-source`, que escondían el verbo.
+- **Un guard que falla frena en vez de dejar pasar** (caso 467). Salía con 1, que Claude Code no toma como freno. Ahora
+  sale con 2 y nombra el guard. Si un guard tiene un defecto, frena la sesión hasta arreglarlo. `stop` y los del mensaje
+  de la persona siguen sin frenar.
+- **Un guard del proyecto puede avisar sin frenar** (caso 466). Saliendo en 0, lo que escribe por stderr le llega a la
+  sesión, recortado a 2000 caracteres. **Si un guard tuyo usa stderr para depurar, ahora eso lo lee la sesión.** En
+  Antigravity llega antes del turno siguiente, con un hook nuevo: reinstalá el runner. En Gemini le llega a la persona y no
+  al agente, porque no tiene otro canal.
+- **Un `git worktree` de la instancia responde como la instancia** (caso 465). `plan-first` ya no le pide plan a lo que la
+  instancia posee en ese árbol, y `ops-config` sí frena la llave de push en su `ops.config.json`.
+
+- **`ops claim` ya no le ordena empujar a una sesión delegada** (caso 471). Con `CAUCE_DELEGATED=1` calla ese consejo,
+  y lo publica quien la lanzó.
+- **`ops lines` dice qué hacer cuando no reconoce la rama viva** (caso 470). Un repositorio que vive en otra rama que
+  `main` o `master`, sin `HEAD` en el remoto, se quedaba sin conteo y sin explicación: ahora nombra
+  `git remote set-head <remoto> --auto`.
+
+- **Lo que un commit ejecuta ya no se esconde en su mensaje** (caso 469). `git commit -m "$(git push -f)"` y `git commit
+  -m x; sh -c '…'` pasaban sin que ningún guard los viera. Un mensaje que sólo cita comandos sigue pasando, también por
+  `-m "$(cat <<'EOF' …)"`.
+- **Los guards ven lo que un heredoc o un `-c` ejecutan, y dejan de frenar lo que cae en otro repositorio** (caso 473).
+  Ahora frenan una `$(orden)` en el cuerpo de un heredoc sin comillas, lo que venga después de cerrarlo, un cuerpo que
+  recibe un shell, y lo que corre un alias o un `core.sshCommand` pasados con `-c`. Dejan de frenar `(cd F && git commit)`,
+  `cd F || cd R`, `pushd F` y `cd F && git -C "$PWD/a b" add -A` cuando el commit cae fuera de la instancia. Un `cd` dentro
+  de un bloque deja dudas, y con dudas se juzga la sesión.
+- **Un commit dentro de un bloque o una función se juzga donde cae** (caso 474). `if cd repo; then git commit; fi`,
+  `pushd repo; if …; then git commit; fi` y una función que commitea quedaban sin juzgar, igual que el commit tras un `cd`
+  que no entra. **Algunos que pasaban van a frenarse**: `for r in a b; do git -C $r commit; done` y una función con el
+  commit y un `git add` fuera piden separar los pasos o escribir la ruta. Además, `secrets-shell` ya no pierde lo que va
+  junto a un commit: `git commit -m x; cat ".env"` frena, y el mensaje sigue siendo dato.
+- **Lo que una sustitución borra o crea fuera de las raíces se frena** (caso 475). `echo $(rm -rf /etc/foo)` pasaba. Lo
+  citado con comilla simple y lo que sólo lee siguen pasando.
+- **Una línea continuada con `\` se lee como una sola** (caso 478). `git \<salto> push -f`, `git add \<salto> -A` o un
+  `--amend` en otra línea pasaban sin que frenara nada. 
+- **Un prefijo ya no esconde lo que corre detrás** (caso 479). `then cat .env`, `timeout 5 cat .env`,
+  `cross-env CI=1 npx jest` y `timeout 60 git commit` en rama viva frenan. Dejan de frenar en falso `./jest.sh`,
+  `jest-junit` y `time grep "git add -A" src`.
+  También frenan `time -p git commit`, `bash -c "git commit …"`, `npx -y jest`, `pnpm dlx jest` y la firma que llega a
+  `-F -` por un `printf`, un `echo` o un `cat`. `echo "…; git commit"` deja de frenar.
+  También frena `git commit;` sin argumentos. Un `git archive`, `pull` o `reflog` antes de un commit en otro repositorio ya no
+  arrastra el juicio a la instancia.
+- **Más formas de un comando se leen como corren** (caso 477). Frenan `bash -c "git push -f …; git commit …"`,
+  `git commit -m "$(cat .env)"`, `then (rm …)`, un `$(rm …)` en el cuerpo de un heredoc sin comillas, y `--amend` o `-a`
+  después de un mensaje con heredoc. La firma se mira en `-F-`, `-aF -` y `-m"…"`. Lo citado en un programa que nadie
+  anotó como de sólo lectura, como `node -e`, que además nombra un commit se lee como orden.
+- **La firma de IA se mira también en `git commit -F -` con un heredoc** (caso 476), y desde el 479, también la que llega por una tubería.
+- **Los guards de commit juzgan el repositorio donde el commit corre** (caso 468). Se seguía el primer `cd` o `-C` del
+  comando, y `cd /etc; cd repo && git commit`, `echo git -C /etc && git commit` o `git commit && cd /etc` quedaban sin
+  juzgar. **Algunos commits que pasaban van a empezar a frenarse.** Si no se puede saber cuál `cd` corrió, se juzga el
+  candidato que sea de la sesión.
+
+### Cambiado
+
+- **El gate de `plan` en `product-development` ya no frena por una validación que la corrida no puede tener**
+  (caso 460). Pedía que los dueños hubieran validado el plan que esa misma etapa acababa de escribir, así que frenaba
+  siempre, y relanzar con las respuestas producía otro plan sin validar. Ahora exige estimaciones, dependencias y
+  criterios de integración explícitos, y la capacidad declarada por escrito por quien la tiene, con horas y duración:
+  sin eso sigue frenando, por chico que sea el plan. La
+  validación de los dueños que falte queda como condición, con quién la da, en `planning/human/`. Promover la épica
+  sigue siendo la firma humana.
+
 ## [0.117.2] - 2026-10-28
 
 ### Corregido
