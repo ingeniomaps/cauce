@@ -89,7 +89,9 @@ test('el paquete no publica la evidencia de nuestras propias corridas', () => {
   const raiz = path.resolve(__dirname, '..', '..')
   const salida = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: raiz, encoding: 'utf8' })
   assert.equal(salida.status, 0, salida.stderr)
-  const archivos = JSON.parse(salida.stdout)[0].files.map((entry) => entry.path)
+  // npm 12 devuelve un objeto por nombre de paquete; los anteriores, una lista.
+  const paquete = Object.values(JSON.parse(salida.stdout))[0]
+  const archivos = paquete.files.map((entry) => entry.path)
 
   for (const patron of [/evaluations\/results\//, /learning\/reports\//, /learning\/proposals\//]) {
     assert.deepEqual(archivos.filter((ruta) => patron.test(ruta)), [], `${patron} viaja en el paquete`)

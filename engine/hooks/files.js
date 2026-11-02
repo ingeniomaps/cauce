@@ -24,6 +24,7 @@ const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
 const LT = require('../core/line-trees')
 const LS = require('./line-scope')
+const { instanceTreeOf, resolved } = require('./instance-tree')
 
 // Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
 // angosta: vale para esa ruta y para ninguna otra, a diferencia de la variable, que apaga el guard hasta
@@ -198,6 +199,10 @@ const INSTANCE_CONFIG = 'ops.config.json'
 function isProduct(root, file) {
   if (opsOwned(root, file) || file === path.join(root, INSTANCE_CONFIG)) return false
   if (lineAt(root, file)) return true
+  // La instancia en otro árbol responde como en el principal (caso 465). Va después de `lineAt`: en embedded, el árbol
+  // de una línea también comparte el repositorio.
+  const tree = instanceTreeOf(root, file)
+  if (tree && (opsOwned(tree, resolved(file)) || resolved(file) === path.join(tree, INSTANCE_CONFIG))) return false
   const declared = configOf(root).workspaceRoots
   const roots = (Array.isArray(declared) ? declared : [])
     .filter((entry) => entry && typeof entry.path === 'string')

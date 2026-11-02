@@ -238,7 +238,8 @@ function evaluate(agent, caso, cli) {
 // recorrido —la misma forma que `agents fork <cargo> [ops-root]`—. Antes se descartaba y todo resolvía por
 // `opsRoot()`, así que `ops flow list <raíz>` contestaba sobre el directorio actual y la respuesta se leía
 // igual de bien viniendo de otra instancia (caso 172).
-function flow(action, slug, dir, cli) {
+function flow(action, slug, dir, cli, resumeRoot) {
+  if (action === 'resume') return resume(slug, dir, cli, resumeRoot)
   const root = opsRoot(action === 'list' ? slug : dir)
   if (action === 'list') {
     const slugs = T.list(root)
@@ -283,6 +284,21 @@ function flow(action, slug, dir, cli) {
       console.log(`✓ ${slug}: ${result.stages} etapa(s), ${result.agents} agente(s), contrato válido`)
     }
   } catch (error) { fail(error.message, USAGE) }
+}
+
+// La retoma de un recorrido frenado (caso 458). La raíz va como posicional después del archivo, como en el resto de
+// `flow` (caso 172); sin ella, la de siempre. El archivo queda acotado a su `planning/reports/`.
+function resume(action, file, cli, dir) {
+  const R = require('../flows/resume')
+  const root = opsRoot(dir)
+  if (!file) fail('Falta el archivo: ops flow resume <save|show> <archivo>', USAGE)
+  try {
+    if (action === 'save') {
+      return console.log(R.save(root, file, cli.value('--hash')))
+    }
+    if (action === 'show') return console.log(JSON.stringify(R.show(root, file)))
+  } catch (error) { fail(error.message, REFUSED) }
+  fail(`Acción de flow resume desconocida: ${action || '(vacía)'}`, USAGE)
 }
 
 module.exports = {

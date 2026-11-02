@@ -17,7 +17,7 @@ const SAME_SHELL = ['command', 'builtin', 'time', 'if', 'elif', 'then', 'else', 
 // palabra que nombre un comando: eso frenaría `docker exec app rm -rf /app/x`, que corre en otra máquina, y `echo git
 // stash`. Un envoltorio nuevo se suma acá y a la prueba que los recorre a todos.
 const LEADING = new Set(['sudo', 'env', 'exec', 'nohup', 'nice', 'xargs', 'stdbuf', 'ionice', 'taskset', 'chrt',
-  'flock', 'setsid', 'doas', 'unbuffer', 'busybox', 'pkexec', ...SAME_SHELL])
+  'flock', 'setsid', 'doas', 'unbuffer', 'busybox', 'pkexec', 'cross-env', ...SAME_SHELL])
 // Las banderas de un prefijo que llevan su valor en la palabra siguiente, y cuántas palabras sueltas lleva antes del
 // comando: sin saltarlas, `env -u GIT_DIR git stash` o `timeout 10 git stash` tomaban el valor por el comando, y el
 // `git` no se juzgaba (caso 454). Las de `sudo` que no trae la versión de esta máquina —`-T`, `-R`— son del manual
