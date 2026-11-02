@@ -87,6 +87,8 @@ diseño — eso vive en el commit y en el código.
   `jest-junit` y `time grep "git add -A" src`.
   También frenan `time -p git commit`, `bash -c "git commit …"`, `npx -y jest`, `pnpm dlx jest` y la firma que llega a
   `-F -` por un `printf`, un `echo` o un `cat`. `echo "…; git commit"` deja de frenar.
+  También frena `git commit;` sin argumentos. Un `git archive`, `pull` o `reflog` antes de un commit en otro repositorio ya no
+  arrastra el juicio a la instancia.
 - **Más formas de un comando se leen como corren** (caso 477). Frenan `bash -c "git push -f …; git commit …"`,
   `git commit -m "$(cat .env)"`, `then (rm …)`, un `$(rm …)` en el cuerpo de un heredoc sin comillas, y `--amend` o `-a`
   después de un mensaje con heredoc. La firma se mira en `-F-`, `-aF -` y `-m"…"`. Lo citado en un programa que nadie
@@ -95,7 +97,7 @@ diseño — eso vive en el commit y en el código.
 - **Los guards de commit juzgan el repositorio donde el commit corre** (caso 468). Se seguía el primer `cd` o `-C` del
   comando, y `cd /etc; cd repo && git commit`, `echo git -C /etc && git commit` o `git commit && cd /etc` quedaban sin
   juzgar. **Algunos commits que pasaban van a empezar a frenarse.** Si no se puede saber cuál `cd` corrió, se juzga el
-  candidato que sea de la sesión, y `(cd otro && git commit)` se juzga en la sesión: `git -C otro commit` no deja dudas.
+  candidato que sea de la sesión.
 
 ### Cambiado
 

@@ -40,8 +40,8 @@ test('un mensaje con una sustitución anidada no parte el commit', () => {
 })
 
 // Lo que un prefijo tiene delante no cambia lo que corre, en una línea o en dos (caso 479).
-const PREFIXES = ['if a; then', 'for f in a; do', 'else', '!', 'timeout 5', 'timeout -k 1 5', 'nice', 'nice -n 5',
-  'time', 'nohup', 'stdbuf -oL', 'cross-env CI=1', 'env A=1', 'command', 'exec', '{', 'then (']
+const PREFIXES = ['{ (', 'if a; then', 'for f in a; do', 'else', '!', 'timeout 5', 'timeout -k 1 5', 'nice',
+  'nice -n 5', 'time', 'nohup', 'stdbuf -oL', 'cross-env CI=1', 'env A=1', 'command', 'exec', '{', 'then (']
 const BOTH = [' ', ' \\\n  ']
 
 test('leer una credencial detrás de un prefijo frena', () => {

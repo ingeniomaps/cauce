@@ -103,7 +103,7 @@ function withoutPattern(segment, verb) {
 function readTokens(command) {
   const found = []
   for (const segment of unbraced(command).split(/[;&|\n]+|\$\(|`/)) {
-    const words = segment.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*[({]+\s*/, '')
+    const words = segment.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
       .split(/\s+/).filter(Boolean)
     const verb = verbOf(words)
     const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(segment)

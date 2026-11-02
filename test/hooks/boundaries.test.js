@@ -54,6 +54,7 @@ test('lo que corre en un grupo de un bloque o en el cuerpo de un heredoc se juzg
   for (const word of ['then', 'else', 'elif', 'do', 'if', 'while', 'until', '!', 'then !']) {
     blocked('shell-boundary', at(`x; ${word} (rm -rf /etc/foo); y`), /fuera de las raíces/)
     blocked('shell-boundary', at(`x; ${word} { rm -rf /etc/foo; }; y`), /fuera de las raíces/)
+    blocked('shell-boundary', at(`x; ${word} { (rm -rf /etc/foo); }; y`), /fuera de las raíces/)
   }
   for (const command of ['cat <<EOF\n$(rm -rf /etc/foo)\nEOF', 'cat > a <<EOF\n`rm -rf /etc/foo`\nEOF',
     "cat <<EOF\nit's $(rm -rf /etc/foo)\nEOF", 'cat <<-EOF\n$(rm -rf /etc/foo)\n\tEOF']) {

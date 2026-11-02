@@ -253,7 +253,7 @@ const DEFINES = /^\s*(?:function\s+[^\s(){}$=]+(?:\s*\(\s*\))?|[^\s(){}$=]+\s*\(
 // espacios o de paréntesis que no sea la última, y con ochenta mil tardaba segundos. La llave que cierra un
 // grupo no hace falta sacarla: va en su propio tramo.
 function unwrapped(text) {
-  const open = text.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*[({]+\s*/, '')
+  const open = text.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
   let end = open.length
   while (end && open[end - 1] === ')') end -= 1
   return open.slice(0, end).trimEnd()

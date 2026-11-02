@@ -104,9 +104,19 @@ function scanGlobals(text, from, whole = true) {
   return { globals, end }
 }
 
+// Un envoltorio no cambia lo que corre: `timeout 60 git commit` commitea (caso 479). Una bandera con valor se lleva
+// su palabra, sin alternativa: si la misma palabra pudiera ser las dos cosas, la expresión volvería atrás sin fin.
+// `command` va sin banderas: `command -v git` pregunta si existe.
+const flagsOf = (valued) => String.raw`(?:\s+(?:${valued})\s+\S+|\s+(?!(?:${valued})\s)-\S+)*`
+const WRAPPER = String.raw`(?:env${flagsOf('-u|-C|-S')}|sudo${flagsOf('-u|-g|-h|-p|-C|-D')}`
+  + String.raw`|time${flagsOf('-f|-o')}`
+  + String.raw`|nice${flagsOf('-n')}|nohup|exec${flagsOf('-a')}|command|cross-env|stdbuf${flagsOf('-i|-o|-e')}`
+  + String.raw`|timeout${flagsOf('-s|-k')}\s+\S+)`
+
 // El valor entero sólo se toma con `git` como primera palabra de un comando simple. Si no, puede ser argumento de algo
 // que vuelve a leerlo —`eval git -C 'x push -f'`, `ssh h true \; git …`, `echo git … | bash`—, y ahí se lee como antes.
-const COMMAND_HEAD = /^\s*(?:(?:env|sudo)\s+)*(?:[A-Za-z_]\w*=[^\s;&|()<>'"\\`$]*\s+)*$/
+const COMMAND_HEAD = new RegExp(String.raw`^\s*(?:(?:then|else|elif|if|do|while|until|!|\{)\s+)*(?:${WRAPPER}\s+)*`
+  + String.raw`(?:[A-Za-z_]\w*=[^\s;&|()<>'"\\${'`'}$]*\s+)*$`)
 // Si cada `git` encabeza su comando simple. Se recorre una vez y hacia adelante: los `git` llegan en orden, y partir el
 // comando por cada uno costaba minutos con miles de ellos.
 function commandHeads(text) {
@@ -197,21 +207,13 @@ function directoryFlag(text) {
 // de `shell.js` ya lo declaraba separador; acá faltaba (caso 165).
 // Una palabra de bloque abre un comando igual que un separador: `then git commit` también commitea (caso 474). Un `)`
 // abre sólo el cuerpo de una función: suelto es prosa, `# 2) git commit`.
-// Y un envoltorio no cambia lo que corre: `timeout 60 git commit` commitea (caso 479). Una bandera con valor se lleva
-// su palabra, sin alternativa: si la misma palabra pudiera ser las dos cosas, la expresión volvería atrás sin fin.
-// `command` va sin banderas: `command -v git` pregunta si existe.
-const flagsOf = (valued) => String.raw`(?:\s+(?:${valued})\s+\S+|\s+(?!(?:${valued})\s)-\S+)*`
-const WRAPPER = String.raw`(?:env${flagsOf('-u|-C|-S')}|sudo${flagsOf('-u|-g|-h|-p|-C|-D')}`
-  + String.raw`|time${flagsOf('-f|-o')}`
-  + String.raw`|nice${flagsOf('-n')}|nohup|exec${flagsOf('-a')}|command|cross-env|stdbuf${flagsOf('-i|-o|-e')}`
-  + String.raw`|timeout${flagsOf('-s|-k')}\s+\S+)`
 const PREFIX = String.raw`(?:^|[;&|(\n]\s*|\)\s*\{\s+)`
   + String.raw`(?:(?:then|else|elif|if|do|while|until|\{|!|function\s+[\w-]+)\s+)*`
   + String.raw`(?:${WRAPPER}\s+)*`
   + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
 // Sólo el `sh -c` que encabeza su comando corre acá: el de un `docker exec` o un `ssh` corre en otra máquina.
 const SHELL_C = String.raw`(?:\S*\/)?(?:ba|z|da|k)?sh\s+(?:-\w+\s+)*-\w*c`
-const COMMIT = new RegExp(PREFIX + String.raw`(?:${SHELL_C}\s+['"]\s*)?git\s+commit(?:\s|$)`)
+const COMMIT = new RegExp(PREFIX + String.raw`(?:${SHELL_C}\s+['"]\s*)?git\s+commit(?=[\s;&|)]|$)`)
 const SHELL_SCRIPT = new RegExp(String.raw`^(\s*(?:[A-Za-z_]\w*=\S*\s+)*(?:${WRAPPER}\s+)*${SHELL_C})\s+`
   + String.raw`('[^']*'|"(?:[^"\\]|\\[\s\S])*")\s*$`)
 // El comando simple que sólo le pasa un script a un shell, con lo que corre.

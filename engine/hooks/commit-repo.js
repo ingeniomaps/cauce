@@ -34,11 +34,12 @@ const ENDS_SHELL = /^\s*(?:exit|return)(?:\s|$)/
 const ONLY_NAMES_GIT = /^(?:#|(?:echo|printf|grep|rg|sed|awk|cat|test|which|type)(?:\s|$)|command\s+-v\s)/
 // El `git` como palabra: ni `my-git` ni `.git`, pero sí el que corre un `sh -c 'git add'`.
 const NAMES_GIT = /(?:^|[\s'"])git\s/
-// Lo que no escribe en el repositorio: juzgarlo aplicaría los guards de un commit a una carpeta que sólo se miró.
-// `init` y `clone` escriben en uno nuevo.
+// Lo que no toca el índice de este repositorio: juzgarlo aplicaría los guards de un commit a una carpeta que sólo se
+// miró. `init`, `clone` y `worktree add` escriben en otro árbol, y `pull` y `push` no dejan nada para commitear.
 const ONLY_READS = new RegExp(String.raw`\bgit\s+(?:status|log|diff|show|rev-parse|rev-list`
-  + String.raw`|worktree\s+list|branch|remote|config|ls-files`
-  + String.raw`|ls-tree|describe|fetch|version|--version|help|blame|shortlog|grep|cat-file|init|clone`
+  + String.raw`|worktree\s+(?:list|add)|branch|remote|config|ls-files|ls-remote|archive|merge-base|merge-tree`
+  + String.raw`|for-each-ref|show-ref|symbolic-ref|reflog|cherry|count-objects|name-rev|format-patch`
+  + String.raw`|ls-tree|describe|fetch|pull|push|version|--version|help|blame|shortlog|grep|cat-file|init|clone`
   + String.raw`|tag\s+(?:-l|--list)|stash\s+list)(?:\s|$)`)
 
 const expandPwd = (word, base) => word.replace(/^\$(?:PWD|\{PWD\})(?=\/|$)/, base)

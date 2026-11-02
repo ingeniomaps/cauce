@@ -98,3 +98,36 @@ test('una carpeta sin repositorio no es candidata, y un sh -c decide dónde cae'
   assert.deepEqual(directoriesOf(`{ cd ${repo}; }; git commit -m x`, session), [repo])
   assert.deepEqual(directoriesOf('git commit -m x', session), [session], 'sin otra, la de la sesión')
 })
+
+// Lo que no toca el índice de la instancia no arrastra hasta ella el juicio de un commit que cae en otro lado.
+test('un git que sólo lee o publica no vuelve candidata a la carpeta de la sesión', () => {
+  const root = tempRoot('ops-lee-')
+  const other = tempRoot('ops-lee-otro-')
+  const at = (command) => directoriesOf(command, root)
+  for (const first of ['git archive HEAD', 'git merge-base a b', 'git ls-remote origin', 'git for-each-ref',
+    'git reflog', 'git show-ref', 'git cherry', 'git symbolic-ref HEAD', 'git count-objects', 'git name-rev HEAD',
+    'git merge-tree a b', 'git format-patch -1', 'git pull', 'git push', `git worktree add ${other}`]) {
+    assert.deepEqual(at(`${first} && cd ${other} && git commit -m x`), [other], first)
+  }
+  assert.ok(at(`git add a && cd ${other} && git commit -m x`).includes(root), 'el que stagea sí')
+  assert.ok(at(`git reset --hard && cd ${other} && git commit -m x`).includes(root), 'el que toca el índice sí')
+})
+
+test('un commit sin argumentos termina donde termina su comando', () => {
+  for (const command of ['git commit; ls', 'git commit && ls', 'git commit | tee x', '(git commit)',
+    'f() { git commit; }']) {
+    assert.equal(I.isCommit(command), true, command)
+  }
+  for (const command of ['git commit-tree x', 'git commit.sh']) assert.equal(I.isCommit(command), false, command)
+})
+
+test('la ruta con espacios de un git detrás de un prefijo se lee entera', () => {
+  const root = tempRoot('ops-espacio-')
+  const at = (command) => directoriesOf(command, root)
+  for (const command of ['if a; then git -C "mi carpeta" commit -m x; fi', 'timeout 60 git -C "mi carpeta" commit -m x',
+    'time -p git -C "mi carpeta" commit -m x']) {
+    assert.deepEqual(at(command), [path.join(root, 'mi carpeta')], command)
+    assert.equal(I.isCommit(command), true, command)
+  }
+  assert.match(I.withoutGitGlobals(`eval git -C 'x push -f'`), /push -f/, 'lo que otro vuelve a leer, no')
+})
