@@ -276,6 +276,20 @@ test('un árbol sin commits retirado no nombra una rama que no existe', () => {
   assert.doesNotMatch(applied.stdout, /queda vacia/)
 })
 
+test('sin rama viva que reconocer, ops lines dice cómo declararla, y declarada cuenta', () => {
+  const { ops, repo, base } = moved('cauce-line-branch-sethead-', { drop: true })
+  ok(repo, 'branch', '-m', 'main', 'develop')
+  assert.match(run(['lines', ops]).stdout, /sin rama viva contra qué contar: .*git remote set-head <remoto> --auto/)
+  const bare = path.join(base, 'remoto.git')
+  ok(base, 'init', '-q', '--bare', '-b', 'develop', bare)
+  ok(repo, 'remote', 'add', 'origin', bare)
+  ok(repo, 'push', '-q', 'origin', 'develop')
+  ok(repo, 'remote', 'set-head', 'origin', '--auto')
+  const text = run(['lines', ops]).stdout
+  assert.match(text, /\+1 \/ -0/)
+  assert.doesNotMatch(text, /sin rama viva/)
+})
+
 test('sin rama viva, ops line no manda a mergear a una rama que no hay', () => {
   const base = fs.realpathSync(tempRoot('cauce-line-branch-nolive-'))
   const ops = path.join(base, 'ops')

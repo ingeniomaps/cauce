@@ -15,6 +15,7 @@
 
 const path = require('node:path')
 const { block, commandOf, opsRoot, asRun, configOf, unquoted } = require('./input')
+const { WRAPPER } = require('./git-globals')
 const AP = require('./approval')
 
 // En posición de comando —al principio o después de `;`, `&`, `|` o `(`—, con variables de entorno delante:
@@ -23,22 +24,25 @@ const AP = require('./approval')
 // `'jest'` de un `grep`, y también lo que seguía a la comilla de cierre de cualquier argumento: `'swc'
 // jest.config.*` (caso 286).
 const SHELL_C = String.raw`\b(?:ba|z|da|k)?sh\s+(?:-\w+\s+)*-\w*c\s+['"]`
-const AT = String.raw`(?:^|[;&|(\n]|${SHELL_C})\s*(?:\w+=\S*\s+)*`
+const AT = String.raw`(?:^|[;&|(\n]|${SHELL_C})\s*(?:(?:then|else|elif|if|do|while|until|!|\{)\s+)*(?:\w+=\S*\s+)*`
 const SAME = String.raw`[^;&|\n]*`
-const LAUNCHER = String.raw`(?:(?:npx|bunx|pnpm(?:\s+exec)?|yarn)\s+)?`
-// `sudo`, `time` y `timeout <plazo>` delante no cambian qué se lanza: `time npx jest` es la misma corrida.
-const WRAPPED = String.raw`(?:(?:sudo|time|timeout\s+\S+)\s+(?:\w+=\S*\s+)*)*`
+// Lo que lanza un paquete sin instalarlo. Sin `npx -p`, que nombra el paquete y no lo que corre.
+const LAUNCHER = String.raw`(?:(?:(?:npx|bunx)(?:\s+(?!-p\s|--package\s)-\S+)*`
+  + String.raw`|pnpm(?:\s+(?:exec|dlx)|\s+--filter\s+\S+)?`
+  + String.raw`|yarn(?:\s+dlx)?|npm\s+exec(?:\s+--)?)\s+)?`
+// Un envoltorio delante no cambia qué se lanza: `time npx jest` es la misma corrida.
+const XARGS_VALUED = '-n|-L|-P|-I|-d|-E|-s|-a|--max-args|--max-procs|--delimiter|--arg-file'
+const XARGS = String.raw`xargs(?:\s+(?:${XARGS_VALUED})\s+\S+|\s+(?!(?:${XARGS_VALUED})\s)-\S+)*`
+const ANY_WRAPPER = String.raw`(?:${WRAPPER}|${XARGS})`
+const WRAPPED = String.raw`(?:${ANY_WRAPPER}\s+(?:\w+=\S*\s+)*)*`
+const LEADS = new RegExp(String.raw`^(?:(?:${ANY_WRAPPER}|[A-Za-z_]\w*=\S*)\s+)*`)
 // Lo mismo, sobre las palabras de un comando: saca del frente esos envoltorios y las variables de adelante.
 // Sólo las de adelante: más allá, `NOMBRE=valor` es el valor de un `-e`, y sacarlo corría de lugar lo que sigue.
 function unwrapped(words) {
-  const out = [...words]
-  for (;;) {
-    if (/^[A-Za-z_]\w*=/.test(out[0]) || ['sudo', 'time'].includes(out[0])) out.shift()
-    else if (out[0] === 'timeout') out.splice(0, 2)
-    else return out
-  }
+  return words.join(' ').replace(LEADS, '').split(' ')
 }
-const RUNNER = new RegExp(AT + WRAPPED + LAUNCHER + String.raw`(?:\S*\/)?(jest|vitest)\b(${SAME})`, 'g')
+const RUNNER = new RegExp(AT + WRAPPED + LAUNCHER
+  + String.raw`(?:\S*\/)?(jest|vitest)(?:-cli)?(?:\.(?:cmd|c?js|mjs))?(?![\w.=-])(${SAME})`, 'g')
 // Un contenedor lanzado a mano, entero: su comando puede ser el runner sin ningún shell de por medio.
 const CONTAINER = new RegExp(AT + WRAPPED + String.raw`(?:\S*\/)?(?:docker|podman)\s+run\b${SAME}`, 'g')
 const CAPPED = {
