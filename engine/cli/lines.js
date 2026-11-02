@@ -29,6 +29,11 @@ const isDir = (dir) => {
 // El worktree de la instancia que una línea de antes tenía en `line/<nombre>`, o null.
 const legacyTree = (root, name) => LNP.worktrees(root).find((one) => one.branch === `${BRANCH}${name}`) || null
 
+// La rama viva sale del HEAD del remoto, o de main y master. Un repositorio que vive en otra sin ese HEAD la tiene
+// igual, y lo que falta es que el remoto la declare; si no tiene remoto, no hay comando que lo arregle (caso 470).
+const NO_LIVE = 'no es main ni master y ningún remoto declara su HEAD '
+  + '(con un remoto: git remote set-head <remoto> --auto)'
+
 // Hasta 0.112.0 una línea enlazaba en su carpeta cada repositorio que no trabajaba, para que un `../shared-lib`
 // resolviera igual que desde la carpeta de sesión (caso 394). Casi ningún repositorio lo nombraba, y la carpeta se leía
 // como una línea con repositorios que no eran suyos (caso 420): el vecino que un repositorio sí nombra se suma a la
@@ -323,7 +328,7 @@ function lines(dir, cli) {
           + (repo.live ? ` sin llegar a ${repo.live}: mergealo antes de rearmarlo`
             : ', y no hay rama viva contra qué comprobarlo: sacá el registro si no lo querés'))
         : repo.broken ? `  git no dice qué commit tiene: ${LNP.UNREADABLE}`
-        : away + (repo.ahead === null ? '  sin rama viva contra qué contar'
+        : away + (repo.ahead === null ? `  sin rama viva contra qué contar: ${NO_LIVE}`
           : (repo.ahead || repo.behind ? `  +${repo.ahead} / -${repo.behind}` : ''))
       console.log(`  ${repo.repo}  ${repo.tree}  (${repo.branch})${moved}`
         + `${repo.dirty ? `  · ${repo.dirty} sin commitear` : ''}`)

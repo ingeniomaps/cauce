@@ -369,3 +369,8 @@ test('tests: todo n/a cuenta como n/a en las tres formas documentadas', () => {
   assert.deepEqual(DE.surfaceWithoutTests([entry('C1 → n/a — x')], () => ['README.md']), [],
     'y un commit de documentación no tiene superficie')
 })
+
+test('un tests: que no rastrea nada se rechaza diciendo la forma', () => {
+  const errors = DE.validateDoneEntry({ source: 'done/x.md', slug: 'x', tests: 'corrí todo' }, [])
+  assert.ok(errors.some((one) => /tests debe rastrear A\/CN → prueba o justificar n\/a/.test(one)), errors.join('|'))
+})

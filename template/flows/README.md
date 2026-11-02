@@ -52,6 +52,24 @@ es uno, el texto completo se toma como intención, así que escribir `nota: revi
 recorrido llamado `nota`. Con el recorrido pasado explícitamente, un slug inexistente falla en vez de caer al
 por defecto en silencio.
 
+## Retomar lo que frenó en un gate
+
+Cuando una etapa frena porque falta una decisión de una persona, el recorrido deja en `planning/reports/` un
+archivo `<fecha>-<recorrido>-retoma.json` y dice cómo seguir. Con la respuesta en la mano se retoma, sin volver a
+pagar las etapas que ya cerraron:
+
+```text
+/flow {"flow": "product-development", "resume": "planning/reports/<fecha>-product-development-retoma.json", "answers": "lo que contestó la persona"}
+```
+
+La etapa que frenó vuelve a correr con las respuestas y con su análisis anterior; las que habían cerrado salen
+del archivo. Si una respuesta cambia algo que una etapa cerrada había establecido, sumá `"rerun": ["<etapa>"]`:
+se relanzan esa etapa y las que dependen de ella. El recorrido no puede saber solo qué respuesta invalida qué, y
+cuando la etapa que retoma lo nota, frena y nombra cuál relanzar.
+
+El archivo no se edita a mano: lleva una suma de control, y una retoma que no coincide con lo que se guardó, con
+la intención o con las etapas del recorrido se rechaza diciendo por qué.
+
 ## Corto o largo
 
 Un recorrido largo cuesta más y aporta más certeza. La elección es la misma que con los lanes de una
