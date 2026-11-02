@@ -64,6 +64,11 @@
     "branches": 93,
     "functions": 100
   },
+  "engine/automation/probe-bridge.js": {
+    "lines": 100,
+    "branches": 76,
+    "functions": 100
+  },
   "engine/automation/project-guards.js": {
     "lines": 96,
     "branches": 88,
@@ -269,6 +274,11 @@
     "branches": 53,
     "functions": 100
   },
+  "engine/flows/resume.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
+  },
   "engine/hooks/approval.js": {
     "lines": 100,
     "branches": 100,
@@ -297,6 +307,11 @@
   "engine/hooks/input.js": {
     "lines": 100,
     "branches": 84,
+    "functions": 100
+  },
+  "engine/hooks/instance-tree.js": {
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/hooks/jira.js": {
@@ -332,6 +347,11 @@
   "engine/hooks/rules-notice.js": {
     "lines": 100,
     "branches": 88,
+    "functions": 100
+  },
+  "engine/hooks/quoting.js": {
+    "lines": 100,
+    "branches": 91,
     "functions": 100
   },
   "engine/hooks/run.js": {
@@ -535,6 +555,21 @@
     "functions": 100
   },
   "engine/hooks/test-evidence-shell.js": {
+    "lines": 100,
+    "branches": 97,
+    "functions": 100
+  },
+  "engine/hooks/as-run.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/hooks/git-globals.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
+  "engine/hooks/commit-repo.js": {
     "lines": 100,
     "branches": 97,
     "functions": 100

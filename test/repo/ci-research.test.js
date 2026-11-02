@@ -311,7 +311,7 @@ test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
   assert.equal(hecho.status, 0, hecho.stderr)
 
   const args = fs.readFileSync(visto, 'utf8')
-  assert.match(args, /El entorno de esta corrida es Node v\d+\.\d+\.\d+ y npm \S+/,
+  assert.match(args, /El entorno de esta corrida es Node v\d+\.\d+\.\d+\S* y npm \S+/,
     'las versiones resueltas, no la variable sin expandir')
   assert.equal(/\$entorno/.test(args), false, 'y expandidas de verdad')
   assert.match(args, /no hay shell para volver a comprobarlo/,
