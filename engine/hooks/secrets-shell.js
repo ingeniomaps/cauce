@@ -10,8 +10,9 @@
 
 const os = require('node:os')
 const path = require('node:path')
-const { commandOf, rawCommandOf, cwdOf, block, isCommit, unquoted, opsRoot } = require('./input')
+const { asRun, commandOf, rawCommandOf, cwdOf, block, isCommit, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
+const { LEADING, VALUED, POSITIONAL } = require('./shell-wrappers')
 const { REDIRECT } = require('./shell-writes')
 const { writes } = require('./shell-changes')
 const AP = require('./approval')
@@ -24,15 +25,22 @@ const CHAT = require('./chat')
 const READERS = new Set(['cat', 'tac', 'nl', 'head', 'tail', 'less', 'more', 'bat', 'sed', 'awk', 'grep', 'egrep',
   'fgrep', 'rg', 'strings', 'xxd', 'od', 'hexdump', 'base64', 'cut', 'sort', 'uniq', 'rev', 'paste', 'fold', 'pr',
   'dd', 'jq', 'yq', 'diff', 'cmp', 'source', '.', 'node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
-const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
+const isLeader = (word) => LEADING.has(word) || VALUED.has(word)
 
-// El verbo de un tramo, saltando lo que va delante sin serlo: asignaciones, prefijos y sus banderas.
+// El verbo de un tramo, saltando lo que va delante sin serlo: asignaciones, prefijos, sus banderas y sus valores. Un
+// `then cat .env` o un `timeout 5 cat .env` leen igual (caso 479).
 function verbOf(words) {
-  let prefixed = false
-  while (words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]) || PREFIXES.has(words[0])
-    || (prefixed && words[0].startsWith('-')))) {
-    prefixed = prefixed || PREFIXES.has(words[0])
-    words.shift()
+  let leader = ''
+  let loose = 0
+  while (words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]) || isLeader(words[0])
+    || (leader && words[0].startsWith('-')) || loose)) {
+    const word = words.shift()
+    if (isLeader(word)) {
+      leader = word
+      loose = POSITIONAL.get(word) || 0
+    } else if (word.startsWith('-')) {
+      if ((VALUED.get(leader) || []).includes(word)) words.shift()
+    } else if (loose && !word.includes('=')) loose -= 1
   }
   return words[0] || ''
 }
@@ -95,7 +103,8 @@ function withoutPattern(segment, verb) {
 function readTokens(command) {
   const found = []
   for (const segment of unbraced(command).split(/[;&|\n]+|\$\(|`/)) {
-    const words = segment.trim().replace(/^[({]+\s*/, '').split(/\s+/).filter(Boolean)
+    const words = segment.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
+      .split(/\s+/).filter(Boolean)
     const verb = verbOf(words)
     const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(segment)
     // Lo que va después de `>` es el destino, no lo que se lee: `cat > .npmrc` escribe, y eso lo juzga
@@ -145,8 +154,8 @@ function secretsShell(input) {
   const raw = commandOf(input)
   writtenCredentials(input, rawCommandOf(input))
   if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
-  // El mensaje de un commit es dato, como en `destructive`: nombrar el archivo ahí no lo lee.
-  const command = isCommit(raw) ? unquoted(raw) : raw
+  // El mensaje de un commit es dato, como en `destructive`: nombrar el archivo ahí no lo lee. Lo demás corre.
+  const command = isCommit(raw) ? asRun(raw) : raw
   const cwd = cwdOf(input)
   const files = readTokens(command).filter((token) => patternNames(token).some((name) => credential(input, name)))
     .map((token) => path.resolve(cwd, token.replace(/^~(?=$|\/)/, os.homedir())))
