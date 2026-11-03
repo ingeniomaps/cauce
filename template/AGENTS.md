@@ -285,7 +285,7 @@ Registra la acción exacta en `planning/human/`, un archivo por acción, y, si b
 `planning/AWAITING_REVIEW.md`.
 
 Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso durante una tarea, usa
-`git add .`/`git add -A`, reescribe historia con `--force` o `--amend`, ni afirma éxito sin evidencia
+`git add .`/`git add -A`, reescribe historia publicada con `--force` o `--amend`, ni afirma éxito sin evidencia
 real. Tampoco publica: sin autorización no hay `push`.
 
 Una recurrencia vencida tampoco la promueve, y ésta es la que más se parece a una excepción: la

@@ -512,11 +512,14 @@ const CONTRACT = {
   },
 }
 
+// Lo que R8 permite: corregir el commit propio que no salió de la máquina, nunca otro ni lo publicado (caso 481).
+const NO_REWRITE = 'Nunca push; un amend, sólo para corregir el commit que acabás de crear en esta fase.'
 // Preámbulo invariante: no depende del proyecto y nunca obliga a leer un archivo.
 const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}, un ` +
   `archivo por bloqueo. Nunca ` +
-  `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
-  `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
+  `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, force, amend de lo publicado ni git add -A. ` +
+  `No edites la gobernanza del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo ` +
+  `pida explícitamente.`
 // Lo que quien lanza la corrida le pide a la corrida: el texto de `args`, o su campo `note`. Hasta 0.100.0
 // este recorrido no leía `args`, así que una instrucción dada ahí no llegaba a ninguna fase y nada lo decía
 // (caso 252). Va a las tres fases que deciden cómo se hace el trabajo, y por debajo de la aceptación y de
@@ -881,8 +884,8 @@ const commitBlocked = async (slug, subject = `block ${slug}`) => {
   const stated = await scribeCommit(
     `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
     + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
-    + `archivos del producto, y creá un solo commit "chore(planning): ${subject}". Nunca amend ni `
-    + `push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
+    + `archivos del producto, y creá un solo commit "chore(planning): ${subject}". ${NO_REWRITE}`
+    + `${TWO_COMMANDS}${PLANNING_BRANCH()}`,
     { schema: COMMIT, label: 'planning-block' },
   )
   if (!stated || !stated.committed) {
@@ -2288,7 +2291,7 @@ while (rounds++ < MAX_TASKS) {
   const commit = handed || (contract.commitPerTask ? await run(
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
-    `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
+    `"Task: ${task.id}" y después verificá log y status. ${NO_REWRITE} Reportá lo que quedó suelto ` +
     `y no era de la tarea. Si un guard frena el commit pidiendo la aprobación de una persona, no la pidas ni la ` +
     `esquives: committed en false, y en needsApproval las rutas que nombra.` +
     `${TWO_COMMANDS}${MESSAGE_OF(task.id)}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR()}`,
@@ -2415,7 +2418,7 @@ while (rounds++ < MAX_TASKS) {
       `Commiteá el estado de planning que el cierre de ${task.id} dejó sin commitear en el repositorio que ` +
       `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —la cola, done/, las acciones humanas, ` +
       `el INBOX—, nunca archivos del producto, y creá un solo commit "chore(planning): close ${task.id}". ` +
-      `Nunca amend ni push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
+      `${NO_REWRITE}${TWO_COMMANDS}${PLANNING_BRANCH()}`,
       { schema: COMMIT, label: 'planning-commit' },
     )
     if (!stated || !stated.committed) {
@@ -2524,8 +2527,8 @@ if (!closing.ok) {
     const kept = await scribeCommit(
       `Commiteá lo que la reparación del cierre dejó sin commitear en el repositorio que contiene a ${P}: ` +
       `stageá por nombre lo que cambió bajo ${P} —la reparación dice haber tocado ${touched.join(', ')}—, ` +
-      'nunca archivos del producto, y creá un solo commit "chore(planning): repair closing state". Nunca amend ' +
-      `ni push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
+      'nunca archivos del producto, y creá un solo commit "chore(planning): repair closing state". ' +
+      `${NO_REWRITE}${TWO_COMMANDS}${PLANNING_BRANCH()}`,
       { schema: COMMIT, label: 'closing-commit' },
     )
     if (!kept || !kept.committed) {

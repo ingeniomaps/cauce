@@ -21,7 +21,7 @@ test('al cerrar una tarea se commitea su estado de planning, en una sola rama de
   assert.match(prompt, /nunca archivos del producto/)
   assert.match(prompt, /la rama de trabajo de planning que ya exista/)
   assert.match(prompt, /nunca una por tarea/)
-  assert.match(prompt, /Nunca amend ni push/)
+  assert.match(prompt, /Nunca push; un amend, sólo para corregir el commit que acabás de crear en esta fase/)
   assert.ok(asked.indexOf(KEY.planningCommit) > asked.indexOf('Done|done'), 'después de escribir el cierre')
 
   const allowed = await runFlow(contract({ commitToLiveBranch: true }))
