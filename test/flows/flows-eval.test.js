@@ -144,8 +144,7 @@ test('un recorrido sin casos lo dice', () => {
   assert.equal(medido.cases, 1)
 })
 
-// Vencido se cuenta por caso: el que cambió después de su veredicto ya no se mide, aunque el contrato siga igual, y el
-// que se midió después del cambio sigue valiendo (caso 480).
+// Caso 480.
 test('cada veredicto vence por su contrato o por su caso, y el resto sigue vigente', () => {
   const root = tempRoot('cauce-vigentes-')
   const dir = path.join(root, 'flows', 'probe')
@@ -169,8 +168,7 @@ test('cada veredicto vence por su contrato o por su caso, y el resto sigue vigen
   record('2099-01-05', ['01-uno', '02-dos', '03-tres'])
   assert.deepEqual(EV.validate(root, 'probe', 'flow').state.stale, [], 'medido después de todo, vigente')
 
-  // Un caso nuevo escrito el día de su corrida y commiteado después, o movido por un rebase: su autor es del día del
-  // veredicto, y eso es lo que cuenta.
+  // Un caso nuevo, commiteado dos días después de su corrida.
   fs.writeFileSync(path.join(cases, '04-cuatro.md'), '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
   record('2099-01-06', ['01-uno', '02-dos', '03-tres', '04-cuatro'])
   spawnSync('git', ['-C', root, 'add', '-A'], { encoding: 'utf8' })
