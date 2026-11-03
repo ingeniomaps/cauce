@@ -121,4 +121,6 @@ Encontrado y no previsto:
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.119.0, con su entrada en el CHANGELOG.
 
-**Sin probar:** si los veredictos vencidos cambiarían al volver a correrlos.
+Después del cierre, 2026-11-03, se corrió la muestra que quedaba propuesta: cinco veredictos vencidos sólo por la regla del 2026-09-02 —`site-reliability-engineer` 01, 03 y 05, `financial-controller` 01 y 03— y el caso 09 de `implementation-manager` con su fixture nuevo. Los seis pasan, igual que antes. Con eso la regla del 2026-09-02 no movió esos veredictos; no dice nada de los otros 314.
+
+**Sin probar:** los otros 314 veredictos vencidos.
