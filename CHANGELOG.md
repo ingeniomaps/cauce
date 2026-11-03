@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.119.0] - 2026-11-03
+
+### Cambiado
+
+- **`ops evaluate` cuenta cuántos veredictos siguen valiendo** (caso 480). Un veredicto vence si su contrato o su caso, con
+  su fixture, cambiaron después; el resumen dice «7/7 pasan (…), 0 vigente(s): 7 mide(n) una versión anterior» en vez
+  de un aviso que salía en casi todos los cargos.
+- **Un commit propio que no se publicó se puede corregir con amend** (caso 481). `AGENTS.md`, `PROTOCOL.md` y las fases
+  de `autobuild` decían «nunca amend», y R8 sólo lo frena sobre lo publicado: una sesión rodeaba la prohibición
+  reescribiendo el commit a mano.
+
 ## [0.118.0] - 2026-11-02
 
 ### Agregado
