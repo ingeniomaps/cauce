@@ -1,15 +1,14 @@
 ---
 caso: 483
 titulo: Una sesión no puede soltar su línea sin arrancar un recorrido, y su aprobación pide la ruta absoluta
-estado: aplazado
-reabrir-si: vuelve a pasar en una instancia y ninguna de las salidas que ya funcionan le sirve
+estado: descartado
 prioridad: baja
 version-detectada: 0.118.0
 ---
 
 # 483 — Una sesión no puede soltar su línea sin arrancar un recorrido, y su aprobación pide la ruta absoluta
 
-**⏸ aplazado** · detectado en 0.118.0 · prioridad **baja**: cuesta abrir otra sesión o confirmar cada escritura, y hay salidas que ya funcionan. Lo sufrió una instancia real el 2026-11-03, una vez. Se reabre si vuelve a pasar y ninguna de esas salidas sirve.
+**⚪ descartado** · detectado en 0.118.0 · prioridad **baja**: pasó una vez, hay cuatro salidas que funcionan, y lo único pedido revierte en parte el caso 445.
 
 ## Síntoma
 
@@ -89,12 +88,14 @@ Una corrida de una instancia real, escrita por otra sesión de esa instancia. Se
 
 Casos 422, 449, 453.
 
-## Aplazado
+## Cierre
 
-Decidido el 2026-11-03, coordinado con la sesión que lo escribió.
+Descartado el 2026-11-03 por decisión de la persona, coordinado con la sesión que lo escribió.
 
 - **Ruta relativa en `.ops-approval`.** Revierte en parte el 445 y toca la aprobación de 15 guards. El plan y el prototipo quedaron arriba, probados en una copia.
 - **Una pista en el bloqueo.** Se escribió una que decía «nombrá la carpeta», y la revisión mostró que era falsa: la carpeta no aprueba nada. Se quitó antes de commitearla. El bloqueo ya dice lo que funciona: confirmar después de frenar.
 - **Nombrar el repositorio, y soltar la línea sin arrancar nada:** no, por lo dicho en «Fix propuesto».
+
+Por qué descartado y no aplazado: pasó una sola vez, la instancia ya cerró la sesión de coordinación al entregar, y no hay cuándo hacerlo. Si vuelve con más casos, el plan y el prototipo de arriba son el punto de partida.
 
 Lo que sí funciona hoy, y es lo que se le dijo a esa instancia: nombrar el archivo, contestar después del bloqueo en un turno de la persona, pegar la ruta absoluta, o llevar el trabajo de afuera de la línea a otra sesión.
