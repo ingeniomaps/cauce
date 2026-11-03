@@ -222,8 +222,8 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
   git('commit', '-q', '-m', 'contrato')
 
   const aviso = evaluations.validate(target, 'probe').warnings.join('\n')
-  assert.match(aviso, /el contrato cambió el \d{4}-\d{2}-\d{2} y la última corrida es del 2020-01-01/)
-  assert.match(aviso, /mide una versión anterior/)
+  assert.match(aviso, /el contrato cambió el \d{4}-\d{2}-\d{2}, después de 1 de 1 veredicto\(s\) \(01-uno\)/)
+  assert.match(aviso, /miden una versión anterior/)
 
   // Y el mismo árbol clonado a profundidad 1, que es lo que hace el checkout por defecto de Actions.
   // Git ve un solo commit y le atribuye todo lo que hay adentro, así que la fecha que devolvía era la
@@ -243,6 +243,7 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
 
   const dicho = evaluations.validate(otro, 'probe').warnings.join('\n')
   assert.match(dicho, /checkout está truncado/, 'dice que no puede saberlo, en vez de callarse')
+  assert.doesNotMatch(dicho, /cambiaron después de su veredicto/, 'y tampoco fecha los casos con el día del clon')
   assert.equal(/el contrato cambió el/.test(dicho), false, 'y no anuncia un cambio que no ocurrió')
 })
 

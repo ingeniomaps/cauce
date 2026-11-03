@@ -213,14 +213,7 @@ function evaluate(agent, caso, cli) {
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1, REFUSED)
-    // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
-    // compone en vez de leerse la última, en `composed`.
-    const measuredAt = runs.state && runs.state.oldest !== runs.state.newest
-      ? `${runs.state.oldest}…${runs.state.newest}`
-      : (runs.state ? runs.state.newest : '')
-    const lastRun = runs.state
-      ? `${runs.state.passed}/${runs.state.total} pasan (${measuredAt})`
-      : 'sin correr'
+    const lastRun = EV.summary(runs.state)
     if (kind === 'flow') {
       return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +
         `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
