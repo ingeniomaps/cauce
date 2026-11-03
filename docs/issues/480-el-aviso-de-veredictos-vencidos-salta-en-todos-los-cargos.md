@@ -115,7 +115,7 @@ Encontrado y no previsto:
 9. hecho: tres veredictos de fechas distintas, y un contrato y un fixture que cambian en momentos distintos, en la prueba nueva.
 10. hecho: `validate` y `summary` los usa sólo `engine/cli/catalog.js`; dos pruebas afirmaban el mensaje viejo y se actualizaron. El texto nuevo llega a los informes de investigación, que corren `make agent-evaluate`; ningún código lo lee.
 11. hecho: dos pasadas. La primera halló los vencidos falsos por la fecha del committer, arreglados; la segunda, sobre eso y sobre los 60 sujetos: «nada impide»; 5 vencidos falsos pasan a vigentes y ninguno real se pierde.
-12. hecho: pasada uno por uno sobre el diff; corrigió el comentario de `composed` y quitó una razón repetida.
+12. hecho: pasada uno por uno sobre el diff; corrigió el comentario de `composed` y quitó una razón repetida. Repetida al final sobre los comentarios que sumaron los arreglos de la revisión: el de la fecha del autor queda, y se acortaron dos de la prueba que repetían la razón del código.
 13. hecho: `npm run ci` en exit 0, con todo stageado.
 14. hecho: arriba, contra el caso entero.
 15. hecho: arriba y la línea de abajo.

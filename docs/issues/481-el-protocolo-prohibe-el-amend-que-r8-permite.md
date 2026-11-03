@@ -61,7 +61,7 @@ R8.
 
 El molde y `autobuild` dicen ahora lo mismo que R8: el amend se frena sobre lo publicado, y una fase puede corregir el commit que acaba de crear.
 
-Prueba real, una sesión de Claude Code con modelo haiku, a la que se le pide corregir el mensaje de su propio commit sin publicar, cuatro corridas por texto:
+Prueba real, sesiones de Claude Code con modelo haiku a las que se les pide corregir el mensaje de su propio commit sin publicar, dos por texto:
 
 | Texto | Qué hizo |
 |---|---|
@@ -97,7 +97,7 @@ Encontrado y no previsto:
 9. no aplica: no coordina nada.
 10. hecho: buscadas las frases en `test/`, `engine/`, `automatization/` y `template/`; la prueba de `autobuild-planning` era la única que las citaba.
 11. hecho: dos pasadas, compartidas con el 480. La primera halló las cuatro fases, alineadas; la segunda: «nada impide».
-12. hecho: pasada uno por uno sobre el diff.
+12. hecho: pasada uno por uno sobre el diff, repetida al final sobre el comentario que sumó el arreglo de la revisión, el de `NO_REWRITE`: queda como está.
 13. hecho: `npm run ci` en exit 0, con todo stageado.
 14. hecho: arriba, contra el caso entero.
 15. hecho: arriba y la línea de abajo.
