@@ -106,7 +106,8 @@ siquiera están acá — los lee el motor desde el paquete.
 - **Agregar un guard propio**: creá `automatization/hooks/guard-<nombre>.sh` y declaralo en `guards` de
   `ops.config.json`, en su evento (`pre-shell`, `pre-files`, `pre-read`, `pre-mcp` o `stop`). El motor lo corre en
   todos los runners; registrado en la configuración de uno solo, corre sólo en ése, y en Antigravity no hay dónde.
-  Sobrevive a cada actualización, porque el toolkit no lo conoce.
+  Sobrevive a cada actualización, porque el toolkit no lo conoce. Sale en 2 para frenar, y en 0 con algo en stderr para
+  avisar sin frenar.
 - **Desactivar un guard**: quitalo de esa configuración, que es del proyecto. El archivo sigue ahí.
 - **Cambiar un comportamiento**: agregá el tuyo, no edites el del toolkit.
 
@@ -284,7 +285,7 @@ Registra la acción exacta en `planning/human/`, un archivo por acción, y, si b
 `planning/AWAITING_REVIEW.md`.
 
 Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso durante una tarea, usa
-`git add .`/`git add -A`, reescribe historia con `--force` o `--amend`, ni afirma éxito sin evidencia
+`git add .`/`git add -A`, reescribe historia publicada con `--force` o `--amend`, ni afirma éxito sin evidencia
 real. Tampoco publica: sin autorización no hay `push`.
 
 Una recurrencia vencida tampoco la promueve, y ésta es la que más se parece a una excepción: la

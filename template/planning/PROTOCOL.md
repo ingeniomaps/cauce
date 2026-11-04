@@ -171,7 +171,7 @@ saltar. Una tarea mal marcada `express` es justamente la que se salta la fase do
 5. No inventar credenciales ni decisiones; registrar una acción humana en `human/`.
 6. No ampliar alcance; lo adyacente vuelve al INBOX.
 7. No reescribir este proceso dentro de una tarea de producto.
-8. No push, amend, force, deploy o escritura externa sin autorización explícita.
+8. No push, force, amend de lo publicado, deploy o escritura externa sin autorización explícita.
 9. Todo gate manual dice qué pasó, qué debe hacer la persona y cómo continuar.
 10. El repositorio de código, no planning, es dueño del commit de producto.
 

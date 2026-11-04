@@ -213,14 +213,7 @@ function evaluate(agent, caso, cli) {
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1, REFUSED)
-    // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
-    // compone en vez de leerse la última, en `composed`.
-    const measuredAt = runs.state && runs.state.oldest !== runs.state.newest
-      ? `${runs.state.oldest}…${runs.state.newest}`
-      : (runs.state ? runs.state.newest : '')
-    const lastRun = runs.state
-      ? `${runs.state.passed}/${runs.state.total} pasan (${measuredAt})`
-      : 'sin correr'
+    const lastRun = EV.summary(runs.state)
     if (kind === 'flow') {
       return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +
         `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
@@ -238,7 +231,8 @@ function evaluate(agent, caso, cli) {
 // recorrido —la misma forma que `agents fork <cargo> [ops-root]`—. Antes se descartaba y todo resolvía por
 // `opsRoot()`, así que `ops flow list <raíz>` contestaba sobre el directorio actual y la respuesta se leía
 // igual de bien viniendo de otra instancia (caso 172).
-function flow(action, slug, dir, cli) {
+function flow(action, slug, dir, cli, resumeRoot) {
+  if (action === 'resume') return resume(slug, dir, cli, resumeRoot)
   const root = opsRoot(action === 'list' ? slug : dir)
   if (action === 'list') {
     const slugs = T.list(root)
@@ -283,6 +277,21 @@ function flow(action, slug, dir, cli) {
       console.log(`✓ ${slug}: ${result.stages} etapa(s), ${result.agents} agente(s), contrato válido`)
     }
   } catch (error) { fail(error.message, USAGE) }
+}
+
+// La retoma de un recorrido frenado (caso 458). La raíz va como posicional después del archivo, como en el resto de
+// `flow` (caso 172); sin ella, la de siempre. El archivo queda acotado a su `planning/reports/`.
+function resume(action, file, cli, dir) {
+  const R = require('../flows/resume')
+  const root = opsRoot(dir)
+  if (!file) fail('Falta el archivo: ops flow resume <save|show> <archivo>', USAGE)
+  try {
+    if (action === 'save') {
+      return console.log(R.save(root, file, cli.value('--hash')))
+    }
+    if (action === 'show') return console.log(JSON.stringify(R.show(root, file)))
+  } catch (error) { fail(error.message, REFUSED) }
+  fail(`Acción de flow resume desconocida: ${action || '(vacía)'}`, USAGE)
 }
 
 module.exports = {

@@ -145,9 +145,19 @@ function contractChangedAt(dir, kind) {
   const file = kind === 'flow' ? 'flow.json' : 'SKILL.md'
   const shallow = spawnSync('git', ['-C', dir, 'rev-parse', '--is-shallow-repository'], { encoding: 'utf8' })
   if ((shallow.stdout || '').trim() === 'true') return { date: '', truncated: true }
-  const git = spawnSync('git', ['-C', dir, 'log', '-1', '--format=%cs', '--', file], { encoding: 'utf8' })
-  return { date: git.status === 0 ? (git.stdout || '').trim() : '', truncated: false }
+  return { date: changedAt(dir, file), truncated: false }
 }
+
+function changedAt(dir, ...files) {
+  // La del autor y no la del committer: un rebase corre la segunda, y un caso creado el día de su corrida salía
+  // vencido sin haber cambiado (caso 480).
+  const git = spawnSync('git', ['-C', dir, 'log', '-1', '--format=%as', '--', ...files], { encoding: 'utf8' })
+  return git.status === 0 ? (git.stdout || '').trim() : ''
+}
+
+// El último cambio de un caso o de su fixture, que vence su veredicto aunque el contrato siga igual.
+const caseChangedAt = (dir, id) => changedAt(dir, path.join('evaluations', 'cases', `${id}.md`),
+  path.join('evaluations', 'cases', id))
 
 function resultsDir(root, agent, kind) {
   return path.join(subject(root, agent, kind), ...RESULTS)
@@ -230,9 +240,8 @@ function latest(root, agent, kind) {
 // resultado no vale» sobre sujetos con los cuatro casos medidos. Componer a mano lo dejaba a merced de
 // que alguien se acordara.
 //
-// La fecha que viaja es la **más vieja** de las que aportan un veredicto vigente, no la más nueva: un
-// resultado compuesto es tan fresco como su parte más rancia, y es contra eso que hay que comparar un
-// cambio de contrato. Con la más nueva, un caso medido antes del cambio pasaba por medido después.
+// Cada veredicto vigente lleva su fecha: contra ella se compara el cambio de su contrato y de su caso (caso 480).
+// El rango, de la más vieja a la más nueva, es sólo lo que se muestra.
 function composed(root, agent, kind) {
   const dir = resultsDir(root, agent, kind)
   const names = resultNames(dir)
@@ -290,18 +299,45 @@ function validate(root, agent, kind) {
   if (state.failed.length) {
     warnings.push(`${state.failed.length} caso(s) no pasan: ${state.failed.join(', ')}`)
   }
-  const contract = contractChangedAt(subject(root, agent, kind), kind)
+  const dir = subject(root, agent, kind)
+  const contract = contractChangedAt(dir, kind)
   if (contract.truncated) {
     warnings.push('no se puede saber si el contrato cambió después de estos veredictos: el checkout '
       + 'está truncado y git le atribuye todo a su único commit (se destraba con fetch-depth: 0)')
-  } else if (contract.date && contract.date > state.oldest) {
-    const which = state.oldest === state.newest ? 'la última corrida es' : 'el veredicto más viejo es'
-    warnings.push(`el contrato cambió el ${contract.date} y ${which} del ${state.oldest}: `
-      + 'mide una versión anterior')
+    return { errors, warnings, cases: total, last, state }
+  }
+  // Vencido es cada veredicto, no el sujeto: contado así, el resumen dice cuántos siguen valiendo en vez de un
+  // aviso que salía en casi todos los cargos y al lado de «7/7 pasan» (caso 480).
+  const byContract = []
+  const byCase = []
+  for (const [id, one] of state.measured) {
+    if (contract.date && contract.date > one.date) byContract.push(id)
+    else if (caseChangedAt(dir, id) > one.date) byCase.push(id)
+  }
+  state.stale = [...byContract, ...byCase]
+  if (byContract.length) {
+    warnings.push(`el contrato cambió el ${contract.date}, después de ${byContract.length} de ${state.total} `
+      + `veredicto(s) (${shortList(byContract)}): miden una versión anterior`)
+  }
+  if (byCase.length) {
+    warnings.push(`${byCase.length} caso(s) cambiaron después de su veredicto (${shortList(byCase)}): `
+      + 'miden una versión anterior del caso')
   }
   return { errors, warnings, cases: total, last, state }
 }
 
+// Lo que dice `evaluate` de la última corrida. Cuándo se midió es un rango cuando el veredicto vigente lo aportó más
+// de una corrida; por qué se compone en vez de leerse la última, en `composed`.
+function summary(state) {
+  if (!state) return 'sin correr'
+  const measuredAt = state.oldest !== state.newest ? `${state.oldest}…${state.newest}` : state.newest
+  const stale = (state.stale || []).length
+  return `${state.passed}/${state.total} pasan (${measuredAt})`
+    + (stale ? `, ${state.total - stale} vigente(s): ${stale} mide(n) una versión anterior` : '')
+}
+
+const shortList = (ids) => (ids.length > 4 ? `${ids.slice(0, 4).join(', ')} y ${ids.length - 4} más` : ids.join(', '))
+
 module.exports = {
-  behaviors, composed, fixtures, list, latest, nextResult, parseCase, validate, resultsDir,
+  behaviors, composed, fixtures, list, latest, nextResult, parseCase, summary, validate, resultsDir,
 }
