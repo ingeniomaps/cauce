@@ -26,6 +26,9 @@ diseño — eso vive en el commit y en el código.
   texto, con el caso `10-el-resumen-no-amplia-la-cita` que la mide (propuesta `2026-11.md`).
 - **`ai-product-manager`**: las fuentes de release notes de Anthropic y de OpenAI apuntan a su URL actual, a
   la que ya redirigían las anteriores (propuesta `2026-11.md`).
+- **`ai-governance-lead`**: el Digital Omnibus queda con cada hito del proceso legislativo en su registro, más
+  los cambios del Art. 4 y el Art. 27; entra ISO/IEC 42006:2025, que acredita a quien certifica un sistema de
+  gestión 42001 y no evalúa el sistema concreto (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

@@ -21,6 +21,10 @@ sources:
     url: https://webstore.iec.ch/en/publication/107659
     tier: standard
     topics: [impact-assessment, individuals, groups, society, lifecycle]
+  - name: ISO IEC 42006:2025 AIMS audit and certification body requirements
+    url: https://webstore.iec.ch/en/publication/108460
+    tier: standard
+    topics: [ai-governance, certification, audit, accreditation]
   - name: OECD AI Principles updated 2024
     url: https://oecd.ai/en/ai-principles
     tier: standard
@@ -44,6 +48,28 @@ sources:
     # producto ya regulado) a 2028-08-02; y el Art. 5 suma dos prohibiciones nuevas —imágenes íntimas no
     # consentidas y CSAM— desde 2026-12-02. No tocó las prohibiciones del Art. 5 ya vigentes desde
     # 2025-02-02, las obligaciones de proveedores GPAI desde 2025-08-02 ni la transparencia del Art. 50
-    # desde 2026-08. Hay además una fecha de adopción sin resolver entre dos fuentes
-    # (digital-strategy.ec.europa.eu dice 2025-11-19; un tracker legislativo dice 2026-07-08): ninguna de
-    # las dos pasa a Verificada sin confirmar contra el texto primario o con Legal.
+    # desde 2026-08. La fecha de adopción no es una discrepancia sin resolver entre dos fuentes: son
+    # hitos distintos del mismo proceso legislativo, cada uno en su propio registro. Propuesta de la
+    # Comisión adoptada el 2025-11-19 (Verificado, digital-strategy.ec.europa.eu); acuerdo político
+    # (Parlamento/Consejo) el 2026-05-07 (Verificado, misma fuente); firma del reglamento el 2026-07-08
+    # (Documentado, lawandtechnology.eu); publicación en el Diario Oficial el 2026-07-24 (Documentado,
+    # misma fuente); entrada en vigor el 2026-07-27 (Verificado, digital-strategy.ec.europa.eu). Ninguna
+    # fecha en Documentado pasa a Verificada sin confirmar contra el texto primario o con Legal.
+    # Dos hitos más del mismo proceso, ambos Documentado: el Parlamento Europeo votó el 2026-06-16, 423 a
+    # favor / 57 en contra / 174 abstenciones, y el Consejo adoptó formalmente el texto el 2026-06-29
+    # (licentium.io e iubenda.com, ambas fetcheadas directamente). `digital-strategy.ec.europa.eu` — la
+    # fuente que corrobora los hitos en Verificado arriba — devolvió HTTP 403 en la corrida que buscó una
+    # tercera confirmación de estos dos, así que quedan en Documentado sin esa tercera fuente.
+    # El Art. 4 (AI literacy) también se modificó: el deber de un "nivel suficiente" de AI literacy se
+    # reemplaza por medidas contextuales que apoyen su desarrollo, vigente desde el 2025-02-02 igual que
+    # antes de la enmienda (Documentado, casys.ai, corroborado por un segundo resultado de búsqueda
+    # independiente —getactready.com—, no Verificado).
+    # El Art. 27 (FRIA, evaluación de impacto en derechos fundamentales) amplía sus flexibilidades
+    # (Documentado, iapp.org, fuente única fetcheada directamente; un segundo resultado de búsqueda
+    # agregado menciona lo mismo sin URL puntual identificada). No alcanza el estándar de dos fuentes
+    # puntuales fetcheadas que usa el resto de esta entrada: falta fetchear una segunda fuente puntual
+    # (p. ej. freshfields.com o legal500.com) antes de usarlo sin este hedge adicional.
+    # El desglose estructural del Digital Omnibus (artículos tocados, anexos modificados, artículos
+    # nuevos insertados) tiene dos series de cifras contradictorias entre fuentes secundarias y ninguna
+    # sale del texto primario: queda fuera de este registro hasta poder abrir EUR-Lex o confirmar con
+    # Legal.
