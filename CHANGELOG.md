@@ -21,6 +21,9 @@ diseño — eso vive en el commit y en el código.
 - **`ui-designer`**: Un solo archivo cambia, por el único hallazgo de los dos informes que lo pide: H4 de
   `learning/reports/2026-10-24.md`, con el antecedente de H5 de `learning/reports/2026-10-02.md`. El resto del
   contrato del cargo —`SKILL.md`… (propuesta `2026-11.md`).
+- **`technical-writer`**: No se toca `SKILL.md`. Dos cambios, uno por hallazgo que de verdad pide algo; los
+  otros dos (2026-10-02 completo, y 08-streaming-spec-version) no piden ningún cambio y se explica por qué al
+  final (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
