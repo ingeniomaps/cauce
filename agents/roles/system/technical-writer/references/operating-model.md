@@ -53,6 +53,8 @@ Asignar owner, versión soportada y fecha de última verificación. Vincular cam
 - ¿Ejemplos y resultados fueron ejecutados o marcados no verificados?
 - ¿Prerrequisitos, errores, límites y rollback son claros?
 - ¿Navegación, terminología y enlaces son consistentes?
+- ¿El texto evita calificadores subjetivos (simple, fácil, rápido, correctamente) y limita
+  gerundios/participios que dificultan la traducción y la lectura para audiencia global?
 - ¿Contenido sensible fue excluido o sanitizado?
 - ¿La estructura funciona con teclado, lector y sin depender de color/posición?
 - ¿Owner y señal de obsolescencia permiten mantenimiento?
