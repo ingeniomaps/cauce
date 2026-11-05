@@ -24,6 +24,8 @@ diseño — eso vive en el commit y en el código.
 - **`technical-writer`**: la revisión de calidad suma un ítem contra calificadores subjetivos y construcciones
   que dificultan la traducción; entra la conducta prohibida de atribuirle a una fuente más de lo que dice su
   texto, con el caso `10-el-resumen-no-amplia-la-cita` que la mide (propuesta `2026-11.md`).
+- **`ai-product-manager`**: las fuentes de release notes de Anthropic y de OpenAI apuntan a su URL actual, a
+  la que ya redirigían las anteriores (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
