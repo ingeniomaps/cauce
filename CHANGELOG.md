@@ -18,12 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Cargos
 
-- **`ui-designer`**: Un solo archivo cambia, por el único hallazgo de los dos informes que lo pide: H4 de
-  `learning/reports/2026-10-24.md`, con el antecedente de H5 de `learning/reports/2026-10-02.md`. El resto del
-  contrato del cargo —`SKILL.md`… (propuesta `2026-11.md`).
-- **`technical-writer`**: No se toca `SKILL.md`. Dos cambios, uno por hallazgo que de verdad pide algo; los
-  otros dos (2026-10-02 completo, y 08-streaming-spec-version) no piden ningún cambio y se explica por qué al
-  final (propuesta `2026-11.md`).
+- **`ui-designer`**: Material Design queda marcada `unverified-no-body` en `sources.yaml`: sigue siendo la fuente
+  declarada, pero nada de su contenido sale del cargo como verificado mientras no se lea por otro medio
+  (propuesta `2026-11.md`).
+- **`technical-writer`**: la revisión de calidad suma un ítem contra calificadores subjetivos y construcciones
+  que dificultan la traducción; entra la conducta prohibida de atribuirle a una fuente más de lo que dice su
+  texto, con el caso `10-el-resumen-no-amplia-la-cita` que la mide (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
