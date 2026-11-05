@@ -29,6 +29,9 @@ diseño — eso vive en el commit y en el código.
 - **`ai-governance-lead`**: el Digital Omnibus queda con cada hito del proceso legislativo en su registro, más
   los cambios del Art. 4 y el Art. 27; entra ISO/IEC 42006:2025, que acredita a quien certifica un sistema de
   gestión 42001 y no evalúa el sistema concreto (propuesta `2026-11.md`).
+- **`customer-support-specialist`**: la nota de ISO 18295-1 deja de atribuir la revisión en curso al rol de la
+  IA: la ficha del proyecto sucesor todavía reproduce el alcance de la edición 2017 y el de la edición 2 no está
+  publicado (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
