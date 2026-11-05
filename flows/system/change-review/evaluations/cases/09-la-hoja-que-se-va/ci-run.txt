@@ -1,0 +1,13 @@
+$ pnpm build
+vite v6.2.1 building for production...
+✓ 214 modules transformed.
+dist/index.html                 0.46 kB
+dist/assets/index-B8f2kQ.css   18.21 kB
+dist/assets/index-Cq91xa.js   182.40 kB
+✓ built in 2.31s
+$ pnpm lint
+✓ 0 problems
+$ pnpm test
+ Test Files  9 passed (9)
+      Tests  41 passed (41)
+exit 0
