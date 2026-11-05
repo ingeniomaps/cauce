@@ -14,6 +14,14 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.120.0] - 2026-11-05
+
+### Cargos
+
+- **`ui-designer`**: Un solo archivo cambia, por el único hallazgo de los dos informes que lo pide: H4 de
+  `learning/reports/2026-10-24.md`, con el antecedente de H5 de `learning/reports/2026-10-02.md`. El resto del
+  contrato del cargo —`SKILL.md`… (propuesta `2026-11.md`).
+
 ## [0.119.0] - 2026-11-03
 
 ### Cambiado

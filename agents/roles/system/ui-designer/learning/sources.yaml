@@ -16,9 +16,20 @@ sources:
     url: https://developer.apple.com/design/human-interface-guidelines/
     tier: standard
     topics: [layout, typography, color, components, accessibility]
+  # Intentado y descartado cinco ciclos consecutivos (2026-08-31, 2026-09-07, 2026-09-24, 2026-10-02,
+  # 2026-10-24): el fetch de esta herramienta devuelve sólo el título de la página, sin cuerpo
+  # (informe de 2026-10-02, H5; informe de 2026-10-24, H4). Sigue siendo la guía vigente de Material
+  # Design y la fuente primaria declarada para este tema — no se retira ni se reemplaza—; lo que
+  # cambia es que ninguna afirmación sobre su contenido sale de este cargo como «Verificado» mientras
+  # no se lea ahí por otro medio (R14). No se encontró todavía un canal alternativo que publique el
+  # mismo contenido con cuerpo legible para esta herramienta: las notas de versión de Compose
+  # Material 3 (`developer.android.com/jetpack/androidx/releases/compose-material3`) son la librería
+  # de implementación de Android, no la guía de diseño, y no la reemplazan (informe de 2026-10-02,
+  # H5; informe de 2026-10-24, H4).
   - name: Material Design
     url: https://m3.material.io/
     tier: standard
+    status: unverified-no-body
     topics: [tokens, components, color, typography, motion]
   - name: GOV.UK Design System
     url: https://design-system.service.gov.uk/
