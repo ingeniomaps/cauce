@@ -174,11 +174,12 @@ Fuentes revisadas y abiertas en agosto de 2026; el detalle de qué se pudo verif
 - [W3C PROV-O](https://www.w3.org/TR/prov-o/): ontología de procedencia —entidad, actividad, agente—, base
   para expresar linaje de forma comprobable. **Verificado**: Recomendación W3C del 2013-04-30.
 - [OpenLineage](https://openlineage.io/docs/spec/object-model): modelo de objetos de linaje —job, run,
-  dataset, facets— y sus eventos. **Verificado** leyendo la especificación: versión 1.53.0 (medida desde
-  2026-08-31 y reconfirmada sin cambios hasta 2026-09-24). Agrega facets de job y de dataset para
-  declarar relaciones de linaje exactas —a nivel dataset, campo y job— sin depender de inferencia por
-  producto cartesiano, con validación en Java, Python y Go de que los campos que deben viajar juntos lo
-  hagan.
+  dataset, facets— y sus eventos. **Verificado** leyendo la especificación el 2026-10-24: versión 1.54.0
+  (release del 2026-10-13 en GitHub); el proyecto publica una versión cada pocas semanas —1.55.0 salió el
+  2026-10-30—, así que el número se reconfirma al citarlo.
+  Agrega facets de job y de dataset para declarar relaciones de linaje exactas —a nivel dataset, campo y
+  job— sin depender de inferencia por producto cartesiano, con validación en Java, Python y Go de que los
+  campos que deben viajar juntos lo hagan.
 
 Ninguna de estas fuentes fija el plazo de retención ni la obligación de un territorio concreto. Eso se
 verifica contra la norma de esa jurisdicción, con Legal o Privacy, y hasta entonces queda pendiente.

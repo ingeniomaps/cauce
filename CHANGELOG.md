@@ -32,6 +32,9 @@ diseño — eso vive en el commit y en el código.
 - **`customer-support-specialist`**: la nota de ISO 18295-1 deja de atribuir la revisión en curso al rol de la
   IA: la ficha del proyecto sucesor todavía reproduce el alcance de la edición 2017 y el de la edición 2 no está
   publicado (propuesta `2026-11.md`).
+- **`data-governance-steward`**: OpenLineage queda con su versión fechada (1.54.0, publicada el 2026-10-13; ya
+  salió 1.55.0) y la instrucción de reconfirmarla en cada lectura, en vez de un número fijo (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
