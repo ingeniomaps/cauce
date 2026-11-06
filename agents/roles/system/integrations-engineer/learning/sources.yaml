@@ -71,9 +71,36 @@ sources:
     tier: profession
     topics: [retry-budget, retry-amplification, overload, degradation]
 
+  # Recomienda agregar dispersión (jitter) a los reintentos para evitar que los clientes se
+  # correlacionen y repitan la sobrecarga; para trabajo programado o periódico recomienda un jitter
+  # determinístico por host en vez de aleatorio. No define la fórmula de jitter: remite por nombre a
+  # «Exponential Backoff and Jitter» (entrada siguiente). Se cita el PDF y no la página canónica
+  # (`aws.amazon.com/builders-library/...`): esa página no devolvió cuerpo legible por fetch
+  # automatizado en tres corridas (2026-08-22, 2026-09-24, 2026-10-02); una cuarta corrida
+  # (2026-10-24) sí lo devolvió, pero una sola observación no alcanza para confiar en que dejó de
+  # fallar. Leído completo por PDF el 2026-10-02.
+  - name: AWS Builders' Library — Timeouts, retries, and backoff with jitter
+    url: https://d1.awsstatic.com/builderslibrary/pdfs/timeouts-retries-and-backoff-with-jitter.pdf
+    tier: profession
+    topics: [retry-safety, backoff, jitter, timeouts]
+
+  # Define tres algoritmos —Full Jitter (`sleep = random(0, min(cap, base * 2^attempt))`), Equal
+  # Jitter (la mitad del backoff exponencial acotado más un aleatorio sobre la otra mitad) y
+  # Decorrelated Jitter—. Concluye que Equal Jitter es el peor de los tres, y que entre Full y
+  # Decorrelated la elección "is less clear": Full usa menos trabajo y algo más de tiempo, y los dos
+  # reducen sustancialmente trabajo de cliente y carga de servidor frente a no usar jitter. Es la
+  # fuente de la recomendación de dispersión que cita por nombre la entrada anterior. Leído completo
+  # por WebFetch el 2026-10-02; artículo estático de 2015, no reverificado el 2026-10-24.
+  - name: AWS Architecture Blog — Exponential Backoff and Jitter
+    url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+    tier: profession
+    topics: [retry-safety, backoff, jitter]
+
   # Cadencia trimestral, cada versión estable soportada al menos 12 meses y con no menos de 9 meses de
   # solapamiento entre consecutivas. Es el ejemplo concreto de un tercero que sí publica su política:
-  # el contraste con el que no la publica es lo que hay que diseñar.
+  # el contraste con el que no la publica es lo que hay que diseñar. Vigente al 2026-10-24: la
+  # versión estable es `2026-10` (desde el 1 de octubre de 2026) y la release candidate es `2027-01`;
+  # la cadencia y la ventana de soporte no cambiaron.
   - name: Shopify — API versioning
     url: https://shopify.dev/docs/api/usage/versioning
     tier: standard
@@ -87,10 +114,14 @@ sources:
     tier: standard
     topics: [webhooks, at-least-once, out-of-order, deduplication, reconciliation]
 
-  # Guarda código y cuerpo de la primera respuesta por clave y los repite en el reintento, incluido un
-  # 500; la clave puede podarse a partir de las 24 horas y entonces se genera una petición nueva; si
-  # los parámetros cambian con la misma clave, error. Cada uno de esos tres detalles cambia el diseño,
-  # y ninguno es deducible del concepto de idempotencia.
+  # Mecanismo de API v1: guarda código y cuerpo de la primera respuesta por clave y los repite en el
+  # reintento, incluido un 500; la clave puede podarse a partir de las 24 horas y entonces se genera
+  # una petición nueva; si los parámetros cambian con la misma clave, error. La clave admite hasta 255
+  # caracteres, se recomienda UUID v4 u otra cadena aleatoria con suficiente entropía, se recomienda
+  # evitar datos sensibles (email, identificador personal) como clave, y sólo aplica a `POST` — `GET`
+  # y `DELETE` ya son idempotentes por definición. En API v2 el mecanismo es otro: los reintentos no
+  # repiten operaciones que ya tuvieron éxito, y Stripe reintenta el trabajo fallido o parcialmente
+  # fallido hasta completarlo, devolviendo una respuesta actualizada. Vigente al 2026-10-24.
   - name: Stripe — Idempotent requests
     url: https://docs.stripe.com/api/idempotent_requests
     tier: standard
@@ -104,20 +135,12 @@ sources:
     tier: standard
     topics: [webhooks, signature-scheme, headers, replay-protection]
 
-  # Registrado para que nadie lo cite como estándar: es un Internet-Draft **expirado**. Última
-  # revisión draft-07 del 2025-10-15, estado IESG «Expired», nunca llegó a RFC. La cabecera
-  # `Idempotency-Key` es una convención adoptada por varios proveedores, no algo que se pueda exigir
-  # por norma, y cada proveedor decide su ventana y su semántica.
-  - name: draft-ietf-httpapi-idempotency-key-header (expirado)
+  # Registrado para que nadie lo cite como estándar: sigue siendo un Internet-Draft, no una RFC.
+  # Vigente al 2026-10-24: revisión 08 (22 de octubre de 2026), estado «Active Internet-Draft» del
+  # grupo de trabajo httpapi, expira el 25 de abril de 2027, intended status «Standards Track». La
+  # cabecera `Idempotency-Key` sigue siendo una convención adoptada por varios proveedores, no algo
+  # que se pueda exigir por norma, y cada proveedor decide su ventana y su semántica.
+  - name: draft-ietf-httpapi-idempotency-key-header
     url: https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/
     tier: standard
-    status: expired
     topics: [idempotency-key, not-a-standard]
-
-# Mientras esto siga pendiente, la dispersión del backoff queda sin fuente registrada acá y no se
-# afirma como recomendación de nadie.
-pending:
-  - name: AWS Builders Library — Timeouts, retries, and backoff with jitter
-    url: https://builder.aws.com/content/timeouts-retries-and-backoff-with-jitter
-    why: aws.amazon.com redirige acá y la página devolvió sólo el encabezado, así que no se leyó
-    since: 2026-08-22

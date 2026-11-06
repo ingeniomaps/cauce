@@ -53,6 +53,11 @@ diseño — eso vive en el commit y en el código.
   con agente de IA; notas fechadas sobre PSD3/PSR, las directrices de la Comisión y el origen de la cifra de USD
   442.000 millones. El modelo operativo cita Fideuram como el fallo concreto de confirmar por un canal
   suplantable en vez de una segunda fuente independiente (propuesta `2026-11.md`).
+- **`integrations-engineer`**: la dispersión del backoff ya tiene fuente: el PDF de AWS Builders' Library
+  sobre timeouts y reintentos y el artículo «Exponential Backoff and Jitter», que salen de pendientes; el
+  borrador de `Idempotency-Key` deja de figurar como expirado (revisión 08, activo, sigue sin ser RFC); la nota
+  de Stripe suma límites de la clave y el mecanismo distinto de la API v2, y la de versionado de Shopify fecha
+  la estable `2026-10` (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
