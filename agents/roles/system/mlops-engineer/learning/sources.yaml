@@ -20,8 +20,27 @@ sources:
   # `CHANGELOG.md` de `master` tardaron al menos siete días en reflejar el release 3.16.1, que GitHub ya
   # marcaba «Latest» desde el 2026-09-17. Confirmada la versión nueva ahí, recién después leer
   # `mlflow.org/releases` o el `CHANGELOG.md` para el detalle.
+  # Nota de uso (2026-10-24, H1): `mlflow.org/releases` no lista todas las versiones de parche —el
+  # 2026-11-05 mostraba 3.11.1 y 3.10.1, pero no 3.16.1, 3.17.1 ni 3.17.2—. Que un parche falte ahí no
+  # dice que no se publicó: para una versión `X.Y.Z` con `Z > 0`, mirar el índice de GitHub o el
+  # `CHANGELOG.md`. Para 3.17.2, el `CHANGELOG.md` de `master` ya la mostraba el 2026-10-24
+  # (encabezado 2026-10-20; release publicado el 2026-10-21).
   - {name: MLflow Security Advisories, url: "https://github.com/mlflow/mlflow/security/advisories", tier: project, topics: [seguridad, cadena-de-suministro]}
   - {name: GitHub Advisory Database (mlflow), url: "https://github.com/advisories?query=mlflow", tier: project, topics: [seguridad, cadena-de-suministro]}
+  # Nota de uso (2026-10-02, H2, verificado): no quedarse con la primera página de
+  # `github.com/advisories?query=mlflow` — de los `ghsa_id` ya conocidos por la pestaña de Security
+  # Advisories del propio repositorio, algunos aparecen recién en la página 4 de 4. Preferir la variante
+  # acotada `?query=type%3Areviewed+ecosystem%3Apip+mlflow` como punto de partida (menos resultados,
+  # mejor orden), sin asumir que la acotación sola alcanza: tampoco trajo esas advisories en su propia
+  # primera página, y sí trajo una advisory ajena a `mlflow` (de GitPython) en la suya.
+  # Nota de uso (2026-10-02, H4, verificado): cuando una fuente empareja dos o más identificadores
+  # relacionados en una sola página o un solo resumen (por ejemplo, dos CVE con dos componentes
+  # distintos en una nota de CERT/CC), verificar cada identificador en su propia página dedicada antes
+  # de citar el emparejamiento — la misma URL, leída dos veces pidiendo primero un resumen general y
+  # después la cita textual, devolvió el emparejamiento invertido entre sí.
+  # Nota de uso (2026-10-24, H2, verificado): la base global puede no tener todavía advisories que la
+  # pestaña del repositorio ya publicó —cuatro de octubre daban 404 en `github.com/advisories/<id>`—;
+  # paginarla no reemplaza leer `MLflow Security Advisories`.
   # Nota de uso (2026-09-21 H2 y 2026-09-24 H3, verificado): no tratar «Patched versions»/«First Patched
   # Version» de una advisory de las dos entradas anteriores como el techo de lo que esa vulnerabilidad
   # necesita. Revisar también los PR que la propia advisory referencia y el cuerpo del release
@@ -29,6 +48,11 @@ sources:
   # todavía, y CVE-2026-2635 (CVSS 9.8) sigue mostrando `3.8.0rc0` en GitHub Advisory y en `osv.dev` meses
   # después de que 3.16.1 lo endureciera. Esto es la práctica verificada por este cargo en dos CVE
   # independientes, no una garantía sobre cómo MLflow va a publicar en el futuro.
+  # Nota de uso (2026-10-24, H4, verificado): un valor `None`/ausente en ese mismo campo no es más
+  # confiable que uno desactualizado — `GHSA-h7x2-h6g9-p789` mostró `Patched versions: None` durante
+  # once semanas mientras el fix (PR #25761) ya estaba mergeado y presente en `v3.17.0`. En los dos casos
+  # corresponde revisar si existe un PR de fix ya mergeado y comparar su commit —o el de su backport—
+  # contra el tag de la versión candidata, nunca sólo contra las notas del release.
   # Nota de uso (2026-09-14 H4, verificado): para ese cruce, leer el `CHANGELOG.md` desde `master` o desde
   # la página de releases, nunca desde un tag pineado — el tag `v3.16.0` apuntaba a un commit anterior al
   # que agregó la propia entrada de 3.16.0 al `CHANGELOG.md`.

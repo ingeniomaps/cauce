@@ -47,6 +47,45 @@ diseño — eso vive en el commit y en el código.
   (1.1x por geografía de inferencia desde Claude 4.6, y caché de 0.025x o 0.05x en tres modelos), con dónde se
   ve el desglose en cada marketplace; la nota de Gemini corrige el modelo afectado por el cambio de precio
   (propuesta `2026-11.md`).
+- **`fraud-risk-analyst`**: seis fuentes nuevas con su registro: el caso Fideuram/Intesa Sanpaolo y el fraude
+  de helpdesk con voz IA y relectura NFC de la policía neerlandesa, el informe final del FSB sobre IA, el aviso
+  de BoE/IMF sobre fraude agéntico, VAMP con las ventanas de disputa Visa/Mastercard y la red de soporte falso
+  con agente de IA; notas fechadas sobre PSD3/PSR, las directrices de la Comisión y el origen de la cifra de USD
+  442.000 millones. El modelo operativo cita Fideuram como el fallo concreto de confirmar por un canal
+  suplantable en vez de una segunda fuente independiente (propuesta `2026-11.md`).
+- **`integrations-engineer`**: la dispersión del backoff ya tiene fuente: el PDF de AWS Builders' Library
+  sobre timeouts y reintentos y el artículo «Exponential Backoff and Jitter», que salen de pendientes; el
+  borrador de `Idempotency-Key` deja de figurar como expirado (revisión 08, activo, sigue sin ser RFC); la nota
+  de Stripe suma límites de la clave y el mecanismo distinto de la API v2, y la de versionado de Shopify fecha
+  la estable `2026-10` (propuesta `2026-11.md`).
+- **`kyc-aml-specialist`**: cuatro normas nuevas con su registro: la resolución del DOF de México con los
+  formatos de reporte de actividades vulnerables y sus fechas de 2027, los Acuerdos 8-2026 y 10-2026 de la
+  Superintendencia de Bancos de Panamá (transferencias y catálogo de PEP, documentados sin leer el PDF) y la
+  Resolución UAFE-DG-2026-0014 de Ecuador; el plazo de la prórroga de la UIAF de Colombia queda confirmado, y
+  dos notas aclaran que la portada de Wolfsberg no fecha sus ítems y que el sello «Generated on» de la lista
+  consolidada de la ONU no indica cambio de contenido (propuesta `2026-11.md`).
+- **`legal-counsel`**: el modelo operativo fecha el fin de la 13.ª edición de Niza, NCL(13-2026), el 31 de
+  diciembre de 2026, y avisa que desde el 1 de enero de 2027 rige NCL(13-2027), ya publicada en NCLPUB, sin
+  fijar clases contra ella hasta abrirla completa (propuesta `2026-11.md`).
+- **`partnerships-manager`**: ISO/TS 44005:2026, la guía de liderazgo colaborativo del mismo comité que ISO
+  44001, entra como fuente y referencia; la nota de ISO 44001 registra el ballot DIS de la edición 2,
+  documentado y sin fecha de publicación; la guía de la OECD suma sus Due Diligence Checkers y la herramienta de
+  mapeo de políticas, y la de NIST SP 1326 remite a NIST SP 800-18 Rev. 2 para el plan de riesgo de cadena de
+  suministro por sistema (propuesta `2026-11.md`).
+- **`logistics-operations-manager`**: ISO 10002:2018 sale de pendientes como fuente leída en su ficha; entran
+  el aviso del Federal Register sobre la prueba de entrega internacional que la UPU exige desde 2027 y las
+  reglas de Registered Mail internacional de EE. UU. (sólo documentos, USD 40,20); la nota de la Resolución CRC
+  5050 corrige que no hay un título postal propio, y pendientes suma el Decreto 1078 de 2015 y la «EU Delivery
+  Act», con la LFPC leída en una versión de 2017 y la fecha de los Protocolos de la UPU todavía en hipótesis
+  (propuesta `2026-11.md`).
+- **`mobile-engineer`**: las instrucciones de investigación (`learning/AUTOMATION.md`) piden consultar un CVE
+  en la API REST de NVD y no en su página HTML, que falló cuatro veces seguidas, y repetir con el tema exacto
+  una cita literal que devolvió la sección equivocada (propuesta `2026-11.md`).
+- **`mlops-engineer`**: cinco notas de uso en las fuentes de MLflow: un parche que falta en
+  `mlflow.org/releases` se busca en GitHub o en el `CHANGELOG.md`; las advisories se paginan y se leen también
+  en la pestaña del repositorio, que publica antes que la base global; un emparejamiento de dos CVE se verifica
+  en la página de cada uno, y un «Patched versions: None» se contrasta contra el PR del fix y el tag (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

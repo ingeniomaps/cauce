@@ -91,6 +91,14 @@ La revisión con dos operadores —uno revisa, otro autoriza el movimiento de fo
 ninguna aprobación sea unilateral. Al diseñarla, comprobar que el segundo tenga información propia y
 no sólo el veredicto del primero: si sólo ve «aprobado», la separación es nominal.
 
+Un caso con evidencia publicada es el fallo concreto de este principio. Fideuram/Intesa Sanpaolo
+(Italia, febrero de 2026): una instrucción llegó por WhatsApp suplantando al CEO del grupo y se
+confirmó con una llamada con voz clonada por IA suplantando a un socio de estudio jurídico — ~€95
+millones transferidos, ~€36 millones sin recuperar (documentado, registro de la OCDE; cifras de
+recupero discrepantes). La instrucción y su confirmación llegaron por canales suplantables
+—mensajería y voz— y ninguno fue una segunda fuente independiente. El detalle y el registro de cada
+afirmación viven en `sources.yaml`, no se repiten acá.
+
 ## Excepciones y supresión
 
 Una whitelist es una excepción, no una corrección del modelo. Registrar siempre tipo de alerta

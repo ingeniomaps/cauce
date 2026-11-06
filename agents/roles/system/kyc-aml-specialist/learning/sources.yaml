@@ -44,7 +44,10 @@ sources:
     tier: standard
     topics: [supervision, aml-cft-risk-management, account-opening]
   # Práctica de industria bancaria, no norma. Publicaciones visibles el 2026-08-22 sobre enfoque basado
-  # en riesgo (2026), monitoreo de actividad sospechosa (2025) y transparencia de pagos (2024).
+  # en riesgo (2026), monitoreo de actividad sospechosa (2025) y transparencia de pagos (2024). La
+  # portada no trae fecha por ítem, pero la página individual de cada noticia sí — confirmado el
+  # 2026-10-24 sobre cuatro ítems: para saber si algo es nuevo dentro de una ventana hay que abrir la
+  # noticia, no alcanza con mirar la portada.
   - name: Wolfsberg Group
     url: https://wolfsberg-group.org/
     tier: standard
@@ -63,7 +66,10 @@ sources:
     tier: standard
     topics: [fiu-cooperation, information-exchange]
   # El 2026-08-22 la URL respondió 302 hacia un archivo firmado y temporal: la descarga se rehace desde
-  # esta dirección en cada uso, nunca desde el enlace redirigido, que caduca.
+  # esta dirección en cada uso, nunca desde el enlace redirigido, que caduca. El sello «Generated on»
+  # que muestra la página marca la fecha en que se generó esa consulta, no la de la última actualización
+  # sustantiva de la lista — aclaración de la propia fuente, leída el 2026-10-24: que el sello avance no
+  # es evidencia de que el contenido cambió, sólo de que alguien generó el archivo esa fecha.
   - name: UN Security Council Consolidated Sanctions List
     url: https://scsanctions.un.org/consolidated/
     tier: advisory
@@ -118,8 +124,11 @@ sources:
   # Emitida el 14 de agosto de 2026 tras el terremoto del 10 de agosto y la declaratoria de desastre
   # nacional (Decreto 1171 de 2026), para que las entidades obligadas no incurran en sanción por
   # retrasos involuntarios en el envío de reportes ALA/CFT derivados de la contingencia. La noticia se
-  # abrió el 2026-08-31; el plazo exacto de la prórroga no consta: no se leyó el texto de la
-  # resolución, así que ninguna afirmación sobre cuánto extiende sale de acá.
+  # abrió el 2026-08-31. Plazo confirmado el 2026-10-02, leído directo de la fuente primaria: los
+  # reportes (objetivos y ROS) de agosto 2026 podrán transmitirse en la plataforma SIREL hasta la fecha
+  # de corte ordinaria de septiembre de 2026, para los 12 sectores reportantes alcanzados por la
+  # resolución — no es un número fijo de días, es un corrimiento al calendario ordinario del mes
+  # siguiente, así lo dice la propia fuente. Registro: verificado.
   - name: UIAF Colombia — Resolución 362 de 2026
     url: https://www.uiaf.gov.co/index.php/Noticiasycomunicados-19ago
     tier: standard
@@ -178,6 +187,52 @@ sources:
     url: https://webgate.ec.europa.eu/fsd/fsf/public/rss
     tier: advisory
     topics: [sanctions-screening, eu-jurisdiction]
+  # Resolución publicada en el Diario Oficial de la Federación el 24-sep-2026 (codigo=5799444), leída
+  # directo el 2026-10-24: nuevos formatos de reporte de actividades vulnerables, con campos específicos
+  # para fideicomisos y beneficiario controlador. Vigencia escalonada: registro opcional desde el
+  # 01-feb-2027 (fideicomisos, agencias aduanales, facilitadores de despacho) y desde el 01-jun-2027
+  # (facilitadores públicos/privados); uso obligatorio de los nuevos formatos desde el 01-jun-2027; quien
+  # ya esté registrado antes del 01-feb-2027 debe darse de baja y registrarse de nuevo. Ninguna de las
+  # dos fechas llegó todavía: no tratar como obligación ya exigible. Esta entrada reemplaza —no se
+  # agrega además— el borrador que el informe del 2026-10-02 había propuesto (H11) a partir del
+  # comunicado de la UIF del 28-sep-2026 sobre este mismo texto, entonces con registro documentado; el
+  # informe del 2026-10-24 leyó el DOF directo (H13) y ese registro verificado es el que queda. Existe
+  # una segunda resolución del mismo día del DOF (código distinto, sobre avisos e informes) que no se
+  # leyó desde acá: queda documentada, no verificada, y no sostiene nada hasta que alguien la lea
+  # directo.
+  - name: DOF México — formatos de reporte de actividades vulnerables
+    url: https://www.dof.gob.mx/nota_detalle.php?codigo=5799444&fecha=24/09/2026
+    tier: standard
+    topics: [reporting-obligations, beneficial-ownership, cdd]
+  # Emitido el 8-oct-2026, Gaceta Oficial 30629-A. Confirmado por número, fecha y gaceta en el listado
+  # oficial de acuerdos (superbancos.gob.pa/acuerdos/bancarios, leído el 2026-10-24). Su contenido se
+  # conoce sólo por el título de ese listado —«lineamientos sobre medidas de control necesarias para la
+  # verificación de las transferencias electrónicas de fondos dentro del territorio nacional»—, no por el texto del acuerdo: el PDF no se pudo leer con esta herramienta, mismo
+  # límite recurrente que comparten el Acuerdo 1-2026 y el Acuerdo 4-2026 (séptima corrida consecutiva con ese
+  # límite sobre PDF de esta Superintendencia). Registro: documentado, no verificado contra el PDF.
+  - name: Superintendencia de Bancos de Panamá — Acuerdo 8-2026
+    url: https://www.superbancos.gob.pa/documentos/leyes_y_regulaciones/acuerdos/2026/Acuerdo_08-2026.pdf
+    tier: standard
+    topics: [transaction-monitoring]
+  # Emitido el 21-oct-2026, Gaceta Oficial 30639-D. Incorpora un parágrafo al Anexo 1 del Acuerdo
+  # 1-2025, el catálogo de cargos que califican como PEP. Confirmado por número, fecha y gaceta en el
+  # listado oficial de acuerdos (superbancos.gob.pa/acuerdos/bancarios, leído el 2026-10-24); el PDF no
+  # se pudo leer con esta herramienta, mismo límite recurrente. Registro: documentado, no verificado
+  # contra el PDF.
+  - name: Superintendencia de Bancos de Panamá — Acuerdo 10-2026
+    url: https://www.superbancos.gob.pa/documentos/leyes_y_regulaciones/acuerdos/2026/Acuerdo_10-2026.pdf
+    tier: standard
+    topics: [pep-definition, cdd]
+  # Reglamento para el Procedimiento Administrativo Sancionador. Figuraba en el listado de la biblioteca
+  # de la UAFE desde el informe del 2026-10-02 (H9), sin fecha confirmable ahí; el Registro Oficial,
+  # Suplemento N°387, confirma directamente que se publicó el 12-oct-2026 — leído el 2026-10-24 (H11),
+  # cerrando la pregunta abierta desde el informe anterior. Registro: verificado para existencia y
+  # fecha; el texto del reglamento en sí no se leyó, así que ninguna afirmación sobre su contenido sale
+  # de acá como verificada.
+  - name: UAFE Ecuador — Resolución UAFE-DG-2026-0014
+    url: https://www.uafe.gob.ec/biblioteca/
+    tier: standard
+    topics: [enforcement, administrative-sanctions]
 
 # Autoridades por país. Sólo entran las que se pudieron abrir: una autoridad citada de memoria es
 # exactamente el error que este cargo tiene prohibido.
