@@ -13,6 +13,10 @@ sources:
     url: https://committee.iso.org/standard/72798.html
     tier: standard
     topics: [collaboration, relationships, governance, lifecycle]
+  - name: ISO/TS 44005:2026 collaborative leadership guidance
+    url: https://committee.iso.org/standard/87388.html
+    tier: standard
+    topics: [collaboration, leadership, governance]
   - name: OECD due diligence for responsible business conduct
     url: https://www.oecd.org/content/dam/oecd/en/publications/reports/2018/02/oecd-due-diligence-guidance-for-responsible-business-conduct_c669bd57/15f5f4b3-en.pdf
     tier: standard

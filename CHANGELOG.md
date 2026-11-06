@@ -67,6 +67,11 @@ diseño — eso vive en el commit y en el código.
 - **`legal-counsel`**: el modelo operativo fecha el fin de la 13.ª edición de Niza, NCL(13-2026), el 31 de
   diciembre de 2026, y avisa que desde el 1 de enero de 2027 rige NCL(13-2027), ya publicada en NCLPUB, sin
   fijar clases contra ella hasta abrirla completa (propuesta `2026-11.md`).
+- **`partnerships-manager`**: ISO/TS 44005:2026, la guía de liderazgo colaborativo del mismo comité que ISO
+  44001, entra como fuente y referencia; la nota de ISO 44001 registra el ballot DIS de la edición 2,
+  documentado y sin fecha de publicación; la guía de la OECD suma sus Due Diligence Checkers y la herramienta de
+  mapeo de políticas, y la de NIST SP 1326 remite a NIST SP 800-18 Rev. 2 para el plan de riesgo de cadena de
+  suministro por sistema (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
