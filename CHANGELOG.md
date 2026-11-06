@@ -96,6 +96,9 @@ diseño — eso vive en el commit y en el código.
 - **`sales-representative`**: la guía de marketing directo del ICO precisa cuándo PECR exige consentimiento:
   para email a suscriptores individuales y llamadas automatizadas, no para email a una empresa ni llamadas en
   vivo fuera de TPS/CTPS, con su registro (propuesta `2026-11.md`).
+- **`qa-engineer`**: la tabla de reglas de axe-core entra como fuente, con la nota de que desde 4.14.0
+  `label-content-name-mismatch` viene activada y cubre WCAG 2.5.3 Label in Name, y de que hay que fijar la
+  versión de axe-core antes de clasificar qué cubre por defecto (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

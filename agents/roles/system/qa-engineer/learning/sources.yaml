@@ -89,3 +89,15 @@ sources:
     url: https://docs.pytest.org/en/stable/changelog.html
     tier: project
     topics: [defaults, plugins, deprecaciones]
+  # Tabla de qué criterio WCAG cubre cada regla de axe-core, no el motor de la herramienta. Desde la
+  # versión 4.14.0 (2026-10-05) la regla `label-content-name-mismatch` está activada por defecto y
+  # cubre el criterio 2.5.3 Label in Name; antes de esa versión la regla existía como experimental,
+  # apagada por defecto. Registro: documentado (CHANGELOG.md de axe-core, el anuncio de Deque y la
+  # ficha de Deque University, los tres citados en el informe 2026-10-24, H3; comprobado en CHANGELOG.md
+  # de axe-core, sección 4.14.0). Fijar la versión de axe-core contra la que se compara antes de
+  # clasificar qué cubre por defecto: el contenido de esta tabla cambia entre versiones (caso 11,
+  # `evaluations/cases/11-accessibility-sampling.md`).
+  - name: axe-core rule descriptions
+    url: https://raw.githubusercontent.com/dequelabs/axe-core/develop/doc/rule-descriptions.md
+    tier: project
+    topics: [accessibility, automated-coverage, wcag-mapping]
