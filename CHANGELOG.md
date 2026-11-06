@@ -90,6 +90,9 @@ diseño — eso vive en el commit y en el código.
   para seguir el tramo de protección de datos del Digital Omnibus VII (2025/0360(COD)), con el mandato del
   Consejo documentado y el RGPD todavía sin modificar; el modelo operativo suma el Statement 1/2026 del EDPB
   sobre lentes inteligentes (propuesta `2026-11.md`).
+- **`procurement-manager`**: NIST SP 1326, la guía práctica de due diligence de cadena de suministro para
+  proveedores de ICT (cinco componentes, de FOCI a niveles de la cadena), y NIST IR 8536, el marco de
+  trazabilidad en manufactura, entran como fuentes y referencias (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

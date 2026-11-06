@@ -32,3 +32,13 @@ sources:
     url: https://www.oecd.org/en/publications/2026/02/oecd-due-diligence-guidance-for-responsible-ai_7831bb49.html
     tier: standard
     topics: [technology, ai, due-diligence, supply-chain]
+  # NIST SP 1326, «Cybersecurity Supply Chain Risk Management: Due Diligence Assessment Quick-Start Guide».
+  - name: NIST cybersecurity supply chain due diligence assessment
+    url: https://csrc.nist.gov/pubs/sp/1326/final
+    tier: standard
+    topics: [technology, supply-chain, cybersecurity, supplier-risk, due-diligence]
+  - name: NIST IR 8536 — Supply Chain Traceability Manufacturing Meta-Framework
+    url: https://csrc.nist.gov/pubs/ir/8536/final
+    # IR (informe de NIST), no Special Publication ni estándar: marco conceptual, sin carácter normativo.
+    tier: standard
+    topics: [technology, supply-chain, hardware, provenance, due-diligence]
