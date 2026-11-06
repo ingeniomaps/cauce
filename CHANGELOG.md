@@ -43,6 +43,10 @@ diseño — eso vive en el commit y en el código.
 - **`devops-engineer`**: el modelo operativo suma los lockfiles de dependencias de workflow (`gh
   actions-lock`, en vista previa) como la protección más fuerte donde la plataforma los soporte, sin reemplazar
   el pin por SHA (propuesta `2026-11.md`).
+- **`finops-engineer`**: el modelo operativo suma los multiplicadores de Anthropic que mueven una estimación
+  (1.1x por geografía de inferencia desde Claude 4.6, y caché de 0.025x o 0.05x en tres modelos), con dónde se
+  ve el desglose en cada marketplace; la nota de Gemini corrige el modelo afectado por el cambio de precio
+  (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
