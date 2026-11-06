@@ -40,6 +40,9 @@ diseño — eso vive en el commit y en el código.
 - **`data-scientist`**: ISO/IEC 25012 pasa a su ficha del comité de ISO, y entran las partes publicadas de
   ISO/IEC 5259 (2 a 5, más el TR 6) como fuentes de calidad de datos para analítica y ML (propuesta
   `2026-11.md`).
+- **`devops-engineer`**: el modelo operativo suma los lockfiles de dependencias de workflow (`gh
+  actions-lock`, en vista previa) como la protección más fuerte donde la plataforma los soporte, sin reemplazar
+  el pin por SHA (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
