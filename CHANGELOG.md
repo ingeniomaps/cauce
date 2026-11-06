@@ -99,6 +99,9 @@ diseño — eso vive en el commit y en el código.
 - **`qa-engineer`**: la tabla de reglas de axe-core entra como fuente, con la nota de que desde 4.14.0
   `label-content-name-mismatch` viene activada y cubre WCAG 2.5.3 Label in Name, y de que hay que fijar la
   versión de axe-core antes de clasificar qué cubre por defecto (propuesta `2026-11.md`).
+- **`software-architect`**: el arc42 Quality Model (Q42) entra como fuente, y el modelo operativo mapea los
+  atributos de calidad a las nueve características de ISO/IEC 25010:2023 o al catálogo de Q42, sin reemplazar el
+  escenario propio de estímulo, ambiente, respuesta y umbral (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
