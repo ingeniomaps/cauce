@@ -58,6 +58,12 @@ diseño — eso vive en el commit y en el código.
   borrador de `Idempotency-Key` deja de figurar como expirado (revisión 08, activo, sigue sin ser RFC); la nota
   de Stripe suma límites de la clave y el mecanismo distinto de la API v2, y la de versionado de Shopify fecha
   la estable `2026-10` (propuesta `2026-11.md`).
+- **`kyc-aml-specialist`**: cuatro normas nuevas con su registro: la resolución del DOF de México con los
+  formatos de reporte de actividades vulnerables y sus fechas de 2027, los Acuerdos 8-2026 y 10-2026 de la
+  Superintendencia de Bancos de Panamá (transferencias y catálogo de PEP, documentados sin leer el PDF) y la
+  Resolución UAFE-DG-2026-0014 de Ecuador; el plazo de la prórroga de la UIAF de Colombia queda confirmado, y
+  dos notas aclaran que la portada de Wolfsberg no fecha sus ítems y que el sello «Generated on» de la lista
+  consolidada de la ONU no indica cambio de contenido (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
