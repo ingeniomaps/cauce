@@ -64,6 +64,9 @@ diseño — eso vive en el commit y en el código.
   Resolución UAFE-DG-2026-0014 de Ecuador; el plazo de la prórroga de la UIAF de Colombia queda confirmado, y
   dos notas aclaran que la portada de Wolfsberg no fecha sus ítems y que el sello «Generated on» de la lista
   consolidada de la ONU no indica cambio de contenido (propuesta `2026-11.md`).
+- **`legal-counsel`**: el modelo operativo fecha el fin de la 13.ª edición de Niza, NCL(13-2026), el 31 de
+  diciembre de 2026, y avisa que desde el 1 de enero de 2027 rige NCL(13-2027), ya publicada en NCLPUB, sin
+  fijar clases contra ella hasta abrirla completa (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
