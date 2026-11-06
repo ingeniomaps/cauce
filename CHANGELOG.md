@@ -86,6 +86,10 @@ diseño — eso vive en el commit y en el código.
   en la pestaña del repositorio, que publica antes que la base global; un emparejamiento de dos CVE se verifica
   en la página de cada uno, y un «Patched versions: None» se contrasta contra el PR del fix y el tag (propuesta
   `2026-11.md`).
+- **`privacy-compliance-specialist`**: el Observatorio Legislativo del Parlamento Europeo entra como fuente
+  para seguir el tramo de protección de datos del Digital Omnibus VII (2025/0360(COD)), con el mandato del
+  Consejo documentado y el RGPD todavía sin modificar; el modelo operativo suma el Statement 1/2026 del EDPB
+  sobre lentes inteligentes (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
