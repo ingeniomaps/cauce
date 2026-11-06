@@ -9,7 +9,9 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: quién firma qué, qué se escala y a
 # quién vive en organization/roles/tech-lead.md dentro de cada instalación.
 #
-# Las diez fuentes de abajo se abrieron en la revisión del 2026-08-22 y las diez devolvieron 200. Lo
+# Las once fuentes de abajo incluyen diez que se abrieron en la revisión del 2026-08-22 —las diez
+# devolvieron 200— más IEEE 1028-2008, que se abrió el 2026-09-24 y se agregó el 2026-10-02 (su propio
+# comentario, más abajo, lo documenta). Lo
 # comprobado es que la URL responde y que el título de la página es el que se cita; el texto completo
 # se leyó sólo en las marcadas con «leída».
 sources:
@@ -88,7 +90,7 @@ pending:
   - name: ISO IEC IEEE 24765 vocabulario de ingeniería de software
     why: fijaría los términos «revisión técnica» y «auditoría»; las dos URL primarias de iso.org
       (/standard/71952.html, edición 2017; /standard/92875.html, committee draft de una revisión
-      en curso) siguen en 403 en la tercera corrida consecutiva (2026-08-16, 2026-08-22,
-      2026-09-24). La edición 2017 consta como documentada —no verificada en fuente primaria— por
-      ANSI webstore e IEEE Xplore.
+      en curso) siguen en 403 en la quinta corrida consecutiva (2026-08-16, 2026-08-22, 2026-09-24,
+      2026-10-02, 2026-10-24). La edición 2017 consta como documentada —no verificada en fuente
+      primaria— por ANSI webstore e IEEE Xplore.
     since: 2026-08-22

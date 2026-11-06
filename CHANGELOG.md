@@ -102,6 +102,9 @@ diseño — eso vive en el commit y en el código.
 - **`software-architect`**: el arc42 Quality Model (Q42) entra como fuente, y el modelo operativo mapea los
   atributos de calidad a las nueve características de ISO/IEC 25010:2023 o al catálogo de Q42, sin reemplazar el
   escenario propio de estímulo, ambiente, respuesta y umbral (propuesta `2026-11.md`).
+- **`tech-lead`**: el encabezado de las fuentes ya cuenta once y fecha la entrada de IEEE 1028-2008, y la nota
+  pendiente de ISO/IEC/IEEE 24765 registra la quinta corrida seguida en 403, sin cambiar su registro (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
