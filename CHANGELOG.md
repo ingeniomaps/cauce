@@ -47,6 +47,12 @@ diseño — eso vive en el commit y en el código.
   (1.1x por geografía de inferencia desde Claude 4.6, y caché de 0.025x o 0.05x en tres modelos), con dónde se
   ve el desglose en cada marketplace; la nota de Gemini corrige el modelo afectado por el cambio de precio
   (propuesta `2026-11.md`).
+- **`fraud-risk-analyst`**: seis fuentes nuevas con su registro: el caso Fideuram/Intesa Sanpaolo y el fraude
+  de helpdesk con voz IA y relectura NFC de la policía neerlandesa, el informe final del FSB sobre IA, el aviso
+  de BoE/IMF sobre fraude agéntico, VAMP con las ventanas de disputa Visa/Mastercard y la red de soporte falso
+  con agente de IA; notas fechadas sobre PSD3/PSR, las directrices de la Comisión y el origen de la cifra de USD
+  442.000 millones. El modelo operativo cita Fideuram como el fallo concreto de confirmar por un canal
+  suplantable en vez de una segunda fuente independiente (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

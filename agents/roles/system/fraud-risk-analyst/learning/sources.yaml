@@ -32,6 +32,11 @@ sources:
   # fraude sea standalone—, y no hay excepción equivalente para seguros de vida y salud. Esto va
   # documentado por fuente secundaria (Global Policy Watch, junio 2026), contenido del borrador no
   # confirmado contra el PDF de la Comisión, y no vinculante mientras siga en borrador.
+  #
+  # Actualización 2026-10-24: dos fuentes secundarias independientes (enz.ai y srd-rechtsanwaelte.de,
+  # ambas leídas 2026-10-24) coinciden en una previsión de adopción de las directrices finales «para
+  # fines de 2026», y ninguna de las dos cita un cronograma oficial publicado — documentado, no
+  # verificado; la página oficial de la Comisión no se pudo leer en esta corrida (HTTP 403).
   - name: AI Act (Reglamento UE 2024/1689), anexo III 5(b)
     url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=OJ:L_202401689
     tier: regulation
@@ -39,6 +44,15 @@ sources:
   # Artículo 68.2 a 68.4 leído literal el 2026-08-22: razones «objectively justified», deber de
   # informar al titular del bloqueo y de sus razones, y deber de desbloquear cuando la razón deja
   # de existir. Es el modelo de contención reversible que este cargo propone.
+  #
+  # Actualización 2026-10-02: PSD3/PSR (la directiva y el reglamento en trámite que eventualmente
+  # reemplazan a PSD2) todavía no votó su plenario. El Observatorio Legislativo del Parlamento
+  # Europeo lista el 2026-12-14 como fecha indicativa (no confirmada) de ese voto, según una nota de
+  # clearingpost.com del 2026-09-03 — documentado por fuente secundaria, leído 2026-10-02; las dos
+  # páginas del expediente del Observatorio no devolvieron contenido al fetch automatizado en ninguna
+  # corrida. Un voto de diciembre empujaría la aplicación plena del PSR hacia mediados de 2028. Hasta
+  # que eso ocurra, el art. 68 de PSD2 de arriba sigue siendo el fundamento vigente de este cargo para
+  # el bloqueo reversible de instrumentos de pago.
   - name: PSD2 art. 68 (Directiva UE 2015/2366)
     url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32015L2366
     tier: regulation
@@ -111,6 +125,18 @@ sources:
   # pudo confirmar en el comunicado oficial y no se registra acá. Cambia el actor y el método que
   # la sección "Nombrar el esquema concreto" del flujo de riesgo da por sentados cuando asume un
   # actor humano operando manualmente en cada paso.
+  #
+  # Actualización 2026-10-24: la cifra de USD 442.000 millones que citan varias notas de prensa no se
+  # origina en INTERPOL — se origina en el reporte «Global State of Scams 2025» de la Global
+  # Anti-Scam Alliance (GASA), en alianza con Feedzai. La ficha oficial de GASA
+  # (gasa.org/knowledge-base/reports/global-state-of-scams-2025, leída directo 2026-10-24) verifica la
+  # metodología —encuesta a 46.000 adultos en 42 países— verificado, fuente primaria, página pública—
+  # pero no muestra la cifra en el texto público: está detrás de un registro de miembro. La cifra y su
+  # encuadre —pérdida estimada por encuesta, no medición transaccional— constan sólo por
+  # feedzai.com/blog/gasa-global-state-of-scams-report/ (leído 2026-10-24, el propio socio de GASA en
+  # el estudio) — documentado, no verificado contra el texto completo del reporte. Las fechas de
+  # publicación también difieren entre fuentes: Feedzai cita 07/10/2025, la metadata de la página
+  # oficial de GASA muestra 31/12/2025.
   - name: INTERPOL — Global Financial Fraud Threat Assessment, 2.ª edición
     url: https://www.interpol.int/en/News-and-Events/News/2026/INTERPOL-report-warns-of-increasingly-sophisticated-global-financial-fraud-threat
     tier: profession
@@ -124,6 +150,119 @@ sources:
     url: https://www.fsb.org/2026/06/fsb-consults-on-sound-practices-for-the-responsible-adoption-of-artificial-intelligence-ai/
     tier: standard
     topics: [ai-governance, model-risk, third-party-risk, consultation]
+  #
+  # Documentado por el registro de incidentes de IA de la OCDE (agregador de prensa),
+  # oecd.ai/en/incidents/2026-09-25-b291, leído directo el 2026-10-02: en febrero de 2026, Fideuram
+  # (Intesa Sanpaolo Private Banking) transfirió ~€95 millones tras un mensaje de WhatsApp que
+  # suplantaba al CEO del grupo, seguido de una llamada con voz clonada por IA; entre €36 y €39,5
+  # millones sin recuperar según las notas que agrega el registro, que difieren; el cuerpo dice voz
+  # clonada de un abogado de confianza y algunos titulares, el CEO del grupo. El mismo registro cita
+  # un caso similar contra Banca IFIS (€24 millones, €20 recuperados). Esquema con actor (externo que
+  # compromete el canal de comunicación, no el sistema), ganancia (decenas de millones por intento) y
+  # ventana (días entre el primer contacto y las transferencias) — documentado, agregador de prensa
+  # (Reuters entre ellas) citada en el propio registro.
+  - name: OCDE, rastreador de incidentes de IA — caso Fideuram/Intesa Sanpaolo (2026-09-25-b291)
+    url: https://oecd.ai/en/incidents/2026-09-25-b291
+    tier: profession
+    topics: [agentic-impersonation-fraud, authorization-bypass]
+  # Verificado contra el comunicado oficial de la policía neerlandesa, leído directo el 2026-10-21: el
+  # 06/10/2026 se detuvo a dos sospechosos por un esquema que afectó a unas 170 víctimas en el
+  # período en que la policía siguió al grupo (unas tres semanas) por unos €380.000 (~€2.235 por
+  # víctima). Mecanismo: una llamada automática reproduce audios generados por IA que simulan voces de
+  # «empleados del banco» alertando de movimientos sospechosos;
+  # una persona real pide a la víctima que instale una app y acerque su tarjeta al teléfono «para
+  # protegerla» — la app lee el chip NFC y transmite los datos a un cómplice que retira en un cajero.
+  # Esquema con actor (dos operadores coordinados, uno de voz sintética automatizada y uno en vivo),
+  # ganancia (~€2.235 por víctima) y ventana (de la primera llamada al retiro, no precisada por la
+  # policía más allá de «rápida») — corroborado por nltimes.nl, dutchnews.nl y ad-hoc-news.de (los
+  # tres leídos 2026-10-24), sin contradecir el comunicado. Generaliza, fuera de banca privada
+  # ejecutiva, la misma falla que registra el caso Fideuram de arriba: un canal suplantable —acá una
+  # llamada con voz sintética— no es una segunda fuente independiente.
+  - name: Politie Rotterdam — comunicado sobre fraude de helpdesk bancario con voz IA y relectura NFC
+    url: https://www.politie.nl/nieuws/2026/oktober/20/07-twee-verdachten-aangehouden-in-onderzoek-naar-nieuwe-vorm-van-bankhelpdeskfraude.html
+    tier: profession
+    topics: [ai-voice-phishing, nfc-relay-fraud, authorization-bypass]
+  # Reemplaza en estructura —no en vigencia, que no existía— a la entrada de la consulta de arriba.
+  # Verificado contra fsb.org/2026/10/fsb-finalises-..., leído directo el 2026-10-24, publicado
+  # 15/10/2026. Las doce prácticas de la consulta (tres categorías) pasan a dos: ocho de «ciclo de
+  # vida de IA» (materialidad, selección de tecnología, gobierno de datos, explicabilidad y controles
+  # compensatorios, desempeño, supervisión humana, ciberseguridad/TI, terceros) y cuatro de «gobierno a
+  # nivel organización» (supervisión de directorio, marco con roles definidos, integración al marco de
+  # riesgo, aprendizaje continuo) — estructura en dos categorías corroborada además por
+  # bankingnewsai.com (16/10/2026, documentado, fuente secundaria). La propia página lo presenta como
+  # "a practical toolkit" que cada institución adapta; no crea obligación, y ninguna de las doce prácticas nombra fraude de forma específica: lo que toca a
+  # este cargo (explicabilidad, supervisión humana, desempeño) ya está cubierto por las reglas del
+  # modelo que `SKILL.md` exige con independencia de cualquier marco externo.
+  - name: FSB — informe final "Sound Practices for the Responsible Adoption of Artificial Intelligence (AI)"
+    url: https://www.fsb.org/2026/10/fsb-finalises-sound-practices-for-the-responsible-adoption-of-artificial-intelligence-ai/
+    tier: standard
+    topics: [ai-governance, model-risk, third-party-risk]
+  # El Banco de Inglaterra y el FMI advirtieron el 14/10/2026 sobre fraude potenciado por IA —agentes
+  # autorreplicantes y estafas con deepfakes— erosionando la confianza en el sistema financiero. El
+  # propio rastreador de la OCDE que registra el aviso (oecd.ai/en/incidents/2026-10-14-cacd, leído
+  # directo 2026-10-24) lo clasifica como «hazard» (peligro), no como «incident»: es una advertencia
+  # institucional sobre daño plausible, no un esquema con actor, ganancia y ventana confirmados. Que
+  # BoE y FMI emitieron la advertencia es verificado contra el registro de la OCDE; el contenido de la
+  # advertencia en sí consta sólo por agregación de prensa que cita a ambas instituciones, no por
+  # comunicado primario de ninguna de las dos — documentado, no verificado. No citar como esquema con
+  # evidencia publicada: es el error que R14 nombra al distinguir hipótesis de hecho comprobado.
+  - name: OCDE, rastreador de peligros de IA — aviso de BoE/IMF sobre fraude agéntico (2026-10-14-cacd)
+    url: https://oecd.ai/en/incidents/2026-10-14-cacd
+    tier: standard
+    topics: [ai-fraud-systemic-risk]
+  # Esta entrada no existía (ver la verificación al inicio de esta sección): se crea acá consolidando
+  # las tres corridas que la tocaron, para no perder ninguna.
+  #
+  # Visa endureció el umbral de «excesivo» de su Programa de Monitoreo de Adquirentes (VAMP), con
+  # cronología completa corroborada por chargeflow.io (leído 2026-10-24): 01/04/2025 reemplazo de
+  # VDMP/VFMP; abril-septiembre 2025 período de aviso sin penalidad; 01/10/2025 enforcement pleno con
+  # umbral de 2,2 %; 01/04/2026 ajuste del umbral a 1,5 % — documentado, fuente secundaria; el fact
+  # sheet oficial de VAMP y las Visa Core Rules no se dejaron leer como texto en ninguna de las tres
+  # corridas que tocaron este tema. El hallazgo original (2026-09-24, H8) decía sólo «desde el
+  # 2026-04-01, de 2,2 % a 1,5 %», que mezclaba las dos fases en una sola fecha; esta entrada usa la
+  # cronología de cuatro fechas en su lugar. Un resultado de búsqueda agregado de la corrida del
+  # 2026-10-24 confundió además el año del enforcement pleno (dijo 01/10/2026 en vez de 01/10/2025) —
+  # mismo patrón de error que ya registra, más abajo en este archivo, la nota sobre la «CFPB Circular
+  # 2026-03» inexistente: no citar el enforcement sin la fecha completa. «Compelling Evidence 3.0»
+  # permite retirar del cálculo tanto el reporte de fraude (TC40) como la disputa (TC15) cuando el
+  # comercio demuestra que el mismo titular ya recibió el bien o servicio en una transacción previa no
+  # disputada — documentado, fuente secundaria (Forter), sin verificación primaria.
+  #
+  # Ventana de respuesta a una disputa: las Visa Core Rules fijan 30 días por fase (dispute,
+  # pre-arbitraje, reversa) y Mastercard 45 días — documentado, tres fuentes secundarias convergentes
+  # (Chargeflow, Seamlesschex, PaymentBrief, leídas 2026-10-02) más chargebacks911.com (06/03/2026,
+  # leído 2026-10-24), sin acceso al texto primario (el PDF de Visa Core Rules devuelve HTTP 404 al
+  # fetch automatizado en las tres corridas). Pero la documentación oficial de un procesador grande,
+  # Adyen (docs.adyen.com/risk-management/understanding-disputes/dispute-timeframes, leído directo
+  # 2026-10-24), dice que desde el 21/07/2025, para disputas de Visa, el plazo de respuesta en
+  # pagos procesados localmente en EE. UU. y Canadá es de 9 días, y de 18 en el resto de las regiones — documentado,
+  # documentación oficial de un procesador, no de la red de pagos. Para Visa, la ventana con ese
+  # procesador es de 9/18 días, no de 30; para Mastercard la misma página no da un plazo de respuesta
+  # equivalente. Es el tipo de cambio que mueve el costo del error que el paso 5 del
+  # flujo de riesgo pide tener en cuenta.
+  #
+  # Esta entrada es sobre el umbral de disputas y las ventanas de respuesta a una disputa ya
+  # presentada. No es el mecanismo de reparto de responsabilidad por falta de autenticación fuerte
+  # (3-D Secure/SCA bajo el RTS de PSD2) cuando el pago nunca se autenticó: ése es un mecanismo
+  # distinto, sin fuente registrada en este archivo.
+  - name: Visa VAMP (Visa Acquirer Monitoring Program) y ventanas de respuesta a disputas Visa/Mastercard
+    url: https://chargeflow.io/blog/what-are-visas-new-vamp-rules-a-2025-guide-for-merchants
+    tier: profession
+    topics: [card-network-rules, chargeback-window, dispute-liability]
+  # Visa describe en su propia página corporativa (sin fecha explícita visible, corroborada por
+  # prensa del 20 y 21/11/2025 — digitalcommerce360.com y paymentsdive.com) una red de sitios web
+  # fraudulentos que incrustan un agente conversacional de IA haciéndose pasar por soporte al cliente,
+  # para retrasar que la víctima contacte a su banco real y mantenerla «comprometida durante días o
+  # semanas». Citado explícitamente como afirmación de la propia Visa sobre su propio hallazgo, no
+  # como medición independiente de este cargo — Visa cuantifica ~USD 1.000 millones en transacciones
+  # de estafa detectadas en la segunda mitad de 2025 como categoría agregada, no específica de este
+  # esquema. El agente de IA no ataca el sistema de pago: opera como un canal de atención legítimo,
+  # con intención ilegítima — encaja en la delimitación de este cargo frente a Security Engineer que
+  # ya escribe `SKILL.md`.
+  - name: Visa — red de sitios fraudulentos con agente de IA incrustado como soporte falso
+    url: https://corporate.visa.com/en/sites/visa-perspectives/security-trust/the-threats-landscape-of-agentic-commerce.html
+    tier: profession
+    topics: [agentic-commerce-fraud]
 
 # Lo que se buscó y **no** quedó registrado, con el motivo. Sin esta lista, la próxima corrida
 # repite la búsqueda y concluye que no existe:
@@ -136,6 +275,12 @@ sources:
 #   (01/11/2023) ya están corroborados por fuentes secundarias (TaxesBrasil, Mattos Filho, Grant
 #   Thornton) — documentado, no verificado contra fuente primaria—. Lo que sigue faltando es el
 #   articulado; la página oficial sigue sin devolver texto legible al fetch automatizado.
+#   Actualización 2026-10-02: tres fuentes secundarias independientes (Grant Thornton, Migalhas,
+#   LegisWeb, las tres leídas 2026-10-02) coinciden en mecánica adicional — plazo de 24 horas para
+#   compartir indicios de fraude desde que se identifican, por un sistema electrónico, con
+#   consentimiento LGPD del cliente para compartir la información — documentado, no verificado
+#   contra el diario oficial; la página del BCB sigue sin devolver texto legible al fetch
+#   automatizado.
 # - Reg E (12 CFR 1005.11) y Reg B (12 CFR 1002.9) en eCFR: el sitio responde con una página de
 #   verificación de acceso a toda petición automatizada. Sin texto leído, no se registran.
 # - ISO 31000:2018 (gestión del riesgo): iso.org devuelve 403. Sin ficha legible, no se registra.
@@ -150,3 +295,11 @@ sources:
 #   versiones muestra sólo la publicación de 2018 y la enmienda del 22/01/2020, sin ninguna
 #   entrada de 2026. Se registra porque un resultado de búsqueda sugería una actualización de
 #   marzo de 2026; sin este registro la próxima corrida repetiría la misma búsqueda.
+# - No existe una «CFPB Circular 2026-03» sobre decisiones adversas o algoritmos: una búsqueda
+#   devolvió un blog (maveric-systems.com) que la menciona junto a «SR 26-2, EU AI Act & CFPB
+#   Circular 2026-03» como si fuera una circular nueva de 2026. Comprobado contra el listado vigente
+#   de circulares (consumerfinance.gov/compliance/circulars/) y el newsroom de la CFPB, los dos
+#   leídos directo el 2026-10-02 — verificado, ausencia confirmada en las dos fuentes primarias que
+#   listarían el documento si existiera. Lo más probable es que el blog confunda la Circular 2023-03
+#   real (mismo tema, Federal Register del 17/04/2024) con el año de publicación del propio blog. Si
+#   la misma cita vuelve a aparecer, no darla por buena sin abrir la fuente.
