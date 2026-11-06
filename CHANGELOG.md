@@ -35,6 +35,8 @@ diseño — eso vive en el commit y en el código.
 - **`data-governance-steward`**: OpenLineage queda con su versión fechada (1.54.0, publicada el 2026-10-13; ya
   salió 1.55.0) y la instrucción de reconfirmarla en cada lectura, en vez de un número fijo (propuesta
   `2026-11.md`).
+- **`database-administrator`**: entra Pgpool-II como fuente de avisos de seguridad, para seguir sus releases
+  con parches de CVE junto a las de PgBouncer (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
