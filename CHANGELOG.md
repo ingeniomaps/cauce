@@ -81,6 +81,11 @@ diseño — eso vive en el commit y en el código.
 - **`mobile-engineer`**: las instrucciones de investigación (`learning/AUTOMATION.md`) piden consultar un CVE
   en la API REST de NVD y no en su página HTML, que falló cuatro veces seguidas, y repetir con el tema exacto
   una cita literal que devolvió la sección equivocada (propuesta `2026-11.md`).
+- **`mlops-engineer`**: cinco notas de uso en las fuentes de MLflow: un parche que falta en
+  `mlflow.org/releases` se busca en GitHub o en el `CHANGELOG.md`; las advisories se paginan y se leen también
+  en la pestaña del repositorio, que publica antes que la base global; un emparejamiento de dos CVE se verifica
+  en la página de cada uno, y un «Patched versions: None» se contrasta contra el PR del fix y el tag (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
