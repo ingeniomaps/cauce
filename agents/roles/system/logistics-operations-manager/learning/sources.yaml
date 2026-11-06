@@ -46,10 +46,14 @@ sources:
     url: https://normograma.crcom.gov.co/crc/compilacion/docs/resolucion_crc_3038_2011.htm
     tier: regulation
     topics: [postal-user-rights, claims, indemnification, delivery-times, undelivered-items]
-  # Verificado el 2026-08-22 sólo en parte: la página es la Resolución CRC 5050 de 2016 y su sección de
-  # definiciones trae el CUN —el código con el que el usuario sigue su PQR o su solicitud de
-  # indemnización—. El título compilado de protección al usuario postal **no se leyó** en esa corrida:
-  # el documento es largo y el fragmento obtenido corta antes. Para citar un artículo, abrirla de nuevo.
+  # Verificado el 2026-08-22 (CUN) y completado el 2026-10-02: el título completo de la resolución es
+  # «Por la cual se compilan las Resoluciones de Carácter General vigentes expedidas por la Comisión de
+  # Regulación de Comunicaciones», y no existe un título dedicado a protección de usuarios postales — el
+  # régimen vive dentro del Título II general, «Medidas para la Protección de los Usuarios de los
+  # Servicios de Comunicaciones». La definición del CUN —el código con el que el usuario sigue su PQR o
+  # su solicitud de indemnización— sigue siendo la leída el 2026-08-22. Pendiente, sin abrir: la
+  # remisión al Decreto 1078 de 2015, art. 2.2.13.3.5, que la Resolución CRC 3038/2011 cita (ver
+  # `pending` más abajo).
   - name: Resolución CRC 5050 de 2016 (Colombia, compilatoria)
     url: https://gestornormativo.creg.gov.co/gestor/entorno/docs/resolucion_crc_5050_2016.htm
     tier: regulation
@@ -62,22 +66,56 @@ sources:
     url: https://www.upu.int/en/universal-postal-union/about-upu/acts
     tier: regulation
     topics: [cross-border-postal, convention, claims]
-pending:
-  - name: ISO 10002 gestión de quejas
+  # Verificado el 2026-10-02: página `committee.iso.org/standard/71580.html` abierta con WebFetch.
+  # ISO 10002:2018, tercera edición (2018-07), «This publication was last reviewed and confirmed in
+  # 2023. Therefore this version remains current», estado vigente; la ISO 10002:2014 aparece retirada
+  # y reemplazada por ésta. Norma internacional de gestión de calidad para el tratamiento de quejas,
+  # sin jurisdicción propia: referencia de proceso para este cargo, no obligación legal en ningún país.
+  # El cuerpo de la norma sigue sin abrirse —acceso de pago—, así que esta entrada describe la ficha
+  # (edición, año, estado), no sus cláusulas.
+  - name: ISO 10002
     url: https://committee.iso.org/standard/71580.html
-    why: iso.org devuelve 403 y no se encontró ficha en el IEC Webstore; queda por comprobar si este
-      host la sirve, que es donde otras normas ISO sí se leen. Reintentado el 2026-09-24, pero sobre
-      www.iso.org/standard/71580.html y no sobre el host declarado acá: mismo 403. O sea que la
-      pregunta que esta entrada hace —si committee.iso.org la sirve— sigue sin contestarse, y la
-      próxima corrida tiene que abrir el host de la URL declarada y no el genérico.
-    since: 2026-08-22
+    tier: standard
+    topics: [complaints-handling]
+  # Verificado el 2026-10-24: govinfo.gov/content/pkg/FR-2026-04-21/html/2026-07679.htm (Federal
+  # Register, aviso «Inbound Parcel Post (at UPU Rates)», documento 2026-07679), abierto con WebFetch.
+  # «beginning in CY 2027 designated operators will be required to provide an ancillary international
+  # proof of delivery», con cita a los artículos 18.3.3 y 33.8 del Convenio Postal Universal enmendado
+  # en Dubái 2025; vigencia 2027-01-01. Es una fuente secundaria oficial (el regulador postal de
+  # EE. UU.) que describe la enmienda, no el texto del Convenio en sí —ese PDF sigue sin decodificarse—,
+  # así que la cita de los artículos es documentada por esta fuente y no verificada contra el texto
+  # primario de la UPU. Alcanza, en lo verificado, a la implementación de EE. UU.; no se comprobó si
+  # otro país miembro ya publicó la suya.
+  - name: Federal Register 2026-07679 — Inbound Parcel Post (at UPU Rates)
+    url: https://www.govinfo.gov/content/pkg/FR-2026-04-21/html/2026-07679.htm
+    tier: regulation
+    topics: [visibility-events, proof-of-delivery, cross-border-postal]
+  # Verificado el 2026-10-24: govinfo.gov/content/pkg/FR-2025-11-25/html/2025-21089.htm (Federal
+  # Register, «International Registered Mail», documento 2025-21089) y
+  # about.usps.com/postal-bulletin/2025/pb22690/html/updt_004.htm, abiertas con WebFetch. Desde el
+  # 2026-01-01 (decisión del Congreso Extraordinario de la UPU de octubre de 2023, no de Dubái 2025) el
+  # Registered Mail internacional de EE. UU. queda restringido a piezas de First-Class Mail
+  # International con documentos únicamente, y la indemnización máxima por pérdida, avería o contenido
+  # faltante es de USD 40,20. Específico del Servicio Postal de EE. UU.: el Convenio deja el monto y la
+  # disponibilidad del servicio a cada operador designado. Vigente ya hace diez meses a la fecha de esta
+  # entrada, no una fecha futura.
+  - name: Federal Register 2025-21089 y boletín USPS pb22690 — Registered Mail internacional (EE. UU.)
+    url: https://www.govinfo.gov/content/pkg/FR-2025-11-25/html/2025-21089.htm
+    tier: regulation
+    topics: [indemnification, claims]
+pending:
   - name: Ley Federal de Protección al Consumidor (México)
     url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPC.pdf
     why: la conexión ya no es el bloqueo. El 2026-09-24 esta URL y el espejo de Profeco
-      (profeco.gob.mx/juridico/pdf/l_lfpc_ultimo_camdip.pdf) conectaron y entregaron el PDF; lo que
-      falla es que el extractor de esa corrida no decodificó el flujo comprimido a texto. Es un bloqueo
-      de herramienta y no de acceso: lo destraba un extractor que lea PDF comprimido, no reintentar la
-      descarga. Reintentado el 2026-09-24.
+      (profeco.gob.mx/juridico/pdf/l_lfpc_ultimo_camdip.pdf) conectaron y entregaron el PDF, y esta URL
+      volvió a hacerlo el 2026-10-02 y el 2026-10-24; lo que falla es que el extractor no decodifica
+      el flujo comprimido a texto. Es un bloqueo de herramienta y no de acceso. El 2026-10-24 se
+      encontró un mirror distinto que sí decodifica —ordenjuridico.gob.mx/Documentos/Federal/html/wo12974.html—,
+      con pie «Última reforma: 26 de junio de 2017»: con esa versión se leyeron los artículos 14
+      (prescripción de un año), 74 (entrega en el plazo pactado) y 77 (garantía mínima de sesenta días).
+      No se sabe si este mirror de 2017 coincide con el texto vigente hoy —la LFPC pudo tener reformas
+      posteriores que no refleja, y el PDF que sí sería la versión vigente sigue sin poder leerse—. Esta
+      entrada pasa de «sin leer nada» a «hay una versión parcial y fechada, de antigüedad desconocida».
     since: 2026-08-22
   - name: ASCM SCOR DS procesos Deliver y Return
     url: https://www.ascm.org/globalassets/documents--files/corporate-transformation/scor-ds-digital-guide_final.pdf
@@ -89,17 +127,54 @@ pending:
     since: 2026-08-22
   - name: 49 CFR Part 370 reclamaciones ante transportistas (EE. UU.)
     url: https://www.ecfr.gov/current/title-49/subtitle-B/chapter-III/subchapter-B/part-370
-    why: eCFR redirige a un portal de desbloqueo y no entrega el texto. Reintentado el 2026-09-24 sobre
-      esta URL y sobre una búsqueda del Federal Register: las dos redirigen a unblock.federalregister.gov,
-      que no entrega el texto. Sin cambio respecto del 2026-08-22.
+    why: «Principles and Practices for the Investigation and Voluntary Disposition of Loss and Damage
+      Claims and Processing Salvage», aplicable a transportistas motorizados y freight forwarders en
+      comercio interestatal o exterior (título oficial establecido el 2026-10-24). eCFR redirige a un
+      portal de desbloqueo y no entrega el texto; reabierto el 2026-09-24, el 2026-10-02 y el
+      2026-10-24, sin cambio. El 2026-10-02 se abrió además ese destino
+      (unblock.federalregister.gov): no es una redirección genérica, es una página de verificación
+      anti-automatización («programmatic access to these sites is limited to access to our extensive
+      developer APIs»). El 2026-10-24 se probó un volumen en PDF de govinfo.gov
+      (CFR-2022-title49-vol5-sec370-3.pdf): tampoco decodificó. govinfo.gov sirve el mismo volumen en XML
+      (`CFR-2022-title49-vol5/xml/CFR-2022-title49-vol5-part370.xml`), que devolvió texto legible el
+      2026-11-05. Es la edición anual al 2022-10-01, no la vigente: la próxima corrida busca por esa
+      ruta la edición más reciente.
     since: 2026-08-22
   - name: Decisiones del 28º Congreso de la UPU (Dubái, 2025)
     url: https://www.upu.int/UPU/media/upu/files/aboutUpu/acts/07-actsAndOtherDecisions2025DubaiCongress/2025DubaiCongressDecisionsEn.pdf
     why: las Actas vigentes siguen siendo las de Abiyán 2021 enmendadas en Riad 2023 —verificado el
-      2026-09-24 sobre la página de Actos ya declarada arriba— y esta entrada no las discute. Lo
-      pendiente es el PDF de decisiones del 28º Congreso, que sesionó del 8 al 19 de septiembre de
-      2025: la descarga llegó (5,2 MB) y el extractor de esa corrida no decodificó el flujo comprimido,
-      así que no se estableció si trae fecha de entrada en vigor. La próxima corrida mensual contesta
-      una sola pregunta: ¿esas decisiones ya rigen? Si rigen y tocan reclamaciones o indemnización
-      transfronteriza, sube a hallazgo con cambio de catálogo; si no, se anota el reintento acá.
+      2026-09-24, el 2026-10-02 y el 2026-10-24 sobre la página de Actos ya declarada arriba— y esta
+      entrada no las discute. El PDF de decisiones del 28º Congreso sigue sin decodificarse: tercera
+      corrida consecutiva con el mismo bloqueo (2026-09-24, 2026-10-02, 2026-10-24). Una búsqueda sobre
+      este mismo tema repitió «1 de enero de 2027» como fecha de entrada en vigor del Duodécimo
+      Protocolo Adicional a la Constitución y del Segundo Protocolo Adicional al Convenio, pero el
+      2026-10-24 esa misma clase de búsqueda produjo tres datos concretos falsos sobre un tema
+      relacionado (ver las entradas «Federal Register 2026-07679» y «Federal Register 2025-21089» de
+      `sources:`): esa fecha sigue
+      en hipótesis, sin corroborar contra una fuente primaria o secundaria legible, y repetirse no la
+      vuelve más confiable. A diferencia de ella, la vigencia 2027-01-01 de la entrada «Federal Register
+      2026-07679» de `sources:` sí viene de una fuente abierta y verificada, y cubre sólo
+      la prueba de entrega de paquetería, no el régimen completo de reclamaciones. La próxima corrida
+      mensual sigue contestando una sola pregunta: ¿los Protocolos Adicionales ya rigen, y tocan
+      reclamaciones o indemnización transfronteriza más allá de la prueba de entrega?
     since: 2026-09-24
+  - name: Decreto 1078 de 2015, artículo 2.2.13.3.5 (Colombia)
+    url: https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=77888
+    why: remisión de la Resolución CRC 3038/2011, registrada el 2026-10-02 sin abrir. Dos intentos el
+      2026-10-24, ninguno sirvió el texto: esta URL (funcionpublica.gov.co) dio error de certificado TLS
+      («unable to verify the first certificate»), y
+      https://www.cancilleria.gov.co/normograma/compilacion/docs/decreto_1078_2015.htm dio HTTP 403. La
+      próxima corrida prueba una tercera vía en vez de repetir estas dos.
+    since: 2026-10-24
+  - name: Reforma postal de la Unión Europea («EU Delivery Act»)
+    url: https://www.cep-research.com/2025/10/23/eu-wants-feedback-on-postal-regulation-overhaul/
+    why: fuente secundaria (no oficial de la UE), abierta el 2026-10-24 — describe que la Comisión busca
+      fusionar la Directiva 97/67/EC y el Reglamento 2018/644 sobre entrega transfronteriza en una nueva
+      «EU Delivery Act», con una consulta pública («October 6» a «November 14, 2025»). Dos intentos de
+      abrir el documento primario de la Comisión (COM(2025) 506 final, PDF y HTML en eur-lex.europa.eu)
+      y la página del Parlamento Europeo sobre este expediente devolvieron respuesta vacía. La URL de la
+      fuente secundaria lleva fecha de octubre de 2025 pese a describirse como vigente en esta búsqueda
+      de octubre de 2026 —discrepancia de un año sin resolver—. No hay texto primario legible y no es
+      derecho vigente todavía, pero es el primer indicio de un régimen de reclamaciones e indemnización
+      a nivel de la Unión Europea que este catálogo no cubre en ningún país miembro.
+    since: 2026-10-24

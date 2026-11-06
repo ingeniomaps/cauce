@@ -72,6 +72,12 @@ diseño — eso vive en el commit y en el código.
   documentado y sin fecha de publicación; la guía de la OECD suma sus Due Diligence Checkers y la herramienta de
   mapeo de políticas, y la de NIST SP 1326 remite a NIST SP 800-18 Rev. 2 para el plan de riesgo de cadena de
   suministro por sistema (propuesta `2026-11.md`).
+- **`logistics-operations-manager`**: ISO 10002:2018 sale de pendientes como fuente leída en su ficha; entran
+  el aviso del Federal Register sobre la prueba de entrega internacional que la UPU exige desde 2027 y las
+  reglas de Registered Mail internacional de EE. UU. (sólo documentos, USD 40,20); la nota de la Resolución CRC
+  5050 corrige que no hay un título postal propio, y pendientes suma el Decreto 1078 de 2015 y la «EU Delivery
+  Act», con la LFPC leída en una versión de 2017 y la fecha de los Protocolos de la UPU todavía en hipótesis
+  (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
