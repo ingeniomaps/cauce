@@ -78,6 +78,9 @@ diseño — eso vive en el commit y en el código.
   5050 corrige que no hay un título postal propio, y pendientes suma el Decreto 1078 de 2015 y la «EU Delivery
   Act», con la LFPC leída en una versión de 2017 y la fecha de los Protocolos de la UPU todavía en hipótesis
   (propuesta `2026-11.md`).
+- **`mobile-engineer`**: las instrucciones de investigación (`learning/AUTOMATION.md`) piden consultar un CVE
+  en la API REST de NVD y no en su página HTML, que falló cuatro veces seguidas, y repetir con el tema exacto
+  una cita literal que devolvió la sección equivocada (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
