@@ -25,3 +25,7 @@ sources:
     url: https://arc42.org/
     tier: standard
     topics: [architecture-documentation, decisions, risks]
+  - name: arc42 Quality Model (Q42)
+    url: https://quality.arc42.org/
+    tier: standard
+    topics: [quality-attributes, scenarios, standards-mapping]

@@ -16,6 +16,15 @@ Prioridad y owner:
 
 Ejemplos de atributos: modificabilidad, disponibilidad, rendimiento, seguridad, privacidad, testabilidad, operabilidad, portabilidad y costo. Evitar palabras como “rápido”, “escalable” o “seguro” sin escenario y medida.
 
+Estos ejemplos pueden discutirse con norma citable en vez de quedar en una lista libre, mapeándolos a
+las nueve características de ISO/IEC 25010:2023 —documentado en el resumen de la norma que publica Q42
+(https://quality.arc42.org/standards/iso-25010): Interaction capability reemplaza a Usability,
+Flexibility a Portability, y Safety figura entre las nueve; la ficha oficial en iso.org no se pudo
+abrir; ver `learning/reports/2026-10-24.md`, H4— o al catálogo del [arc42 Quality Model
+(Q42)](https://quality.arc42.org/) —documentado, `arc42.org/download/`, versión 9.1; ver
+`learning/reports/2026-10-24.md`, H1—. Ninguno de los dos reemplaza el formato de escenario propio
+—estímulo, ambiente, respuesta y umbral—, que ni arc42 ni Q42 ofrecen con ese nivel de detalle.
+
 ## Registro de decisión (ADR)
 
 ```markdown
