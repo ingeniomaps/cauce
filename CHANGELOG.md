@@ -93,6 +93,9 @@ diseño — eso vive en el commit y en el código.
 - **`procurement-manager`**: NIST SP 1326, la guía práctica de due diligence de cadena de suministro para
   proveedores de ICT (cinco componentes, de FOCI a niveles de la cadena), y NIST IR 8536, el marco de
   trazabilidad en manufactura, entran como fuentes y referencias (propuesta `2026-11.md`).
+- **`sales-representative`**: la guía de marketing directo del ICO precisa cuándo PECR exige consentimiento:
+  para email a suscriptores individuales y llamadas automatizadas, no para email a una empresa ni llamadas en
+  vivo fuera de TPS/CTPS, con su registro (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
