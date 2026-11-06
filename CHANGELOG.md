@@ -105,6 +105,9 @@ diseño — eso vive en el commit y en el código.
 - **`tech-lead`**: el encabezado de las fuentes ya cuenta once y fecha la entrada de IEEE 1028-2008, y la nota
   pendiente de ISO/IEC/IEEE 24765 registra la quinta corrida seguida en 403, sin cambiar su registro (propuesta
   `2026-11.md`).
+- **`technical-program-manager`**: ISO 21513 (evaluación post-proyecto y post-programa) e ISO 21508 ed. 2
+  (valor ganado) entran como fuentes, y la nota de ISO 21502:2020 registra la revisión limitada que aprobó el
+  plenario de ISO/TC 258, con la edición 2020 todavía vigente (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
