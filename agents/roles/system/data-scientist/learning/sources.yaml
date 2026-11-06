@@ -22,7 +22,7 @@ sources:
     tier: standard
     topics: [statistics, probability, vocabulary, symbols]
   - name: ISO IEC 25012:2008 data quality model
-    url: https://webstore.iec.ch/en/publication/11246
+    url: https://committee.iso.org/standard/35736.html
     tier: standard
     topics: [data-quality, requirements, measures, evaluation]
   - name: ASA Statement on the Role of Statistics in Data Science and Artificial Intelligence
@@ -35,5 +35,25 @@ sources:
     topics: [ethics, ai, accountability, transparency, fairness]
   - name: ISO/IEC 5259-1:2024 data quality for analytics and machine learning (overview)
     url: https://committee.iso.org/standard/81088.html
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
+  - name: ISO/IEC 5259-2:2024 data quality measures
+    url: https://committee.iso.org/standard/81860.html
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
+  - name: ISO/IEC 5259-3:2024 data quality management requirements and guidelines
+    url: https://committee.iso.org/standard/81092.html
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
+  - name: ISO/IEC 5259-4:2024 data quality process framework
+    url: https://committee.iso.org/standard/81093.html
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
+  - name: ISO/IEC 5259-5:2025 data quality governance framework
+    url: https://committee.iso.org/standard/84150.html
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
+  - name: ISO/IEC TR 5259-6:2026 data quality visualization framework
+    url: https://committee.iso.org/standard/86532.html
     tier: standard
     topics: [data-quality, ai, ml, analytics]

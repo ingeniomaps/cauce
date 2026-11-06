@@ -71,7 +71,9 @@ sources:
     tier: standard
     topics: [provenance, lineage, agents]
   # Especificación leída el 2026-08-22: job, run, dataset y facets, con RunEvent, JobEvent y
-  # DatasetEvent. La versión del esquema no consta en esa página; anotarla cuando se verifique.
+  # DatasetEvent. La versión consta y sigue a los releases del proyecto, que salen cada pocas semanas:
+  # 1.54.0 al 2026-10-24 (release del 2026-10-13 según la API de releases de GitHub); 1.55.0 salió el
+  # 2026-10-30. Reconfirmarla en cada lectura; no tratarla como dato estable.
   - name: OpenLineage object model
     url: https://openlineage.io/docs/spec/object-model
     tier: project

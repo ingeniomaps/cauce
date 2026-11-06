@@ -43,6 +43,13 @@ Evitar pasos manuales no registrados. Una aprobación no reemplaza validaciones 
 
 - Preferir federación y credenciales efímeras sobre secretos de larga duración.
 - Fijar acciones e imágenes a versiones confiables; revisar actualizaciones antes de adoptarlas.
+- Cuando la plataforma de CI lo soporte, adoptar además un lockfile de dependencias de workflow (en
+  GitHub Actions, la extensión `gh actions-lock`, en vista previa pública desde el 2026-10-14): la guía
+  oficial de hardening lo señala como «the strongest protection available, and supersedes SHA pinning for
+  repositories that adopt it»
+  (GitHub Actions security hardening, cita del 2026-10-24 — fuente `tier: standard` de
+  `learning/sources.yaml`). Es opt-in y por workflow; el pin por SHA sigue siendo la alternativa válida
+  para quien no lo adopte todavía, y esta línea no la reemplaza: la refuerza cuando está disponible.
 - Generar procedencia y SBOM cuando el riesgo y ecosistema lo permitan.
 - Separar permisos de lectura, build, deploy y administración.
 - Evitar ejecutar código no confiable con secretos o tokens privilegiados.

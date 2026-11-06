@@ -16,3 +16,4 @@ sources:
   - {name: PostgreSQL security advisories, url: "https://www.postgresql.org/support/security/", tier: advisory, topics: [cve, parches, versiones afectadas]}
   - {name: PostgreSQL release notes, url: "https://www.postgresql.org/docs/release/", tier: platform, topics: [versiones, cambios de comportamiento, migración]}
   - {name: PgBouncer security releases, url: "https://www.pgbouncer.org/", tier: advisory, topics: [connection-pooling, cve, parches]}
+  - {name: Pgpool-II security releases, url: "https://www.pgpool.net/", tier: advisory, topics: [connection-pooling, high-availability, watchdog, cve, parches]}

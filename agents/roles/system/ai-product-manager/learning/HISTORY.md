@@ -6,3 +6,4 @@ Una fila por propuesta cerrada: cuándo, cuál, qué se decidió —aplicarla o 
 |---|---|---|---|---|
 | 2026-09-01 | `2026-09.md` | archivada | malpisa1@gmail.com | Se archivó sin decidir: el documento quedó con el molde. |
 | 2026-10-02 | `learning/proposals/2026-10.md` | Aprobada | @ingeniomaps (Manuel Pinzon) | `references/operating-model.md` |
+| 2026-11-05 | `learning/proposals/2026-11.md` | Aprobada | @ingeniomaps (Manuel Pinzon) | `learning/sources.yaml` |

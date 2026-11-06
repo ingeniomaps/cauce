@@ -18,12 +18,35 @@ diseño — eso vive en el commit y en el código.
 
 ### Cargos
 
-- **`ui-designer`**: Un solo archivo cambia, por el único hallazgo de los dos informes que lo pide: H4 de
-  `learning/reports/2026-10-24.md`, con el antecedente de H5 de `learning/reports/2026-10-02.md`. El resto del
-  contrato del cargo —`SKILL.md`… (propuesta `2026-11.md`).
-- **`technical-writer`**: No se toca `SKILL.md`. Dos cambios, uno por hallazgo que de verdad pide algo; los
-  otros dos (2026-10-02 completo, y 08-streaming-spec-version) no piden ningún cambio y se explica por qué al
-  final (propuesta `2026-11.md`).
+- **`ui-designer`**: Material Design queda marcada `unverified-no-body` en `sources.yaml`: sigue siendo la fuente
+  declarada, pero nada de su contenido sale del cargo como verificado mientras no se lea por otro medio
+  (propuesta `2026-11.md`).
+- **`technical-writer`**: la revisión de calidad suma un ítem contra calificadores subjetivos y construcciones
+  que dificultan la traducción; entra la conducta prohibida de atribuirle a una fuente más de lo que dice su
+  texto, con el caso `10-el-resumen-no-amplia-la-cita` que la mide (propuesta `2026-11.md`).
+- **`ai-product-manager`**: las fuentes de release notes de Anthropic y de OpenAI apuntan a su URL actual, a
+  la que ya redirigían las anteriores (propuesta `2026-11.md`).
+- **`ai-governance-lead`**: el Digital Omnibus queda con cada hito del proceso legislativo en su registro, más
+  los cambios del Art. 4 y el Art. 27; entra ISO/IEC 42006:2025, que acredita a quien certifica un sistema de
+  gestión 42001 y no evalúa el sistema concreto (propuesta `2026-11.md`).
+- **`customer-support-specialist`**: la nota de ISO 18295-1 deja de atribuir la revisión en curso al rol de la
+  IA: la ficha del proyecto sucesor todavía reproduce el alcance de la edición 2017 y el de la edición 2 no está
+  publicado (propuesta `2026-11.md`).
+- **`data-governance-steward`**: OpenLineage queda con su versión fechada (1.54.0, publicada el 2026-10-13; ya
+  salió 1.55.0) y la instrucción de reconfirmarla en cada lectura, en vez de un número fijo (propuesta
+  `2026-11.md`).
+- **`database-administrator`**: entra Pgpool-II como fuente de avisos de seguridad, para seguir sus releases
+  con parches de CVE junto a las de PgBouncer (propuesta `2026-11.md`).
+- **`data-scientist`**: ISO/IEC 25012 pasa a su ficha del comité de ISO, y entran las partes publicadas de
+  ISO/IEC 5259 (2 a 5, más el TR 6) como fuentes de calidad de datos para analítica y ML (propuesta
+  `2026-11.md`).
+- **`devops-engineer`**: el modelo operativo suma los lockfiles de dependencias de workflow (`gh
+  actions-lock`, en vista previa) como la protección más fuerte donde la plataforma los soporte, sin reemplazar
+  el pin por SHA (propuesta `2026-11.md`).
+- **`finops-engineer`**: el modelo operativo suma los multiplicadores de Anthropic que mueven una estimación
+  (1.1x por geografía de inferencia desde Claude 4.6, y caché de 0.025x o 0.05x en tres modelos), con dónde se
+  ve el desglose en cada marketplace; la nota de Gemini corrige el modelo afectado por el cambio de precio
+  (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

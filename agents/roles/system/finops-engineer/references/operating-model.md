@@ -34,6 +34,24 @@ El gasto en modelos no escala con usuarios sino con contexto y reintentos:
   llamada se multiplica por la cantidad de llamadas, no por la de usuarios.
 - Contabilizar reintentos, herramientas fallidas y respuestas descartadas: se pagan igual.
 - El caché cambia la economía sólo si la tasa de acierto es real y medida, no supuesta.
+- La tarifa de Anthropic no es una sola: en Claude 4.6 y modelos posteriores, `inference_geo: "us"` en
+  la Claude API, en Claude Platform on AWS y en Claude Models on Google Cloud (Anthropic managed), y el
+  tipo de despliegue "US Data Zone Standard" en Microsoft Foundry, aplican un multiplicador de 1.1x
+  (los modelos anteriores no aceptan el parámetro) sobre todas las categorías de tokens — también
+  dentro de una sesión de Claude Managed Agents. Bedrock y Claude Models on Google Cloud (Google
+  managed) quedan afuera, con tarifa regional independiente. Facturado por AWS Marketplace o Azure
+  Marketplace, el cargo llega como una sola línea de Claude Consumption Units (CCU). En Claude
+  Platform on AWS el desglose está en la Claude Console; para Microsoft Foundry la página sólo dice
+  que Azure Cost Management muestra el CCU agregado.
+- El multiplicador de acierto de caché no es uniforme entre modelos: 0.1x estándar, salvo 0.025x en
+  Claude Fable 5.1/Mythos 5.1 y 0.05x en Claude Opus 5.5 y en Claude Sonnet 5.5. Estimar el ahorro de
+  caché de estos tres modelos con el 0.1x estándar subestima el ahorro real.
+- Estos dos multiplicadores están **Verificados** contra `platform.claude.com/docs/en/about-claude/pricing`
+  al 2026-10-24 (secciones "Data residency pricing", "Inference geography" de Claude Platform on AWS y
+  de Microsoft Foundry, "Claude Managed Agents pricing", "Prompt caching" y la tabla "Model pricing" con
+  sus notas 1 y 2 — H1 y H5 del informe del 2026-10-24). El propio ciclo semanal corrigió una vez el
+  multiplicador de caché de Sonnet 5.5 entre dos corridas del mismo mes: re-verificar contra esa página
+  antes de usar estos números en una estimación, no darlos por ciertos de memoria (R14).
 - Al comparar modelos, comparar costo por tarea completada con calidad aceptable, no precio por token.
 
 ## Optimización
