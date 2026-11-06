@@ -37,6 +37,9 @@ diseño — eso vive en el commit y en el código.
   `2026-11.md`).
 - **`database-administrator`**: entra Pgpool-II como fuente de avisos de seguridad, para seguir sus releases
   con parches de CVE junto a las de PgBouncer (propuesta `2026-11.md`).
+- **`data-scientist`**: ISO/IEC 25012 pasa a su ficha del comité de ISO, y entran las partes publicadas de
+  ISO/IEC 5259 (2 a 5, más el TR 6) como fuentes de calidad de datos para analítica y ML (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
