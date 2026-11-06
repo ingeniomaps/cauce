@@ -37,6 +37,16 @@ sources:
     topics: [liquidity-risk, maturity-analysis, disclosure]
   # Abierta el 2026-08-22. La edición vigente es la de 2013, que reemplazó a la de 1992 el
   # 2014-12-15; la página lo dice y por eso el nombre lleva el año.
+  # Agregado el 2026-11 (H2 del informe 2026-10-24): guía complementaria "Achieving Effective Internal
+  # Control Over Generative AI", publicada el 2026-02-23. Registro: Documentado por corroboración, no
+  # por lectura directa de coso.org — PR Newswire (2026-02-23, "today released ... Achieving Effective
+  # Internal Control Over Generative AI"), Journal of Accountancy (2026-02-26) y el Heads Up de
+  # Deloitte Dart (fechado él mismo 2026-04-03, que dice "On February 23, 2026, ... COSO released a
+  # publication", distinguiendo su propia fecha de emisión de la de COSO) coinciden en el 2026-02-23;
+  # coso.org/guidance-on-ic no muestra día ni mes en el cuerpo, sólo "(2026)" en el título. Aplica los
+  # cinco componentes del marco 2013 a la IA generativa (Journal of Accountancy, 2026-02-26); la guía no
+  # se leyó, así que no se cita qué exige sobre aprobación dual ni sobre tesorería. No cambia `url`,
+  # `tier` ni `topics` de la entrada existente.
   - name: COSO Internal Control—Integrated Framework (2013)
     url: https://www.coso.org/guidance-on-ic
     tier: standard
