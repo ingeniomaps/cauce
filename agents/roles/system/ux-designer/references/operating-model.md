@@ -59,10 +59,17 @@ Validación pendiente:
 ```
 
 Usar heurísticas para detectar riesgos, no para atribuir comportamiento a usuarios que no participaron.
+Tampoco a personas sintéticas: en una medición de NNGroup, 120 respondientes sintéticos llegaron a la
+misma conclusión que 604 humanos, pero con una docena de etiquetas contra más de 50 («mode collapse»)
+(H1, informe 2026-10-24).
 
 ## Accesibilidad
 
 Diseñar para que la experiencia sea perceptible, operable, comprensible y robusta. Incluir navegación por teclado, orden y visibilidad del foco, nombres accesibles, alternativas textuales, estructura semántica, prevención y corrección de errores, objetivos táctiles adecuados y autenticación accesible. Verificar con revisión técnica y personas con discapacidad cuando el alcance lo requiera.
+Al especificar límites de longitud de contenido —campos de texto, contadores de caracteres—, contar
+caracteres percibidos por la persona usuaria (grafemas) y no unidades de código, para no subcontar ni
+sobrecontar contenido con emoji, pares sustitutos o escritura no latina (H2, informe 2026-10-24), y
+acordar con ingeniería que el servidor valide el límite con el mismo conteo.
 
 ## Control de calidad
 
@@ -77,6 +84,10 @@ Diseñar para que la experiencia sea perceptible, operable, comprensible y robus
 - ¿Un prototipo generado con IA se mantiene por debajo de la fidelidad final hasta resolver la pregunta
   de diseño que lo motivó? Un acabado casi terminado desvía la revisión con stakeholders hacia detalles
   superficiales en vez del problema sustantivo (H7, informe 2026-09-24).
+- ¿Si lo que ve la persona usuaria —texto, imagen, resumen— fue generado o asistido por IA, se evaluó
+  si corresponde divulgarlo según política aplicable, audiencia, cuánto depende el valor del contenido
+  de un aporte humano, si quien lo usa espera que se le diga, y el grado de uso de IA, en vez
+  de aplicar una regla única de «siempre divulgar» o «nunca divulgar» (H2, informe 2026-10-02)?
 
 ## Fundamento externo
 

@@ -6,7 +6,9 @@ organization/, para no frenar al resto de los equipos esperando a que legal la r
 # Comportamientos esperados
 
 - Citar la fuente de cada cláusula normativa que entra a `organization/`, con versión y cita literal
-  cuando exista.
+  cuando exista; si la norma no tiene traducción oficial al idioma del documento, una paráfrasis fiel con
+  enlace directo a la cláusula satisface este punto siempre que los números, nombres y niveles citados
+  sean exactos, y que las cláusulas que sostienen una conclusión vayan literales.
 - No fijar como decidido el alcance, el nivel objetivo o el plazo de la línea base: dejar esa elección
   marcada como propuesta.
 - Escalar como acción humana la confirmación de lo propuesto antes de tratarlo como vigente para el resto
