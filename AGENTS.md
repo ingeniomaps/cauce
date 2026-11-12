@@ -524,6 +524,14 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   firma una persona— y una propiedad que cruza archivos, que se renombra en todos o rompe uno. El
   segundo es el caro: cambiarlo dejó molde y regex consistentes entre sí e incompatibles con todo lo
   escrito antes, y `npm run ci` siguió en verde.
+- **Un cambio que toca el SKILL.md de un cargo o uno de sus casos entrega su eval en el mismo PR.** El veredicto
+  anterior vence con ese cambio (caso 480), y lo que se entrega sin medir se acumula: el 2026-11-12 había 290 veredictos
+  vencidos, 227 de ellos de un solo commit que agregó un párrafo a todos los SKILL.md y 58 de cambios de octubre aplicados
+  sin re-evaluar. Renovarlos costó una corrida entera del catálogo. El promote mensual ya lo cumple; la regla es para lo
+  demás, sobre todo el cambio transversal, que vence todo el catálogo a la vez. Ahí la re-evaluación es parte del costo
+  que se decide, a unos 0,24M tokens por caso, y no algo que queda para después. Si no se va a medir, se dice en el PR
+  y el cambio no se entrega como si estuviera probado.
+
 - **Un guard no decide con una lista de palabras permitidas.** Lo que la persona quiso lo lee el agente, que
   es quien entiende intención; un guard es un script y sólo ve palabras. Por eso un guard nunca exige que
   el mensaje traiga cierto verbo o cierta frase para dejar pasar: decide sólo la dirección segura —lo que
