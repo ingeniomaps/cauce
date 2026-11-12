@@ -135,6 +135,10 @@ diseño — eso vive en el commit y en el código.
   `planning/inbox/lecciones/` para que el hallazgo llegue a su `learning/`; el modelo operativo distingue si un
   experimento funcionó de por qué funcionó, y nombra la tensión entre predictibilidad y resultados (propuesta
   `2026-11.md`).
+- **`product-marketing-manager`**: la segmentación declara qué audiencias o canales quedan fuera, o al menos el
+  criterio que los excluye; un claim que ninguna evidencia alcanzable puede sostener pasa a `retirado`; un flag, un
+  rollout gradual o un rollback se ofrecen sólo si existen y se ejercitaron. El caso 07 suma el changelog de
+  Northlake como fixture (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
