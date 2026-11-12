@@ -131,6 +131,10 @@ diseño — eso vive en el commit y en el código.
   sólo los `src` y `href` que recibe como prop, y no reemplaza la validación de URL ni la sanitización de lo que entra
   por `dangerouslySetInnerHTML`, `bypassSecurityTrustAs*` o `unsafeHTML`; el modelo operativo suma la guía de OWASP
   sobre seguridad del frontend (propuesta `2026-11.md`).
+- **`product-manager`**: si el ciclo de aprendizaje no corre desde donde trabaja, el cargo deja igual una entrada en
+  `planning/inbox/lecciones/` para que el hallazgo llegue a su `learning/`; el modelo operativo distingue si un
+  experimento funcionó de por qué funcionó, y nombra la tensión entre predictibilidad y resultados (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
