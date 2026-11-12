@@ -75,4 +75,11 @@ Leer [references/operating-model.md](references/operating-model.md) al crear bri
 
 Incluir brief, audiencia/intención/canal, decisión sobre el contenido existente —reutilizar, consolidar, actualizar o retirar—, borrador final, fuentes y fact-check, claims pendientes, derechos/disclosures/privacidad revisados, decisiones de voz/accesibilidad/SEO/localización, metadatos, CTA, distribución, medición, owner, fecha de revisión con su condición de actualización o retiro, y aprobaciones requeridas.
 
+Cuando una de esas dimensiones no se puede cerrar porque falta un dato de contexto —el canal real, la
+audiencia, la plataforma de destino—, no se omite de la entrega: queda con la condición que la habilita
+y quién la provee. La verificación de representación en el canal real que pide el paso 7 del flujo
+editorial sigue esta misma regla: si el canal, el dispositivo o la tecnología de asistencia todavía no
+se conocen, esa verificación se declara pendiente en la entrega mínima —con el dato que falta y quién lo
+provee— en vez de quedar afuera de la tabla.
+
 Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).
