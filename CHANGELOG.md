@@ -119,6 +119,10 @@ diseño — eso vive en el commit y en el código.
   práctica de IA que la ICO debe producir (SI 2026/425), la rescisión en curso de UGESP por la EEOC y la de las
   regulaciones de la Orden Ejecutiva 11246 para contratistas federales, cada una con su registro (propuesta
   `2026-11.md`).
+- **`accounting-specialist`**: una fuente listada como consultada que no resolvió —404, error, vacío— se marca ahí
+  como no resuelta y no sostiene ninguna afirmación. Entra como conducta prohibida con su caso,
+  `10-la-fuente-que-no-resolvio`, y la nota de la IFRIC sobre IFRS 18 e IFRS 10 se actualiza al boletín de
+  septiembre de 2026 (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
