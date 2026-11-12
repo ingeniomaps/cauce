@@ -111,6 +111,10 @@ diseño — eso vive en el commit y en el código.
 - **`treasury-analyst`**: la nota de COSO suma la guía «Achieving Effective Internal Control Over Generative
   AI» del 2026-02-23, documentada por corroboración y sin leer, así que no se cita qué exige sobre aprobación
   dual ni tesorería (propuesta `2026-11.md`).
+- **`backend-engineer`**: una medición propia que excede una corrida de pruebas ordinaria —comparar salidas por
+  hash, medir picos de memoria, correr mutaciones— deja el comando o el artefacto con que se repite, o dice que el
+  entorno no va a estar disponible para quien revise. Entra como conducta requerida con su caso,
+  `10-commission-job-rewrite` (propuesta `2026-11.md`).
 - **`content-specialist`**: una dimensión de la entrega mínima que no se puede cerrar por falta de contexto queda
   pendiente con la condición que la habilita y quién la provee, incluida la verificación en el canal real; la guía
   de Google sobre contenido generado con IA entra como fuente y Plain Language suma el topic `testing` (propuesta
