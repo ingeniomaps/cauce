@@ -86,6 +86,31 @@ diseño — eso vive en el commit y en el código.
   en la pestaña del repositorio, que publica antes que la base global; un emparejamiento de dos CVE se verifica
   en la página de cada uno, y un «Patched versions: None» se contrasta contra el PR del fix y el tag (propuesta
   `2026-11.md`).
+- **`privacy-compliance-specialist`**: el Observatorio Legislativo del Parlamento Europeo entra como fuente
+  para seguir el tramo de protección de datos del Digital Omnibus VII (2025/0360(COD)), con el mandato del
+  Consejo documentado y el RGPD todavía sin modificar; el modelo operativo suma el Statement 1/2026 del EDPB
+  sobre lentes inteligentes (propuesta `2026-11.md`).
+- **`procurement-manager`**: NIST SP 1326, la guía práctica de due diligence de cadena de suministro para
+  proveedores de ICT (cinco componentes, de FOCI a niveles de la cadena), y NIST IR 8536, el marco de
+  trazabilidad en manufactura, entran como fuentes y referencias (propuesta `2026-11.md`).
+- **`sales-representative`**: la guía de marketing directo del ICO precisa cuándo PECR exige consentimiento:
+  para email a suscriptores individuales y llamadas automatizadas, no para email a una empresa ni llamadas en
+  vivo fuera de TPS/CTPS, con su registro (propuesta `2026-11.md`).
+- **`qa-engineer`**: la tabla de reglas de axe-core entra como fuente, con la nota de que desde 4.14.0
+  `label-content-name-mismatch` viene activada y cubre WCAG 2.5.3 Label in Name, y de que hay que fijar la
+  versión de axe-core antes de clasificar qué cubre por defecto (propuesta `2026-11.md`).
+- **`software-architect`**: el arc42 Quality Model (Q42) entra como fuente, y el modelo operativo mapea los
+  atributos de calidad a las nueve características de ISO/IEC 25010:2023 o al catálogo de Q42, sin reemplazar el
+  escenario propio de estímulo, ambiente, respuesta y umbral (propuesta `2026-11.md`).
+- **`tech-lead`**: el encabezado de las fuentes ya cuenta once y fecha la entrada de IEEE 1028-2008, y la nota
+  pendiente de ISO/IEC/IEEE 24765 registra la quinta corrida seguida en 403, sin cambiar su registro (propuesta
+  `2026-11.md`).
+- **`technical-program-manager`**: ISO 21513 (evaluación post-proyecto y post-programa) e ISO 21508 ed. 2
+  (valor ganado) entran como fuentes, y la nota de ISO 21502:2020 registra la revisión limitada que aprobó el
+  plenario de ISO/TC 258, con la edición 2020 todavía vigente (propuesta `2026-11.md`).
+- **`treasury-analyst`**: la nota de COSO suma la guía «Achieving Effective Internal Control Over Generative
+  AI» del 2026-02-23, documentada por corroboración y sin leer, así que no se cita qué exige sobre aprobación
+  dual ni tesorería (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

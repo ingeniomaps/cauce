@@ -91,5 +91,6 @@ Modelo global sintetizado con fuentes revisadas en agosto de 2026:
     exige un test de tres partes. Documentado, no verificado como versión final: antes de usarlo para
     cerrar "Necesidad y base propuesta" o "Fuente y recolección" cuando se entrena o usa IA con datos
     propios o de terceros, comprobar si ya se publicó la versión definitiva.
+- [EDPB — Statement 1/2026 sobre lentes inteligentes](https://www.edpb.europa.eu/documents/statement/statement-of-the-edpb-on-smart-glasses_en) (adoptado 2026-10-13): en lentes pensados sobre todo para asistencia en tiempo real, el almacenamiento persistente de audio, imagen o video debería estar desactivado por defecto salvo que la función lo requiera o el usuario lo active con salvaguardas; el rol de responsable depende del uso (usuario fuera de la excepción doméstica, fabricante o proveedor de la app). Verificado contra el PDF del statement. Es un statement, no una Guideline: no usarlo como norma vinculante.
 
 Estas fuentes son una base metodológica, no una afirmación de que la legislación europea aplica a todas las empresas. Añadir fuentes oficiales de cada jurisdicción y sector real.

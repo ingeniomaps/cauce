@@ -43,3 +43,26 @@ sources:
     tier: regulation
     status: draft-in-consultation-until-2026-10-30
     topics: [ai-processing, web-scraping, eu-guidance]
+  # Observatorio Legislativo del Parlamento Europeo, procedimiento 2025/0360(COD) — tramo de protección
+  # de datos del Digital Omnibus VII. Declarada porque dos corridas consecutivas (informes 2026-10-02 y
+  # 2026-10-24) tuvieron que rastrear este número de procedimiento desde cero; las páginas oficiales que
+  # se intentaron antes (digital-strategy.ec.europa.eu, europarl.europa.eu/legislative-train) fallaron con
+  # 500/403/vacío. Estado a la fecha del informe 2026-10-24 (no re-verificado desde entonces, así que antes
+  # de citarlo hay que releer la página): el Consejo acordó mandato negociador el 21/10/2026 —Documentado
+  # por tres fuentes secundarias concurrentes (iapp.org, y resultados de búsqueda de consilium.europa.eu y
+  # agenceurope.eu), no Verificado contra el texto oficial, porque el comunicado del Consejo y el PDF
+  # ST-14756-2026-INIT devuelven 403 o no se pueden decodificar—; el Parlamento Europeo todavía no fijó su
+  # posición, así que esta misma ficha (que sigue el lado del Parlamento) sigue mostrando «Awaiting
+  # committee decision» y no refleja el mandato del Consejo. El contenido detallado del mandato (definición
+  # de dato personal, seudonimización, entrenamiento de IA, cookies) no se registra en ningún archivo del
+  # cargo mientras sólo lo respalde `iapp.org`: es la misma distinción que exige el caso
+  # `08-pending-guideline-finality` para una guía, aplicada acá a una fuente primaria inalcanzable. El RGPD
+  # vigente (`eur-lex.europa.eu/eli/reg/2016/679/oj`, ya declarado arriba) sigue sin modificación: ningún
+  # acto legislativo lo cambió todavía, y esta entrada no afirma lo contrario. No hay entrada separada para
+  # `consilium.europa.eu`: bloqueó WebFetch con 403 o 500 en las dos corridas que lo intentaron; se agrega
+  # el día que una corrida logre leerla.
+  - name: Observatorio Legislativo del Parlamento Europeo — Digital Omnibus VII, tramo de protección de datos (2025/0360(COD))
+    url: https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2025%2F0360%28COD%29
+    tier: regulation
+    status: awaiting-committee-decision
+    topics: [eu-data-protection, legislative-tracking]

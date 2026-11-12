@@ -14,3 +14,5 @@ sources:
   - {name: ISO 31000 risk management, url: "https://committee.iso.org/standard/65694.html", tier: standard, topics: [risk, principles, process]}
   - {name: PMI standards and Program Management Fifth Edition, url: "https://www.pmi.org/standards/", tier: profession, topics: [program, benefits, collaboration, principles]}
   - {name: PMI Standard for Artificial Intelligence in Portfolio, Program, and Project Management, url: "https://www.pmi.org/about/press-media/2026/pmi-publishes-worlds-first-global-standard-for-ai-in-project-work", tier: profession, topics: [ai governance, lifecycle, guardrails]}
+  - {name: ISO 21513 post-project and post-programme evaluation, url: "https://committee.iso.org/sites/tc258/home/projects/published/iso-21513.html", tier: standard, topics: [benefits, evaluation, post-programme]}
+  - {name: ISO 21508 earned value management (Ed. 2), url: "https://committee.iso.org/sites/tc258/home/projects/published/iso-21508-ed2.html", tier: standard, topics: [earned value, forecast, critical path]}
