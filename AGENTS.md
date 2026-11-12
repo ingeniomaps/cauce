@@ -273,6 +273,16 @@ El paso 4 sorprende y es correcto: la firma es un commit que nadie revisó, y la
 decir sobre él. Y firmar no es aplicar — `agent-promote` sigue siendo un acto aparte; el porqué de esa
 separación vive en el encabezado de `sign-proposal.yml`, no acá.
 
+#### Declinar una propuesta es archivarla, no cerrar su PR
+
+Cerrar el PR no archiva nada: los informes del período quedan en `draft`, no hay propuesta en `main` que diga que se
+decidió, y el ensamblaje siguiente los vuelve a leer. Pasó el 2026-11-02 con #943 y #971, y se arregló en #987. Lo que
+declina es `ops learn <cargo> --archived --period AAAA-MM --reason "…"` sobre la rama del PR, que después se mergea.
+
+Y acá se corre con `CAUCE_OWNER="@ingeniomaps (Manuel Pinzon)"`. Sin esa variable, el responsable sale de
+`git config user.email`, que en una empresa es lo correcto, y acá publicaba un email personal en `learning/HISTORY.md`,
+que viaja en el paquete.
+
 #### Un re-run repite el árbol, no lo recalcula
 
 Cuando uno de esos PR falla y el arreglo se mergea a `main`, **el botón de re-run no sirve**: replaya el
