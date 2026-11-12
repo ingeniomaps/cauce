@@ -111,6 +111,41 @@ diseño — eso vive en el commit y en el código.
 - **`treasury-analyst`**: la nota de COSO suma la guía «Achieving Effective Internal Control Over Generative
   AI» del 2026-02-23, documentada por corroboración y sin leer, así que no se cita qué exige sobre aprobación
   dual ni tesorería (propuesta `2026-11.md`).
+- **`backend-engineer`**: una medición propia que excede una corrida de pruebas ordinaria —comparar salidas por
+  hash, medir picos de memoria, correr mutaciones— deja el comando o el artefacto con que se repite, o dice que el
+  entorno no va a estar disponible para quien revise. Entra como conducta requerida con su caso,
+  `10-commission-job-rewrite` (propuesta `2026-11.md`).
+- **`content-specialist`**: una dimensión de la entrega mínima que no se puede cerrar por falta de contexto queda
+  pendiente con la condición que la habilita y quién la provee, incluida la verificación en el canal real; la guía
+  de Google sobre contenido generado con IA entra como fuente y Plain Language suma el topic `testing` (propuesta
+  `2026-11.md`).
+- **`people-operations-manager`**: ISO 30201 entra como fuente, y el modelo operativo registra el código de
+  práctica de IA que la ICO debe producir (SI 2026/425), la rescisión en curso de UGESP por la EEOC y la de las
+  regulaciones de la Orden Ejecutiva 11246 para contratistas federales, cada una con su registro (propuesta
+  `2026-11.md`).
+- **`accounting-specialist`**: una fuente listada como consultada que no resolvió —404, error, vacío— se marca ahí
+  como no resuelta y no sostiene ninguna afirmación. Entra como conducta prohibida con su caso,
+  `10-la-fuente-que-no-resolvio`, y la nota de la IFRIC sobre IFRS 18 e IFRS 10 se actualiza al boletín de
+  septiembre de 2026 (propuesta `2026-11.md`).
+- **`frontend-engineer`**: la viñeta de sinks del DOM aclara que el bloqueo de URLs `javascript:` de React 19 cubre
+  sólo los `src` y `href` que recibe como prop, y no reemplaza la validación de URL ni la sanitización de lo que entra
+  por `dangerouslySetInnerHTML`, `bypassSecurityTrustAs*` o `unsafeHTML`; el modelo operativo suma la guía de OWASP
+  sobre seguridad del frontend (propuesta `2026-11.md`).
+- **`product-manager`**: si el ciclo de aprendizaje no corre desde donde trabaja, el cargo deja igual una entrada en
+  `planning/inbox/lecciones/` para que el hallazgo llegue a su `learning/`; el modelo operativo distingue si un
+  experimento funcionó de por qué funcionó, y nombra la tensión entre predictibilidad y resultados (propuesta
+  `2026-11.md`).
+- **`product-marketing-manager`**: la segmentación declara qué audiencias o canales quedan fuera, o al menos el
+  criterio que los excluye; un claim que ninguna evidencia alcanzable puede sostener pasa a `retirado`; un flag, un
+  rollout gradual o un rollback se ofrecen sólo si existen y se ejercitaron. El caso 07 suma el changelog de
+  Northlake como fixture (propuesta `2026-11.md`).
+- **`release-manager`**: al parafrasear una fuente documentada hacia un artefacto que se lee solo se conserva su
+  modalidad —una vía posible no se reescribe como requisito—, con su caso, `13-advisory-source-as-requirement`; DORA
+  «Working in small batches» entra como fuente (propuesta `2026-11.md`).
+- **`ux-designer`**: una norma sin traducción oficial se puede parafrasear con enlace a la cláusula si números y
+  niveles son exactos; las personas sintéticas tampoco reemplazan la investigación; los límites de longitud se
+  cuentan en grafemas, y la revisión pregunta si el contenido generado por IA tiene que divulgarse. El caso 09 se
+  ajusta al cambio (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 

@@ -48,6 +48,8 @@ Estado: borrador, aprobado, retirado
 
 El sustento debe existir antes de difundir el claim y corresponder a la interpretación razonable de la audiencia. Evitar letra pequeña que contradiga el mensaje principal.
 
+Un claim que ninguna evidencia alcanzable puede sustentar —un superlativo comparativo frente a *todos* los competidores, sin método para medirlos a todos, por ejemplo— pasa a `Estado: retirado` y no se queda indefinidamente junto al que sólo espera una medición en curso bajo el mismo estado de espera. Las dos son esperas distintas: una no tiene camino hacia la evidencia, la otra sí, y el registro las distingue para que la primera no se publique el día que aparezca un estudio sobre la segunda.
+
 ## Lanzamiento
 
 - Tier: definir por impacto en clientes, mercado, operación y riesgo, no por entusiasmo interno.
@@ -56,6 +58,7 @@ El sustento debe existir antes de difundir el claim y corresponder a la interpre
 - Canales: elegir por journey y comportamiento esperado.
 - Feedback: instrumentar preguntas, señales y owner antes de salir.
 - Rollout: separar disponibilidad técnica, anuncio y promoción; permitir lanzamiento gradual.
+- Mecanismo: antes de proponer un flag, un rollout gradual o un rollback como salida disponible, confirmar que existe y que fue ejercitado; si el proyecto lo declara «por definir», se nombra como brecha a resolver, no como opción sobre la mesa.
 
 ## Inteligencia competitiva
 

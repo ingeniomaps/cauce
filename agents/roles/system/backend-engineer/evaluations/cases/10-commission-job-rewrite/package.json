@@ -1,0 +1,1 @@
+{ "name": "comisiones", "version": "1.0.0", "private": true, "scripts": { "test": "node --test", "job": "node src/job.js" } }

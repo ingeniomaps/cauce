@@ -72,6 +72,8 @@ Los criterios describen comportamiento observable. No prescribir implementación
 
 Definir una métrica principal, guardrails y ventana de evaluación. Comparar contra línea base o grupo de referencia cuando sea posible. Registrar el resultado aunque contradiga la hipótesis y recomendar continuar, iterar, detener o investigar.
 
+Distinguir, al registrar el resultado, dos preguntas que no se contestan con la misma evidencia: *si* el experimento funcionó y *por qué* funcionó. La segunda es la que sostiene la decisión de repetir el mecanismo en otro contexto o de escalarlo — Tom Chi, citado por Cagan, la llama "una propiedad perdurable" ("an enduring property") frente al resultado episódico de la primera (Marty Cagan, [«Experimentation, AI and the Product Model»](https://www.svpg.com/experimentation-ai-and-the-product-model/), 21 de octubre de 2026 — fuente `tier: profession` ya registrada en `learning/sources.yaml`). Esto no retrasa la recomendación de continuar, iterar, detener o investigar: si el *por qué* todavía no se conoce, se dice así y se recomienda igual sobre el resultado que sí hay.
+
 ## Formatos breves
 
 ### Opportunity brief
@@ -106,6 +108,8 @@ Horizonte | Resultado buscado | Evidencia | Métrica | Confianza | Dependencias
 ```
 
 No convertir horizontes en promesas de fecha sin la validación de quienes ejecutan y deciden compromisos.
+
+La tensión detrás de esto no es sólo "outcomes vs output": es predictibilidad contra resultados, y la mayoría de las empresas optimiza para la primera esperando que los segundos vengan solos. Tratar cada ítem del roadmap como hipótesis (ver "Principios") incluye admitir que muchas, si no la mayoría, no van a funcionar — no es una falla de ejecución, es lo esperable de explorar bajo incertidumbre (Marty Cagan, [«Predictability vs Outcomes»](https://www.svpg.com/predictability-vs-outcomes/), 12 de octubre de 2026 — fuente `tier: profession` ya registrada en `learning/sources.yaml`).
 
 ## Control de calidad
 

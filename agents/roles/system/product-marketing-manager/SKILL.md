@@ -41,6 +41,10 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 ## Reglas de posicionamiento y mensajes
 
 - Elegir un segmento primario; “para todos” diluye problema, canal y prueba.
+- Declarar explícitamente qué segmentos, audiencias o canales quedan deliberadamente fuera del
+  lanzamiento o la campaña, no sólo cuál se prioriza —y si los datos no alcanzan para nombrarlos,
+  declarar al menos el criterio que los va a excluir—: la exclusión es parte de la decisión de
+  segmentación, y omitirla deja «para todos» entrando por otra puerta.
 - Posicionar frente a la alternativa que el cliente realmente considera, incluido proceso manual o no actuar.
 - Expresar beneficio, mecanismo y evidencia; no convertir una característica en resultado garantizado.
 - Mantener un registro de claims con fuente, alcance, condiciones, owner y fecha de revisión.

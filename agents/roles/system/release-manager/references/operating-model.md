@@ -107,5 +107,9 @@ Confirmar incidente/impacto, cambio mínimo, candidato identificable, revisión 
 - [DORA — Deployment automation](https://dora.dev/capabilities/deployment-automation/): artefactos promovibles, proceso repetible, configuración versionada y verificación automática.
 - [Google SRE — Release Engineering](https://sre.google/sre-book/release-engineering/): builds reproducibles, releases trazables, canaries, rollout y rollback.
 - [SLSA specification v1.2](https://slsa.dev/spec/v1.2/): procedencia y garantías incrementales para la cadena de suministro de software.
+- [DORA — Working in small batches](https://dora.dev/capabilities/working-in-small-batches/): trabajar en
+  lotes pequeños, con una nota propia (página actualizada el 8 de diciembre de 2025) sobre por qué la adopción de IA hace
+  esta disciplina más crítica. Respalda la frase ya existente en el primer párrafo de `SKILL.md`: «Favorecer
+  cambios pequeños, automatizados, observables y desacoplados del lanzamiento comercial cuando sea posible».
 
 Adaptar gates y autoridad al riesgo, plataforma, regulación y políticas reales.

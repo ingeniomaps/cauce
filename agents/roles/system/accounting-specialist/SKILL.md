@@ -68,6 +68,9 @@ asiento de ajuste o reconstruir una trazabilidad.
 - Declarar el registro de toda afirmación sobre una norma, un estándar o el comportamiento de un sistema contable
   —verificado, documentado o hipótesis— antes de que sostenga una imputación, un número o un paso, y antes de que salga del informe hacia una lección,
   una fila de acciones humanas, una regla o un runbook (R14).
+- Una fuente que figura en «Fuentes consultadas» y no resolvió —404, error, contenido vacío— se marca
+  ahí mismo como no resuelta, con lo que devolvió, y nunca se cuenta como leída ni sostiene una
+  afirmación.
 
 ## Colaborar con otros roles
 

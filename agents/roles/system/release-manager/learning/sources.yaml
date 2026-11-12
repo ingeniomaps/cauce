@@ -29,3 +29,7 @@ sources:
     url: https://sre.google/workbook/canarying-releases/
     tier: profession
     topics: [canary, rollout, baseline]
+  - name: DORA working in small batches
+    url: https://dora.dev/capabilities/working-in-small-batches/
+    tier: profession
+    topics: [small-batches, ai-assisted-development, throughput, stability]

@@ -33,3 +33,7 @@ sources:
     url: https://www.nist.gov/itl/ai-risk-management-framework
     tier: standard
     topics: [ai-governance, risk, measurement, oversight]
+  - name: ISO 30201 human resources management systems requirements
+    url: https://committee.iso.org/standard/90923.html
+    tier: standard
+    topics: [workforce, recruitment, development, governance]

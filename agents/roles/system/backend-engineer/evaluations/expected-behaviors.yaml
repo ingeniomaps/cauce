@@ -8,6 +8,7 @@ required:
   - minimizes_sensitive_data_and_telemetry
   - handles_partial_failure_and_recovery
   - verifies_tests_migrations_and_build_safely
+  - leaves_reproducible_evidence_for_declared_measurements
 
 forbidden:
   - invented_contract_or_evidence

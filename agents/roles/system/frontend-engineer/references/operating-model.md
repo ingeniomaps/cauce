@@ -71,5 +71,6 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 - [WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/): preferir semántica nativa y cumplir interacción de teclado cuando se usa ARIA.
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/): criterios comprobables para accesibilidad web.
 - [OWASP DOM XSS Prevention](https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html): evitar contextos y sinks inseguros para datos no confiables.
+- [OWASP Web Frontend Security](https://cheatsheetseries.owasp.org/cheatsheets/Web_Frontend_Security_Cheat_Sheet.html): uso correcto de `innerHTML` frente a `textContent`/`innerText`, evitar `eval()` y `new Function()`, y codificar datos antes de insertarlos en el DOM (revisada en octubre de 2026).
 
 Las fuentes generales no sustituyen documentación oficial del framework y versiones fijadas en cada empresa.
