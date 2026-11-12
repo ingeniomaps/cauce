@@ -46,7 +46,12 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Reconocer los sinks con nombre propio de los frameworks más usados —`dangerouslySetInnerHTML` en React,
   `bypassSecurityTrustAs*` en Angular, `unsafeHTML` en Lit— como ejemplos de esa misma regla y no como la
   lista de lo prohibido: lo que obliga es sanitizar antes de insertar, con DOMPurify como opción por
-  defecto y no como requisito.
+  defecto y no como requisito. React 19 bloquea por defecto las URLs `javascript:` en los atributos `src`
+  y `href` que recibe directamente como prop —no en lo que entra por uno de estos sinks—, y esa protección
+  no reemplaza la validación de URL propia de la aplicación ni la sanitización que este bullet exige: lo
+  que llega a `dangerouslySetInnerHTML`, `bypassSecurityTrustAs*` o `unsafeHTML` sigue necesitando pasar
+  por ahí antes de insertarse (documentado: OWASP Cross Site Scripting Prevention Cheat Sheet, PR #2750,
+  2026-10-04, y guía de actualización a React 19, react-dom #26507).
 - Evitar `eval`, sinks DOM inseguros, secretos en bundles y tokens persistentes sin contrato de seguridad.
 - Cancelar o ignorar respuestas obsoletas; evitar estados de carga y errores que compitan entre sí.
 - Medir antes de optimizar. Dividir código, imágenes o trabajo de render sólo cuando resuelva un costo observado o un presupuesto documentado.

@@ -127,6 +127,10 @@ diseño — eso vive en el commit y en el código.
   como no resuelta y no sostiene ninguna afirmación. Entra como conducta prohibida con su caso,
   `10-la-fuente-que-no-resolvio`, y la nota de la IFRIC sobre IFRS 18 e IFRS 10 se actualiza al boletín de
   septiembre de 2026 (propuesta `2026-11.md`).
+- **`frontend-engineer`**: la viñeta de sinks del DOM aclara que el bloqueo de URLs `javascript:` de React 19 cubre
+  sólo los `src` y `href` que recibe como prop, y no reemplaza la validación de URL ni la sanitización de lo que entra
+  por `dangerouslySetInnerHTML`, `bypassSecurityTrustAs*` o `unsafeHTML`; el modelo operativo suma la guía de OWASP
+  sobre seguridad del frontend (propuesta `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
