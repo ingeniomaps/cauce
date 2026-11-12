@@ -111,7 +111,7 @@ creó `planning/INBOX.md` entero —887 líneas— junto con `BACKLOG.md`, `DONE
 pregunta del caso al pie habría dado «lo escribió un recorrido», que es falso.
 
 **«O en commits sueltos → entraron por otra vía y falta encontrarla»** — tampoco, y la vía tiene nombre. Los
-19 commits que tocaron el INBOX los firma una sola identidad, `Manuel Pinzon <malpisa1@gmail.com>`: ninguno
+19 commits que tocaron el INBOX los firma una sola identidad, `Manuel Pinzon`: ninguno
 es de un bot ni de un recorrido. Y `planning/done/` está **vacío**, así que en esa instancia ningún
 recorrido escribió nunca una entrada de DONE. Lo que llenó el INBOX fue la migración de un sistema de
 planificación **anterior a Cauce**.
@@ -152,7 +152,7 @@ Todo en la instancia `initech-ops`, sólo lectura:
 - `git log --format='%h|%ad|%an|%s' --date=short -- planning/INBOX.md` → **19 commits**, del 2026-09-03 al
   2026-09-06.
 - `git log --format='%an <%ae>' -- planning/INBOX.md | sort -u` → **una sola línea**,
-  `Manuel Pinzon <malpisa1@gmail.com>`.
+  `Manuel Pinzon`.
 - Por cada uno de los 19, `git show --name-only` filtrado por `^planning/done/` → **un solo commit**,
   `289f15d`.
 - `git show --stat 289f15d` → `docs(planning): migrate the pre-cauce planning system`, 2026-09-03, con

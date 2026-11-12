@@ -49,7 +49,7 @@ Después de escribirlas, `ops context planning` seguía contestando:
 
 ```
 TASK   integraciones-status-y-conteo [full]  service: platform  hito: plataforma-en-su-dominio
-CLAIM  tuya desde el reclamo (malpisa1@gmail.com)
+CLAIM  tuya desde el reclamo (persona@example.com)
 ```
 
 O sea que la corrida siguiente habría vuelto a elegir la misma tarea y a pagar Ready para llegar al

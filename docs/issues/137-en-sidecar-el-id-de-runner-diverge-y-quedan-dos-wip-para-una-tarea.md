@@ -44,7 +44,7 @@ Devuelve:
 
 ```
 WIP    idle
-TAKEN  retirar-guias-mcp-obsoletas (malpisa1@gmail.com — vos, desde otro runner)
+TAKEN  retirar-guias-mcp-obsoletas (persona@example.com — vos, desde otro runner)
 ```
 
 Y `ls planning/wip/` muestra los dos:
