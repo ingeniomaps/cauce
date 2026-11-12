@@ -139,6 +139,9 @@ diseño — eso vive en el commit y en el código.
   criterio que los excluye; un claim que ninguna evidencia alcanzable puede sostener pasa a `retirado`; un flag, un
   rollout gradual o un rollback se ofrecen sólo si existen y se ejercitaron. El caso 07 suma el changelog de
   Northlake como fixture (propuesta `2026-11.md`).
+- **`release-manager`**: al parafrasear una fuente documentada hacia un artefacto que se lee solo se conserva su
+  modalidad —una vía posible no se reescribe como requisito—, con su caso, `13-advisory-source-as-requirement`; DORA
+  «Working in small batches» entra como fuente (propuesta `2026-11.md`).
 - **`ux-designer`**: una norma sin traducción oficial se puede parafrasear con enlace a la cláusula si números y
   niveles son exactos; las personas sintéticas tampoco reemplazan la investigación; los límites de longitud se
   cuentan en grafemas, y la revisión pregunta si el contenido generado por IA tiene que divulgarse. El caso 09 se

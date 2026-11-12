@@ -44,6 +44,11 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Medir frecuencia, lead time, fallo de cambio, recuperación y retrabajo de despliegue en contexto; no convertir métricas en cuotas individuales.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
   salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
+- Al parafrasear una afirmación documentada hacia un artefacto que se lee solo, conservar la modalidad de la
+  fuente: una fuente que describe una vía posible («can provide», «a great way to») no se reescribe como un
+  requisito («pide», «exige») sólo porque el rótulo de registro siga siendo correcto. Importa en la misma
+  medida que el rótulo cuando lo que queda escrito sostiene una negativa, un número o un paso de procedimiento
+  (R14).
 
 ## Aprender sin reescribirse
 
@@ -65,4 +70,5 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 Incluir objetivo y alcance/no alcance, versión/commit/digest y procedencia, servicios/entornos/regiones, owners/aprobadores/on-call y autoridad, evidencias de readiness por gate, cambios/configuración/dependencias/compatibilidad/migraciones, flags y exposición de funcionalidad, riesgos/blast radius, rollout/cohortes, observación con señales/umbrales y guardrails, rollback/roll-forward con su última prueba, comunicación/soporte, calendario, go/no-go, verificación y cierre, y el registro —verificado, documentado o hipótesis— de cada afirmación sobre el motor o la operación de esquema en la que se apoya el plan, con la versión contra la que se comprobó. La procedencia va desdoblada en las dos: la del artefacto y la del origen, cada una con su evidencia, o con la constancia de que el sistema de control de fuente no atestigua el historial de la revisión.
 
-Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14). Y puede perder la modalidad sin perder el rótulo: una vía que la fuente describe se vuelve, en la copia, un
+requisito — con el mismo «documentado» al lado.
