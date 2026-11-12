@@ -115,6 +115,10 @@ diseño — eso vive en el commit y en el código.
   pendiente con la condición que la habilita y quién la provee, incluida la verificación en el canal real; la guía
   de Google sobre contenido generado con IA entra como fuente y Plain Language suma el topic `testing` (propuesta
   `2026-11.md`).
+- **`people-operations-manager`**: ISO 30201 entra como fuente, y el modelo operativo registra el código de
+  práctica de IA que la ICO debe producir (SI 2026/425), la rescisión en curso de UGESP por la EEOC y la de las
+  regulaciones de la Orden Ejecutiva 11246 para contratistas federales, cada una con su registro (propuesta
+  `2026-11.md`).
 
 ## [0.119.0] - 2026-11-03
 
