@@ -1,14 +1,21 @@
 ---
 caso: 492
 titulo: Las lecciones salen sólo del Review de autobuild; lo que una persona corrige en la review del PR no entra
-estado: abierto
+estado: aplazado
+reabrir-si: una instancia pide sacar lecciones de la review humana de sus PR, o el 484 ya salió y su `corregido:` confirmado se usó un mes en una instancia real
 prioridad: baja
 version-detectada: 0.119.0
 ---
 
 # 492 — Las lecciones salen sólo del Review de autobuild; lo que una persona corrige en la review del PR no entra
 
-**🔴 abierto** · detectado en 0.119.0 · prioridad **baja**: es una fuente nueva, no un defecto. Pide una decisión de producto y una integración con la forja, y depende del 484.
+**⏸ aplazado** · detectado en 0.119.0 · prioridad **baja**: es una fuente nueva, no un defecto. Pide una decisión de producto y una integración con la forja, y depende del 484.
+
+## Decisión del 2026-11-13
+
+Aplazado por quien firma. Hoy ninguna instancia lo pidió, y leer la forja ata el motor de lecciones a GitHub. Además
+el 484, del que depende, recién está en la rama: `corregido:` todavía no se usó con su significado nuevo. Se reabre
+con un pedido real o con ese mes de uso, y lo que se mida entonces decide si la fuente nueva agrega algo.
 
 ## Resumen
 
@@ -19,7 +26,7 @@ version-detectada: 0.119.0
 No es un defecto, así que no hay nada que reproducir. Lo comprobado:
 
 - `template/planning/LESSONS.md:3-6`: las lecciones salen de lo que el Review de `autobuild` dejó en `done/`.
-- `engine/planning/lessons.js:34-37`: `corrected()` lee sólo el segmento `corregido:` de `done/`.
+- `engine/planning/lessons.js:36-40`: `corrected()` lee sólo el segmento `corregido:` de `done/`.
 
 ## Causa raíz
 
