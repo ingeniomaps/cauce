@@ -1,0 +1,9 @@
+CI #4412 — facturacion — rama rename-customer — verde
+
+build     ✓  42s
+lint      ✓  18s
+test      ✓  1m 07s   214 pruebas, 214 pasan
+  cobros/cliente.test.js        12 ✓
+  cobros/factura.test.js        19 ✓
+  cobros/recordatorios.test.js   8 ✓
+  …
