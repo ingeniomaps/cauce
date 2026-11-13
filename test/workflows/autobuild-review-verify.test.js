@@ -68,7 +68,6 @@ test('lo confirmado en vueltas distintas se registra una vez cada uno', async ()
     ['el handler no valida el monto', 'falta el caso vacío'])
 })
 
-// Con dos vueltas el mismo id no puede nombrar dos hallazgos distintos.
 test('los bloqueantes nuevos de la segunda vuelta llevan id de esa vuelta', async () => {
   const B2 = { detail: 'un comentario sigue con la forma vieja', blocking: true, verified: true, fixable: true }
   const run = await runFlow(script(reviewed('con-condiciones', [B1]),
@@ -88,13 +87,11 @@ test('el id se reconoce aunque el revisor lo escriba con otra mayúscula', async
   assert.match(doneOf(run), /corregido: el handler no valida el monto/)
 })
 
-// Lo que no se confirma vuelve con su id, así que repetirlo en concerns lo mandaría a corregir dos veces.
 test('la re-revisión pide no repetir en concerns lo que sigue de la lista', async () => {
   const run = await runFlow(script(reviewed('con-condiciones', [B1]), reviewed('aprobado', [], [confirmed('r1-B1')])))
   assert.match(reviewsOf(run)[1], /no lo repitas en concerns/)
 })
 
-// Antes `noted` leía sólo la última pasada: lo anotado o sospechado en una que después se re-revisaba se perdía.
 test('lo anotado en una pasada que se re-revisa llega igual al INBOX', async () => {
   const note = { detail: 'el nombre del handler podría ser más claro', blocking: false }
   const doubt = { detail: 'el total podría desbordar', blocking: true, verified: false }

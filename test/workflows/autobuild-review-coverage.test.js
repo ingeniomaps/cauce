@@ -2,8 +2,7 @@
 
 // Review recibe la lista de archivos que toca el diff y contesta en `opened` cuáles abrió; el motor resta y exige el
 // resto (caso 485). Antes sólo frenaba un `consulted` vacío: un revisor que abría un archivo de diez y lo declaraba
-// aprobaba igual. El cruce es de conjuntos a propósito: leer la prosa de `consulted` para adivinar qué se abrió fue
-// lo que el 464 pagó con ocho revisiones.
+// aprobaba igual.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -50,7 +49,6 @@ test('lo que cuenta es opened, no lo que consulted menciona', async () => {
   }
 })
 
-// La pasada que abre lo que faltaba se suma a la primera: reemplazarla perdía su `bloqueado` y lo que había encontrado.
 test('la pasada de más no borra un bloqueo ni lo que la primera encontró', async () => {
   const blocked = { ...approves(), verdict: 'bloqueado',
     concerns: [{ detail: 'el handler arma el SQL con el monto', blocking: true, verified: true }] }
@@ -80,7 +78,6 @@ test('lo que el proyecto declara en reviewExempt no se exige', async () => {
   assert.match(without.result.detail, /go\.sum\.lock/)
 })
 
-// Con `runner.commitPerTask` apagado el árbol trae el diff de las tareas anteriores de la corrida.
 test('lo que ya estaba sin commitear antes de construir no se exige', async () => {
   const run = await runFlow({
     'Build|review-baseline': { files: ['previa/otra-tarea.go'] },
@@ -93,7 +90,6 @@ test('lo que ya estaba sin commitear antes de construir no se exige', async () =
   assert.match(before, /antes de que T-1 empiece: puede no haber nada/)
 })
 
-// Retomando desde el WIP, el árbol ya tiene el trabajo de esta tarea: restarlo lo sacaría de la revisión.
 test('al retomar desde el WIP no se saca la foto de antes', async () => {
   const wip = { ...baseScript()[KEY.context], claimed: true, wipActive: true, wip: { phase: 'Build', complete: 1,
     pending: 1 } }
@@ -109,7 +105,6 @@ test('el pedido del diff pide el lado nuevo de un renombre y deja afuera lo borr
   assert.match(diff.prompt, /de un renombre, sólo la ruta nueva; un archivo borrado no va/)
 })
 
-// Cuando revisa otra sesión, el diff es el de los commits de quien construyó y no el del árbol, que está limpio.
 test('con --role review el diff sale de los commits de quien construyó, sin foto del árbol', async () => {
   const wip = { ...baseScript()[KEY.context], claimed: true, wipActive: true, wip: { phase: 'Review', complete: 1,
     pending: 0 } }

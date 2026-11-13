@@ -89,7 +89,7 @@ function validateOpsConfig(config) {
     || bounded.some((one) => typeof one !== 'string' || !one.trim()))) {
     errors.push('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben')
   }
-  // Un patrón vacío, o uno que casa con todo, sacaría de la revisión el diff entero (caso 485).
+  // Un patrón vacío casaría con cualquier ruta.
   const exempt = config.reviewExempt
   if (exempt !== undefined && (!Array.isArray(exempt)
     || exempt.some((one) => typeof one !== 'string' || !one.trim()))) {

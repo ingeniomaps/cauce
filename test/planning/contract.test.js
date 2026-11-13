@@ -379,7 +379,6 @@ test('contract lleva el Mapa real que escribió el proyecto, y nada si sigue sie
   assert.match(run(['contract', root]).stdout, /^mapa {7}2 línea\(s\) de organization\/workspace\.md$/m)
 })
 
-// Lo que una revisión no tiene que abrir lo declara el proyecto, y llega al recorrido por el contrato (caso 485).
 test('contract lleva reviewExempt cuando el proyecto lo declara, y no lo inventa cuando no', () => {
   const root = instance('cauce-contract-exempt-')
   assert.equal(contractOf(root).value.reviewExempt, undefined)

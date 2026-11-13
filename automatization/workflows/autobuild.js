@@ -525,7 +525,7 @@ const CONTRACT = {
     reviewExempt: { type: 'array', items: { type: 'string' } },
   },
 }
-// Los archivos que toca el diff que Review juzga, para cruzarlos contra lo que declara haber abierto (caso 485).
+// La lista de archivos de un diff, que devuelve un clerk; para qué, donde se pide.
 const DIFFED = {
   type: 'object', additionalProperties: false, required: ['files'],
   properties: { files: { type: 'array', items: { type: 'string' } } },
@@ -1966,7 +1966,6 @@ while (rounds++ < MAX_TASKS) {
     const required = [...new Set(diffed.files.map(clean))]
       .filter((file) => file && !earlier.has(file) && !exempt.some((pattern) => pattern.test(file)))
     const unopened = (verdict) => required.filter((file) => !(verdict.opened || []).map(clean).includes(file))
-    // Review recibe la lista exacta y contesta cuáles abrió: el cruce es de conjuntos, no una lectura de su prosa.
     const OPEN = required.length ? ` El diff toca estos archivos: ${required.join(', ')}. En opened, cada uno que `
       + 'abriste de verdad, escrito igual que acá; el que no abriste no va.' : ''
     let review = await run(
@@ -2018,9 +2017,8 @@ while (rounds++ < MAX_TASKS) {
     // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
     // registro, y sin esto lo que el revisor señaló se iba con la corrida.
     const reviewDecisions = review.concerns.filter((one) => one.decision)
-    // Lo corregido llega a `done/` con su regla al lado: sin esto la misma falla corregida en diez tareas no dejaba
-    // rastro en ninguna (caso 207). Entra sólo lo que una re-revisión confirmó con evidencia, no lo que se mandó a
-    // corregir: de ese registro cuentan las lecciones (caso 484).
+    // Lo que llega a `done/` como corregido (caso 207): sólo lo que una re-revisión confirmó con evidencia, no lo que
+    // se mandó a corregir, porque de ahí cuentan las lecciones (caso 484).
     const fixed = []
     // Lo que esta pasada sospechó sin comprobar va al INBOX y no a corregir. Se guarda por lo mismo que
     // `fixed`: si la re-revisión no lo repite, sin esto no llegaba a ningún lado.
