@@ -172,6 +172,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **Cuatro casos de eval nuevos miden hábitos que las reglas del sistema ya pedían** (casos 487 a 490). Ninguno
+  nombra la conducta: `change-review/09` aprueba o no la quita de una clase que un archivo fuera del diff sigue usando;
+  `frontend-engineer/10` arregla un componente deprecado cuyo reemplazo tiene el mismo defecto; `backend-engineer/11`
+  encuentra dos políticas escritas que se contradicen; `qa-engineer/17` tiene que decir dónde buscó antes de afirmar
+  que algo falta. Los cuatro pasan, así que R13, R14 y R29 no cambian.
 - **`ops evaluate` cuenta cuántos veredictos siguen valiendo** (caso 480). Un veredicto vence si su contrato o su caso, con
   su fixture, cambiaron después; el resumen dice «7/7 pasan (…), 0 vigente(s): 7 mide(n) una versión anterior» en vez
   de un aviso que salía en casi todos los cargos.
