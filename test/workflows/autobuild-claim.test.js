@@ -339,7 +339,7 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   }
 
   const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1',
-    'closing', 'checkpoint-held', 'governed']
+    'closing', 'checkpoint-held', 'governed', 'review-diff', 'review-baseline']
   for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
   // Lo que redacta —una entrada o un commit de planning— va con el de escritura, que carga las reglas del
   // proyecto. Con el de oficina el commit ignoraba la convención de la empresa (caso 302).

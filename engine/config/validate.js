@@ -48,6 +48,13 @@ function validZone(name) {
   try { new Intl.DateTimeFormat('en-CA', { timeZone: name }); return true } catch { return false }
 }
 
+// Un patrón que casa con un archivo en la raíz y con uno tres carpetas abajo exime cualquier diff. Se pregunta al
+// glob en vez de listar las formas prohibidas: `**`, `**/*`, `***` y las que vengan (caso 485).
+const exemptsAll = (pattern) => {
+  const glob = pattern.trim().replace(/\/$/, '/**')
+  return ['a', 'x/y/z.go'].every((file) => { try { return path.matchesGlob(file, glob) } catch { return false } })
+}
+
 function validateOpsConfig(config) {
   const errors = []
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
@@ -57,6 +64,7 @@ function validateOpsConfig(config) {
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
     'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards',
+    'reviewExempt',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -80,6 +88,15 @@ function validateOpsConfig(config) {
   if (bounded !== undefined && (!Array.isArray(bounded)
     || bounded.some((one) => typeof one !== 'string' || !one.trim()))) {
     errors.push('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben')
+  }
+  // Un patrón vacío, o uno que casa con todo, sacaría de la revisión el diff entero (caso 485).
+  const exempt = config.reviewExempt
+  if (exempt !== undefined && (!Array.isArray(exempt)
+    || exempt.some((one) => typeof one !== 'string' || !one.trim()))) {
+    errors.push('ops.config.json: reviewExempt debe ser una lista de patrones de archivo, como "**/*.lock"')
+  } else if (Array.isArray(exempt) && exempt.some(exemptsAll)) {
+    errors.push('ops.config.json: reviewExempt no puede eximir todo el diff: un patrón como "**" saca la revisión '
+      + 'entera')
   }
   // Un huso mal escrito no puede caer a UTC en silencio: la fecha saldría un día corrida justo en la
   // instancia que lo declaró para que no pasara (caso 303).

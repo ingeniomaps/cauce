@@ -66,7 +66,7 @@ test('el revisor que nombra la línea revisa en todos los carriles', async () =>
   const conCast = { [KEY.context]: {
     ...baseScript()[KEY.context], cast: { build: 'backend-engineer', review: ['security-engineer'] },
   } }
-  const reviewerOf = ({ prompts }) => prompts.find((entrada) => entrada.key.startsWith('Review|')).prompt
+  const reviewerOf = ({ prompts }) => prompts.find((entrada) => entrada.key === 'Review|review').prompt
 
   const inLite = reviewerOf(await runFlow(conCast, { lane: 'lite' }))
   assert.match(inLite, /software-architect/, 'el dueño de la fase revisa igual')

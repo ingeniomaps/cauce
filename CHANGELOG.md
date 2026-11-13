@@ -155,6 +155,12 @@ diseño — eso vive en el commit y en el código.
   corrida frena con `review-failed` nombrándolo. Antes, todo lo mandado quedaba como corregido aunque nadie lo hubiera
   vuelto a mirar, y de ahí cuenta `ops lessons`. Las entradas viejas de `done/` siguen diciendo `corregido:` con el
   significado anterior: no se reescriben.
+- **Review de `autobuild` declara qué archivos del diff abrió, y el motor exige los que faltan** (caso 485). Recibe la
+  lista exacta de archivos que toca el diff y contesta en `opened` cuáles abrió; si falta alguno tiene una pasada más
+  sobre esos, que se suma a la primera, y si sigue faltando la corrida para con `review-unbacked` y la lista. Antes
+  sólo frenaba un `consulted` vacío. Lo que un proyecto no quiere exigir —lockfiles, snapshots— lo declara en la llave
+  nueva `reviewExempt` de `ops.config.json`, con patrones glob. El motor comprueba la declaración, no que se haya leído
+  bien.
 
 ## [0.119.0] - 2026-11-03
 

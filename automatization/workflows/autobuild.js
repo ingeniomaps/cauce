@@ -258,6 +258,9 @@ const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'criti
   properties: {
     ...DECISION.properties,
     rules: { type: 'array', items: { type: 'string' } },
+    // Cuáles de los archivos del diff abrió, escritos igual que en la lista que recibe. Se cruza como conjunto y no
+    // leyendo `consulted`, que es prosa libre: adivinar ahí qué se abrió fue lo que costó ocho revisiones en el 464.
+    opened: { type: 'array', items: { type: 'string' } },
     // Qué superficie de las que la empresa declaró crítica toca el diff, o vacío. Viaja al hecho de
     // revisión, que llega a `done/`: es lo que dice después con qué rigor se miró la entrega (caso 205).
     critical: { type: 'string' },
@@ -517,8 +520,36 @@ const CONTRACT = {
     lines: { type: 'array', items: { type: 'string' } },
     // El Mapa real de `workspace.md`, si el proyecto lo escribió; por qué, en `SCOPE`.
     map: { type: 'string' },
+    // Lo que una revisión no tiene que abrir aunque el diff lo toque —lockfiles, snapshots—, declarado por el
+    // proyecto y no deducido (R27, caso 485).
+    reviewExempt: { type: 'array', items: { type: 'string' } },
   },
 }
+// Los archivos que toca el diff que Review juzga, para cruzarlos contra lo que declara haber abierto (caso 485).
+const DIFFED = {
+  type: 'object', additionalProperties: false, required: ['files'],
+  properties: { files: { type: 'array', items: { type: 'string' } } },
+}
+// El pedido de archivos del diff, igual para la foto de antes de Build y para lo que juzga Review: si los dos se
+// pidieran distinto, la resta compararía listas escritas de dos formas.
+const DIFF_FILES = (what, how) => `Listá ${what}. ${how}. Devolvé en files cada ruta relativa a la raíz de ese `
+  + 'repositorio, una vez cada una, sin comillas: de un renombre, sólo la ruta nueva; un archivo borrado no va. '
+  + 'No abras ningún archivo ni corras otra cosa.'
+// Un glob de `reviewExempt` a expresión: `**` cruza carpetas, `*` y `?` no. El recorrido no tiene `require`, así que
+// `path.matchesGlob` no está a mano.
+const globbed = (pattern) => new RegExp(`^${String(pattern).trim().replace(/\/$/, '/**')
+  .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  .replace(/\*\*\//g, '\u0000').replace(/\*\*/g, '\u0001').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]')
+  .replace(/\u0000/g, '(?:.*/)?').replace(/\u0001/g, '.*')}$`)
+// Dos pasadas de Review como una: lo que encontró cada una, lo que abrió cada una y el veredicto más severo.
+const SEVERITY = ['aprobado', 'con-condiciones', 'bloqueado']
+const joined = (first, second) => ({ ...first,
+  verdict: SEVERITY[Math.max(SEVERITY.indexOf(first.verdict), SEVERITY.indexOf(second.verdict))] || first.verdict,
+  concerns: [...first.concerns, ...second.concerns],
+  consulted: [...new Set([...first.consulted, ...second.consulted])],
+  opened: [...new Set([...(first.opened || []), ...(second.opened || [])])],
+  rules: [...new Set([...(first.rules || []), ...(second.rules || [])])],
+  critical: first.critical || second.critical || '' })
 
 // Lo que R8 permite: corregir el commit propio que no salió de la máquina, nunca otro ni lo publicado (caso 481).
 const NO_REWRITE = 'Nunca push; un amend, sólo para corregir el commit que acabás de crear en esta fase.'
@@ -1729,6 +1760,13 @@ while (rounds++ < MAX_TASKS) {
       + `WIP: ${findings.join('; ')}`, `return ${task.id} to build`)
   }
   phase(resumed ? 'Build (reanudado)' : 'Build')
+  // Lo que ya estaba sin commitear antes de construir. Con `runner.commitPerTask` apagado, las tareas anteriores de la
+  // corrida dejan su diff en el árbol, y Review no tiene que abrir lo que no es de ésta (revisión del caso 485). Al
+  // retomar no se saca: el árbol ya tiene el trabajo de esta tarea, y restarlo lo sacaría de la revisión.
+  const before = !express && !ROLE && !resumed && !resumedFromWip ? await clerk(DIFF_FILES(`lo que está sin commitear `
+    + `ahora en el repositorio git dueño de ${task.service}, antes de que ${task.id} empiece: puede no haber nada`,
+  `Corré "git status --porcelain --untracked-files=all" y dejá afuera lo que esté bajo ${P}`) + WHERE,
+  { schema: DIFFED, label: 'review-baseline' }) : null
   // El commit de quien construyó, que quien revisa juzga y que Done cita. Se busca antes de la revisión: lo que
   // hay que mirar es ese commit, no el árbol, que está limpio.
   let handed = null
@@ -1912,6 +1950,25 @@ while (rounds++ < MAX_TASKS) {
   // Con `--role build` la revisión es de otra sesión: correrla acá es revisarse solo (caso 430).
   if (!express && ROLE !== 'build') {
     phase('Review')
+    // Qué archivos toca lo que se juzga, sacado por un clerk y no por quien revisa: es la lista contra la que se
+    // cruza lo que ese revisor declara haber abierto (caso 485).
+    const diffed = await clerk(DIFF_FILES(`los archivos que cambió ${task.id} en el repositorio git dueño de `
+      + task.service, handed && handed.hash
+      ? `Son los de sus commits: corré "git show --name-status --format= <hash>" para cada uno de ${handed.hash}`
+      : 'Están sin commitear: corré "git status --porcelain --untracked-files=all", y dejá afuera lo que esté '
+        + `bajo ${P}`)
+      + WHERE, { schema: DIFFED, label: 'review-diff' })
+    if (!diffed) return halt('agent-unavailable', 'la lista de archivos del diff no devolvió resultado')
+    const exempt = (contract.reviewExempt || []).map(globbed)
+    const clean = (one) => String(one).trim().replace(/,$/, '').replace(/(?::\d+(?:[-:]\d+)*|#L\d+(?:-L?\d+)?)$/, '')
+      .replace(/^["'`]+|["'`]+$/g, '').replace(/(?::\d+(?:[-:]\d+)*|#L\d+(?:-L?\d+)?)$/, '').replace(/^\.\//, '')
+    const earlier = new Set(((handed && handed.hash) || !before ? [] : before.files).map(clean))
+    const required = [...new Set(diffed.files.map(clean))]
+      .filter((file) => file && !earlier.has(file) && !exempt.some((pattern) => pattern.test(file)))
+    const unopened = (verdict) => required.filter((file) => !(verdict.opened || []).map(clean).includes(file))
+    // Review recibe la lista exacta y contesta cuáles abrió: el cruce es de conjuntos, no una lectura de su prosa.
+    const OPEN = required.length ? ` El diff toca estos archivos: ${required.join(', ')}. En opened, cada uno que `
+      + 'abriste de verdad, escrito igual que acá; el que no abriste no va.' : ''
     let review = await run(
       // La aceptación va en el prompt: es contra lo que se juzga el diff, y la del BACKLOG no trae lo que Ready
       // pudo haber refinado en esta corrida (caso 210).
@@ -1927,7 +1984,7 @@ while (rounds++ < MAX_TASKS) {
           'comprobá sobre el diff que cada una se cumplió, y la que no, es un hallazgo.' : '') +
       (critiqueChanges.length ? ` La crítica cambió el plan por esto; comprobá sobre el diff que cada cambio ` +
         `está, y el que no, es un hallazgo: ${critiqueChanges.join('; ')}.` : '') +
-      `${MANIFEST}` +
+      `${MANIFEST}${OPEN}` +
       (handed ? (handed.hash ? ` Quien construyó ya lo commiteó: el diff es el de ${handed.hash}` +
         `${handed.branch ? ` en la rama ${handed.branch}` : ''} —git show de cada uno, en ese orden—, ` +
         'no el del árbol, que está limpio.'
@@ -1938,6 +1995,26 @@ while (rounds++ < MAX_TASKS) {
     )
     if (!review) return halt('agent-unavailable', 'Review no devolvió resultado')
     grounded(review)
+    // Una pasada más sobre lo que faltaba, y no más. Se suma a la primera y no la reemplaza: reemplazarla perdía un
+    // `bloqueado`, sus decisiones y las condiciones de la crítica que sólo su pedido llevaba (revisión del caso 485).
+    if (unopened(review).length) {
+      const missing = unopened(review)
+      const conditions = [...approved.conditions, ...critiqueChanges]
+      const extra = await run(`${asRole(cast.review)}En tu revisión de ${task.id} no declaraste haber abierto `
+        + `${missing.join(', ')}, que el diff toca. Abrilos y revisalos con el mismo criterio, contra la aceptación `
+        + `—${task.acceptance}—${conditions.length ? ` y lo que la crítica pidió: ${conditions.join('; ')}` : ''}. `
+        + 'Devolvé lo que encuentres en esos archivos; lo de tu pasada anterior ya está registrado y no se repite. En '
+        + 'opened, cada uno de ellos que abriste, escrito igual que acá.'
+        + `${WHERE}${MANIFEST}${handed && handed.hash ? ` El diff es el de ${handed.hash}.` : ''}`
+        + `${VERDICT}${RULED}${SURFACED()}`,
+      { schema: REVIEWED, label: 'review' })
+      if (!extra) return halt('agent-unavailable', 'Review no devolvió resultado')
+      grounded(extra)
+      review = joined(review, extra)
+      if (unopened(review).length) {
+        return halt('review-unbacked', `aprobó sin declarar que abrió ${unopened(review).join(', ')}, que el diff toca`)
+      }
+    }
     // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
     // registro, y sin esto lo que el revisor señaló se iba con la corrida.
     const reviewDecisions = review.concerns.filter((one) => one.decision)
