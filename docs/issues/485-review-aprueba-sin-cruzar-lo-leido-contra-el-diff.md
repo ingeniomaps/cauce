@@ -81,6 +81,11 @@ después: RESULT review-unbacked :: aprobó sin declarar que abrió api/alta.go,
 La prueba con modelo: el prompt real de la primera Review, sacado del arnés, por `claude -p` en un repo con
 `api/alta.go` modificado. Devolvió `"opened": ["api/alta.go"]`, escrito igual que la lista, a USD 0,32.
 
+Y un `/autobuild` real en un banco `sidecar` instalado, con el motor congelado (2026-11-13, USD 7,81). La tarea cambió
+`src/venta.js` y su prueba. La foto de antes de Build devolvió `files: []`, el clerk del diff
+`["src/venta.js", "test/venta.test.js"]`, y Review contestó `opened` con exactamente esos dos. El cruce dio cero
+faltantes, sin pasada de más, y la corrida siguió por Verify, QA y Commit.
+
 La conducta, con el caso nuevo `flows/system/change-review/evaluations/cases/10-el-pr-de-renombres`: un PR de siete
 archivos presentado como «sólo renombres», con un `total > 0` que pasa a `total >= 0` en uno. **Pasa.** El recorrido
 encontró el cambio, dijo por qué el verde no lo muestra, nombró los siete archivos y no aprobó. Costó 1,43M tokens.
@@ -131,20 +136,28 @@ Encontrado y no previsto:
    ignorar `reviewExempt`, el glob sin carpeta, `validate` aceptando vacío o «todo» y el contrato sin la llave.
 5. hecho: la sonda antes y después, lado a lado arriba. La aserción de ausencia es que la tarea ya no llega a Verify,
    vista en rojo con el código anterior.
-6. hecho: el prompt real por `claude -p` en un repo real, y el recorrido real de `change-review` con `flow-eval`.
-7. hecho: lo que depende de un modelo se corrió con uno, arriba. No se corrió un `/autobuild` entero.
-8. hecho: arnés, sonda, `claude -p` y `flow-eval`. La prueba con modelo corrió sobre el prompt final.
+6. hecho: el `/autobuild` real en un banco instalado, que pasó por la foto, el clerk del diff y el cruce con el código
+   final; el prompt real por `claude -p`; y el recorrido real de `change-review` con `flow-eval`. La corrida real tuvo
+   un revisor que abrió todo, así que no ejercitó la pasada de más: ésa la cubren el arnés y el caso de eval.
+7. hecho: lo que depende de un modelo, que Review llene `opened` con las rutas de la lista, se corrió con uno en el
+   `/autobuild` y en `claude -p`.
+8. hecho: arnés, sonda, `claude -p`, `flow-eval` y `/autobuild`, sobre el código final. La pasada de comentarios
+   posterior no toca código que se ejecute.
 9. hecho: diffs de uno, dos y tres archivos; los dos caminos (árbol y commits de otra sesión); con y sin foto previa.
 10. hecho: cuatro pruebas de `autobuild` asumían el primer paso de Review o la lista de pasos de oficina y se
     ajustaron. `validate`, el schema y `contract` llevan la llave. El 498 la tiene que clasificar.
 11. hecho: cinco pasadas independientes. La primera y la segunda encontraron defectos que impedían entregar, y
     obligaron al rediseño de arriba; la tercera, la cuarta y la quinta, nada que impida entregar. Lo menor quedó
     anotado.
-12. hecho: pasada uno por uno sobre los comentarios que agrega el diff.
+12. hecho: pasada uno por uno sobre la versión final, y el tokenizador de `test/repo/comments.test.js` a 0,22 sobre
+    lo que agrega el diff. Quitó cinco razones repetidas: la de «conjuntos y no prosa» estaba en tres lugares, el
+    comentario de `DIFFED` repetía el del clerk, y tres comentarios de prueba transcribían el código.
 13. hecho: `npm run ci` en exit 0, con todo stageado.
 14. hecho: arriba, contra el caso entero.
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.120.0, la versión abierta, con su entrada en el CHANGELOG.
 
-**Sin probar:** un `/autobuild` real de punta a punta con un revisor que omite un archivo. Se probó por partes: el
-recorrido con el arnés, la respuesta del modelo con `claude -p` y la conducta con `flow-eval`.
+**Sin probar:** la pasada de más dentro de un `/autobuild` real, porque el revisor real abrió todo y una omisión no
+se puede forzar; y la resta de la foto con un árbol sucio de verdad. Tampoco Done en esa corrida: `claude -p` cortó el
+workflow a los 10 minutos, después de commitear. Se probó por partes: el recorrido con el arnés, `opened` con
+`claude -p` y la conducta con `flow-eval`.

@@ -94,10 +94,17 @@ después: RE-REVISION LLEVA B1: true
          DONE: (no se escribe)
 ```
 
-Con lo que lee `ops lessons`: antes, `corrected()` de esa entrada devolvía
-`[{"detail":"B1-el-handler-no-valida-el-monto","ref":"criterio"}]`, una corrección que nadie vio, sumando al umbral.
-Después no hay entrada. Cuando la re-revisión confirma, el formato de `corregido:` es el mismo y `corrected()` lo lee
-igual (`test/planning/lessons.test.js` sin cambios).
+Con lo que lee `ops lessons`, corrido de verdad en un banco `suelto`. Antes: dos tareas con la entrada que escribía el
+motor anterior, un `corregido:` de la misma regla que nadie confirmó. Después: con el motor nuevo, esas dos corridas
+paran en `review-failed` y no escriben `done/`.
+
+```
+antes:   reforzar-commits-r8  planning/rules/system/commits.md#R8 — 2 tareas: alta, baja
+después: = ninguna regla se corrigió en 2 tareas o más sin lección
+```
+
+Cuando la re-revisión confirma, el formato de `corregido:` es el mismo y `ops lessons` lo lee igual
+(`test/planning/lessons.test.js` sin cambios).
 
 La prueba con un modelo: el prompt real de la re-revisión, sacado del arnés, por `claude -p` en dos repos con el mismo
 `api/alta.go` base. En A el diff agrega la validación del monto, en B cambia otra cosa. Repetida después del último
@@ -153,21 +160,29 @@ Encontrado y no previsto:
    (`fixed` sumando lo mandado, sospechas intermedias) y cada una sumó su caso.
 5. hecho: aserción de ausencia («un bloqueante que la re-revisión no confirma no se registra como corregido»), vista en
    rojo con el código anterior, y la salida de antes y después lado a lado, arriba.
-6. hecho: el prompt real por `claude -p` en dos repos reales, y la sonda mostrando que la entrada vieja ya no se
-   escribe.
-7. hecho: la re-revisión depende de un modelo, y se corrió con uno, arriba. No se corrió un `/autobuild` entero.
-8. hecho: corrieron el arnés (todas las pruebas de workflows), la sonda y `claude -p`. La prueba con modelo se repitió
-   después del último cambio al prompt.
+6. hecho: `ops lessons` real en un banco, antes y después, arriba; el prompt real por `claude -p` en dos
+   repos; y un `/autobuild` real en un banco instalado (2026-11-13, USD 7,81) que corrió Review → Verify → QA → Commit
+   con este código. Esa corrida no ejercitó la re-revisión: Review no encontró nada que corregir, y un bloqueante no
+   se puede forzar en un modelo real. La re-revisión con `previous` quedó probada por partes: el recorrido con el
+   arnés, la respuesta del modelo con `claude -p`.
+7. hecho: lo que depende de un modelo, que la re-revisión conteste `previous`, se corrió con uno por `claude -p` sobre
+   el prompt real. Lo que no se pudo provocar en el `/autobuild` real queda en «Sin probar».
+8. hecho: corrieron el arnés, la sonda, `ops lessons`, `claude -p` y `/autobuild`. La prueba con modelo y el
+   `/autobuild` corrieron sobre el código final; la pasada de comentarios posterior no toca código que se ejecute.
 9. hecho: dos repos (corregido y sin corregir), y escenarios de una y dos vueltas con dos bloqueantes.
 10. hecho: cuatro archivos de pruebas afirmaban la re-revisión sin `previous` y se actualizaron; `lessons.js` lee el
     mismo formato; ningún documento describe la re-revisión. El camino `--role review` se revisó: no cambia.
 11. hecho: tres pasadas independientes. La primera dejó cuatro puntos, arreglados; la segunda, uno, arreglado; la
     tercera, nada que impida entregar. Lo que quedó está anotado arriba.
-12. hecho: pasada uno por uno sobre los comentarios que agrega el diff.
+12. hecho: pasada uno por uno sobre la versión final, y el tokenizador de `test/repo/comments.test.js` a 0,22 sobre
+    lo que agrega el diff. Quitó dos razones repetidas: el comentario de `fixed` transcribía el del caso 207 de
+    `autobuild-refs.test.js`, a 0,44, y dos comentarios de prueba repetían el porqué del código.
 13. hecho: `npm run ci` en exit 0, con todo stageado.
 14. hecho: arriba, contra el caso entero.
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.120.0, la versión abierta, con su entrada en el CHANGELOG.
 
-**Sin probar:** un `/autobuild` real de punta a punta con un bloqueante que la re-revisión no confirme. Se probó por
-separado: el recorrido con el arnés y la respuesta del modelo con `claude -p`.
+**Sin probar:** la re-revisión dentro de un `/autobuild` real, porque la corrida no encontró bloqueantes y no se
+pueden forzar. Tampoco la escritura de `done/` en esa corrida: `claude -p` cortó el workflow a los 10 minutos, después
+de commitear. Se probó por separado: el recorrido con el arnés, la respuesta del modelo con `claude -p` y `ops lessons`
+en un banco.
