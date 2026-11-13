@@ -273,6 +273,11 @@ El paso 4 sorprende y es correcto: la firma es un commit que nadie revisó, y la
 decir sobre él. Y firmar no es aplicar — `agent-promote` sigue siendo un acto aparte; el porqué de esa
 separación vive en el encabezado de `sign-proposal.yml`, no acá.
 
+**La firma queda atada a lo que aprobaste** (caso 486). Si la rama recibe un push entre tu aprobación y la firma, el
+job no firma: falla nombrando el commit que aprobaste y el que hay, y lo que corresponde es revisar lo nuevo y volver a
+aprobar. Y la firma guarda la huella de «Cambio propuesto»: si alguien lo edita después, `agent-promote` no lo aplica y
+dice las dos huellas.
+
 #### Declinar una propuesta es archivarla, no cerrar su PR
 
 Cerrar el PR no archiva nada: los informes del período quedan en `draft`, no hay propuesta en `main` que diga que se
