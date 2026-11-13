@@ -125,7 +125,8 @@ test('fuera de lo crítico, o comprobada, la misma sospecha sigue su camino de s
   assert.ok(!afuera.wrote.includes('Review|critical-human'))
 
   const comprobada = await runFlow({ ...withSurfaces({ critical: '' }),
-    [KEY.review]: reviewed(SURFACE, [{ ...suspicion, verified: true }], { verdict: 'aprobado', concerns: [] }) })
+    [KEY.review]: reviewed(SURFACE, [{ ...suspicion, verified: true }],
+      { verdict: 'aprobado', concerns: [], previous: [{ id: 'r1-B1', fixed: true, evidence: 'api/alta.go:12' }] }) })
   ranToEnd(comprobada.result)
   assert.ok(comprobada.asked.includes('Review|review-fix'), 'lo comprobado sobre lo crítico se corrige')
 })

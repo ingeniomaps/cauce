@@ -88,7 +88,8 @@ test('un review que rechaza corrige una vez y sigue si la segunda aprueba', asyn
           verdict: 'con-condiciones', consulted: ['api/alta.go'],
           concerns: [{ detail: 'falta el caso vacío', blocking: true }],
         }
-        : { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] }
+        : { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'],
+          previous: [{ id: 'r1-B1', fixed: true, evidence: 'api/alta.go:12' }] }
     },
   })
   ranToEnd(result)
@@ -185,7 +186,8 @@ test('un bloqueo sin condiciones nombradas frena igual y lo dice', async () => {
           verdict: 'con-condiciones', consulted: ['api/alta.go'],
           concerns: [{ detail: 'falta el caso vacío', blocking: true }],
         }
-        : { verdict: 'bloqueado', consulted: ['api/alta.go'], concerns: [] }
+        : { verdict: 'bloqueado', consulted: ['api/alta.go'], concerns: [],
+          previous: [{ id: 'r1-B1', fixed: true, evidence: 'api/alta.go:12' }] }
     },
   })
   assert.equal(review.result.reason, 'review-failed')
@@ -456,7 +458,8 @@ test('una decisión cae en un solo destino y no desaparece por ningún camino', 
         verdict: 'con-condiciones', consulted: ['api/alta.go'], rules: [],
         concerns: [decision, { detail: 'falta el caso vacío', blocking: true }],
       }
-      : { verdict: 'aprobado', consulted: ['api/alta.go'], rules: [], concerns: [] }),
+      : { verdict: 'aprobado', consulted: ['api/alta.go'], rules: [], concerns: [],
+        previous: [{ id: 'r1-B1', fixed: true, evidence: 'api/alta.go:12' }] }),
   })
   ranToEnd(entrePasadas.result)
   assert.ok(entrePasadas.written.some((text) => /contrato público/.test(text)),

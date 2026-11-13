@@ -147,6 +147,15 @@ diseño — eso vive en el commit y en el código.
   cuentan en grafemas, y la revisión pregunta si el contenido generado por IA tiene que divulgarse. El caso 09 se
   ajusta al cambio (propuesta `2026-11.md`).
 
+### Cambiado
+
+- **La re-revisión de `autobuild` comprueba lo que mandó a corregir, y `done/` registra como `corregido:` sólo lo
+  confirmado** (caso 484). Cada bloqueante lleva un id por vuelta (`r1-B1`); la re-revisión contesta por cada uno si
+  sigue, con la línea del diff que lo muestra. Lo que no confirma vuelve a corregirse, y al tope de dos vueltas la
+  corrida frena con `review-failed` nombrándolo. Antes, todo lo mandado quedaba como corregido aunque nadie lo hubiera
+  vuelto a mirar, y de ahí cuenta `ops lessons`. Las entradas viejas de `done/` siguen diciendo `corregido:` con el
+  significado anterior: no se reescriben.
+
 ## [0.119.0] - 2026-11-03
 
 ### Cambiado

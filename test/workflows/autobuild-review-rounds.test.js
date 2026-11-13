@@ -28,7 +28,10 @@ test('un bloqueante nuevo, comprobado y corregible en la re-revisión compra una
   const { result, asked, written } = await runFlow({
     [KEY.review]: () => {
       turn += 1
-      return turn === 1 ? reviewedWith([first]) : turn === 2 ? reviewedWith([second]) : reviewedWith([], 'aprobado')
+      // Cada re-revisión confirma lo que se mandó a corregir en la vuelta anterior (caso 484).
+      return turn === 1 ? reviewedWith([first])
+        : turn === 2 ? { ...reviewedWith([second]), previous: [{ id: 'r1-B1', fixed: true, evidence: 'x.js:1' }] }
+          : { ...reviewedWith([], 'aprobado'), previous: [{ id: 'r2-B1', fixed: true, evidence: 'x.js:2' }] }
     },
   })
   ranToEnd(result)
