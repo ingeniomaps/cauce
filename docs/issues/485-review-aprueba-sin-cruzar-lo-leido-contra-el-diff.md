@@ -157,7 +157,20 @@ Encontrado y no previsto:
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.120.0, la versión abierta, con su entrada en el CHANGELOG.
 
+Los dos clerks, contra un árbol sucio de verdad, con el pedido real sacado del arnés y el prompt del agente
+`cauce-clerk` por `claude -p`. El repo traía un archivo modificado, un renombre, un borrado y un archivo nuevo con
+espacio en la ruta:
+
+```
+git status --porcelain:   M a.go / D gone.go / R old-name.go -> new-name.go / ?? "dir/a b.go"
+review-diff (árbol):      ["a.go", "new-name.go", "dir/a b.go"]
+review-baseline (foto):   ["a.go", "new-name.go", "dir/a b.go"]
+review-diff (git show):   ["a.go", "dir/a b.go", "new-name.go"]   ← de R100 old-name.go new-name.go
+```
+
+Del renombre, sólo el lado nuevo; sin el borrado; la ruta con espacio sin comillas. Las tres corridas costaron USD 0,69.
+
 **Sin probar:** la pasada de más dentro de un `/autobuild` real, porque el revisor real abrió todo y una omisión no
-se puede forzar; y la resta de la foto con un árbol sucio de verdad. Tampoco Done en esa corrida: `claude -p` cortó el
+se puede forzar. Tampoco Done en esa corrida: `claude -p` cortó el
 workflow a los 10 minutos, después de commitear. Se probó por partes: el recorrido con el arnés, `opened` con
 `claude -p` y la conducta con `flow-eval`.

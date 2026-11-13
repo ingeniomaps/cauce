@@ -182,7 +182,11 @@ Encontrado y no previsto:
 15. hecho: arriba y la línea de abajo.
 16. hecho: frontmatter y encabezado en 0.120.0, la versión abierta, con su entrada en el CHANGELOG.
 
+El arnés no valida las respuestas contra los schemas, así que `REREVIEWED` se probó aparte contra el runtime real: un
+workflow mínimo con `DECISION`, `REVIEWED` y `REREVIEWED` copiados textualmente de `autobuild.js` y un agente que
+contesta con ese schema (`wf_a315749e-203`). El runtime lo aceptó y devolvió `previous` con sus dos respuestas.
+
 **Sin probar:** la re-revisión dentro de un `/autobuild` real, porque la corrida no encontró bloqueantes y no se
 pueden forzar. Tampoco la escritura de `done/` en esa corrida: `claude -p` cortó el workflow a los 10 minutos, después
-de commitear. Se probó por separado: el recorrido con el arnés, la respuesta del modelo con `claude -p` y `ops lessons`
-en un banco.
+de commitear. Se probó por partes: el recorrido con el arnés, la respuesta del modelo con `claude -p`, el schema contra
+el runtime real y `ops lessons` en un banco.
