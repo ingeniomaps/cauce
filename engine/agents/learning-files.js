@@ -5,6 +5,7 @@
 // lo necesitan los dos lados —el ciclo que produce esos documentos y la validación que los juzga— y
 // sin este corte cada uno tendría que requerir al otro.
 
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
@@ -34,6 +35,22 @@ un texto que acaba de fallar su primera medición.`
 // veía igual que la que no. Sin ese aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01
 // se habrían quedado ahí sin que nada lo dijera.
 const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
+
+// La huella de «Cambio propuesto» que `sign-proposal.yml` escribe al firmar: el sha256 de las líneas entre su primer
+// título y el siguiente, cada una con su salto, como las imprime el `awk` de ese workflow. Si los dos la calculan
+// distinto, toda propuesta firmada se lee como editada (caso 486).
+function fingerprint(text) {
+  const lines = String(text).split('\n')
+  // El último salto no abre una línea: `awk` no la imprime, y sin esto una sección al final del archivo no coincidía.
+  if (lines[lines.length - 1] === '') lines.pop()
+  const start = lines.findIndex((line) => /^## Cambio propuesto/.test(line))
+  const body = []
+  for (const line of start < 0 ? [] : lines.slice(start + 1)) {
+    if (/^## /.test(line)) break
+    body.push(line)
+  }
+  return crypto.createHash('sha256').update(body.map((line) => `${line}\n`).join('')).digest('hex')
+}
 
 // Los dos destinos que cierran una propuesta. `archived` es «se miró y no cambia nada»: no espera
 // trabajo, así que contarla como pendiente deja al cargo reportando deuda que nadie va a pagar. Y por lo
@@ -173,7 +190,7 @@ function reportFiles(dir) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED,
+  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED, fingerprint,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
   discardedProposals,

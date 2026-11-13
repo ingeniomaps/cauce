@@ -50,6 +50,9 @@ jobs:
           # `pull_request_target`, no éste—, así que el push moría en «invalid refspec 'HEAD:'» después de
           # haber firmado y commiteado bien. La rama sale del payload, que es de donde ya salía el checkout.
           BRANCH: ${{ github.event.pull_request.head.ref }}
+          # El commit que se aprobó. El checkout trae la rama como está cuando corre el job, no como estaba al
+          # aprobar: un push en el medio quedaba firmado sin que nadie lo hubiera visto (caso 486).
+          APPROVED: ${{ github.event.review.commit_id }}
           GH_TOKEN: ${{ github.token }}
         run: |
           stamp="$(date -u +%Y-%m-%d)"
@@ -63,22 +66,34 @@ jobs:
           firma="$(printf '@%s%s' "$APPROVER" "${nombre:+ ($nombre)}" | sed 's/[&/\\]/\\&/g')"
           # Sólo las propuestas que este PR trae, y sólo las que siguen sin firmar. Un PR que no toca
           # ninguna no es un error: la mayoría no lo son, y aprobarlos no tiene que hacer nada.
-          firmadas=""
+          pendientes=""
           for file in $(git diff --name-only "$BASE"...HEAD -- '*/learning/proposals/*.md'); do
             [ -f "$file" ] || continue
-            grep -q '^- Estado: pendiente$' "$file" || continue
+            grep -q '^- Estado: pendiente$' "$file" && pendientes="$pendientes $file"
+          done
+          if [ -z "$pendientes" ]; then
+            echo "Este PR no trae ninguna propuesta sin firmar; no hay nada que hacer."
+            exit 0
+          fi
+          # Sólo cuando hay algo que firmar: un PR sin propuestas cuya rama se movió no tiene nada que proteger.
+          head="$(git rev-parse HEAD)"
+          if [ -z "$APPROVED" ] || [ "$head" != "$APPROVED" ]; then
+            echo "::error title=No se firmó::Aprobaste ${APPROVED:-un commit que el evento no nombra}, pero la rama ya está en $head. Lo que cambió en el medio nadie lo aprobó: revisalo y volvé a aprobar el PR."
+            exit 1
+          fi
+          firmadas=""
+          for file in $pendientes; do
+            # La huella de lo que se firmó: las líneas entre «## Cambio propuesto» y el título siguiente. Con
+            # ella `agent-promote` se niega a aplicar un «Cambio propuesto» editado después de la firma.
+            huella="$(awk '/^## Cambio propuesto/ && !d {f=1; d=1; next} /^## /{f=0} f' "$file" | sha256sum | cut -d' ' -f1)"
             # Las tres líneas, y el frontmatter se deja como está: `status: proposed` lo mueve quien
             # aplica, no quien firma. Autorizar y aplicar siguen siendo dos actos.
             sed -i \
               -e 's/^- Estado: pendiente$/- Estado: aprobada/' \
               -e "s/^- Responsable: por definir$/- Responsable: $firma/" \
-              -e "s/^- Fecha: por definir$/- Fecha: $stamp/" "$file"
+              -e "s/^- Fecha: por definir$/- Fecha: $stamp\\n- Huella: sha256:$huella/" "$file"
             firmadas="$firmadas $file"
           done
-          if [ -z "$firmadas" ]; then
-            echo "Este PR no trae ninguna propuesta sin firmar; no hay nada que hacer."
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # shellcheck disable=SC2086

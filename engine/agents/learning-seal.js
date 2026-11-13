@@ -11,7 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { atomicWrite } = require('../core/files')
 const {
-  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED,
+  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED, fingerprint,
 } = require('./learning-files')
 const { section } = require('../planning/parser')
 const ownership = require('../core/ownership')
@@ -54,6 +54,10 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
       + 'y «Cambio propuesto» tiene que decir qué cambia. Aplicar es un acto humano y esto lo registra.',
     )
   }
+  // Sellar dice que se aplicó lo firmado: con la huella rota, una aplicación a mano o la de un recorrido —que no pasa
+  // por `agent-promote`— quedaba sellada en silencio (revisión del caso 486).
+  const print = printOf(text)
+  if (!print.ok) throw new Error(mismatch(path.basename(file), print))
   const stamped = text
     .replace(/^status:\s*\S+\s*$/m, 'status: applied')
     // `aprobada` además de `pendiente`: cuando `seal` corre, la firma ya pasó y `sign-proposal.yml`
@@ -198,4 +202,29 @@ function appendHistory(target, file, responsible, change, decision = 'aplicada')
   fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${cabecera}${row}`)
 }
 
-module.exports = { seal, archive }
+// Si «Cambio propuesto» sigue siendo el que se firmó. La huella la escribe `sign-proposal.yml` al firmar; una
+// propuesta firmada antes de eso no la trae y se acepta como estaba, porque exigirla dejaría sin aplicar lo ya decidido
+// (caso 486).
+function checkSignature(root, agent, period = '', kind = 'agent') {
+  const file = proposalFile(root, agent, period, kind)
+  return { file, ...printOf(fs.readFileSync(file, 'utf8')) }
+}
+
+// Por qué no se aplica, y cómo se vuelve a firmar: aprobar otra vez no alcanza, porque `sign-proposal.yml` sólo
+// firma una propuesta en «pendiente».
+function mismatch(name, print) {
+  return `${name}: «Cambio propuesto» cambió después de la firma (firmado sha256:${print.signed.slice(0, 12)}…, `
+    + `ahora sha256:${print.current.slice(0, 12)}…). Lo que se aplicaría no es lo que se aprobó: revertí el cambio, o `
+    + 'devolvé «Aprobación humana» al molde —Estado: pendiente, Responsable y Fecha: por definir—, borrá la línea '
+    + 'Huella y aprobá el PR otra vez para que se firme lo nuevo.'
+}
+
+function printOf(text) {
+  // Sólo es una firma vieja si no hay línea de huella: una presente y mal escrita se niega, o romperla alcanzaría.
+  if (!/^-[ \t]*Huella:/mi.test(text)) return { ok: true, legacy: true }
+  const signed = (text.match(/^-[ \t]*Huella:[ \t]*sha256:([0-9a-f]{64})[ \t]*$/m) || [])[1] || ''
+  const current = fingerprint(text)
+  return { ok: current === signed, signed, current }
+}
+
+module.exports = { seal, archive, checkSignature, mismatch }

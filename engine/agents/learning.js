@@ -12,7 +12,7 @@ const {
   discardedProposals,
 } = require('./learning-files')
 // Cerrar una propuesta vive en su propio módulo; se reexporta para no mover a cada llamador.
-const { seal, archive } = require('./learning-seal')
+const { seal, archive, checkSignature, mismatch } = require('./learning-seal')
 const { SOURCE_TIERS, cadence, evaluate, evaluateTeam } = require('./learning-sources')
 
 // El informe que ya entró a una propuesta. Nace en `draft` y nada lo movía nunca, así que el que se
@@ -476,4 +476,5 @@ function reportSummary(root, report) {
 module.exports = {
   SOURCE_TIERS,
   cadence, pendingRuns,
-  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal, archive }
+  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal, archive, checkSignature,
+  mismatch }

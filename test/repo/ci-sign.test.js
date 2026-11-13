@@ -61,6 +61,7 @@ test('aprobar el PR firma la propuesta con la cuenta que aprobó', { skip: proce
     env: {
       ...process.env,
       APPROVER: 'ingeniomaps',
+      APPROVED: git('git rev-parse HEAD').trim(),
       BASE: base,
       BRANCH: 'main',
       // `&`, `/` y `\` son los tres metacaracteres del reemplazo de `sed`. El nombre los trae a propósito:
@@ -112,7 +113,8 @@ test('aprobar un PR sin propuestas pendientes no commitea nada', { skip: process
     cwd: repo,
     encoding: 'utf8',
     env: {
-      ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main',
+      // El commit aprobado no es la punta, y no importa: sin propuestas no hay nada que la carrera pueda colar.
+      ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main', APPROVED: base,
       PATH: conGh(repo, "printf '%s' 'Ana'"),
     },
   })
@@ -145,7 +147,7 @@ test('una consulta de nombre que no contesta firma igual, con la cuenta sola',
       cwd: repo,
       encoding: 'utf8',
       env: {
-        ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main',
+        ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main', APPROVED: git('git rev-parse HEAD').trim(),
         PATH: conGh(repo, 'exit 1'),
       },
     })
@@ -199,3 +201,56 @@ test('el PR lo abre el bot, y no nace sin pasar por la puerta', () => {
   assert.match(bloque, /--json state --jq \.state/, 'no abre un segundo PR sobre una rama que ya tiene uno')
 })
 
+// Una propuesta pendiente, con el commit que se aprobó y el remoto al que la firma empuja (caso 486).
+function aprobadaYMovida(prefijo) {
+  const repo = tempRoot(prefijo)
+  const remoto = path.join(repo, 'remoto.git')
+  const dir = path.join(repo, 'agents', 'roles', 'own', 'probe', 'learning', 'proposals')
+  fs.mkdirSync(dir, { recursive: true })
+  const git = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
+  git('git init -q -b main . && git -c user.email=t@t -c user.name=t commit -qm base --allow-empty')
+  const base = git('git rev-parse HEAD').trim()
+  const texto = propuesta('proposed').replace('## Aprobación humana',
+    '## Cambio propuesto\n\nAgregar la viñeta A.\n\n## Aprobación humana')
+  fs.writeFileSync(path.join(dir, '2099-01.md'), texto)
+  git('git add agents && git -c user.email=t@t -c user.name=t commit -qm propuesta')
+  const aprobado = git('git rev-parse HEAD').trim()
+  git(`git init -q --bare ${JSON.stringify(remoto)} && git remote add origin ${JSON.stringify(remoto)}`)
+  return { repo, dir, git, base, aprobado }
+}
+const firmar = (repo, base, approved) => spawnSync('bash', ['-e', '-c',
+  workflowStep(workflow('sign-proposal'), 'name: Sign the proposals this pull request carries')], {
+  cwd: repo, encoding: 'utf8',
+  env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main', APPROVED: approved,
+    PATH: conGh(repo, "printf '%s' 'Ana'") },
+})
+
+test('un push después de aprobar no se firma: se pide volver a aprobar', { skip: process.platform === 'win32' }, () => {
+  const { repo, dir, git, base, aprobado } = aprobadaYMovida('cauce-firma-movida-')
+  const archivo = path.join(dir, '2099-01.md')
+  fs.writeFileSync(archivo, fs.readFileSync(archivo, 'utf8').replace('Agregar la viñeta A.', 'Agregar la viñeta B.'))
+  git('git add agents && git -c user.email=t@t -c user.name=t commit -qm cambio-sin-revisar')
+  const punta = git('git rev-parse HEAD').trim()
+
+  const hecho = firmar(repo, base, aprobado)
+  assert.notEqual(hecho.status, 0, 'firmó un commit que nadie aprobó')
+  const dicho = hecho.stdout + hecho.stderr
+  assert.ok(dicho.includes(aprobado.slice(0, 12)) && dicho.includes(punta.slice(0, 12)), dicho)
+  assert.match(dicho, /volvé a aprobar/)
+  assert.match(fs.readFileSync(archivo, 'utf8'), /^- Estado: pendiente$/m, 'la propuesta no se firmó')
+  assert.equal(git('git rev-parse HEAD').trim(), punta, 'no se escribió el commit de la firma')
+
+  assert.notEqual(firmar(repo, base, '').status, 0, 'sin el commit aprobado tampoco se firma')
+})
+
+test('la firma guarda la huella del Cambio propuesto, igual a la que calcula el motor',
+  { skip: process.platform === 'win32' }, () => {
+    const { repo, dir, base, aprobado } = aprobadaYMovida('cauce-firma-huella-')
+    const hecho = firmar(repo, base, aprobado)
+    assert.equal(hecho.status, 0, hecho.stderr)
+    const firmada = fs.readFileSync(path.join(dir, '2099-01.md'), 'utf8')
+    const [, huella] = firmada.match(/^- Huella: sha256:([0-9a-f]{64})$/m) || []
+    assert.ok(huella, 'la firma no dejó huella')
+    assert.equal(huella, require('../../engine/agents/learning-files').fingerprint(firmada),
+      'el workflow y el motor calculan la huella distinto')
+  })

@@ -65,6 +65,13 @@ const APPLIED = {
   },
 }
 
+// Lo que devuelve el chequeo de la huella: su código de salida decide, y lo que imprimió es lo que se le dice a quien
+// firmó.
+const CHECKED = {
+  type: 'object', additionalProperties: false, required: ['exitCode', 'output'],
+  properties: { exitCode: { type: 'number' }, output: { type: 'string' } },
+}
+
 {{INCLUDE:shared/workflow-finish.js}}
 
 if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
@@ -122,6 +129,18 @@ log(`Aprobada por ${signature.signedBy}`)
 // porque con una revisión abierta hay dos archivos del mismo período y hay que sellar el que se aplicó.
 const PERIOD = (signature.proposal.match(/(\d{4}-\d{2}(?:-r\d+)?)\.md$/) || [])[1] || ''
 if (!PERIOD) return stop('propuesta-sin-periodo', `${signature.proposal} no se llama AAAA-MM.md ni AAAA-MM-rN.md`)
+
+// La firma vale para el «Cambio propuesto» que se aprobó. Si cambió después, aplicar sería aplicar algo que nadie
+// firmó; lo decide el motor recalculando la huella, no un agente leyendo el texto (caso 486).
+const checked = await agent(
+  `From ${ROOT}, run "node ${signature.cli || 'tools/ops.js'} learn ${AGENT} --check-signature --period ${PERIOD}" ` +
+  'and report its exit code and everything it printed, verbatim. Change nothing.',
+  { schema: CHECKED, label: 'firma-intacta' },
+)
+if (!checked || checked.exitCode !== 0) {
+  return stop('firma-vencida',
+    String((checked && checked.output) || 'no se pudo comprobar la huella de la firma').trim())
+}
 
 phase('Aplicar')
 

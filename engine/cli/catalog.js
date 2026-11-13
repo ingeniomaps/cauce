@@ -103,6 +103,14 @@ function learn(agent, cli) {
         ? `= ${relative} ya estaba archivada`
         : `✓ ${relative} queda archivada: ${porque}`)
     }
+    // Antes de aplicar, `agent-promote` pregunta si lo que se firmó es lo que hay (caso 486).
+    if (cli.has('--check-signature')) {
+      const result = L.checkSignature(opsRoot(), agent, cli.value('--period'), kind)
+      const relative = path.relative(opsRoot(), result.file)
+      if (result.legacy) return console.log(`= ${relative} no trae huella: se firmó sin ella y se acepta como está`)
+      if (result.ok) return console.log(`✓ ${relative}: «Cambio propuesto» es el que se firmó`)
+      return fail(L.mismatch(relative, result), REFUSED)
+    }
     if (cli.has('--applied')) {
       const result = L.seal(opsRoot(), agent, cli.value('--period'), kind, { note: !cli.has('--unchanged') })
       const relative = path.relative(opsRoot(), result.file)

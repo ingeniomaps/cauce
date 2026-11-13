@@ -285,5 +285,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   // `tools/ops.js flow resume save` al frenar, los dos anclados a `${WORKDIR}` como el resto del manifiesto; el
   // rechazo de una retoma ilegible le dicta `show` a la persona, texto de un mensaje como el del 308; y el encabezado
   // del include nombra `planning/reports/` en prosa.
-  assert.equal(hits, 74, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 75 desde el 2026-11-13: `agent-promote` corre `tools/ops.js learn --check-signature` antes de aplicar (caso 486),
+  // con el mismo respaldo `signature.cli || 'tools/ops.js'` y la misma raíz que el `learn --applied` que ya dictaba.
+  assert.equal(hits, 75, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
