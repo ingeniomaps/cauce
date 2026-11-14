@@ -108,7 +108,7 @@ function learn(agent, cli) {
       const result = L.checkSignature(opsRoot(), agent, cli.value('--period'), kind)
       const relative = path.relative(opsRoot(), result.file)
       if (result.legacy) return console.log(`= ${relative} no trae huella: se firmó sin ella y se acepta como está`)
-      if (result.ok) return console.log(`✓ ${relative}: «Cambio propuesto» es el que se firmó`)
+      if (result.ok) return console.log(`✓ ${relative}: «Cambio propuesto» y «Evaluación» son los que se firmaron`)
       return fail(L.mismatch(relative, result), REFUSED)
     }
     if (cli.has('--applied')) {

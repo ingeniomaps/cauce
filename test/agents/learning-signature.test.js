@@ -1,10 +1,10 @@
 'use strict'
 
-// La firma queda atada a lo que se aprobó (caso 486): `sign-proposal.yml` escribe la huella de «Cambio propuesto» y
+// La firma queda atada a lo que se aprobó (caso 486): `sign-proposal.yml` escribe la huella de lo que se aplica y
 // `ops learn --check-signature` la recalcula antes de aplicar. Cómo la escribe el workflow lo prueba
 // `test/repo/ci-sign.test.js`; acá, qué hace el motor con ella.
 
-const { run } = require('../support/environment')
+const { run, inRepo } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -45,7 +45,7 @@ test('el CLI se niega con las dos huellas, y una firma sin huella se acepta como
   const check = () => run(['learn', 'probe', '--check-signature', '--period', '2099-06'], target)
   const ok = check()
   assert.equal(ok.status, 0, ok.stderr)
-  assert.match(ok.stdout, /es el que se firmó/)
+  assert.match(ok.stdout, /«Evaluación» son los que se firmaron/)
 
   editChange(file)
   const refused = check()
@@ -60,11 +60,33 @@ test('el CLI se niega con las dos huellas, y una firma sin huella se acepta como
   assert.match(legacy.stdout, /no trae huella/)
 })
 
-test('lo que no es «Cambio propuesto» puede cambiar sin tocar la huella', () => {
+test('lo que no se aplica puede cambiar sin tocar la huella', () => {
   const { target, file } = signed('Firma y desvíos')
   // `agent-promote` escribe sus desvíos al final de «Aprobación humana», y eso no es lo que se firmó.
   fs.appendFileSync(file, '\n### Desviaciones al aplicar\n\n- ninguna\n')
   assert.equal(learning.checkSignature(target, 'probe', '2099-06').ok, true)
+})
+
+// Lo que `agent-promote` crea desde la propuesta firmada está en dos secciones: «Cambio propuesto» y «Evaluación», que
+// trae el caso nuevo y su fixture (caso 506). Y un título dentro de un bloque de código no corta ninguna (caso 505).
+test('la huella cubre «Evaluación» y lo que sigue a un título dentro de un bloque de código', () => {
+  const evaluation = signed('Firma y evaluación')
+  fs.writeFileSync(evaluation.file, fs.readFileSync(evaluation.file, 'utf8')
+    .replace(/^(## Evaluación\n)/m, '$1\nUn caso nuevo que nadie aprobó.\n'))
+  assert.equal(learning.checkSignature(evaluation.target, 'probe', '2099-06').ok, false, 'editar «Evaluación» pasó')
+
+  const target = installedProject('Firma con bloque')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const report = learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file
+  fs.writeFileSync(report, fs.readFileSync(report, 'utf8')
+    .replace(/\n## Recomendación[^\S\n]*\n/, '\n## Recomendación\n\nCambiar algo (cierra H1).\n'))
+  learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
+  const file = path.join(own, 'learning', 'proposals', '2099-06.md')
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(/^(## Cambio propuesto\n)/m, '$1\n```markdown\n## 2099-01-01 — Una entrada\nLo aprobado.\n```\n'))
+  firmarPropuesta(file)
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('Lo aprobado.', 'Lo que nadie aprobó.'))
+  assert.equal(learning.checkSignature(target, 'probe', '2099-06').ok, false, 'lo que sigue al título del bloque pasó')
 })
 
 test('una línea de huella rota no pasa por firma vieja', () => {
@@ -87,14 +109,31 @@ test('sellar se niega si «Cambio propuesto» cambió después de la firma', () 
 test('el awk del workflow y el motor calculan la misma huella', { skip: process.platform === 'win32' }, () => {
   const { execFileSync } = require('node:child_process')
   const { workflow } = require('../support/environment')
-  const awk = (workflow('sign-proposal').match(/awk '([^']+)'/) || [])[1]
+  // El de la huella, que nombra las secciones: el workflow tiene otro, el que busca las pendientes.
+  const awk = (workflow('sign-proposal').match(/awk '([^']*Cambio propuesto[^']*)'/) || [])[1]
   assert.ok(awk, 'no encontré el awk del workflow')
   const cases = ['## Cambio propuesto\nA\n', '## Cambio propuesto\nA', 'x\n',
     'x\n## Cambio propuesto\nA\n## Cambio propuesto\nB\n## Z\n', '## Cambio propuesto\r\nA\r\n## Z\r\n',
-    '## Cambio propuesto: con texto\n\n```\n## no es título\n```\n']
+    '## Cambio propuesto: con texto\n\n```\n## no es título\n```\n',
+    '## Cambio propuesto\nA\n```\n## no es título\nB\n```\nC\n## Riesgos\nR\n## Evaluación\nE\n## Aprobación humana\n',
+    '## Evaluación\nE\n## Cambio propuesto\nA\n', '## Cambio propuesto\nA\n## Evaluación\nE\n## Evaluación\nF\n',
+    '## Hallazgos\n```\n## Cambio propuesto\nfalso\n```\n## Cambio propuesto\nA\n',
+    '## Cambio propuesto\n```\nsin cerrar\n## Z\n',
+    '## Cambio propuesto\n```\nA\n## Aprobación humana\n- Estado: aprobada\n']
   for (const text of cases) {
     const shell = execFileSync('bash', ['-c', `awk '${awk}' | sha256sum | cut -d' ' -f1`],
       { input: text, encoding: 'utf8' })
     assert.equal(fingerprint(text), shell.trim(), JSON.stringify(text))
+  }
+  // Y sobre las propuestas reales, que traen bloques con títulos adentro (caso 505). Sin `.git` no hay cuáles leer.
+  if (!inRepo()) return
+  const repo = path.resolve(__dirname, '..', '..')
+  const tracked = execFileSync('git', ['ls-files', 'agents/roles/*/learning/proposals/*.md',
+    'flows/*/learning/proposals/*.md'], { cwd: repo, encoding: 'utf8' }).split('\n').filter(Boolean)
+  assert.ok(tracked.length > 100, `sólo ${tracked.length} propuestas trackeadas`)
+  for (const file of tracked) {
+    const shell = execFileSync('bash', ['-c', `awk '${awk}' "$0" | sha256sum | cut -d' ' -f1`, file], { cwd: repo,
+      encoding: 'utf8' })
+    assert.equal(fingerprint(fs.readFileSync(path.join(repo, file), 'utf8')), shell.trim(), file)
   }
 })

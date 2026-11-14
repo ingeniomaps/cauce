@@ -36,18 +36,31 @@ un texto que acaba de fallar su primera medición.`
 // se habrían quedado ahí sin que nada lo dijera.
 const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
 
-// La huella de «Cambio propuesto» que `sign-proposal.yml` escribe al firmar: el sha256 de las líneas entre su primer
-// título y el siguiente, cada una con su salto, como las imprime el `awk` de ese workflow. Si los dos la calculan
-// distinto, toda propuesta firmada se lee como editada (caso 486).
+// La huella que `sign-proposal.yml` escribe al firmar (caso 486): el sha256 de lo que `agent-promote` aplica, la
+// primera «Cambio propuesto» y la primera «Evaluación», con sus títulos, cada línea con su salto, como las imprime el
+// `awk` de ese workflow. Si los dos la calculan distinto, toda propuesta firmada se lee como editada.
+const SIGNED_SECTIONS = [/^## Cambio propuesto/, /^## Evaluación/]
+
 function fingerprint(text) {
   const lines = String(text).split('\n')
   // El último salto no abre una línea: `awk` no la imprime, y sin esto una sección al final del archivo no coincidía.
   if (lines[lines.length - 1] === '') lines.pop()
-  const start = lines.findIndex((line) => /^## Cambio propuesto/.test(line))
+  const seen = new Set()
   const body = []
-  for (const line of start < 0 ? [] : lines.slice(start + 1)) {
-    if (/^## /.test(line)) break
-    body.push(line)
+  let fenced = false
+  let inside = false
+  for (const line of lines) {
+    // «Aprobación humana» la reescribe la firma después de calcular la huella, así que la termina aunque un bloque sin
+    // cerrar la deje adentro: si no, la propuesta recién firmada no coincidiría nunca.
+    if (/^## Aprobación humana/.test(line)) break
+    // Un markdown que la propuesta trae entero tiene sus títulos: dentro de un bloque no cortan la sección (caso 505).
+    if (/^```/.test(line)) fenced = !fenced
+    else if (!fenced && /^## /.test(line)) {
+      const section = SIGNED_SECTIONS.find((one) => one.test(line) && !seen.has(one))
+      inside = Boolean(section)
+      if (section) seen.add(section)
+    }
+    if (inside) body.push(line)
   }
   return crypto.createHash('sha256').update(body.map((line) => `${line}\n`).join('')).digest('hex')
 }

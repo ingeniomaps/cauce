@@ -202,9 +202,9 @@ function appendHistory(target, file, responsible, change, decision = 'aplicada')
   fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${cabecera}${row}`)
 }
 
-// Si «Cambio propuesto» sigue siendo el que se firmó. La huella la escribe `sign-proposal.yml` al firmar; una
-// propuesta firmada antes de eso no la trae y se acepta como estaba, porque exigirla dejaría sin aplicar lo ya decidido
-// (caso 486).
+// Si lo que se aplica —«Cambio propuesto» y «Evaluación»— sigue siendo lo que se firmó. La huella la escribe
+// `sign-proposal.yml` al firmar; una propuesta firmada antes de eso no la trae y se acepta como estaba, porque exigirla
+// dejaría sin aplicar lo ya decidido (caso 486).
 function checkSignature(root, agent, period = '', kind = 'agent') {
   const file = proposalFile(root, agent, period, kind)
   return { file, ...printOf(fs.readFileSync(file, 'utf8')) }
@@ -213,10 +213,11 @@ function checkSignature(root, agent, period = '', kind = 'agent') {
 // Por qué no se aplica, y cómo se vuelve a firmar: aprobar otra vez no alcanza, porque `sign-proposal.yml` sólo
 // firma una propuesta en «pendiente».
 function mismatch(name, print) {
-  return `${name}: «Cambio propuesto» cambió después de la firma (firmado sha256:${print.signed.slice(0, 12)}…, `
-    + `ahora sha256:${print.current.slice(0, 12)}…). Lo que se aplicaría no es lo que se aprobó: revertí el cambio, o `
-    + 'devolvé «Aprobación humana» al molde —Estado: pendiente, Responsable y Fecha: por definir—, borrá la línea '
-    + 'Huella y aprobá el PR otra vez para que se firme lo nuevo.'
+  return `${name}: «Cambio propuesto» o «Evaluación» cambió después de la firma `
+    + `(firmado sha256:${print.signed.slice(0, 12)}…, ahora sha256:${print.current.slice(0, 12)}…). `
+    + 'Lo que se aplicaría no es lo que se aprobó: revertí el cambio, o devolvé «Aprobación humana» al molde '
+    + '—Estado: pendiente, Responsable y Fecha: por definir—, borrá la línea Huella y aprobá el PR otra vez para que '
+    + 'se firme lo nuevo.'
 }
 
 function printOf(text) {

@@ -62,7 +62,7 @@ function agentDocs() {
 // sin eso y `seal` también, así que un test que sella sin firmar prueba un camino que no existe.
 // Firma como firma producción: `sign-proposal.yml` deja «aprobada», no «pendiente». Mientras esta
 // fixture dejaba el estado sin tocar, ninguna prueba veía el documento que el sello recibe de verdad.
-// Y desde el caso 486 deja también la huella de «Cambio propuesto», calculada sobre el texto ya firmado.
+// Y desde el caso 486 deja también la huella de lo que se aplica, calculada sobre el texto ya firmado.
 function firmarPropuesta(file) {
   const text = fs.readFileSync(file, 'utf8')
     .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/mi, '- Estado: aprobada')

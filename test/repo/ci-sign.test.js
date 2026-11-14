@@ -14,8 +14,9 @@ const { execFileSync, spawnSync } = require('node:child_process')
 
 const APROBACION = '## Aprobación humana\n\n- Estado: pendiente\n'
   + '- Responsable: por definir\n- Fecha: por definir\n'
-const propuesta = (estado) =>
-  `---\nagent: probe\nperiod: 2099-01\nstatus: ${estado}\n---\n\n# Propuesta\n\n${APROBACION}`
+// Con «Cambio propuesto», como la escriben los tres moldes del motor: sin ninguna sección firmable no se firma.
+const propuesta = (estado) => `---\nagent: probe\nperiod: 2099-01\nstatus: ${estado}\n---\n\n# Propuesta\n\n`
+  + `## Cambio propuesto\n\nAgregar la viñeta A.\n\n${APROBACION}`
 
 // El nombre no viaja en el payload de la review —trae `login` y nada más—, así que el paso lo consulta.
 // Un `gh` falso es lo que deja medir las dos salidas de esa consulta sin salir a la red, que además ataría
@@ -202,7 +203,7 @@ test('el PR lo abre el bot, y no nace sin pasar por la puerta', () => {
 })
 
 // Una propuesta pendiente, con el commit que se aprobó y el remoto al que la firma empuja (caso 486).
-function aprobadaYMovida(prefijo) {
+function aprobadaYMovida(prefijo, cambio = (texto) => texto) {
   const repo = tempRoot(prefijo)
   const remoto = path.join(repo, 'remoto.git')
   const dir = path.join(repo, 'agents', 'roles', 'own', 'probe', 'learning', 'proposals')
@@ -210,9 +211,7 @@ function aprobadaYMovida(prefijo) {
   const git = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
   git('git init -q -b main . && git -c user.email=t@t -c user.name=t commit -qm base --allow-empty')
   const base = git('git rev-parse HEAD').trim()
-  const texto = propuesta('proposed').replace('## Aprobación humana',
-    '## Cambio propuesto\n\nAgregar la viñeta A.\n\n## Aprobación humana')
-  fs.writeFileSync(path.join(dir, '2099-01.md'), texto)
+  fs.writeFileSync(path.join(dir, '2099-01.md'), cambio(propuesta('proposed')))
   git('git add agents && git -c user.email=t@t -c user.name=t commit -qm propuesta')
   const aprobado = git('git rev-parse HEAD').trim()
   git(`git init -q --bare ${JSON.stringify(remoto)} && git remote add origin ${JSON.stringify(remoto)}`)
@@ -243,7 +242,45 @@ test('un push después de aprobar no se firma: se pide volver a aprobar', { skip
   assert.notEqual(firmar(repo, base, '').status, 0, 'sin el commit aprobado tampoco se firma')
 })
 
-test('la firma guarda la huella del Cambio propuesto, igual a la que calcula el motor',
+// La huella se calcula antes de que la firma reescriba «Aprobación humana», y el motor la recalcula después. Un bloque
+// de código sin cerrar corría los cortes: dejaba esa sección adentro y la propuesta no coincidía nunca, o dejaba afuera
+// lo aprobado. Así que no se firma (casos 505 y 506).
+test('un bloque sin cerrar no se firma, y la firma no toca lo firmado',
+  { skip: process.platform === 'win32' }, () => {
+    const abierto = '\n\n```bash\n## un comentario\n'
+    const lugares = {
+      'en «Cambio propuesto»': (texto) => texto.replace('Agregar la viñeta A.', `Agregar la viñeta A.${abierto}`),
+      'antes de «Cambio propuesto»': (texto) => texto.replace('## Cambio propuesto', '```\n## Cambio propuesto'),
+      'en «Riesgos y regresiones»': (texto) => texto.replace('## Aprobación humana',
+        `## Riesgos y regresiones${abierto}\n## Evaluación\n\nEl caso nuevo.\n\n## Aprobación humana`),
+      // Sin bloques y sin la sección: la huella quedaría vacía, y una vacía aceptaría cualquier cambio.
+      'sin «Cambio propuesto»': (texto) => texto.replace('## Cambio propuesto\n\nAgregar la viñeta A.\n\n', ''),
+    }
+    for (const [lugar, cambio] of Object.entries(lugares)) {
+      const { repo, dir, base, aprobado } = aprobadaYMovida('cauce-firma-bloque-', cambio)
+      const negado = firmar(repo, base, aprobado)
+      assert.notEqual(negado.status, 0, `firmó con un bloque sin cerrar ${lugar}`)
+      assert.match(negado.stdout + negado.stderr, /bloque de código sin cerrar/, lugar)
+      assert.match(fs.readFileSync(path.join(dir, '2099-01.md'), 'utf8'), /^- Estado: pendiente$/m, lugar)
+    }
+
+    // Un fixture en «Evaluación» puede traer la misma línea que la firma reescribe: queda como estaba.
+    const fixture = aprobadaYMovida('cauce-firma-fixture-', (texto) => texto.replace('## Aprobación humana',
+      '## Evaluación\n\n```markdown\n- Estado: pendiente\n```\n\n## Aprobación humana'))
+    const hecho = firmar(fixture.repo, fixture.base, fixture.aprobado)
+    assert.equal(hecho.status, 0, hecho.stderr)
+    const firmada = fs.readFileSync(path.join(fixture.dir, '2099-01.md'), 'utf8')
+    assert.match(firmada, /```markdown\n- Estado: pendiente\n```/, 'la firma reescribió el fixture')
+    const [, huella] = firmada.match(/^- Huella: sha256:([0-9a-f]{64})$/m) || []
+    assert.equal(huella, require('../../engine/agents/learning-files').fingerprint(firmada),
+      'recién firmada, ya se lee como editada')
+    // Y una segunda aprobación, la de otro revisor, no la toma por pendiente.
+    const otra = firmar(fixture.repo, fixture.base, fixture.git('git rev-parse HEAD').trim())
+    assert.equal(otra.status, 0, otra.stdout + otra.stderr)
+    assert.match(otra.stdout, /no trae ninguna propuesta sin firmar/)
+  })
+
+test('la firma guarda la huella de lo que se aplica, igual a la que calcula el motor',
   { skip: process.platform === 'win32' }, () => {
     const { repo, dir, base, aprobado } = aprobadaYMovida('cauce-firma-huella-')
     const hecho = firmar(repo, base, aprobado)

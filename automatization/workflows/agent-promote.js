@@ -130,8 +130,9 @@ log(`Aprobada por ${signature.signedBy}`)
 const PERIOD = (signature.proposal.match(/(\d{4}-\d{2}(?:-r\d+)?)\.md$/) || [])[1] || ''
 if (!PERIOD) return stop('propuesta-sin-periodo', `${signature.proposal} no se llama AAAA-MM.md ni AAAA-MM-rN.md`)
 
-// La firma vale para el «Cambio propuesto» que se aprobó. Si cambió después, aplicar sería aplicar algo que nadie
-// firmó; lo decide el motor recalculando la huella, no un agente leyendo el texto (caso 486).
+// La firma vale para lo que se aplica, «Cambio propuesto» y «Evaluación», tal como se aprobó. Si cambió después,
+// aplicar sería aplicar algo que nadie firmó; lo decide el motor recalculando la huella, no un agente leyendo el texto
+// (caso 486).
 const checked = await agent(
   `From ${ROOT}, run "node ${signature.cli || 'tools/ops.js'} learn ${AGENT} --check-signature --period ${PERIOD}" ` +
   'and report its exit code and everything it printed, verbatim. Change nothing.',

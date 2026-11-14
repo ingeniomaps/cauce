@@ -69,7 +69,8 @@ jobs:
           pendientes=""
           for file in $(git diff --name-only "$BASE"...HEAD -- '*/learning/proposals/*.md'); do
             [ -f "$file" ] || continue
-            grep -q '^- Estado: pendiente$' "$file" && pendientes="$pendientes $file"
+            # En «Aprobación humana», como el `sed` de abajo: un fixture firmado puede traer la misma línea.
+            awk '/^## Aprobación humana/,0' "$file" | grep -q '^- Estado: pendiente$' && pendientes="$pendientes $file"
           done
           if [ -z "$pendientes" ]; then
             echo "Este PR no trae ninguna propuesta sin firmar; no hay nada que hacer."
@@ -83,15 +84,23 @@ jobs:
           fi
           firmadas=""
           for file in $pendientes; do
-            # La huella de lo que se firmó: las líneas entre «## Cambio propuesto» y el título siguiente. Con
-            # ella `agent-promote` se niega a aplicar un «Cambio propuesto» editado después de la firma.
-            huella="$(awk '/^## Cambio propuesto/ && !d {f=1; d=1; next} /^## /{f=0} f' "$file" | sha256sum | cut -d' ' -f1)"
+            # La huella de lo que se firmó: «Cambio propuesto» y «Evaluación», con sus títulos, cada una hasta el título
+            # siguiente fuera de un bloque de código, y nunca más allá de «Aprobación humana», que se reescribe abajo. Con
+            # ella `agent-promote` se niega a aplicar lo editado después. Lo replica `fingerprint` en el motor. Un bloque
+            # sin cerrar corre los cortes y la huella dejaría afuera lo aprobado, así que no se firma (casos 505 y 506).
+            cuerpo="$(mktemp)"
+            if ! awk '/^## Aprobación humana/{exit} /^```/{b=!b} !b && /^## /{f=0; if (/^## Cambio propuesto/ && !c) {f=1; c=1} else if (/^## Evaluación/ && !e) {f=1; e=1}} f; END{exit b}' "$file" > "$cuerpo" || [ ! -s "$cuerpo" ]; then
+              echo "::error title=No se firmó::$file tiene un bloque de código sin cerrar antes de «Aprobación humana», o no tiene «Cambio propuesto» fuera de uno. Cerralo y volvé a aprobar el PR."
+              exit 1
+            fi
+            huella="$(sha256sum < "$cuerpo" | cut -d' ' -f1)"
             # Las tres líneas, y el frontmatter se deja como está: `status: proposed` lo mueve quien
-            # aplica, no quien firma. Autorizar y aplicar siguen siendo dos actos.
+            # aplica, no quien firma. Autorizar y aplicar siguen siendo dos actos. Sólo dentro de «Aprobación humana»:
+            # un fixture firmado puede traer la misma línea, y reescribirla rompería la huella recién calculada.
             sed -i \
-              -e 's/^- Estado: pendiente$/- Estado: aprobada/' \
-              -e "s/^- Responsable: por definir$/- Responsable: $firma/" \
-              -e "s/^- Fecha: por definir$/- Fecha: $stamp\\n- Huella: sha256:$huella/" "$file"
+              -e '/^## Aprobación humana/,$ s/^- Estado: pendiente$/- Estado: aprobada/' \
+              -e "/^## Aprobación humana/,\$ s/^- Responsable: por definir\$/- Responsable: $firma/" \
+              -e "/^## Aprobación humana/,\$ s/^- Fecha: por definir\$/- Fecha: $stamp\\n- Huella: sha256:$huella/" "$file"
             firmadas="$firmadas $file"
           done
           git config user.name "github-actions[bot]"

@@ -36,7 +36,7 @@ test('una firma cuyo «Cambio propuesto» cambió después no se aplica', async 
 })
 
 test('con la huella intacta, o sin huella, sigue a aplicar', async () => {
-  for (const output of ['✓ …: «Cambio propuesto» es el que se firmó', '= … no trae huella']) {
+  for (const output of ['✓ …: «Cambio propuesto» y «Evaluación» son los que se firmaron', '= … no trae huella']) {
     const run = await promote({ exitCode: 0, output })
     assert.ok(run.asked.includes('aplica:probe'), `con «${output}» no aplicó`)
   }
