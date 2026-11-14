@@ -367,3 +367,15 @@ test('el caso que la propuesta firmada enuncia entra al aplicarla', () => {
   assert.equal(/\*\*no crees el archivo\*\*/.test(propose), false, 'la redacción no deja escrito un «no se crea»')
   assert.match(propose, /lo crea quien aplique/, 'dice quién lo crea y cuándo')
 })
+
+// Caso 501. Proponer pide el fixture de un caso nuevo junto a su enunciado, y aplicar pide crearlo o reportar que
+// falta. Que un modelo lo cumpla no lo mide esta prueba: se midió con corridas reales, en el cierre del caso.
+test('proponer pide el fixture del caso nuevo, y aplicar pide crearlo o reportar que falta', () => {
+  const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
+  assert.match(propose, /evaluations\/cases\/<id>\//, 'la redacción nombra dónde va el fixture')
+  assert.match(propose, /contenido completo/, 'y pide el archivo entero, no una descripción')
+
+  const promote = fs.readFileSync(path.join(WF, 'agent-promote.js'), 'utf8')
+  assert.match(promote, /archivos para el caso/, 'aplicar crea lo que la propuesta trae para el caso')
+  assert.match(promote, /caso sin fixture/, 'y lo que falta lo deja como desviación, sin inventarlo')
+})

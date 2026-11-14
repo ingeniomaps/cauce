@@ -158,6 +158,11 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `aunque la propuesta diga que no se crea el archivo: esa frase es de cuando se redactó, y el caso ` +
   `entra con la firma. Si el enunciado trae más comportamientos, fusioná los que se solapen sin perder ` +
   `ninguna idea.\n` +
+  // El fixture de un caso nuevo viene junto a su enunciado, en «Evaluación», y no en «Cambio propuesto» (caso 501).
+  `- Si junto al enunciado la propuesta trae archivos para el caso, con su ruta bajo \`evaluations/cases/<id>/\` y ` +
+  `su contenido, crealos tal cual en esa ruta. Si el caso necesita un documento, código o datos que la ` +
+  `propuesta no trae, no lo inventes: reportalo como desviación —«caso sin fixture: pedirlo en la propuesta ` +
+  `siguiente»—.\n` +
   // El juez recibe `forbidden` y nunca `required`: `engine/cli/catalog.js` toma sólo la primera, y el
   // prompt del juez nombra «conductas prohibidas». O sea que a una requerida la mide únicamente el caso
   // que la ejerza. Medido el 2026-09-02 sobre 48 requeridas de seis cargos: 4 no las ejerce ningún caso
