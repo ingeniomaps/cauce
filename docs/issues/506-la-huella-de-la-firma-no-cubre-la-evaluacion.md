@@ -78,3 +78,49 @@ Revisión independiente del caso 501, el 2026-11-14, al poner el fixture de un c
 - 486, que introdujo la huella.
 - 501, que pone el fixture en «Evaluación».
 - 505: la huella se corta dentro de un bloque de código. Se construyen juntos.
+
+## Cierre
+
+La huella cubre «Cambio propuesto» y «Evaluación», con sus títulos, en el orden en que aparecen, la primera de cada una.
+«Riesgos y regresiones» queda fuera, porque no se aplica. Lo decidió quien firma el 2026-11-14. Se construyó junto con
+el 505, en las mismas funciones y con las mismas pruebas (su cierre tiene el detalle de lo que encontraron las
+revisiones).
+
+Línea de base, con la reproducción del caso: editar el enunciado del caso 10 en la propuesta firmada de backend-engineer
+dejaba la huella igual. Después: la huella cambió (`true`).
+
+Contra el caso:
+
+- **Fix, la huella cubre «Evaluación»:** se hizo, en el motor y en el `awk`.
+- **Fix, la mutación:** sacar «Evaluación» de la huella pone rojas las pruebas, en el motor y en el `awk`.
+- **Tradeoff, editar «Evaluación» después de firmar pide volver a firmar:** medido antes de construir, sobre las 109
+  propuestas firmadas: sólo una (kyc-aml-specialist 2026-10) habría pedido una firma nueva por esto.
+- **Tradeoff, cambia el hash:** ninguna propuesta trackeada tiene la línea `Huella:`.
+
+Lo que el caso no preveía: los textos que decían que la huella cubre sólo «Cambio propuesto» — el mensaje de
+`mismatch`, la salida de `--check-signature`, AGENTS.md y la entrada del 486 en el CHANGELOG — dicen ahora las dos
+secciones.
+
+### Lista de cierre
+
+1. hecho: la reproducción del caso, antes del cambio (en «Síntoma»).
+2. hecho: en la rama de la tanda, `fix/484-re-review-checks-what-it-asked`.
+3. hecho: «la huella cubre «Evaluación»» en rojo antes del cambio («editar «Evaluación» pasó») y en verde después.
+4. hecho: dos mutaciones, en rojo: sacar «Evaluación» del motor y del `awk`. Las del 505 cubren el resto.
+5. hecho: el mensaje de `mismatch`, antes y después, lado a lado: cambia sólo el nombre de las secciones.
+6. hecho: el paso real de `sign-proposal.yml`, por `ci-sign.test.js`, con «Evaluación» y un fixture adentro, y la
+   reproducción del caso sobre la propuesta real.
+7. pendiente: el workflow no corrió en GitHub Actions.
+8. hecho: lo mismo que en el 505. El `awk` corrió con `mawk`, no con `gawk`.
+9. hecho: el motor y el `awk`, comparados sobre las 163 propuestas trackeadas.
+10. hecho: dependen de la huella `learning-seal.js`, `catalog.js` y `agent-promote.js`, y sus textos se corrigieron.
+    Nada escribe en «Evaluación» entre la firma y `--check-signature`: `agent-promote` deja sus desvíos en «Aprobación
+    humana».
+11. hecho: las cuatro pasadas del 505, que revisaron este diff.
+12. hecho: la pasada de comentarios del 505.
+13. hecho: `npm run ci` con los cambios stageados.
+14. hecho: recorrido arriba contra Fix y Tradeoffs.
+15. hecho: lo corrido y lo no previsto, arriba.
+16. pendiente: el estado sigue `abierto` hasta resolver el punto 7. La entrada del 486 en el CHANGELOG ya está ampliada.
+
+**Sin probar:** el workflow en GitHub Actions, y el `awk` con `gawk`.
