@@ -195,6 +195,13 @@ diseño — eso vive en el commit y en el código.
   release sin entrada; ahora anota igual, una sola vez en todo el archivo, y quien aplica no toca el estado ni el
   historial. «Cambio propuesto» abre con una línea `**En una línea:** …`, y la entrada sale de ahí: antes copiaba el
   primer párrafo, que solía decir dónde y por qué y no qué. Las propuestas sin esa línea siguen como antes.
+- **Lo que el agente escribe en `ops.config.json` y afloja un freno lo confirma una persona** (caso 498). Antes sólo el
+  permiso de push y las raíces lo pedían. El agente podía activarse `runner.commitToLiveBranch` o
+  `runner.allowAiSignature`, sumar `boundedCommands` o `reviewExempt`, quitar `deployCommands` o un guard del
+  proyecto, cambiar la cobertura de `migrations`, pasar a `mode: toolkit` o subir `runner.maxTaskHours`, y los guards
+  dejaban de frenarlo. Ahora el bloqueo nombra qué afloja, y la persona lo confirma en el diálogo del runner o pega la
+  línea. Lo que angosta pasa sin preguntar. Si tu agente declaraba solo `boundedCommands` cuando `test-workers` lo
+  frenaba, ahora te lo va a pedir.
 
 ## [0.119.0] - 2026-11-03
 
