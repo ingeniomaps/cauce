@@ -1,14 +1,15 @@
 ---
 caso: 506
 titulo: La huella de la firma no cubre «Evaluación», donde van el caso nuevo y su fixture
-estado: abierto
+estado: resuelto
+resuelto-en: 0.120.0
 prioridad: media
 version-detectada: 0.120.0
 ---
 
 # 506 — La huella de la firma no cubre «Evaluación», donde van el caso nuevo y su fixture
 
-**🔴 abierto** · detectado en 0.120.0, sin publicar · prioridad **media**: lo que `agent-promote` crea desde
+**🟢 resuelto en 0.120.0** · detectado en 0.120.0, sin publicar · prioridad **media**: lo que `agent-promote` crea desde
 «Evaluación» se puede editar después de la firma sin que nada lo note. La huella todavía no salió, así que ampliarla
 ahora no invalida ninguna firma.
 
@@ -110,7 +111,18 @@ secciones.
 5. hecho: el mensaje de `mismatch`, antes y después, lado a lado: cambia sólo el nombre de las secciones.
 6. hecho: el paso real de `sign-proposal.yml`, por `ci-sign.test.js`, con «Evaluación» y un fixture adentro, y la
    reproducción del caso sobre la propuesta real.
-7. pendiente: el workflow no corrió en GitHub Actions.
+7. hecho: el workflow corrió en GitHub Actions el 2026-11-14, con una aprobación real sobre el PR de prueba #993, que
+   traía una propuesta pendiente de `backend-engineer` con un título `## ` dentro de un bloque en «Cambio propuesto» y
+   un fixture con `- Estado: pendiente` en «Evaluación». La corrida `43645796297` (`pull_request_review`, 22:00:47)
+   corrió después de mergear el #992, así que usó el workflow nuevo. Firmó en `7aa94ace` con la huella
+   `f2fd55a8045f…`. Con el `awk` del 486 habría sido `6cca2815be22…`. Medido sobre la propuesta firmada:
+   - la huella es la que calcula el motor;
+   - editar dentro del bloque y editar «Evaluación» la cambian;
+   - el fixture conserva su `- Estado: pendiente`, porque la firma escribe sólo en «Aprobación humana»;
+   - `ops learn backend-engineer --check-signature` acepta la firmada (exit 0) y rechaza la de «Evaluación» editada
+     (exit 1, «cambió después de la firma»).
+
+   El `awk` que corrió es el del runner de GitHub, con el mismo resultado que el motor.
 8. hecho: lo mismo que en el 505. El `awk` corrió con `mawk`, no con `gawk`.
 9. hecho: el motor y el `awk`, comparados sobre las 163 propuestas trackeadas.
 10. hecho: dependen de la huella `learning-seal.js`, `catalog.js` y `agent-promote.js`, y sus textos se corrigieron.
@@ -121,6 +133,6 @@ secciones.
 13. hecho: `npm run ci` con los cambios stageados.
 14. hecho: recorrido arriba contra Fix y Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba.
-16. pendiente: el estado sigue `abierto` hasta resolver el punto 7. La entrada del 486 en el CHANGELOG ya está ampliada.
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`, y la entrada del 486 en el CHANGELOG ampliada.
 
-**Sin probar:** el workflow en GitHub Actions, y el `awk` con `gawk`.
+**Sin probar:** una propuesta mensual real del ciclo, que la ejercita el ensamblaje del 1 de diciembre.
