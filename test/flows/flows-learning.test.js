@@ -80,6 +80,11 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
 
   // La corrida consumida queda sellada, así que no vuelve a entrar por una segunda propuesta.
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
+  // Un fixture en «Evaluación» con la línea de una firma no la vuelve firmada (caso 507).
+  fs.writeFileSync(propuesta.file, fs.readFileSync(propuesta.file, 'utf8')
+    .replace(/^(## Evaluación\n)/m, '$1\n```markdown\n- Estado: aprobada\n```\n'))
+  assert.doesNotMatch(L.evaluateTeam(root, 'probe').warnings.join('\n'), /firmada\(s\) sin aplicar/,
+    'una pendiente se contó como firmada por su fixture')
   firmar(propuesta.file)
   // Entre firmar y aplicar el recorrido queda con la decisión tomada y el trabajo detenido, que no es
   // lo mismo que esperar una firma. Sin esto los dos estados se contaban juntos en `pending`.

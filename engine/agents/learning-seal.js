@@ -9,9 +9,11 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const { atomicWrite } = require('../core/files')
 const {
-  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED,
+  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED, fingerprint, approval,
+  inApproval,
 } = require('./learning-files')
 const { section } = require('../planning/parser')
 const ownership = require('../core/ownership')
@@ -39,51 +41,75 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // por hecho lo que faltaba: si algo movió el campo antes que el sello —quien aplica edita archivos, y
   // mover `status` se le parece a su trabajo— el cuerpo se quedaba en «aprobada» para siempre, que es
   // la contradicción que sellar existe para cerrar. Pasó con `growth-marketer/2026-09`.
-  if (state === 'applied' && !UNSEALED.test(text)) return { file, already: true }
+  // Sellado ya, el cambio igual tiene que tener su entrada si lo selló esta misma aplicación: el agente de «Aplicar» a
+  // veces deja el documento sellado él mismo, y salir acá dejaba al cargo sin entrada en la release (caso 500). Si el
+  // sello ya está en `HEAD`, es una propuesta de otro ciclo, quizá anterior a la anotación automática, y no se anota.
+  if (state === 'applied' && !UNSEALED.test(approval(text))) {
+    const noted = sealedInHead(root, file)
+      ? undefined : noteChange(root, { agent, kind, note, file, change: changeOf(text) })
+    return noted ? { file, already: true, noted } : { file, already: true }
+  }
   if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
   // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
   // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
   // «Estado: pendiente» y «Cambio propuesto: Por definir»: el frontmatter decía `applied` y el cuerpo
   // decía lo contrario, dentro del mismo documento. Se comprueba para los dos porque la contradicción
   // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
-  const responsible = (text.match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
-  const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
+  const responsible = (approval(text).match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
+  const change = changeOf(text)
   if (undecided(responsible.trim()) || undecided(change)) {
     throw new Error(
       `${path.basename(file)} todavía no la decidió nadie: «Aprobación humana» necesita un responsable `
       + 'y «Cambio propuesto» tiene que decir qué cambia. Aplicar es un acto humano y esto lo registra.',
     )
   }
-  const stamped = text
-    .replace(/^status:\s*\S+\s*$/m, 'status: applied')
+  // Sellar dice que se aplicó lo firmado: con la huella rota, una aplicación a mano o la de un recorrido —que no pasa
+  // por `agent-promote`— quedaba sellada en silencio (revisión del caso 486).
+  const print = printOf(text)
+  if (!print.ok) throw new Error(mismatch(path.basename(file), print))
+  const stamped = inApproval(text.replace(/^status:\s*\S+\s*$/m, 'status: applied'), (part) => part
     // `aprobada` además de `pendiente`: cuando `seal` corre, la firma ya pasó y `sign-proposal.yml`
     // dejó «aprobada», así que buscar sólo «pendiente» no reemplazaba nunca por el camino real. Las 24
     // propuestas aplicadas del repositorio quedaron con `status: applied` y «- Estado: aprobada»: la
     // contradicción entre frontmatter y cuerpo que la guarda de arriba dice evitar. La prueba no lo veía
     // porque su fixture firmaba dejando «pendiente», un estado que producción no produce.
     .replace(UNSEALED, '- Estado: aplicada')
-    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
+    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`))
   atomicWrite(file, stamped)
   // El historial sólo lo escribe alguien para los cargos —`agent-promote`— y nadie para los recorridos,
   // así que el registro que la plantilla promete no existía nunca. Se escribe acá porque es determinista:
   // la fecha, el documento, quién aprobó y qué dice que cambia, todo sale de lo que se acaba de sellar.
   if (kind === 'flow') appendHistory(path.dirname(path.dirname(dir)), file, responsible.trim(), change)
-  // Sólo en el toolkit: ahí el cargo es del catálogo que se publica, y su cambio tiene que viajar en una
-  // versión. En una empresa el cargo es suyo y no hay CHANGELOG de Cauce que escribir. `note: false` es
-  // el mes revisado sin cambios, que se sella igual y no le cambia nada a quien actualiza.
-  if (kind === 'agent' && note && ownership.mode(root) === 'toolkit') {
-    const noted = changelog.noteAgentChange(root, {
-      agent, proposal: path.basename(file), summary: summarize(change), today: isoDate(new Date()),
-    })
-    return { file, already: false, noted }
-  }
-  return { file, already: false }
+  const noted = noteChange(root, { agent, kind, note, file, change })
+  return noted ? { file, already: false, noted } : { file, already: false }
+}
+
+// Si la propuesta ya estaba sellada en el último commit. Sin git o sin el archivo en `HEAD`, no: es de este ciclo.
+function sealedInHead(root, file) {
+  const shown = spawnSync('git', ['-C', root, 'show', `HEAD:./${path.relative(root, file).split(path.sep).join('/')}`],
+    { encoding: 'utf8' })
+  return shown.status === 0 && proposalState(shown.stdout) === 'applied' && !UNSEALED.test(approval(shown.stdout))
+}
+
+const changeOf = (text) => section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
+
+// Sólo en el toolkit: ahí el cargo es del catálogo que se publica, y su cambio tiene que viajar en una
+// versión. En una empresa el cargo es suyo y no hay CHANGELOG de Cauce que escribir. `note: false` es
+// el mes revisado sin cambios, que se sella igual y no le cambia nada a quien actualiza.
+function noteChange(root, { agent, kind, note, file, change }) {
+  if (kind !== 'agent' || !note || ownership.mode(root) !== 'toolkit') return undefined
+  return changelog.noteAgentChange(root, {
+    agent, proposal: path.basename(file), summary: summarize(change), today: isoDate(new Date()),
+  })
 }
 
 // La primera idea de «Cambio propuesto», en una línea: el documento entero está en el cargo, y el
-// CHANGELOG lo lee quien actualiza antes de decidir, no quien aplica.
+// CHANGELOG lo lee quien actualiza antes de decidir, no quien aplica. La propuesta la escribe en su línea
+// `**En una línea:**`; sin ella, el primer párrafo, que suele decir dónde y por qué y no qué cambia (caso 497).
+const ONE_LINE = /^\s*(?:[-*]\s+)?\*\*En una línea:\*\*[ \t]*(.+)$/m
 function summarize(change, limit = 240) {
-  const first = change.split(/\n\s*\n/)[0].replace(/^\s*(?:\d+\.|[-*])\s+/, '').replace(/\s+/g, ' ').trim()
+  const first = ((change.match(ONE_LINE) || [])[1] || change.split(/\n\s*\n/)[0])
+    .replace(/^\s*(?:\d+\.|[-*])\s+/, '').replace(/\s+/g, ' ').trim()
   if (first.length <= limit) return first.replace(/[.:;]$/, '')
   return `${first.slice(0, first.lastIndexOf(' ', limit)).replace(/[.,:;]$/, '')}…`
 }
@@ -124,7 +150,7 @@ function archive(root, agent, period = '', kind = 'agent', reason = '') {
   // firmadas— y de paso bloqueaban la siguiente de su cargo (caso 142). Archivar es lo que corresponde:
   // no hubo nada que aprobar, y la firma se gastó sobre un documento vacío.
   const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
-  if (SIGNED.test(text) && !undecided(change)) {
+  if (SIGNED.test(approval(text)) && !undecided(change)) {
     throw new Error(
       `${path.basename(file)} está firmada: lo que sigue es aplicarla con agent-promote, no archivarla. `
       + 'Archivar es para lo que se miró y no cambia nada.',
@@ -148,15 +174,17 @@ function archive(root, agent, period = '', kind = 'agent', reason = '') {
       + 'El motivo es lo que evita que el próximo informe lo vuelva a recomendar.',
     )
   }
-  const stamped = text
-    .replace(/^status:\s*\S+\s*$/m, 'status: archived')
-    // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
-    // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción
-    // que el comentario de `seal` nombra, por el otro destino.
-    .replace(UNSEALED, '- Estado: archivada')
-    .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
-    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
-  atomicWrite(file, why ? stamped.replace(/^(-[ \t]*Estado:[ \t]*archivada[ \t]*)$/m, `$1\n- Motivo: ${why}`) : stamped)
+  const stamped = inApproval(text.replace(/^status:\s*\S+\s*$/m, 'status: archived'), (part) => {
+    const done = part
+      // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
+      // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción
+      // que el comentario de `seal` nombra, por el otro destino.
+      .replace(UNSEALED, '- Estado: archivada')
+      .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
+      .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
+    return why ? done.replace(/^(-[ \t]*Estado:[ \t]*archivada[ \t]*)$/m, `$1\n- Motivo: ${why}`) : done
+  })
+  atomicWrite(file, stamped)
   // La fila va para los dos tipos, y no sólo para los recorridos como en `seal`: allá los cargos los
   // registra `agent-promote` al aplicar, y archivar no pasa por ningún workflow que lo haga.
   // La raíz del cargo, que es `<cargo>/learning/proposals/<archivo>` sin sus tres últimos tramos:
@@ -198,4 +226,31 @@ function appendHistory(target, file, responsible, change, decision = 'aplicada')
   fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${cabecera}${row}`)
 }
 
-module.exports = { seal, archive }
+// Si lo que se aplica —«Cambio propuesto» y «Evaluación»— sigue siendo lo que se firmó. La huella la escribe
+// `sign-proposal.yml` al firmar; una propuesta firmada antes de eso no la trae y se acepta como estaba, porque exigirla
+// dejaría sin aplicar lo ya decidido (caso 486).
+function checkSignature(root, agent, period = '', kind = 'agent') {
+  const file = proposalFile(root, agent, period, kind)
+  return { file, ...printOf(fs.readFileSync(file, 'utf8')) }
+}
+
+// Por qué no se aplica, y cómo se vuelve a firmar: aprobar otra vez no alcanza, porque `sign-proposal.yml` sólo
+// firma una propuesta en «pendiente».
+function mismatch(name, print) {
+  return `${name}: «Cambio propuesto» o «Evaluación» cambió después de la firma `
+    + `(firmado sha256:${print.signed.slice(0, 12)}…, ahora sha256:${print.current.slice(0, 12)}…). `
+    + 'Lo que se aplicaría no es lo que se aprobó: revertí el cambio, o devolvé «Aprobación humana» al molde '
+    + '—Estado: pendiente, Responsable y Fecha: por definir—, borrá la línea Huella y aprobá el PR otra vez para que '
+    + 'se firme lo nuevo.'
+}
+
+function printOf(text) {
+  // Sólo es una firma vieja si no hay línea de huella: una presente y mal escrita se niega, o romperla alcanzaría.
+  const block = approval(text)
+  if (!/^-[ \t]*Huella:/mi.test(block)) return { ok: true, legacy: true }
+  const signed = (block.match(/^-[ \t]*Huella:[ \t]*sha256:([0-9a-f]{64})[ \t]*$/m) || [])[1] || ''
+  const current = fingerprint(text)
+  return { ok: current === signed, signed, current }
+}
+
+module.exports = { seal, archive, checkSignature, mismatch }

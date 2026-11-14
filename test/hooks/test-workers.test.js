@@ -264,3 +264,22 @@ test('un runner lanzado con un comando que el proyecto declaró acotado no se fr
   assert.ok(!C.validateOpsConfig({ project: 'x', mode: 'embedded', boundedCommands: ['acme-run.sh'] })
     .some((one) => /boundedCommands/.test(one)))
 })
+
+// Caso 499. El script entre comillas de un intérprete de otro lenguaje no es shell: su `|` no abre comando, y un
+// `node -e` que trae `pytest|jest` en una expresión regular no corre jest. Cualquier otra comilla sigue separando.
+test('un separador en el script de otro lenguaje no abre comando, y cualquier otra comilla sí', () => {
+  const root = pushRoot('cauce-workers-comillas-')
+  for (const command of ["node -e 'const r = /(pytest|jest|vitest)/i'", 'node -e "a; vitest"', "env node -e 'a|jest'",
+    "python3 -c 'x = \"a|jest\"'", "node -e 'const a = 1\njest'"]) {
+    assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
+  }
+  for (const command of ["sh -c 'true | npx jest'", 'bash -c "cd api; vitest run"', 'echo "$(true; npx jest)"',
+    "node -e 'a|b' | npx jest", "node -e 'a|jest'; npx jest",
+    // Toda comilla que no es el script de un intérprete separa: una sustitución, un heredoc, otro shell, `su`.
+    'echo "$(npx jest)"', 'node -e "$(npx jest)"', "cat <<EOF\nit's\nEOF\nnpx jest",
+    "bash -ce 'cd x; npx jest'", "bash -o pipefail -c 'cd x; npx jest'", 'eval "cd x; npx jest"',
+    "watch -n5 'cd x; npx jest'", "echo $'a\\'b'; npx jest", "su node -c 'cd /app && npx jest'",
+    "docker exec app su - node -c 'cd /app; npx jest'", "su -s /bin/sh python3 -c 'cd /app; npx jest'"]) {
+    blocked('test-workers', run(root, command), /sin cota de workers/)
+  }
+})

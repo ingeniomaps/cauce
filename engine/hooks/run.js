@@ -20,6 +20,7 @@ const { rulesNotice } = require('./rules-notice')
 const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell, restoresConfig } = require('./ops-config')
+const { runtimeWrites, runtimeShell } = require('./runtime')
 const { jiraAdf } = require('./jira')
 const { testWorkers } = require('./workers')
 const { comments } = require('./comments')
@@ -82,6 +83,8 @@ const guards = {
   generated: files.generated,
   'workspace-boundary': files.workspaceBoundary,
   engine: files.engineWrites,
+  runtime: runtimeWrites,
+  'runtime-shell': runtimeShell,
   migrations,
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
@@ -100,9 +103,9 @@ const guards = {
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'ai-signature', 'comments',
     'verify',
-    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'test-workers'],
+    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'runtime-shell', 'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
-    'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
+    'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config', 'runtime'],
   'pre-read': ['secrets-read'],
   'pre-mcp': ['jira-adf'],
   prompt: ['chat'],
@@ -210,6 +213,19 @@ const hookMetadata = [
     name: 'engine',
     event: 'PreToolUse · files',
     purpose: 'Impide editar el motor instalado por npm. Inerte en el propio toolkit.',
+  },
+  {
+    name: 'runtime',
+    event: 'PreToolUse · files',
+    purpose: 'Frena reescribir lo que Cauce entregó para que corran los guards —los scripts de '
+      + 'automatization/hooks/, el registro .cauce/manifest.json, engine/hooks/run.js y lo que recibió cada '
+      + 'runner— hasta que la persona lo pida nombrando el archivo o lo confirme en el turno.',
+  },
+  {
+    name: 'runtime-shell',
+    event: 'PreToolUse · shell',
+    purpose: 'Lo mismo que runtime, por shell: escribir, borrar, mover o cambiarle el permiso a esos archivos, '
+      + 'también por su carpeta, un glob o git.',
   },
   {
     name: 'migrations',

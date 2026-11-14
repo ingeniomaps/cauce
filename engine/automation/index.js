@@ -356,6 +356,7 @@ function install(root, name, output = console, options = {}) {
   if (ourHooks.length) deliveredPaths[deliveryKey(name, HOOKS_KEY)] = ourHooks
   else delete deliveredPaths[deliveryKey(name, HOOKS_KEY)]
   const landed = new Set()
+  let atStart = false
   for (const resolved of resolvedItems) {
     const status = state.get(resolved)
     const ownFile = runner.instructions.includes(resolved.item)
@@ -390,6 +391,9 @@ function install(root, name, output = console, options = {}) {
       F.atomicWrite(resolved.target, written)
       const verb = status === 'nuevo' ? 'instalado' : 'actualizado'
       output.log(`✓ ${name}: ${verb} ${resolved.item.target}`)
+      // Sólo lo nuevo: si un subagente actualizado se lee con la definición anterior no está medido.
+      atStart ||= status === 'nuevo' && Boolean(runner.startup)
+        && path.dirname(resolved.item.target) === runner.startup.dir
     }
     // Sólo se anota lo que Cauce puso: un archivo conservado con cambios de la empresa no es una
     // entrega, y registrarlo lo volvería indistinguible de uno intacto en la próxima instalación.
@@ -402,7 +406,7 @@ function install(root, name, output = console, options = {}) {
   // se abrió. Nombrados en relativo se leen como si estuvieran acá, así que quien abre la sesión en el repo
   // ops no encuentra ninguno mientras esta misma salida dice que están todos instalados.
   for (const dir of paths.install !== root ? landed : []) {
-    output.log(`  ${name}: ${dir} — los encuentra por nombre una sesión abierta en ${paths.install}`)
+    output.log(`  ${name}: ${dir} — los encuentra por nombre la sesión que se abra en ${paths.install}`)
   }
   // Dónde corren los guards, que no se invocan y por eso nadie nota que faltan. Los runners cargan la
   // configuración del proyecto desde la carpeta en que se abre la sesión hasta la raíz de su repo git, y no más
@@ -430,8 +434,28 @@ function install(root, name, output = console, options = {}) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
   }
+  // Lo que había en la configuración, no lo anotado: un `settings.json` recreado vuelve a recibir el hook.
+  const chat = (config) => (JSON.stringify(config).match(/"command":"[^"]*"/g) || [])
+    .some((one) => one.includes('guard-chat.'))
+  const chatIsNew = !chat(current) && chat(incoming)
+  const reopen = sessionLine(runner, paths, atStart, chatIsNew)
+  if (reopen) output.log(`! ${name}: ${reopen}`)
   M.write(root, undefined, deliveredPaths)
   return runner
+}
+
+// La sesión del runner desde la que se corrió `install`, que es como se instala desde el chat. Claude Code lee los
+// subagentes al arrancar el proceso, y lo que la persona pidió antes de que existiera el hook de mensaje no quedó
+// registrado: los dos se arreglan abriendo otra sesión (casos 502 y 503). Medido sólo en Claude Code.
+const insideSession = (runner) => Boolean(runner.startup && process.env[runner.startup.env] === '1')
+
+function sessionLine(runner, paths, agents, chat) {
+  if (!insideSession(runner) || !(agents || chat)) return ''
+  // La lee primero el agente que corrió `install`, y la acción es de la persona: se nombra a quién le toca.
+  const parts = [agents && 'los subagentes de Cauce no existen en ella',
+    chat && 'lo que la persona pidió antes no quedó registrado para los guards'].filter(Boolean)
+  return `esta sesión se abrió antes de instalar: ${parts.join(', y ')}. La persona tiene que abrir una nueva en `
+    + `${paths.install}${chat ? ' y repetir ahí su pedido' : ''}.`
 }
 
 module.exports = {
@@ -441,6 +465,7 @@ module.exports = {
   doctor,
   staleArtifacts,
   install,
+  insideSession,
   uninstall,
   legacyGuardWiring,
   roleCatalog,

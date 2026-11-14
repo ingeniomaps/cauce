@@ -187,6 +187,11 @@ async function runFlow(changes = {}, options = {}) {
     // La pregunta a `ops governed` después del plan: en el camino feliz nada pide aprobación. Se contesta por
     // etiqueta porque su fase es la última del plan —Plan o Critique según el carril—, y un guion la pisa con su clave.
     if (options.label === 'governed' && !(key in script)) return { readOk: true, pending: [] }
+    // Los archivos que toca el diff que Review juzga, contra los que se cruza lo que dice haber abierto (caso 485).
+    // Vacío por defecto: el cruce lo ejerce la prueba que lo mide, y el resto no tiene que contestar `opened`.
+    if (options.label === 'review-diff' && !(key in script)) return { files: [] }
+    // Y lo que ya estaba sin commitear antes de construir: en el camino feliz, nada.
+    if (options.label === 'review-baseline' && !(key in script)) return { files: [] }
     // La relectura del checkpoint recién escrito, que en el camino feliz dice que frena.
     if (options.label === 'checkpoint-held' && !(key in script)) {
       return { readOk: true, blocked: 'awaiting-review', checkpoints: ['checkpoints/H1.md'] }

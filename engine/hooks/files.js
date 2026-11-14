@@ -17,6 +17,7 @@ const { patchMoves } = require('../core/migrations')
 const { beyond, reached, refusal } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const { unrecordedNote } = require('./unrecorded')
 const { selfApproval } = require('./self-approval')
 const { readWip, readWips } = require('../planning/parser')
 const { runner } = require('../planning/claims')
@@ -302,7 +303,7 @@ function planFirst(input) {
     const how = foreign.length
       ? AP.HOW(null, [], input, [])
       : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [AP.at(input, raw)], input, undefined, { fixable: true })
-    block(`${raw} cambia el producto sin plan. ${why}${how}`)
+    block(`${raw} cambia el producto sin plan. ${why}${how}${unrecordedNote(input)}`)
   }
 }
 

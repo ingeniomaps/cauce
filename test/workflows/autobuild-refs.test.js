@@ -13,12 +13,15 @@ const RULE = `${RULES[1]}#P2`
 const finding = (extra) => ({ detail: 'la clave viaja en el log', blocking: true, ...extra })
 const approved = { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'], rules: [RULES[1]], critical: '' }
 
-// Primera pasada con los hallazgos que pida el escenario; la re-revisión, limpia.
+// Primera pasada con los hallazgos que pida el escenario; la re-revisión, limpia, y confirma corregido cada
+// bloqueante que se mandó a corregir (caso 484).
 function reviewing(concerns) {
   let pass = 0
+  const previous = concerns.filter((one) => one.blocking && !one.decision && one.verified !== false)
+    .map((one, index) => ({ id: `r1-B${index + 1}`, fixed: true, evidence: 'api/alta.go:12' }))
   return () => {
     pass += 1
-    return pass === 1 ? { ...approved, verdict: 'con-condiciones', concerns } : approved
+    return pass === 1 ? { ...approved, verdict: 'con-condiciones', concerns } : { ...approved, previous }
   }
 }
 

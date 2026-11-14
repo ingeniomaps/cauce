@@ -48,16 +48,27 @@ function validZone(name) {
   try { new Intl.DateTimeFormat('en-CA', { timeZone: name }); return true } catch { return false }
 }
 
+// Un patrón que casa con un archivo en la raíz y con uno tres carpetas abajo exime cualquier diff. Se pregunta al
+// glob en vez de listar las formas prohibidas: `**`, `**/*`, `***` y las que vengan (caso 485).
+const exemptsAll = (pattern) => {
+  const glob = pattern.trim().replace(/\/$/, '/**')
+  return ['a', 'x/y/z.go'].every((file) => { try { return path.matchesGlob(file, glob) } catch { return false } })
+}
+
+// Las llaves que acepta `ops.config.json`. `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión
+// salió la instancia. `test/hooks/ops-config-keys.test.js` exige que cada una diga si afloja un guard (caso 498).
+const CONFIG_KEYS = ['$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
+  'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards', 'reviewExempt']
+const RUNNER_BOOLEANS = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
+const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
+  'allowAiSignature', ...RUNNER_BOOLEANS]
+
 function validateOpsConfig(config) {
   const errors = []
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     return ['ops.config.json: debe ser un objeto']
   }
-  // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
-  const allowed = new Set([
-    '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards',
-  ])
+  const allowed = new Set(CONFIG_KEYS)
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
     else if (!allowed.has(key)) errors.push(`ops.config.json: propiedad desconocida ${key}`)
@@ -80,6 +91,15 @@ function validateOpsConfig(config) {
   if (bounded !== undefined && (!Array.isArray(bounded)
     || bounded.some((one) => typeof one !== 'string' || !one.trim()))) {
     errors.push('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben')
+  }
+  // Un patrón vacío casaría con cualquier ruta.
+  const exempt = config.reviewExempt
+  if (exempt !== undefined && (!Array.isArray(exempt)
+    || exempt.some((one) => typeof one !== 'string' || !one.trim()))) {
+    errors.push('ops.config.json: reviewExempt debe ser una lista de patrones de archivo, como "**/*.lock"')
+  } else if (Array.isArray(exempt) && exempt.some(exemptsAll)) {
+    errors.push('ops.config.json: reviewExempt no puede eximir todo el diff: un patrón como "**" saca la revisión '
+      + 'entera')
   }
   // Un huso mal escrito no puede caer a UTC en silencio: la fecha saldría un día corrida justo en la
   // instancia que lo declaró para que no pasara (caso 303).
@@ -292,10 +312,8 @@ function validateRunner(runner, errors) {
     errors.push('ops.config.json: runner debe ser un objeto')
     return
   }
-  const booleans = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
-  const allowed = new Set(['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
-    'allowAiSignature',
-    ...booleans])
+  const booleans = RUNNER_BOOLEANS
+  const allowed = new Set(RUNNER_KEYS)
   for (const key of Object.keys(runner)) {
     if (!allowed.has(key)) errors.push(`ops.config.json: runner.${key} no está permitido`)
   }
@@ -351,4 +369,7 @@ function localConfigWarnings(dir) {
   ]
 }
 
-module.exports = { configWarnings, validateOpsConfig, localConfigWarnings, validZone, GUARD_EVENTS, validateGuards }
+module.exports = {
+  configWarnings, validateOpsConfig, localConfigWarnings, validZone, GUARD_EVENTS, validateGuards, CONFIG_KEYS,
+  RUNNER_KEYS,
+}

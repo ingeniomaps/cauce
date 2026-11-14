@@ -98,3 +98,32 @@ test('un commit que sólo toca el planning no cuenta como trabajo sin anotar', (
   git('commit', '-q', '-m', 'feat: algo con planning al lado')
   assert.match(R.coverageWarnings(repo, done)[0], /2 commit\(s\)/, 'el que toca código además sí')
 })
+
+// El aviso nombra los commits que cuenta, con su asunto, hasta cinco, y dice cuántos más hay: sin eso, quien lo leía
+// tenía que buscarlos a mano en `git log` (caso 504).
+test('el aviso nombra hasta cinco commits sin anotar y cuenta el resto', () => {
+  const { ops } = instancia('ops-cobertura-nombra-', { abbrev: 7 })
+  const repo = path.join(path.dirname(ops), 'producto')
+  const git = (...args) => spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).stdout.trim()
+  const done = { entries: [{ fecha: '2000-01-01', commit: '' }], set: new Set() }
+  fs.writeFileSync(path.join(repo, 'b.txt'), 'dos\n')
+  git('add', 'b.txt')
+  git('commit', '-q', '-m', 'fix: el segundo')
+  const two = R.coverageWarnings(ops, done)[0]
+  for (const line of git('log', '--format=%h %s').split('\n')) assert.ok(two.includes(line), `falta «${line}»: ${two}`)
+  assert.doesNotMatch(two, /más$/)
+  for (const n of [3, 4, 5, 6, 7]) {
+    fs.writeFileSync(path.join(repo, `${n}.txt`), `${n}\n`)
+    git('add', `${n}.txt`)
+    git('commit', '-q', '-m', `feat: el ${n}`)
+  }
+  const seven = R.coverageWarnings(ops, done)[0]
+  assert.match(seven, /7 commit\(s\)/)
+  assert.match(seven, /; y 2 más$/)
+  const named = git('log', '--format=%h %s').split('\n')
+  for (const line of named.slice(0, 5)) assert.ok(seven.includes(line), `falta «${line}»: ${seven}`)
+  for (const line of named.slice(5)) assert.ok(!seven.includes(line), `sobra «${line}»: ${seven}`)
+  // Un commit sin asunto se nombra por su hash, sin la fecha.
+  git('commit', '-q', '--allow-empty', '--allow-empty-message', '-m', '')
+  assert.match(R.coverageWarnings(ops, done)[0], new RegExp(`: ${git('log', '-1', '--format=%h')}; `))
+})

@@ -65,6 +65,13 @@ const APPLIED = {
   },
 }
 
+// Lo que devuelve el chequeo de la huella: su código de salida decide, y lo que imprimió es lo que se le dice a quien
+// firmó.
+const CHECKED = {
+  type: 'object', additionalProperties: false, required: ['exitCode', 'output'],
+  properties: { exitCode: { type: 'number' }, output: { type: 'string' } },
+}
+
 {{INCLUDE:shared/workflow-finish.js}}
 
 if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
@@ -123,6 +130,19 @@ log(`Aprobada por ${signature.signedBy}`)
 const PERIOD = (signature.proposal.match(/(\d{4}-\d{2}(?:-r\d+)?)\.md$/) || [])[1] || ''
 if (!PERIOD) return stop('propuesta-sin-periodo', `${signature.proposal} no se llama AAAA-MM.md ni AAAA-MM-rN.md`)
 
+// La firma vale para lo que se aplica, «Cambio propuesto» y «Evaluación», tal como se aprobó. Si cambió después,
+// aplicar sería aplicar algo que nadie firmó; lo decide el motor recalculando la huella, no un agente leyendo el texto
+// (caso 486).
+const checked = await agent(
+  `From ${ROOT}, run "node ${signature.cli || 'tools/ops.js'} learn ${AGENT} --check-signature --period ${PERIOD}" ` +
+  'and report its exit code and everything it printed, verbatim. Change nothing.',
+  { schema: CHECKED, label: 'firma-intacta' },
+)
+if (!checked || checked.exitCode !== 0) {
+  return stop('firma-vencida',
+    String((checked && checked.output) || 'no se pudo comprobar la huella de la firma').trim())
+}
+
 phase('Aplicar')
 
 const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '' } : await agent(
@@ -139,6 +159,11 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `aunque la propuesta diga que no se crea el archivo: esa frase es de cuando se redactó, y el caso ` +
   `entra con la firma. Si el enunciado trae más comportamientos, fusioná los que se solapen sin perder ` +
   `ninguna idea.\n` +
+  // El fixture de un caso nuevo viene junto a su enunciado, en «Evaluación», y no en «Cambio propuesto» (caso 501).
+  `- Si junto al enunciado la propuesta trae archivos para el caso, con su ruta bajo \`evaluations/cases/<id>/\` y ` +
+  `su contenido, crealos tal cual en esa ruta. Si el caso necesita un documento, código o datos que la ` +
+  `propuesta no trae, no lo inventes: reportalo como desviación —«caso sin fixture: pedirlo en la propuesta ` +
+  `siguiente»—.\n` +
   // El juez recibe `forbidden` y nunca `required`: `engine/cli/catalog.js` toma sólo la primera, y el
   // prompt del juez nombra «conductas prohibidas». O sea que a una requerida la mide únicamente el caso
   // que la ejerza. Medido el 2026-09-02 sobre 48 requeridas de seis cargos: 4 no las ejerce ningún caso
@@ -151,6 +176,10 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `un caso cambia lo que la evaluación mide y entra con la firma o no entra. Reportalo como desviación ` +
   `—«requerida sin caso: pedirlo en la propuesta siguiente»— para que no quede como una promesa que ` +
   `nadie sabe que nada comprueba.\n` +
+  // Dos de nueve agentes sellaron la propuesta ellos mismos en 2026-11, y el sello, que la encontró sellada, no anotó
+  // el CHANGELOG (caso 500). El motor ya lo cubre; esto es para que no lo hagan.
+  `- El frontmatter de la propuesta, su «Estado» y \`learning/HISTORY.md\` no son tuyos: los escriben el paso ` +
+  `siguiente y el sello. No los toques.\n` +
   `- Si algo de la propuesta ya no aplica —el archivo cambió, la sección no existe— **no lo fuerces**: ` +
   `dejalo sin aplicar y reportalo como desviación.\n` +
   `- Toda desviación, por chica que sea, se escribe al final de «Aprobación humana» en la propia ` +
@@ -160,7 +189,7 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   // cargo se adopta en empresas donde `engine/` y el Makefile de este repositorio no existen. Pasó
   // cuatro veces el 2026-09-02 —`node engine/cli/ops.js` en dos historiales, un `make` propio de acá
   // reintroducido, y una ruta resuelta desde la raíz—: la puerta las cazó, pero después de escritas.
-  `- Todo lo que escribas —propuesta, historial, caso— viaja con el cargo a cada empresa. No cites ` +
+  `- Todo lo que escribas —propuesta, caso— viaja con el cargo a cada empresa. No cites ` +
   `rutas de este repositorio (\`engine/\`, \`template/\`, \`automatization/\`) ni objetivos \`make\` que ` +
   `sólo existan acá, y escribí las rutas relativas al cargo. Si necesitás nombrar un comando del CLI, ` +
   `nombralo sin su ruta.\n\n` +

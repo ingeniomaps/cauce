@@ -62,11 +62,19 @@ function agentDocs() {
 // sin eso y `seal` también, así que un test que sella sin firmar prueba un camino que no existe.
 // Firma como firma producción: `sign-proposal.yml` deja «aprobada», no «pendiente». Mientras esta
 // fixture dejaba el estado sin tocar, ninguna prueba veía el documento que el sello recibe de verdad.
+// Y desde el caso 486 deja también la huella de lo que se aplica, calculada sobre el texto ya firmado.
+// Como `sign-proposal.yml`, escribe sólo dentro de «Aprobación humana»: un fixture puede traer las mismas líneas.
 function firmarPropuesta(file) {
-  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+  const raw = fs.readFileSync(file, 'utf8')
+    .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n')
+  const at = raw.search(/^## Aprobación humana/m)
+  if (at < 0) throw new Error(`${file} no tiene «## Aprobación humana»: no hay dónde firmar`)
+  const text = raw.slice(0, at) + raw.slice(at)
     .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/mi, '- Estado: aprobada')
     .replace('- Responsable: por definir', '- Responsable: Quien Firma')
-    .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n'))
+  const huella = require('../../engine/agents/learning-files').fingerprint(text)
+  const signed = text.slice(at).replace(/^(-[ \t]*Fecha:.*)$/m, `$1\n- Huella: sha256:${huella}`)
+  fs.writeFileSync(file, text.slice(0, at) + signed)
 }
 
 module.exports = {

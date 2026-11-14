@@ -378,3 +378,27 @@ test('contract lleva el Mapa real que escribió el proyecto, y nada si sigue sie
     + '- api → `../api`: Go. Rutas en `cmd/api/routes.go`.', 'textual, sin el encabezado ni los comentarios')
   assert.match(run(['contract', root]).stdout, /^mapa {7}2 línea\(s\) de organization\/workspace\.md$/m)
 })
+
+test('contract lleva reviewExempt cuando el proyecto lo declara, y no lo inventa cuando no', () => {
+  const root = instance('cauce-contract-exempt-')
+  assert.equal(contractOf(root).value.reviewExempt, undefined)
+  const file = path.join(root, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.reviewExempt = ['**/*.lock', '**/__snapshots__/**']
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  assert.deepEqual(contractOf(root).value.reviewExempt, ['**/*.lock', '**/__snapshots__/**'])
+})
+
+test('validate rechaza un reviewExempt que no es una lista de patrones', () => {
+  const C = require('../../engine/config/validate')
+  const base = { project: 'x', mode: 'embedded' }
+  for (const bad of [['**/*.lock', ''], '**/*.lock', [3]]) {
+    assert.ok(C.validateOpsConfig({ ...base, reviewExempt: bad }).some((one) => /reviewExempt/.test(one)),
+      JSON.stringify(bad))
+  }
+  assert.ok(!C.validateOpsConfig({ ...base, reviewExempt: ['**/*.lock'] }).some((one) => /reviewExempt/.test(one)))
+  for (const all of ['**', '**/*', '**/**', '**/**/**', ' ** ']) {
+    assert.ok(C.validateOpsConfig({ ...base, reviewExempt: ['**/*.lock', all] })
+      .some((one) => /no puede eximir todo el diff/.test(one)), `${all} eximió todo`)
+  }
+})

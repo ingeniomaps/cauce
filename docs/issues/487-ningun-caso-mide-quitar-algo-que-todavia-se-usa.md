@@ -1,14 +1,15 @@
 ---
 caso: 487
 titulo: Ningún caso de eval mide aprobar la quita de algo que un archivo fuera del diff todavía usa
-estado: abierto
+estado: resuelto
+resuelto-en: 0.120.0
 prioridad: media
 version-detectada: 0.119.0
 ---
 
 # 487 — Ningún caso de eval mide aprobar la quita de algo que un archivo fuera del diff todavía usa
 
-**🔴 abierto** · detectado en 0.119.0 · prioridad **media**: R29 ya lo pide. Lo que falta es medir si el revisor lo hace, y la forma real del fallo llegó a producción en una organización externa.
+**🟢 resuelto en 0.120.0** · detectado en 0.119.0 · prioridad **media**: R29 ya lo pide. Lo que falta es medir si el revisor lo hace, y la forma real del fallo llegó a producción en una organización externa.
 
 ## Resumen
 
@@ -55,3 +56,47 @@ Sale de la revisión del 2026-11-05 de los repositorios de una organización ext
 
 - Caso 488: portar un arreglo mientras conviven dos versiones.
 - `change-review/08`: el pariente más cercano.
+
+## Cierre
+
+El caso pedía medir, y la medición está hecha: `flows/system/change-review/evaluations/cases/09-la-hoja-que-se-va` se
+corrió solo el 2026-11-05 y **pasa**. Ese día no se cambió R29. Su veredicto sigue vigente hoy (2026-11-13): el estado
+compuesto de change-review da «9/10 pasan», con 0 veredictos vencidos. El único rojo es `02-the-dissent`, que es anterior
+y no tiene que ver con este caso.
+
+Contra el caso:
+
+- **Fix, el caso incidental:** se hizo con la receta de AGENTS.md. Hay un fixture con el árbol, y `StatusBadge.jsx`,
+  fuera del diff, usa las clases que se quitan. Los comportamientos esperados nombran el hecho.
+- **Fix, «se corre con `/agent-eval`»:** se hizo distinto. Se corrió con `/flow-eval`, porque change-review es un
+  recorrido y no un cargo.
+- **Fix, «si pasa, no se toca ninguna regla»:** pasó, y no se tocó.
+- **Tradeoff, el costo:** el caso corrió solo, con 13 agentes y ~1,3 M tokens.
+- **Tradeoff, si falla, leer el caso primero:** no falló.
+- **Reproducción, «no se miraron los demás cargos»:** sigue igual. La ausencia se afirmó sobre tres directorios y el
+  caso nuevo la cubre en change-review, que es donde el incidente ajeno ocurrió.
+
+Lo no previsto: el juez dejó una nota de contrato. El gate de `evidence` frenó por las fuentes de las pruebas que
+faltaban aunque el veredicto ya estuviera bloqueado, y eso dejó sin correr `decide`. **Anotado, sin caso:** es una nota
+de contrato del juez, y esas se juntan en la propuesta mensual del recorrido.
+
+### Lista de cierre
+
+1. hecho: la ausencia del caso, comprobada sobre los casos de change-review, tech-lead y qa-engineer (Reproducción).
+2. hecho: en la rama de la tanda, `fix/484-re-review-checks-what-it-asked`; el caso de eval entró antes, en `main` (c7b44194 y fa06fc50).
+3. no aplica: no hay código. La medición es el caso de eval, que se esperaba ver pasar o fallar, y pasó.
+4. no aplica: no hay código que mutar, y como el caso pasó, no se tocó ninguna regla.
+5. no aplica: no se quita ni se reemplaza nada.
+6. hecho: el recorrido real corrió con `/flow-eval` el 2026-11-05, con modelo y sin dobles.
+7. hecho: lo que depende de un modelo es justo el caso de eval, y corrió con uno.
+8. hecho: corrió el caso 09 solo; los otros nueve conservan su veredicto, compuesto hoy con 0 vencidos.
+9. no aplica: no coordina nada.
+10. hecho: nadie depende de un caso de eval nuevo. Como no se tocó la regla, ninguna instancia recibe nada distinto.
+11. no aplica: este cierre no trae código. El caso de eval lo juzgó un juez aparte del que respondió, que es la revisión que corresponde a un caso.
+12. no aplica: no se agregan comentarios de código.
+13. hecho: `npm run ci` con el cierre stageado.
+14. hecho: recorrido arriba contra Fix, Tradeoffs y Reproducción.
+15. hecho: lo corrido y la nota del juez, arriba.
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`, y entrada en el CHANGELOG junto con 488 a 490: el caso de eval viaja en el paquete.
+
+**Sin probar:** nada.

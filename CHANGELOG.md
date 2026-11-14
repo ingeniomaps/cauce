@@ -147,6 +147,71 @@ diseño — eso vive en el commit y en el código.
   cuentan en grafemas, y la revisión pregunta si el contenido generado por IA tiene que divulgarse. El caso 09 se
   ajusta al cambio (propuesta `2026-11.md`).
 
+### Cambiado
+
+- **La re-revisión de `autobuild` comprueba lo que mandó a corregir, y `done/` registra como `corregido:` sólo lo
+  confirmado** (caso 484). Cada bloqueante lleva un id por vuelta (`r1-B1`); la re-revisión contesta por cada uno si
+  sigue, con la línea del diff que lo muestra. Lo que no confirma vuelve a corregirse, y al tope de dos vueltas la
+  corrida frena con `review-failed` nombrándolo. Antes, todo lo mandado quedaba como corregido aunque nadie lo hubiera
+  vuelto a mirar, y de ahí cuenta `ops lessons`. Las entradas viejas de `done/` siguen diciendo `corregido:` con el
+  significado anterior: no se reescriben.
+- **Review de `autobuild` declara qué archivos del diff abrió, y el motor exige los que faltan** (caso 485). Recibe la
+  lista exacta de archivos que toca el diff y contesta en `opened` cuáles abrió; si falta alguno tiene una pasada más
+  sobre esos, que se suma a la primera, y si sigue faltando la corrida para con `review-unbacked` y la lista. Antes
+  sólo frenaba un `consulted` vacío. Lo que un proyecto no quiere exigir —lockfiles, snapshots— lo declara en la llave
+  nueva `reviewExempt` de `ops.config.json`, con patrones glob. El motor comprueba la declaración, no que se haya leído
+  bien.
+- **Una propuesta firmada no se aplica si «Cambio propuesto» o «Evaluación» cambiaron después de la firma** (casos
+  486, 505 y 506). La firma guarda una huella sha256 de las dos secciones, que es lo que se aplica, y un título dentro
+  de un bloque de código no corta ninguna. `agent-promote` la comprueba antes de aplicar con el comando nuevo
+  `ops learn <cargo> --check-signature`; si no coincide, para y dice las dos huellas. Sellar con `--applied` también se
+  niega. Una propuesta firmada antes de esta versión no trae huella y se aplica como hasta ahora; una con la línea de
+  huella rota, no. Y `sign-proposal.yml` ya no firma si la rama recibió un push después de la aprobación: pide volver a
+  aprobar.
+- **Cuatro casos de eval nuevos miden hábitos que las reglas del sistema ya pedían** (casos 487 a 490). Ninguno
+  nombra la conducta: `change-review/09` aprueba o no la quita de una clase que un archivo fuera del diff sigue usando;
+  `frontend-engineer/10` arregla un componente deprecado cuyo reemplazo tiene el mismo defecto; `backend-engineer/11`
+  encuentra dos políticas escritas que se contradicen; `qa-engineer/17` tiene que decir dónde buscó antes de afirmar
+  que algo falta. Los cuatro pasan, así que R13, R14 y R29 no cambian.
+- **Instalar desde una sesión de Claude Code ya abierta avisa que hay que abrir otra** (casos 502 y 503). Esa sesión
+  no tiene los subagentes recién instalados, porque Claude Code los lee al arrancar, y `/autobuild` aborta al buscar
+  `cauce-clerk`. Lo que la persona pidió antes del hook de mensaje tampoco quedó registrado. `install` lo dice con la
+  ruta donde abrir la nueva, y el cierre de `init` dice «una sesión nueva». Desde una terminal no cambia nada. Y cuando
+  `plan-first` o la gobernanza frenan en una sesión sin ningún mensaje registrado, el bloqueo dice que lo pedido antes
+  no cuenta.
+- **El aviso OPS-001 nombra los commits que cuenta** (caso 504): hasta cinco, con hash y asunto, y cuántos más hay.
+  Antes decía sólo el número, también con `--json`, y había que buscarlos en `git log`. La ventana sigue comparando
+  por día: el día que se instala Cauce puede contar un commit de antes, y ahora se ve cuál es.
+- **Un caso nuevo de una propuesta mensual llega a la firma con su fixture** (caso 501). Si el hecho que el caso
+  necesita vive en un documento, código o datos, `agent-propose` copia en la propuesta la ruta y el contenido completo
+  del archivo, junto al enunciado, y `agent-promote` lo crea al aplicarla. Si el caso lo necesita y la propuesta no lo
+  trae, aplicar no lo inventa: lo deja como desviación. Antes, el caso entraba sin el archivo y su primera corrida medía
+  el caso y no al cargo.
+- **Sellar, archivar y contar propuestas firmadas leen la firma en «Aprobación humana»** (caso 507). Antes buscaban
+  `- Estado:` en todo el archivo, así que un fixture con esa línea dentro de la propuesta se sellaba en lugar de la
+  firma, y una propuesta pendiente cuyo fixture decía «aprobada» se contaba como firmada.
+- **Un cargo aplicado siempre deja su entrada en el CHANGELOG, y la entrada dice qué cambió** (casos 497 y 500).
+  Cuando el agente que aplica dejaba él mismo la propuesta sellada, el sello no anotaba nada y el cargo salía en la
+  release sin entrada; ahora anota igual, una sola vez en todo el archivo, y quien aplica no toca el estado ni el
+  historial. «Cambio propuesto» abre con una línea `**En una línea:** …`, y la entrada sale de ahí: antes copiaba el
+  primer párrafo, que solía decir dónde y por qué y no qué. Las propuestas sin esa línea siguen como antes.
+- **Lo que el agente escribe en `ops.config.json` y afloja un freno lo confirma una persona** (caso 498). Antes sólo el
+  permiso de push y las raíces lo pedían. El agente podía activarse `runner.commitToLiveBranch` o
+  `runner.allowAiSignature`, sumar `boundedCommands` o `reviewExempt`, quitar `deployCommands` o un guard del
+  proyecto, cambiar la cobertura de `migrations`, pasar a `mode: toolkit` o subir `runner.maxTaskHours`, y los guards
+  dejaban de frenarlo. Ahora el bloqueo nombra qué afloja, y la persona lo confirma en el diálogo del runner o pega la
+  línea. Lo que angosta pasa sin preguntar. Si tu agente declaraba solo `boundedCommands` cuando `test-workers` lo
+  frenaba, ahora te lo va a pedir.
+- **`test-workers` ya no toma por un comando el `|` del script de otro lenguaje** (caso 499). Un `node -e` o un
+  `python -c` cuyo script traía `pytest|jest` en una expresión regular frenaba como si corriera jest sin cota. Vale
+  para `node` y `bun` con `-e` o `-p`, `python` con `-c` y `perl` con `-e`; en cualquier otra comilla —un `sh -c`, un
+  `eval`— el separador sigue contando. Un runner que esos scripts lancen por su cuenta no lo ve este guard.
+- **El agente ya no puede apagar los guards reescribiendo sus scripts** (caso 508). Dos guards nuevos, `runtime` y
+  `runtime-shell`, frenan escribir, borrar, mover o quitarle el permiso de ejecución a lo que Cauce entregó para que
+  corran los guards: los scripts de `automatization/hooks/`, el registro `.cauce/manifest.json` y lo que recibió cada
+  runner, su configuración incluida. También por la carpeta, un glob o git. Pasa si la persona lo pide nombrando el
+  archivo o lo confirma en el turno. Un guard propio al lado no se frena, y `cauce upgrade` sigue actualizándolos.
+
 ## [0.119.0] - 2026-11-03
 
 ### Cambiado

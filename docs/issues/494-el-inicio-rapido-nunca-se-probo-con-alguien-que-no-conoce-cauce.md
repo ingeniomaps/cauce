@@ -1,14 +1,15 @@
 ---
 caso: 494
 titulo: El inicio rápido nunca se recorrió a ciegas, con alguien que sólo tiene la documentación
-estado: abierto
+estado: resuelto
+resuelto-en: 0.120.0
 prioridad: media
 version-detectada: 0.119.0
 ---
 
 # 494 — El inicio rápido nunca se recorrió a ciegas, con alguien que sólo tiene la documentación
 
-**🔴 abierto** · detectado en 0.119.0 · prioridad **media**: medido el 2026-11-05, una corrida a ciegas no pudo usar `/autobuild` en su primera sesión, y el primer commit de la instancia pide aprobar 54 rutas sin que el README lo avise.
+**🟢 resuelto en 0.120.0** · detectado en 0.119.0 · prioridad **media**: medido el 2026-11-05, una corrida a ciegas no pudo usar `/autobuild` en su primera sesión, y el primer commit de la instancia pide aprobar 54 rutas sin que el README lo avise.
 
 ## Resumen
 
@@ -71,3 +72,72 @@ Sale de la revisión del 2026-11-05 de los repositorios de una organización ext
 ## Relacionados
 
 - Memoria del proyecto «Camino a la 1.0.0».
+
+## Cierre
+
+La medición se corrió una vez (2026-11-05) y se contrastó contra su `.jsonl` el 2026-11-13. De los 12 pasos del
+informe, tres salieron como caso propio, uno de ellos juntando dos pasos. Los demás quedan anotados acá. Repetirla antes
+de cada minor que toque `init`, `onboard` o el README quedó como regla de este repositorio en `AGENTS.md` («La corrida a
+ciegas antes de una minor»), por decisión de quien firma (2026-11-13).
+
+Contra la tabla, paso por paso:
+
+- **6 → caso 502.** Confirmado en el `.jsonl`: `agent type 'cauce-clerk' not found` a las 20:08:27, con `init`
+  instalado a las 20:05:44. **El informe se equivocaba en «más tarde aparecieron solos»:** aparecieron en la
+  reanudación, que es un proceso nuevo. Una sonda en Claude Code 2.1.323 lo midió: en una sesión interactiva, el turno
+  siguiente a crear el agente sigue diciendo `not found`; un proceso nuevo y `--resume` lo encuentran.
+- **9 y 12 → caso 503.** Son el mismo defecto: el pedido anterior a `init` no queda registrado y los dos guards eximen
+  sólo con `CHAT.said`. Reproducidos sobre una copia de la instancia: `plan-first` y la gobernanza dan `exit=2` sin
+  mensaje registrado y `exit=0` con él. Las rutas a aprobar eran **53, no 54**.
+- **11 → caso 504.** Reproducido: el aviso no nombra el commit, tampoco con `--json`. Al reproducirlo apareció algo que
+  el informe no traía: la ventana compara por día, y el commit que contaba era `d05d25f chore: initial`, anterior a
+  Cauce y del mismo día.
+- **1, confirmado y anotado:** `init` avisa que falta ignorar `.claude/workflows/` sin dar la línea.
+- **2, confirmado y anotado:** `/onboard` invocado como skill en una sesión abierta dio un error sin mensaje; como
+  workflow anduvo. Comparte causa con el 502 (registro al abrir la sesión) y no se le abrió caso aparte.
+- **4, confirmado y anotado:** `check` avisa sobre el `workspace.md` que `onboard` acaba de escribir (las «Excepciones
+  de autonomía» con «Por definir»; se ve en la salida `--json` del 504).
+- **8, confirmado y anotado:** `ops claim` pide «commiteá y empujá» sin remoto y con `allowPush: false`.
+- **5 y 7, sólo narración:** el `.jsonl` no muestra un error ni un bloqueo, sólo la duda de la sesión. Se anotan y no
+  sostienen un caso.
+- **3 y 10, del diseño de la prueba:** las preguntas de `onboard` las contestó el agente porque el pedido era de punta
+  a punta. Quien revisó en `lite` fue la misma sesión, porque `/autobuild` no corrió, y eso se resuelve con el 502.
+
+Contra el resto del caso:
+
+- **Fix 1, correr y abrir un caso por paso:** se hizo, y quien firma decidió el 2026-11-13 abrir sólo los de peso (6, 9,
+  11, 12) y anotar los menores acá.
+- **Fix 2, decidir si se repite:** se decidió que sí, antes de cada minor que toque `init`, `onboard` o el README.
+- **Tradeoff, cuesta una corrida:** USD 3,03 la corrida y unos centavos las sondas de Haiku del 502.
+- **Tradeoff, un modelo no es una persona:** sigue en pie. La regla nueva lo dice: el resultado es el `.jsonl`
+  contrastado, no el informe.
+- **«Lo que no prueba»:** sigue sin medirse un monorepo, otro runner, y `embedded` frente a `sidecar`. La corrida fue
+  `sidecar` con `ops/` dentro del repo.
+
+### Lista de cierre
+
+1. hecho: la línea de base es la propia corrida a ciegas del 2026-11-05 y su informe, sin contrastar.
+2. hecho: en la rama `fix/484-re-review-checks-what-it-asked`, la de la tanda, a pedido.
+3. no aplica: no hay código ni prueba nueva. Los casos 502 a 504 traen la suya para cuando se construyan.
+4. no aplica: no hay código que mutar.
+5. no aplica: no se quita ni se reemplaza nada.
+6. hecho: la corrida real con `claude -p` en un proyecto fuera del árbol; las reproducciones con los hooks reales
+   sobre una copia de su instancia; la sonda de agentes en una sesión interactiva real.
+7. hecho: lo que depende del runner (el registro de agentes) se midió en Claude Code 2.1.323, en interactivo, en `-p`
+   y con `--resume`.
+8. hecho: corrieron la corrida a ciegas (2026-11-05), el contraste del `.jsonl`, las reproducciones de 9, 11 y 12 con
+   el motor 0.119.0 y el de esta rama, y la sonda. No corrió otro runner ni otro modo de instancia.
+9. no aplica: no coordina nada.
+10. hecho: lo que cambió es la regla en `AGENTS.md` y tres casos. Nadie depende de ellos; `issues.test.js` y
+    `foreign-names.test.js` pasan con los casos nuevos.
+11. no aplica: no hay código. Los tres casos nuevos pasan por la revisión de casos antes de construirse.
+12. no aplica: no se agregan comentarios de código.
+13. hecho: `npm run ci` con los archivos nuevos stageados.
+14. hecho: recorrido arriba, paso por paso y contra Fix, Tradeoffs y «Lo que no prueba».
+15. hecho: lo corrido y lo que devolvió está arriba y en los casos 502 a 504, con lo no previsto (la ventana por día,
+    el «aparecieron solos» falso, 53 rutas).
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`. No lleva entrada en el CHANGELOG porque nada de
+    esto viaja en el paquete: `docs/` y `AGENTS.md` no están en `files`.
+
+**Sin probar:** la corrida en otro runner, en un monorepo y en una instancia `embedded`; y si una persona adivina
+distinto que el modelo en los pasos 5 y 7.

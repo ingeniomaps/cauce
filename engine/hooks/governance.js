@@ -9,6 +9,7 @@ const path = require('node:path')
 const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, realPath, toplevel } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const { unrecordedNote } = require('./unrecorded')
 
 // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
 // «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
@@ -61,7 +62,8 @@ function governance(input) {
   // entre una llave por operación y una puerta que quedó abierta.
   const pending = AP.pendingNow(opsRoot(input), governed.map((file) => path.join(top, file)), input)
   if (!pending.length) return
-  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pending, input)}`)
+  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pending, input)}`
+    + unrecordedNote(input))
 }
 
 module.exports = { governance, governedOf }

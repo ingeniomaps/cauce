@@ -100,6 +100,20 @@ empresa lo que hay que medir es su propia instancia.
 resultado —el caso, el CHANGELOG, la regla—, y el banco se borra. Es lo mismo que con el de evaluación:
 el banco se va, el contrato queda.
 
+### La corrida a ciegas antes de una minor
+
+**Antes de sacar una minor que toque `init`, `onboard` o el README, se repite la corrida a ciegas del caso 494.** Es
+una sesión nueva con sólo el paquete publicado, en un proyecto vacío fuera de cualquier ruta que nombre Cauce, y lleva
+una tarea de punta a punta anotando cada paso donde tuvo que adivinar. Cuesta unos USD 3 y se pregunta antes de
+correrla. Cómo se arma y qué la contamina está en ese caso.
+
+La sesión escribe un informe, y el informe no es el resultado. El resultado es su `.jsonl` contrastado punto por
+punto. La primera vez, el informe decía que los subagentes «aparecieron solos» más tarde. Contrastado, lo que
+pasó es que la reanudación había abierto un proceso nuevo (caso 502). Lo que se confirma sale como caso; lo
+menor se anota en el caso de la corrida.
+
+Es una regla de este repositorio y no baja a las instancias.
+
 ### Escribir un caso que tiente
 
 Un caso mide una conducta prohibida de dos formas, y no son intercambiables.
@@ -272,6 +286,11 @@ El orden que menos vueltas da:
 El paso 4 sorprende y es correcto: la firma es un commit que nadie revisó, y la puerta tiene algo que
 decir sobre él. Y firmar no es aplicar — `agent-promote` sigue siendo un acto aparte; el porqué de esa
 separación vive en el encabezado de `sign-proposal.yml`, no acá.
+
+**La firma queda atada a lo que aprobaste** (caso 486). Si la rama recibe un push entre tu aprobación y la firma, el
+job no firma: falla nombrando el commit que aprobaste y el que hay, y lo que corresponde es revisar lo nuevo y volver a
+aprobar. Y la firma guarda la huella de «Cambio propuesto» y «Evaluación», que es lo que `agent-promote` aplica: si
+alguien edita cualquiera de las dos después, no la aplica y dice las dos huellas (casos 505 y 506).
 
 #### Declinar una propuesta es archivarla, no cerrar su PR
 

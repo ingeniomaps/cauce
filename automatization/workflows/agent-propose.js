@@ -76,7 +76,10 @@ const proposal = await agent(
   `${context.dir}/learning/sources.yaml, ${context.dir}/evaluations/expected-behaviors.yaml y sus ` +
   `casos en ${context.dir}/evaluations/cases/. Después completá **sólo** estas tres secciones de la ` +
   `propuesta, sin tocar ninguna otra ni el resto del frontmatter:\n\n` +
-  `**Cambio propuesto**: el texto exacto a agregar o reemplazar, archivo por archivo, citando la ` +
+  // La entrada del CHANGELOG sale de esa línea; sin ella copiaba un párrafo que decía dónde y por qué (caso 497).
+  `**Cambio propuesto**: abrí con una línea \`**En una línea:** <qué cambia en el cargo>\`, para quien actualiza ` +
+  `y no lee la propuesta: qué hace distinto el cargo, sin rutas ni conteos de archivos. Después, ` +
+  `el texto exacto a agregar o reemplazar, archivo por archivo, citando la ` +
   `sección o la línea que se toca. Que se pueda aplicar leyéndolo, sin volver al informe. Preferí ` +
   `agregar sobre reescribir: el núcleo del contrato no está en discusión. Si una fuente no se pudo ` +
   `corroborar, dejalo escrito en el propio texto en vez de afirmarla.\n\n` +
@@ -88,6 +91,11 @@ const proposal = await agent(
   `las que ya están, escribí el enunciado del caso que haría falta —con **cuatro** comportamientos ` +
   `esperados, como todos los del catálogo— y no crees el archivo vos: cambiar el denominador de la ` +
   `evaluación es parte de lo que se aprueba, así que el caso entra con la firma y lo crea quien aplique. ` +
+  // Sin el archivo, la primera corrida medía el caso y no al cargo: pasó con backend-engineer 10 en 2026-11 (caso 501).
+  `Si para contestarlo hace falta un hecho que vive en un documento, en código o en datos —un contrato, un job, ` +
+  `el changelog de un competidor—, copiá dentro de la propuesta, junto al enunciado, la ruta de ese archivo, ` +
+  `\`evaluations/cases/<id>/<archivo>\`, y su contenido completo, y no lo crees: lo crea quien aplique. Si ` +
+  `no, el cargo no tiene contra qué comprobarlo, y la respuesta correcta pasa a ser abstenerse. ` +
   `No escribas en la propuesta que el archivo no se crea, porque quien aplica lo leería como una orden. ` +
   `Si agregás una conducta a \`required\`, escribí también el ` +
   `enunciado de un caso que la ejerza aunque ya haya casos parecidos: al juez sólo le llegan las ` +

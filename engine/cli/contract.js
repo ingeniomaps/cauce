@@ -273,6 +273,8 @@ function contract(dir, cli) {
     // Las líneas declaradas, para que `/autobuild pagos` sepa que `pagos` es una línea y no un pedido (caso
     // 394). Sólo cuando hay: sin líneas el contrato es el de siempre.
     ...(Object.keys(lines).length ? { lines: Object.keys(lines) } : {}),
+    // Lo que la revisión de autobuild no tiene que abrir, sólo si el proyecto lo declara (caso 485).
+    ...(Array.isArray(config.reviewExempt) && config.reviewExempt.length ? { reviewExempt: config.reviewExempt } : {}),
     ...(map ? { map } : {}),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))

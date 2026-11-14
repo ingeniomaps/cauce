@@ -5,6 +5,7 @@
 // lo necesitan los dos lados —el ciclo que produce esos documentos y la validación que los juzga— y
 // sin este corte cada uno tendría que requerir al otro.
 
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
@@ -34,6 +35,48 @@ un texto que acaba de fallar su primera medición.`
 // veía igual que la que no. Sin ese aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01
 // se habrían quedado ahí sin que nada lo dijera.
 const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
+
+// «Aprobación humana», desde su primer título hasta el final, que es donde la firma escribe estado, responsable, fecha
+// y huella: el mismo tramo que lee y reescribe `sign-proposal.yml`. Un fixture de la propuesta puede traer esas mismas
+// líneas, y buscarlas en todo el archivo leía las del fixture (caso 507).
+const APPROVAL = /^## Aprobación humana/m
+const approval = (text) => {
+  const at = String(text).search(APPROVAL)
+  return at < 0 ? '' : String(text).slice(at)
+}
+const inApproval = (text, change) => {
+  const at = text.search(APPROVAL)
+  return at < 0 ? text : text.slice(0, at) + change(text.slice(at))
+}
+
+// La huella que `sign-proposal.yml` escribe al firmar (caso 486): el sha256 de lo que `agent-promote` aplica, la
+// primera «Cambio propuesto» y la primera «Evaluación», con sus títulos, cada línea con su salto, como las imprime el
+// `awk` de ese workflow. Si los dos la calculan distinto, toda propuesta firmada se lee como editada.
+const SIGNED_SECTIONS = [/^## Cambio propuesto/, /^## Evaluación/]
+
+function fingerprint(text) {
+  const lines = String(text).split('\n')
+  // El último salto no abre una línea: `awk` no la imprime, y sin esto una sección al final del archivo no coincidía.
+  if (lines[lines.length - 1] === '') lines.pop()
+  const seen = new Set()
+  const body = []
+  let fenced = false
+  let inside = false
+  for (const line of lines) {
+    // «Aprobación humana» la reescribe la firma después de calcular la huella, así que la termina aunque un bloque sin
+    // cerrar la deje adentro: si no, la propuesta recién firmada no coincidiría nunca.
+    if (/^## Aprobación humana/.test(line)) break
+    // Un markdown que la propuesta trae entero tiene sus títulos: dentro de un bloque no cortan la sección (caso 505).
+    if (/^```/.test(line)) fenced = !fenced
+    else if (!fenced && /^## /.test(line)) {
+      const section = SIGNED_SECTIONS.find((one) => one.test(line) && !seen.has(one))
+      inside = Boolean(section)
+      if (section) seen.add(section)
+    }
+    if (inside) body.push(line)
+  }
+  return crypto.createHash('sha256').update(body.map((line) => `${line}\n`).join('')).digest('hex')
+}
 
 // Los dos destinos que cierran una propuesta. `archived` es «se miró y no cambia nada»: no espera
 // trabajo, así que contarla como pendiente deja al cargo reportando deuda que nadie va a pagar. Y por lo
@@ -149,7 +192,7 @@ const REASON_LINE = /^-[ \t]*Motivo:[ \t]*(.+)$/m
 function discardedProposals(dir) {
   return proposalFiles(dir).map((name) => {
     const text = fs.readFileSync(path.join(dir, name), 'utf8')
-    const reason = (text.match(REASON_LINE) || [])[1]
+    const reason = (approval(text).match(REASON_LINE) || [])[1]
     if (proposalState(text) !== 'archived' || !reason) return null
     return { name, reason: reason.trim() }
   }).filter(Boolean)
@@ -173,7 +216,8 @@ function reportFiles(dir) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED,
+  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED, fingerprint,
+  approval, inApproval,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
   discardedProposals,

@@ -83,6 +83,10 @@
       "target": ".claude/agents/cauce-scribe.md"
     }
   ],
+  "startup": {
+    "env": "CLAUDECODE",
+    "dir": ".claude/agents"
+  },
   "capabilities": {
     "nativeHooks": true,
     "nativeWorkflows": true,

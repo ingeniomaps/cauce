@@ -289,6 +289,11 @@
     "branches": 88,
     "functions": 100
   },
+  "engine/hooks/config-keys.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/hooks/confirm.js": {
     "lines": 100,
     "branches": 100,
@@ -358,6 +363,11 @@
     "lines": 91,
     "branches": 70,
     "functions": 97
+  },
+  "engine/hooks/runtime.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
   },
   "engine/hooks/secrets-shell.js": {
     "lines": 100,
@@ -632,6 +642,11 @@
   "engine/hooks/line-scope.js": {
     "lines": 100,
     "branches": 96,
+    "functions": 100
+  },
+  "engine/hooks/unrecorded.js": {
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/hooks/unreadable-config.js": {

@@ -47,6 +47,25 @@ function read(packageRoot) {
   try { return fs.readFileSync(path.join(packageRoot, 'CHANGELOG.md'), 'utf8') } catch { return '' }
 }
 
+// La versión cuya viñeta ya nombra a este cargo con esta propuesta, en todo el archivo y no sólo en la abierta: volver
+// a sellar una propuesta que ya salió la anotaría otra vez en la versión siguiente (caso 500). Las dos marcas en la
+// misma viñeta, porque los nombres de propuesta se repiten entre cargos. La viñeta se envuelve, y se rearma pegando
+// sus líneas de continuación sin la sangría: el corte puede caer entre las dos mitades de una marca.
+function noted(lines, agent, proposal) {
+  let version = ''
+  let bullet = ''
+  const matches = () => bullet.includes(`- **\`${agent}\`**`) && bullet.includes(`(propuesta \`${proposal}\`)`)
+  for (const line of [...lines, '']) {
+    const heading = line.match(HEADING)
+    if (heading || /^- /.test(line) || !/^\s+\S/.test(line)) {
+      if (version && matches()) return version
+      bullet = /^- /.test(line) ? line : ''
+      if (heading) version = heading[1]
+    } else bullet += ` ${line.trim()}`
+  }
+  return ''
+}
+
 // La línea que `agent-promote` deja al aplicar un cargo, en la versión que todavía no salió. Sin ella el
 // cambio quedaba en `main` sin versión que lo llevara: `release-pr.yml` sólo abre el PR cuando el
 // CHANGELOG declara un número nuevo, y escribirlo era un paso que nadie tenía asignado.
@@ -61,6 +80,8 @@ function noteAgentChange(root, { agent, proposal, summary, today }) {
   const first = lines.findIndex((line) => /^##\s*\[\d/.test(line))
   if (first < 0) throw new Error('CHANGELOG.md no tiene ninguna entrada con versión.')
   const bullet = wrap(`- **\`${agent}\`**: ${summary} (propuesta \`${proposal}\`).`)
+  const known = noted(lines, agent, proposal)
+  if (known) return { version: known, already: true }
   const top = lines[first].match(HEADING)[1]
   if (compare(top, released) <= 0) {
     const [major, minor] = released.split('.').map(Number)
@@ -71,12 +92,6 @@ function noteAgentChange(root, { agent, proposal, summary, today }) {
   }
   let end = lines.findIndex((line, index) => index > first && HEADING.test(line))
   if (end < 0) end = lines.length
-  // Una propuesta ya anotada no se anota dos veces: `seal` puede volver a correr sobre un cuerpo sin sellar.
-  // Con los espacios normalizados porque la viñeta se envuelve, y el corte puede caer entre las dos mitades.
-  const entry = lines.slice(first, end).join(' ').replace(/\s+/g, ' ')
-  if (entry.includes(`- **\`${agent}\`**`) && entry.includes(`(propuesta \`${proposal}\`)`)) {
-    return { version: top, already: true }
-  }
   const section = lines.findIndex((line, index) => index > first && index < end && /^###\s+Cargos\s*$/.test(line))
   let at = end
   if (section >= 0) {

@@ -100,6 +100,14 @@
         "minLength": 1
       }
     },
+    "reviewExempt": {
+      "type": "array",
+      "description": "Patrones glob de archivos que una revisión de autobuild no tiene que abrir aunque el diff los toque: lockfiles, snapshots, código generado. Review declara lo que abrió y el recorrido lo cruza contra los archivos del diff; lo que case con uno de estos patrones no se exige. ** cruza carpetas; * y ? no. Lo declara una persona: cada patrón saca archivos de la revisión.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "writableOutsideRoots": {
       "type": "array",
       "description": "Rutas que el proyecto declara escribibles sin ser raíces de código —la memoria del runner, un scratchpad, un directorio de salida—. Sólo levantan el límite de workspace-boundary: no entran a scan ni al inventario de credenciales, que recorren workspaceRoots. `~` se expande a la casa del usuario y el resto se resuelve contra la raíz de ops. `check` las muestra resueltas en cada corrida, porque una exención que no se ve es un límite que ya no existe.",

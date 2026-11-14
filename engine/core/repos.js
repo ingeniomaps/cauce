@@ -160,6 +160,8 @@ function unrecordedCommits(repo, since, recorded, skip = '') {
     .map((one) => one.line)
 }
 
+const NAMED = 5
+
 // Cuánto del trabajo que entró a los repositorios quedó registrado, desde la última tarea cerrada. Avisa
 // y no falla, por lo mismo que el resto de esta familia: es un hecho del pasado que no se arregla
 // editando nada, y el único camino al verde sería escribir entradas de memoria.
@@ -184,8 +186,12 @@ function coverageWarnings(opsRoot, done) {
     const planning = path.relative(repo, path.join(opsRoot, 'planning'))
     const unrecorded = unrecordedCommits(repo, since, recorded, planning.startsWith('..') ? '' : planning)
     if (!unrecorded.length) continue
+    // Cuáles, no sólo cuántos: sin el hash, salir del aviso era buscarlos a mano en `git log` (caso 504). Son los más
+    // nuevos, sin su fecha: el aviso ya dice desde cuándo cuenta.
+    const named = unrecorded.slice(0, NAMED).map((line) => line.replace(/^(\S+)\s+\S+\s*/, '$1 ').trim())
+    const rest = unrecorded.length > NAMED ? `; y ${unrecorded.length - NAMED} más` : ''
     warnings.push(`${path.basename(repo)}: ${unrecorded.length} commit(s) desde ${since} que ninguna `
-      + 'entrada de DONE nombra, así que ese trabajo no está en planning/ (OPS-001)')
+      + `entrada de DONE nombra, así que ese trabajo no está en planning/ (OPS-001): ${named.join('; ')}${rest}`)
   }
   return warnings
 }

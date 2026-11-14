@@ -12,7 +12,7 @@ const {
   discardedProposals,
 } = require('./learning-files')
 // Cerrar una propuesta vive en su propio módulo; se reexporta para no mover a cada llamador.
-const { seal, archive } = require('./learning-seal')
+const { seal, archive, checkSignature, mismatch } = require('./learning-seal')
 const { SOURCE_TIERS, cadence, evaluate, evaluateTeam } = require('./learning-sources')
 
 // El informe que ya entró a una propuesta. Nace en `draft` y nada lo movía nunca, así que el que se
@@ -158,7 +158,8 @@ mal calibrado, va también la línea del contrato que quedó floja y la del caso
 
 ## Cambio propuesto
 
-Por definir. Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó.
+Por definir. Al decidirlo, la sección abre con \`**En una línea:** <qué cambia en el cargo>\`, que es lo que sale en el
+CHANGELOG. Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó.
 Decilo explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no
 para un texto que acaba de fallar su primera medición.
 
@@ -424,7 +425,8 @@ Revisar las fuentes primarias enlazadas desde cada informe de investigación.
 
 ## Cambio propuesto
 
-Por definir tras revisar los hallazgos. No modificar \`SKILL.md\` desde este proceso.
+Por definir tras revisar los hallazgos. Al decidirlo, la sección abre con \`**En una línea:** <qué cambia en el
+cargo>\`, que es lo que sale en el CHANGELOG. No modificar \`SKILL.md\` desde este proceso.
 
 ## Riesgos y regresiones
 
@@ -476,4 +478,5 @@ function reportSummary(root, report) {
 module.exports = {
   SOURCE_TIERS,
   cadence, pendingRuns,
-  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal, archive }
+  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal, archive, checkSignature,
+  mismatch }

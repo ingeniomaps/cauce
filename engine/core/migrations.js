@@ -37,6 +37,13 @@ function declared(config, key, shape, fallback) {
   return usable.length ? usable : fallback
 }
 
+// Lo que el guard mira de verdad, con los defaults: comparar lo declarado no alcanza, porque declarar por primera vez
+// reemplaza los defaults (caso 498).
+const coverage = (config) => ({
+  paths: declared(config, 'paths', PATH_SHAPE, DEFAULT_PATHS),
+  extensions: declared(config, 'extensions', EXTENSION_SHAPE, DEFAULT_EXTENSIONS),
+})
+
 function pattern(config) {
   const extensions = declared(config, 'extensions', EXTENSION_SHAPE, DEFAULT_EXTENSIONS)
   const folders = declared(config, 'paths', PATH_SHAPE, DEFAULT_PATHS).map((one) => one.replace(/\./g, '\\.'))
@@ -301,6 +308,6 @@ function coverageWarnings(repos, config) {
 }
 
 module.exports = {
-  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, judgedPatch, patchSections, patchMoves, destructive,
+  PATH_SHAPE, EXTENSION_SHAPE, coverage, pattern, judged, judgedPatch, patchSections, patchMoves, destructive,
   coverageWarnings,
 }
