@@ -55,17 +55,20 @@ const exemptsAll = (pattern) => {
   return ['a', 'x/y/z.go'].every((file) => { try { return path.matchesGlob(file, glob) } catch { return false } })
 }
 
+// Las llaves que acepta `ops.config.json`. `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión
+// salió la instancia. `test/hooks/ops-config-keys.test.js` exige que cada una diga si afloja un guard (caso 498).
+const CONFIG_KEYS = ['$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
+  'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards', 'reviewExempt']
+const RUNNER_BOOLEANS = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
+const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
+  'allowAiSignature', ...RUNNER_BOOLEANS]
+
 function validateOpsConfig(config) {
   const errors = []
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     return ['ops.config.json: debe ser un objeto']
   }
-  // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
-  const allowed = new Set([
-    '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards',
-    'reviewExempt',
-  ])
+  const allowed = new Set(CONFIG_KEYS)
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
     else if (!allowed.has(key)) errors.push(`ops.config.json: propiedad desconocida ${key}`)
@@ -309,10 +312,8 @@ function validateRunner(runner, errors) {
     errors.push('ops.config.json: runner debe ser un objeto')
     return
   }
-  const booleans = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
-  const allowed = new Set(['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
-    'allowAiSignature',
-    ...booleans])
+  const booleans = RUNNER_BOOLEANS
+  const allowed = new Set(RUNNER_KEYS)
   for (const key of Object.keys(runner)) {
     if (!allowed.has(key)) errors.push(`ops.config.json: runner.${key} no está permitido`)
   }
@@ -368,4 +369,7 @@ function localConfigWarnings(dir) {
   ]
 }
 
-module.exports = { configWarnings, validateOpsConfig, localConfigWarnings, validZone, GUARD_EVENTS, validateGuards }
+module.exports = {
+  configWarnings, validateOpsConfig, localConfigWarnings, validZone, GUARD_EVENTS, validateGuards, CONFIG_KEYS,
+  RUNNER_KEYS,
+}

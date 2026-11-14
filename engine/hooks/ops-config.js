@@ -31,6 +31,7 @@ const { writes } = require('./shell-changes')
 const { confirmedOnly, real } = require('./boundary')
 const { instanceTreeOf } = require('./instance-tree')
 const { writableOutsideRoots, resolvePath, LOCAL_CONFIG } = require('../config/paths')
+const { loosened } = require('./config-keys')
 
 const INSTANCE_CONFIG = 'ops.config.json'
 const PROTECTED = ['allowPush', 'pushToLiveBranches']
@@ -137,6 +138,13 @@ function wholeFile(input) {
   return incoming && typeof incoming === 'object' && !Array.isArray(incoming) ? incoming : null
 }
 
+// Las demás llaves que aflojan un freno, igual que las raíces: con lo que cambia a la vista, y sólo lo que afloja
+// (caso 498). El ítem nombra la llave y el valor, así que una línea pegada abre ese valor y no la llave entera.
+function loosensMessage(file, held) {
+  return `${file} afloja lo que frena a un agente: ${held.map((one) => one.slice(7)).join(', ')}. Lo decide una `
+    + 'persona (R10), con la entrada a la vista; lo que angosta no se pregunta.\n'
+}
+
 function widensMessage(file, held) {
   return `${file} ensancha lo que el límite de raíces deja escribir: agrega ${held.map((one) => one.slice(8))
     .join(', ')}. Lo decide una persona (R10), con la entrada a la vista; lo que el archivo ya declaraba y lo `
@@ -170,6 +178,9 @@ function judgeWrite(input, root, file) {
     && keysOf(configOf(root)) !== keysOf(incoming)) block(changeMessage(file))
   const held = confirmedOnly(input, widened(root, incoming, file).map((one) => `declara ${one}`))
   if (held.length) block(widensMessage(file, held) + AP.HOW(null, held, input, held, { turn: true }))
+  if (file !== path.join(root, INSTANCE_CONFIG)) return
+  const loose = confirmedOnly(input, loosened(configOf(root), incoming).map((key) => `afloja ${key}`))
+  if (loose.length) block(loosensMessage(file, loose) + AP.HOW(null, loose, input, loose, { turn: true }))
 }
 
 function judgeCommand(input, root, file) {
