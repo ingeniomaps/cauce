@@ -202,6 +202,10 @@ diseño — eso vive en el commit y en el código.
   dejaban de frenarlo. Ahora el bloqueo nombra qué afloja, y la persona lo confirma en el diálogo del runner o pega la
   línea. Lo que angosta pasa sin preguntar. Si tu agente declaraba solo `boundedCommands` cuando `test-workers` lo
   frenaba, ahora te lo va a pedir.
+- **`test-workers` ya no toma por un comando el `|` del script de otro lenguaje** (caso 499). Un `node -e` o un
+  `python -c` cuyo script traía `pytest|jest` en una expresión regular frenaba como si corriera jest sin cota. Vale
+  para `node` y `bun` con `-e` o `-p`, `python` con `-c` y `perl` con `-e`; en cualquier otra comilla —un `sh -c`, un
+  `eval`— el separador sigue contando. Un runner que esos scripts lancen por su cuenta no lo ve este guard.
 
 ## [0.119.0] - 2026-11-03
 
