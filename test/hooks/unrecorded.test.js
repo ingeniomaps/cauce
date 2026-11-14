@@ -29,7 +29,7 @@ test('sin mensaje registrado, plan-first y la gobernanza dicen que lo pedido ant
     ['plan-first', { cwd: product, tool_input: { file_path: path.join(product, 'src', 'app.js') } }],
     ['governance', { cwd: commits, tool_input: { command: 'git commit -m x' } }],
   ]
-  // Abrirla saca `CI` del entorno, que en CI no deja registrar nada y sin el cual la línea no sale.
+  // Abrirla saca `CI` del entorno: con `CI` puesto la línea no sale.
   const chat = chatSession()
   try {
     for (const [guard, call] of cases) {

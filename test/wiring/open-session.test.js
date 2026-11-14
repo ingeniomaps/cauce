@@ -1,7 +1,7 @@
 'use strict'
 
-// `install` y el cierre de `init` piden abrir otra sesión sólo dentro de una de Claude Code, y sólo cuando instalaron
-// algo que esa sesión no tiene (casos 502 y 503).
+// Dentro de una sesión de Claude Code, `install` pide abrir otra sólo cuando instaló algo que esa sesión no tiene, y el
+// cierre de `init` la pide siempre (casos 502 y 503).
 
 const { installedProject } = require('../support/environment')
 
