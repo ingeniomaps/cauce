@@ -1,14 +1,15 @@
 ---
 caso: 505
 titulo: La huella de la firma se corta en un título que está dentro de un bloque de código
-estado: abierto
+estado: resuelto
+resuelto-en: 0.120.0
 prioridad: media
 version-detectada: 0.120.0
 ---
 
 # 505 — La huella de la firma se corta en un título que está dentro de un bloque de código
 
-**🔴 abierto** · detectado en 0.120.0, sin publicar · prioridad **media**: deja sin firmar parte de lo que se aprobó
+**🟢 resuelto en 0.120.0** · detectado en 0.120.0, sin publicar · prioridad **media**: deja sin firmar parte de lo que se aprobó
 en 8 de las 163 propuestas trackeadas. La huella todavía no salió y ninguna propuesta trackeada la tiene, así que
 corregirla ahora no invalida ninguna firma. Sube a alta si sale publicada sin corregir: desde ahí, cambiarla invalida
 las firmas que ya la tengan.
@@ -158,7 +159,18 @@ Lo que el caso no preveía:
    salida de antes y la de después del caso, lado a lado, arriba.
 6. hecho: el paso real de `sign-proposal.yml`, ejecutado por `ci-sign.test.js` con su `awk` y su `sed`, sobre un
    repositorio git con la propuesta aprobada, y la reproducción del caso sobre la propuesta real.
-7. pendiente: el workflow no corrió en GitHub Actions.
+7. hecho: el workflow corrió en GitHub Actions el 2026-11-14, con una aprobación real sobre el PR de prueba #993, que
+   traía una propuesta pendiente de `backend-engineer` con un título `## ` dentro de un bloque en «Cambio propuesto» y
+   un fixture con `- Estado: pendiente` en «Evaluación». La corrida `43645796297` (`pull_request_review`, 22:00:47)
+   corrió después de mergear el #992, así que usó el workflow nuevo. Firmó en `7aa94ace` con la huella
+   `f2fd55a8045f…`. Con el `awk` del 486 habría sido `6cca2815be22…`. Medido sobre la propuesta firmada:
+   - la huella es la que calcula el motor;
+   - editar dentro del bloque y editar «Evaluación» la cambian;
+   - el fixture conserva su `- Estado: pendiente`, porque la firma escribe sólo en «Aprobación humana»;
+   - `ops learn backend-engineer --check-signature` acepta la firmada (exit 0) y rechaza la de «Evaluación» editada
+     (exit 1, «cambió después de la firma»).
+
+   El `awk` que corrió es el del runner de GitHub, con el mismo resultado que el motor.
 8. hecho: corrieron el paso del workflow, el motor, la comparación sobre las 163 propuestas y el CLI de
    `--check-signature`. El `awk` corrió con `mawk`, el de esta máquina. Con `gawk`, que puede ser el del runner, no.
 9. hecho: dos implementaciones de la misma huella, el motor y el `awk`, comparadas en cada prueba.
@@ -173,6 +185,6 @@ Lo que el caso no preveía:
 13. hecho: `npm run ci` con los cambios stageados.
 14. hecho: recorrido arriba contra Fix y Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba.
-16. pendiente: el estado sigue `abierto` hasta resolver el punto 7. La entrada del 486 en el CHANGELOG ya está ampliada.
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`, y la entrada del 486 en el CHANGELOG ampliada.
 
-**Sin probar:** el workflow en GitHub Actions, y el `awk` con `gawk`.
+**Sin probar:** una propuesta mensual real del ciclo, que la ejercita el ensamblaje del 1 de diciembre.
