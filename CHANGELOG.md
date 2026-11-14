@@ -187,6 +187,9 @@ diseño — eso vive en el commit y en el código.
   del archivo, junto al enunciado, y `agent-promote` lo crea al aplicarla. Si el caso lo necesita y la propuesta no lo
   trae, aplicar no lo inventa: lo deja como desviación. Antes, el caso entraba sin el archivo y su primera corrida medía
   el caso y no al cargo.
+- **Sellar, archivar y contar propuestas firmadas leen la firma en «Aprobación humana»** (caso 507). Antes buscaban
+  `- Estado:` en todo el archivo, así que un fixture con esa línea dentro de la propuesta se sellaba en lugar de la
+  firma, y una propuesta pendiente cuyo fixture decía «aprobada» se contaba como firmada.
 
 ## [0.119.0] - 2026-11-03
 
