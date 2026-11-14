@@ -172,6 +172,12 @@ diseño — eso vive en el commit y en el código.
   `frontend-engineer/10` arregla un componente deprecado cuyo reemplazo tiene el mismo defecto; `backend-engineer/11`
   encuentra dos políticas escritas que se contradicen; `qa-engineer/17` tiene que decir dónde buscó antes de afirmar
   que algo falta. Los cuatro pasan, así que R13, R14 y R29 no cambian.
+- **Instalar desde una sesión de Claude Code ya abierta avisa que hay que abrir otra** (casos 502 y 503). Esa sesión
+  no tiene los subagentes recién instalados, porque Claude Code los lee al arrancar, y `/autobuild` aborta al buscar
+  `cauce-clerk`. Lo que la persona pidió antes del hook de mensaje tampoco quedó registrado. `install` lo dice con la
+  ruta donde abrir la nueva, y el cierre de `init` dice «una sesión nueva». Desde una terminal no cambia nada. Y cuando
+  `plan-first` o la gobernanza frenan en una sesión sin ningún mensaje registrado, el bloqueo dice que lo pedido antes
+  no cuenta.
 
 ## [0.119.0] - 2026-11-03
 
