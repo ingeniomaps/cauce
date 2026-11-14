@@ -1,14 +1,15 @@
 ---
 caso: 498
 titulo: El agente se escribe en ops.config.json las llaves que apagan los guards que no son el de push
-estado: abierto
+estado: resuelto
+resuelto-en: 0.120.0
 prioridad: media
 version-detectada: 0.119.0
 ---
 
 # 498 — El agente se escribe en `ops.config.json` las llaves que apagan los guards que no son el de push
 
-**🔴 abierto** · detectado en 0.119.0 · prioridad **media**: es la puerta que el 114 cerró para el push, abierta para
+**🟢 resuelto en 0.120.0** · detectado en 0.119.0 · prioridad **media**: es la puerta que el 114 cerró para el push, abierta para
 cinco guards más, y el mensaje de dos de ellos nombra la llave exacta.
 
 ## Resumen
@@ -148,3 +149,92 @@ si se confirma, va como caso aparte.
 - 114 — el mismo defecto para el push. Este caso es lo que su lista dejó afuera.
 - 373 — las raíces que ensanchan, con la salida de confirmación que este fix reusa.
 - 251, 291, 300, 428 — los casos que agregaron las llaves de la tabla.
+
+## Cierre
+
+Lo que el agente escribe en `ops.config.json` y afloja un freno lo confirma una persona, por la misma salida que las
+raíces del 373: el diálogo del runner, o la línea en el archivo de aprobación. Lo decidió quien firma el 2026-11-14.
+`engine/hooks/config-keys.js` clasifica cada llave de primer nivel y de `runner` que acepta `validate.js`. Para cada una
+dice qué frena y con qué cambio deja de frenarlo, y el ítem nombra la llave y el valor: `afloja guards pre-shell
+-g/a.sh`, `afloja migrations .sql`. Lo que angosta pasa sin preguntar.
+
+Línea de base: las sondas del caso sobre el banco `suelto`. Push daba `exit=2`; las otras cinco, `exit=0`.
+
+Contra el caso:
+
+- **Fix 1, clasificar cada llave en dos clases:** se hizo, con tres clases. Además de las que aflojan y las libres,
+  están las que ya cuida el mismo guard (push y raíces). Las que aflojan son once:
+  - `commitToLiveBranch` y `allowAiSignature` cuando pasan a `true`;
+  - `humanCheckpointBetweenMilestones` cuando deja de ser `true`;
+  - `maxTaskHours` cuando sube;
+  - `boundedCommands`, `reviewExempt` y `lines` cuando ganan entradas;
+  - `deployCommands` y `guards` cuando pierden entradas;
+  - `comments` cuando se quita, se pone en falso o pierde un chequeo;
+  - `migrations` cuando deja de cubrir algo, contando sus defaults;
+  - `mode` cuando pasa a `toolkit`.
+- **Fix 2, la prueba que recorre lo que valida `validate.js`:** se hizo. `validate.js` exporta ahora sus dos listas, y la
+  prueba falla si una llave no está clasificada o si sobra una.
+- **Fix 3, lo que angosta no se pregunta:** se hizo. Cada llave tiene un par de casos, uno que afloja y otro que
+  angosta.
+- **Tradeoff, más preguntas a la persona:** se acepta. Ninguno de los recorridos —`onboard`, `flow`, `autobuild`— ni
+  ningún cargo le pide al agente escribir una llave que afloje. `onboard` sólo escribe `workspaceRoots`, que es del 373.
+- **Tradeoff, la dirección por llave:** `gateTimeoutMinutes` queda libre, porque al vencer el gate queda `cortado`
+  (`verify.js`). `commitPerTask` también, porque la revisión mira el árbol igual. `maxTaskHours`, que el caso no
+  nombraba, afloja al subir: es el tope con que `autobuild` parte una tarea.
+- **Tradeoff, cambiar quién escribe (R29):** el CLI escribe `ops.config.json` con `fs`, y este guard no lo ve, así que
+  `ops line` sigue declarando `lines` sin preguntar. Lo que cambia es sólo lo que escribe el agente.
+
+Lo que el caso no preveía:
+
+- **`reviewExempt`, del caso 485 de esta misma tanda, nació sin proteger,** y afloja la revisión de `autobuild`. Es la
+  forma exacta que el caso describe.
+- **Declarar `migrations` por primera vez reemplaza los defaults,** y deja de mirar `migrations/`. Se pregunta. El costo:
+  la primera declaración que pide `check` también se pregunta, salvo que incluya los defaults.
+- **En Claude Code la confirmación es el diálogo del runner, no el chat.** En `claude -p` no hay diálogo, así que el
+  bloqueo se lee como rechazo, igual que pasa con las raíces.
+- **Quedan anotados cuatro bordes que no frenan nada que ya se frenara:**
+  - pasar `mode` de `embedded` a `sidecar` hace que las `lines` ya declaradas abran árboles escribibles, y no se pregunta;
+  - cambiar `migrations` de `db/migrations` a `migrations` amplía la cobertura y se pregunta igual;
+  - un cambio sólo de mayúsculas en `migrations` también se pregunta;
+  - una subllave nueva de un objeto no nace en rojo.
+
+### Lista de cierre
+
+1. hecho: las sondas del caso antes del cambio: cinco con `exit=0` y la de push con `exit=2`.
+2. hecho: en la rama de la tanda, `fix/484-re-review-checks-what-it-asked`.
+3. hecho: la prueba del guard en rojo sin el cambio («ops-config no bloqueó») y en verde con él.
+4. hecho: mutaciones en rojo sobre cada regla:
+   - sacar `commitToLiveBranch` de la clasificación, y volver libre `reviewExempt` o `maxTaskHours`;
+   - volver `guards`, `lines` y `migrations` a comparar como listas;
+   - hacer que `mode` frene cualquier cambio;
+   - quitar el `sin declarar` y el `-language` de `comments`.
+
+   Las dos que pedía el caso, en rojo. Una sobrevivió, quitar `comments` entero, y se le sumó su caso.
+5. hecho: cambia quién escribe una llave. Lado a lado, antes y después, las sondas del caso: las cinco que pasaban ahora
+   frenan, y las que angostan siguen pasando.
+6. hecho: en una instancia instalada con el motor de la rama, en sesiones reales de Claude Code 2.1.325 con Haiku:
+   - `claude -p` frenó `commitToLiveBranch: true` con el mensaje nuevo, y el agente no buscó otra vía ni se escribió la
+     aprobación;
+   - con la línea pegada por la persona, la escritura pasó;
+   - en una sesión interactiva, el guard devolvió `ask` con su motivo, la persona aprobó el diálogo y pasó;
+   - con el texto final, quitar `guards` se frenó con `guards pre-shell -g/a.sh` y pasó con su línea.
+7. hecho: lo que depende del runner corrió en Claude Code (punto 6). USD 0,10 en total.
+8. hecho: corrieron el guard directo sobre las once llaves, en los dos sentidos, y las sesiones reales. No corrieron
+   Codex, Gemini ni Antigravity, que comparten el guard pero cada uno confirma a su manera.
+9. hecho: las dos salidas de la persona (diálogo y línea pegada) y dos llaves distintas en sesión real.
+10. hecho: los guards cuyos mensajes nombran su llave —`live-commit`, `ai-signature`, `test-workers`— ya decían que la
+    declara una persona. Ningún recorrido ni cargo escribe una llave que afloje. El `ops.config.json` de un worktree
+    pasa por la misma comparación, contra su propio archivo.
+11. hecho: tres pasadas independientes. La primera encontró `guards` y `migrations` mal clasificados (impedían
+    entregar) y cuatro menores, arreglados. La segunda, que `comments` en falso apagaba el guard sin preguntar (impedía
+    entregar), arreglado. La tercera no encontró nada que impidiera entregar. De sus menores se arregló que `comments`
+    decida por lo que mira el guard, un valor falso. Quedan dos, que parten de una configuración que `check` ya
+    rechaza: un `inlineMax` que no es número, y un `maxTaskHours` ausente antes del cambio.
+12. hecho: pasada uno por uno. Se corrigió el comentario que decía que el ítem nombra sólo la llave.
+13. hecho: `npm run ci` con los cambios stageados.
+14. hecho: recorrido arriba contra Fix y Tradeoffs.
+15. hecho: lo corrido y lo no previsto, arriba. El hallazgo aparte del caso, `.claude/settings.json`, se midió y sale
+    como el caso 508.
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`, y entrada en el CHANGELOG.
+
+**Sin probar:** Codex, Gemini y Antigravity.
