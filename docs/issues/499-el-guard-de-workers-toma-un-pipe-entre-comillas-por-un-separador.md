@@ -1,14 +1,15 @@
 ---
 caso: 499
 titulo: el guard de workers toma un pipe entre comillas por un separador de comandos
-estado: abierto
+estado: resuelto
+resuelto-en: 0.120.0
 prioridad: baja
 version-detectada: 0.119.0
 ---
 
 # 499 — `node -e 'const r = /(pytest|jest|vitest)/i'` dispara el guard de workers como si corriera jest sin cota
 
-**🔴 abierto** · detectado en 0.119.0 · prioridad **baja**.
+**🟢 resuelto en 0.120.0** · detectado en 0.119.0 · prioridad **baja**.
 
 **Prioridad baja**: frena un comando que no corre ningún runner, y se esquiva pasando el script a un archivo. Sube a
 media el día que frene una corrida de un recorrido, que no puede mover su comando a un archivo sola.
@@ -117,3 +118,71 @@ buena la evidencia con sólo nombrar una herramienta, el script de medición iba
   comando, no el separador entre comillas.
 - **259** — el patrón de un `sed` leído como orden; de ahí sale `DATA_ONLY`.
 - **067** — guards que cruzan el salto de línea y frenan lo que no es.
+
+## Cierre
+
+`test-workers` deja de tomar por comando un `;`, `|`, `&`, `(` o salto de línea que esté dentro del script entre
+comillas de un intérprete de otro lenguaje, en posición de comando y con la bandera que recibe el script: `node` o
+`bun` con `-e`, `-p`, `--eval` o `--print`; `python*` con `-c`; `perl` con `-e`. Son los que se comprobaron con su
+`--help`: node 24.18, bun 1.3.14, python 3.14.4 y perl 5.40.1. `deno`, `ruby` y `php` no se pudieron comprobar en esta
+máquina y se dejaron afuera: su script sigue frenando, que es la dirección segura. Cualquier otra comilla sigue
+separando como antes. La lectura de comillas es la misma de `outerCommand`, sacada a
+`scan()`.
+
+Línea de base: el script de reproducción del caso con el motor de la rama. `node -e '/(pytest|jest|vitest)/i'` daba
+`exit=2`. Después, `exit=0`, y `npx jest src` sigue en `exit=2`.
+
+Contra el caso:
+
+- **Fix, que `launched` no cuente los separadores entre comillas salvo en un `sh -c`:** se hizo distinto, al revés. La
+  primera versión hacía eso, y la revisión independiente mostró que dejaba de frenar todo lo que la expresión de `sh -c`
+  no nombra: `bash -ce`, `bash -o pipefail -c`, `eval`, `watch`, `parallel`, `git rebase -x` y más. También un heredoc
+  con una comilla suelta, y un runner en una sustitución entre comillas dobles. Exceptuar sólo los intérpretes nombrados
+  deja que lo nuevo nazca frenando (R27).
+- **Tradeoff, un runner lanzado desde otro lenguaje no se frena:** se acepta, y el encabezado de la excepción en
+  `workers.js` lo dice. Con el cambio, `node -e "execSync('cd x; npx jest')"` y `python3 -c "os.system('cd x; npx
+  jest')"`, que antes frenaban por el `;` de adentro, pasan.
+- **Tradeoff, el costo de enmascarar:** no se agrega un recorrido. `scan()` corre sólo cuando la expresión del runner ya
+  encontró uno, que en el corpus fueron 75 de 87.824 comandos.
+
+Lo que el caso no preveía: el usuario `node` de las imágenes oficiales. `su node -c '…'` se leía como el script de un
+intérprete. Lo encontró la segunda pasada, y por eso el intérprete va anclado en posición de comando y con la bandera
+de cada uno.
+
+### Lista de cierre
+
+1. hecho: la reproducción del caso con el motor de la rama, antes del cambio.
+2. hecho: en la rama de la tanda, `fix/484-re-review-checks-what-it-asked`.
+3. hecho: la prueba nueva en rojo sin el cambio («Got unwanted exception: node -e …») y en verde con él.
+4. hecho: mutaciones en rojo: quitar la excepción entera; volver a leer el estado antes del separador; no reiniciar la
+   comilla al entrar a una sustitución; dejar pasar toda comilla; tratar el comentario como «no separa»; y quitar el
+   anclaje del intérprete. Ésta sobrevivió al principio, porque el caso de `su node` ya lo cubrían las banderas, y se
+   le sumó `su -s /bin/sh python3 -c`.
+5. hecho: cambia cómo el guard lee un comando. El motor de `HEAD` y el nuevo, sobre 87.824 comandos reales de las
+   transcripciones de esta máquina: cambian 3, todos de «frena» a «pasa», y los tres son scripts de `python3 -c` o
+   `node -e` con datos. Ninguno pasa de «pasa» a «frena». Antes de invertir el diseño cambiaban 7.
+6. hecho: el guard real por `run-hook.sh`, con el script de reproducción, y la comparación sobre el corpus.
+7. no aplica: no depende de un modelo ni de un runner. El guard recibe el texto del comando.
+8. hecho: corrieron la reproducción, la suite de hooks, el corpus y las formas de la revisión (unos 85 comandos
+   armados). Ningún comando del corpus trae las formas abiertas de la primera versión, así que el corpus solo no las
+   habría encontrado.
+9. no aplica: no coordina nada.
+10. hecho: `outerCommand` devuelve lo mismo que antes. Lo midió la revisión con 300.000 cadenas al azar contra `HEAD`:
+    0 diferencias. Las pruebas de los casos 286 y 313 siguen en verde.
+11. hecho: tres pasadas independientes. La primera encontró tres huecos que impedían entregar —la sustitución entre
+    comillas, el heredoc y los shells que `SHELL_C` no nombra— y el diseño se invirtió. La segunda, `su node -c`
+    (impedía entregar), arreglado con el anclaje. La tercera, nada que impidiera entregar: corrigió un comentario que
+    daba el heredoc por cubierto, y pidió comprobar las banderas de cada intérprete, que es por lo que la lista se
+    achicó. Quedan anotados:
+    - un heredoc cuyo cuerpo deja abierta la comilla de un `node -e`;
+    - un script propio que se llame `node`;
+    - un runner entre backticks dentro del script, que ya pasaba antes.
+12. hecho: pasada uno por uno. Se corrigieron el comentario de posición de comando y uno de la prueba que contaba
+    historia.
+13. hecho: `npm run ci` con los cambios stageados.
+14. hecho: recorrido arriba contra Fix y Tradeoffs.
+15. hecho: lo corrido y lo no previsto, arriba.
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`, y entrada en el CHANGELOG.
+
+**Sin probar:** un falso freno de una instancia de empresa sobre el motor nuevo; la medición se hizo sobre las
+transcripciones de esta máquina.
