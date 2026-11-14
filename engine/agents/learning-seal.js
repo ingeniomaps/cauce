@@ -9,6 +9,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const { atomicWrite } = require('../core/files')
 const {
   isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED, fingerprint, approval,
@@ -40,7 +41,14 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // por hecho lo que faltaba: si algo movió el campo antes que el sello —quien aplica edita archivos, y
   // mover `status` se le parece a su trabajo— el cuerpo se quedaba en «aprobada» para siempre, que es
   // la contradicción que sellar existe para cerrar. Pasó con `growth-marketer/2026-09`.
-  if (state === 'applied' && !UNSEALED.test(approval(text))) return { file, already: true }
+  // Sellado ya, el cambio igual tiene que tener su entrada si lo selló esta misma aplicación: el agente de «Aplicar» a
+  // veces deja el documento sellado él mismo, y salir acá dejaba al cargo sin entrada en la release (caso 500). Si el
+  // sello ya está en `HEAD`, es una propuesta de otro ciclo, quizá anterior a la anotación automática, y no se anota.
+  if (state === 'applied' && !UNSEALED.test(approval(text))) {
+    const noted = sealedInHead(root, file)
+      ? undefined : noteChange(root, { agent, kind, note, file, change: changeOf(text) })
+    return noted ? { file, already: true, noted } : { file, already: true }
+  }
   if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
   // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
   // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
@@ -48,7 +56,7 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // decía lo contrario, dentro del mismo documento. Se comprueba para los dos porque la contradicción
   // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
   const responsible = (approval(text).match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
-  const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
+  const change = changeOf(text)
   if (undecided(responsible.trim()) || undecided(change)) {
     throw new Error(
       `${path.basename(file)} todavía no la decidió nadie: «Aprobación humana» necesita un responsable `
@@ -72,22 +80,36 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // así que el registro que la plantilla promete no existía nunca. Se escribe acá porque es determinista:
   // la fecha, el documento, quién aprobó y qué dice que cambia, todo sale de lo que se acaba de sellar.
   if (kind === 'flow') appendHistory(path.dirname(path.dirname(dir)), file, responsible.trim(), change)
-  // Sólo en el toolkit: ahí el cargo es del catálogo que se publica, y su cambio tiene que viajar en una
-  // versión. En una empresa el cargo es suyo y no hay CHANGELOG de Cauce que escribir. `note: false` es
-  // el mes revisado sin cambios, que se sella igual y no le cambia nada a quien actualiza.
-  if (kind === 'agent' && note && ownership.mode(root) === 'toolkit') {
-    const noted = changelog.noteAgentChange(root, {
-      agent, proposal: path.basename(file), summary: summarize(change), today: isoDate(new Date()),
-    })
-    return { file, already: false, noted }
-  }
-  return { file, already: false }
+  const noted = noteChange(root, { agent, kind, note, file, change })
+  return noted ? { file, already: false, noted } : { file, already: false }
+}
+
+// Si la propuesta ya estaba sellada en el último commit. Sin git o sin el archivo en `HEAD`, no: es de este ciclo.
+function sealedInHead(root, file) {
+  const shown = spawnSync('git', ['-C', root, 'show', `HEAD:./${path.relative(root, file).split(path.sep).join('/')}`],
+    { encoding: 'utf8' })
+  return shown.status === 0 && proposalState(shown.stdout) === 'applied' && !UNSEALED.test(approval(shown.stdout))
+}
+
+const changeOf = (text) => section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
+
+// Sólo en el toolkit: ahí el cargo es del catálogo que se publica, y su cambio tiene que viajar en una
+// versión. En una empresa el cargo es suyo y no hay CHANGELOG de Cauce que escribir. `note: false` es
+// el mes revisado sin cambios, que se sella igual y no le cambia nada a quien actualiza.
+function noteChange(root, { agent, kind, note, file, change }) {
+  if (kind !== 'agent' || !note || ownership.mode(root) !== 'toolkit') return undefined
+  return changelog.noteAgentChange(root, {
+    agent, proposal: path.basename(file), summary: summarize(change), today: isoDate(new Date()),
+  })
 }
 
 // La primera idea de «Cambio propuesto», en una línea: el documento entero está en el cargo, y el
-// CHANGELOG lo lee quien actualiza antes de decidir, no quien aplica.
+// CHANGELOG lo lee quien actualiza antes de decidir, no quien aplica. La propuesta la escribe en su línea
+// `**En una línea:**`; sin ella, el primer párrafo, que suele decir dónde y por qué y no qué cambia (caso 497).
+const ONE_LINE = /^\s*(?:[-*]\s+)?\*\*En una línea:\*\*[ \t]*(.+)$/m
 function summarize(change, limit = 240) {
-  const first = change.split(/\n\s*\n/)[0].replace(/^\s*(?:\d+\.|[-*])\s+/, '').replace(/\s+/g, ' ').trim()
+  const first = ((change.match(ONE_LINE) || [])[1] || change.split(/\n\s*\n/)[0])
+    .replace(/^\s*(?:\d+\.|[-*])\s+/, '').replace(/\s+/g, ' ').trim()
   if (first.length <= limit) return first.replace(/[.:;]$/, '')
   return `${first.slice(0, first.lastIndexOf(' ', limit)).replace(/[.,:;]$/, '')}…`
 }

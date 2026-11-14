@@ -296,6 +296,11 @@ test('un cargo aplicado entra en la versión que todavía no salió', () => {
     'después de lo que había')
   assert.doesNotMatch(published, /uno|dos/, 'lo publicado no se toca')
   assert.ok(open.split('\n').every((line) => line.length <= 110), 'al ancho del archivo')
+  // Las dos marcas tienen que estar en la misma viñeta: los nombres de propuesta se repiten entre cargos (caso 500).
+  const mixed = CL.noteAgentChange(root, { agent: 'uno', proposal: '2099-03.md', summary: 'Más', today: 'x' })
+  assert.deepEqual(mixed, { version: '2.4.0', already: false }, 'otra propuesta del mismo cargo')
+  assert.deepEqual(CL.noteAgentChange(root, { agent: 'dos', proposal: '2099-03.md', summary: 'X', today: 'x' }),
+    { version: '2.4.0', already: false }, 'el cargo y la propuesta de dos viñetas distintas no son una entrada')
 })
 
 test('el changelog del paquete cubre la versión que se publica', () => {

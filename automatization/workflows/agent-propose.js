@@ -76,7 +76,10 @@ const proposal = await agent(
   `${context.dir}/learning/sources.yaml, ${context.dir}/evaluations/expected-behaviors.yaml y sus ` +
   `casos en ${context.dir}/evaluations/cases/. Después completá **sólo** estas tres secciones de la ` +
   `propuesta, sin tocar ninguna otra ni el resto del frontmatter:\n\n` +
-  `**Cambio propuesto**: el texto exacto a agregar o reemplazar, archivo por archivo, citando la ` +
+  // La entrada del CHANGELOG sale de esa línea; sin ella copiaba un párrafo que decía dónde y por qué (caso 497).
+  `**Cambio propuesto**: abrí con una línea \`**En una línea:** <qué cambia en el cargo>\`, para quien actualiza ` +
+  `y no lee la propuesta: qué hace distinto el cargo, sin rutas ni conteos de archivos. Después, ` +
+  `el texto exacto a agregar o reemplazar, archivo por archivo, citando la ` +
   `sección o la línea que se toca. Que se pueda aplicar leyéndolo, sin volver al informe. Preferí ` +
   `agregar sobre reescribir: el núcleo del contrato no está en discusión. Si una fuente no se pudo ` +
   `corroborar, dejalo escrito en el propio texto en vez de afirmarla.\n\n` +

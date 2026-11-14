@@ -379,3 +379,11 @@ test('proponer pide el fixture del caso nuevo, y aplicar pide crearlo o reportar
   assert.match(promote, /archivos para el caso/, 'aplicar crea lo que la propuesta trae para el caso')
   assert.match(promote, /caso sin fixture/, 'y lo que falta lo deja como desviación, sin inventarlo')
 })
+
+// Casos 497 y 500: lo que sale en el CHANGELOG lo escribe la propuesta en una línea, y el sello, no quien aplica.
+test('proponer abre con la línea del CHANGELOG, y aplicar no sella', () => {
+  const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
+  assert.match(propose, /abrí con una línea \\`\*\*En una línea:\*\*/, 'el cambio abre con su resumen')
+  const promote = fs.readFileSync(path.join(WF, 'agent-promote.js'), 'utf8')
+  assert.match(promote, /su «Estado» y \\`learning\/HISTORY\.md\\` no son tuyos/, 'quien aplica no sella')
+})

@@ -176,6 +176,10 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `un caso cambia lo que la evaluación mide y entra con la firma o no entra. Reportalo como desviación ` +
   `—«requerida sin caso: pedirlo en la propuesta siguiente»— para que no quede como una promesa que ` +
   `nadie sabe que nada comprueba.\n` +
+  // Dos de nueve agentes sellaron la propuesta ellos mismos en 2026-11, y el sello, que la encontró sellada, no anotó
+  // el CHANGELOG (caso 500). El motor ya lo cubre; esto es para que no lo hagan.
+  `- El frontmatter de la propuesta, su «Estado» y \`learning/HISTORY.md\` no son tuyos: los escriben el paso ` +
+  `siguiente y el sello. No los toques.\n` +
   `- Si algo de la propuesta ya no aplica —el archivo cambió, la sección no existe— **no lo fuerces**: ` +
   `dejalo sin aplicar y reportalo como desviación.\n` +
   `- Toda desviación, por chica que sea, se escribe al final de «Aprobación humana» en la propia ` +
@@ -185,7 +189,7 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   // cargo se adopta en empresas donde `engine/` y el Makefile de este repositorio no existen. Pasó
   // cuatro veces el 2026-09-02 —`node engine/cli/ops.js` en dos historiales, un `make` propio de acá
   // reintroducido, y una ruta resuelta desde la raíz—: la puerta las cazó, pero después de escritas.
-  `- Todo lo que escribas —propuesta, historial, caso— viaja con el cargo a cada empresa. No cites ` +
+  `- Todo lo que escribas —propuesta, caso— viaja con el cargo a cada empresa. No cites ` +
   `rutas de este repositorio (\`engine/\`, \`template/\`, \`automatization/\`) ni objetivos \`make\` que ` +
   `sólo existan acá, y escribí las rutas relativas al cargo. Si necesitás nombrar un comando del CLI, ` +
   `nombralo sin su ruta.\n\n` +

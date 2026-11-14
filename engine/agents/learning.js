@@ -158,7 +158,8 @@ mal calibrado, va también la línea del contrato que quedó floja y la del caso
 
 ## Cambio propuesto
 
-Por definir. Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó.
+Por definir. Al decidirlo, la sección abre con \`**En una línea:** <qué cambia en el cargo>\`, que es lo que sale en el
+CHANGELOG. Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó.
 Decilo explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no
 para un texto que acaba de fallar su primera medición.
 
@@ -424,7 +425,8 @@ Revisar las fuentes primarias enlazadas desde cada informe de investigación.
 
 ## Cambio propuesto
 
-Por definir tras revisar los hallazgos. No modificar \`SKILL.md\` desde este proceso.
+Por definir tras revisar los hallazgos. Al decidirlo, la sección abre con \`**En una línea:** <qué cambia en el
+cargo>\`, que es lo que sale en el CHANGELOG. No modificar \`SKILL.md\` desde este proceso.
 
 ## Riesgos y regresiones
 
