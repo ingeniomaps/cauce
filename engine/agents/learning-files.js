@@ -36,6 +36,19 @@ un texto que acaba de fallar su primera medición.`
 // se habrían quedado ahí sin que nada lo dijera.
 const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
 
+// «Aprobación humana», desde su primer título hasta el final, que es donde la firma escribe estado, responsable, fecha
+// y huella: el mismo tramo que lee y reescribe `sign-proposal.yml`. Un fixture de la propuesta puede traer esas mismas
+// líneas, y buscarlas en todo el archivo leía las del fixture (caso 507).
+const APPROVAL = /^## Aprobación humana/m
+const approval = (text) => {
+  const at = String(text).search(APPROVAL)
+  return at < 0 ? '' : String(text).slice(at)
+}
+const inApproval = (text, change) => {
+  const at = text.search(APPROVAL)
+  return at < 0 ? text : text.slice(0, at) + change(text.slice(at))
+}
+
 // La huella que `sign-proposal.yml` escribe al firmar (caso 486): el sha256 de lo que `agent-promote` aplica, la
 // primera «Cambio propuesto» y la primera «Evaluación», con sus títulos, cada línea con su salto, como las imprime el
 // `awk` de ese workflow. Si los dos la calculan distinto, toda propuesta firmada se lee como editada.
@@ -179,7 +192,7 @@ const REASON_LINE = /^-[ \t]*Motivo:[ \t]*(.+)$/m
 function discardedProposals(dir) {
   return proposalFiles(dir).map((name) => {
     const text = fs.readFileSync(path.join(dir, name), 'utf8')
-    const reason = (text.match(REASON_LINE) || [])[1]
+    const reason = (approval(text).match(REASON_LINE) || [])[1]
     if (proposalState(text) !== 'archived' || !reason) return null
     return { name, reason: reason.trim() }
   }).filter(Boolean)
@@ -204,6 +217,7 @@ function reportFiles(dir) {
 
 module.exports = {
   REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED, fingerprint,
+  approval, inApproval,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
   discardedProposals,

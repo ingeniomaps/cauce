@@ -10,7 +10,7 @@ const catalog = require('./catalog')
 const evaluations = require('./evaluations')
 const {
   REQUIRED_SECTIONS, SUMMARY_MAX, frontmatterState, proposalFiles, proposalState, reportFiles,
-  SIGNED, CLOSED,
+  SIGNED, CLOSED, approval,
 } = require('./learning-files')
 
 // No es un error: firmar y aplicar son actos separados a propósito —OPS-004— y entre uno y otro puede
@@ -39,7 +39,7 @@ function evaluateTeam(root, slug) {
     }
     if (!CLOSED.has(proposalState(text))) {
       pending += 1
-      if (SIGNED.test(text)) signed.push(name)
+      if (SIGNED.test(approval(text))) signed.push(name)
     }
   }
   warnings.push(...signedWarning(signed))
@@ -268,7 +268,7 @@ function evaluate(root, agent) {
     // reportando trabajo pendiente para siempre, y es la misma confusión que permitía reaplicarla.
     if (!CLOSED.has(proposalState(text))) {
       pending += 1
-      if (SIGNED.test(text)) signed.push(name)
+      if (SIGNED.test(approval(text))) signed.push(name)
     }
   }
   warnings.push(...signedWarning(signed))

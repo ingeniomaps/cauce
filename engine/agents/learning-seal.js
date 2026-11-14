@@ -11,7 +11,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { atomicWrite } = require('../core/files')
 const {
-  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED, fingerprint,
+  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED, fingerprint, approval,
+  inApproval,
 } = require('./learning-files')
 const { section } = require('../planning/parser')
 const ownership = require('../core/ownership')
@@ -39,14 +40,14 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // por hecho lo que faltaba: si algo movió el campo antes que el sello —quien aplica edita archivos, y
   // mover `status` se le parece a su trabajo— el cuerpo se quedaba en «aprobada» para siempre, que es
   // la contradicción que sellar existe para cerrar. Pasó con `growth-marketer/2026-09`.
-  if (state === 'applied' && !UNSEALED.test(text)) return { file, already: true }
+  if (state === 'applied' && !UNSEALED.test(approval(text))) return { file, already: true }
   if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
   // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
   // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
   // «Estado: pendiente» y «Cambio propuesto: Por definir»: el frontmatter decía `applied` y el cuerpo
   // decía lo contrario, dentro del mismo documento. Se comprueba para los dos porque la contradicción
   // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
-  const responsible = (text.match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
+  const responsible = (approval(text).match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
   const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
   if (undecided(responsible.trim()) || undecided(change)) {
     throw new Error(
@@ -58,15 +59,14 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // por `agent-promote`— quedaba sellada en silencio (revisión del caso 486).
   const print = printOf(text)
   if (!print.ok) throw new Error(mismatch(path.basename(file), print))
-  const stamped = text
-    .replace(/^status:\s*\S+\s*$/m, 'status: applied')
+  const stamped = inApproval(text.replace(/^status:\s*\S+\s*$/m, 'status: applied'), (part) => part
     // `aprobada` además de `pendiente`: cuando `seal` corre, la firma ya pasó y `sign-proposal.yml`
     // dejó «aprobada», así que buscar sólo «pendiente» no reemplazaba nunca por el camino real. Las 24
     // propuestas aplicadas del repositorio quedaron con `status: applied` y «- Estado: aprobada»: la
     // contradicción entre frontmatter y cuerpo que la guarda de arriba dice evitar. La prueba no lo veía
     // porque su fixture firmaba dejando «pendiente», un estado que producción no produce.
     .replace(UNSEALED, '- Estado: aplicada')
-    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
+    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`))
   atomicWrite(file, stamped)
   // El historial sólo lo escribe alguien para los cargos —`agent-promote`— y nadie para los recorridos,
   // así que el registro que la plantilla promete no existía nunca. Se escribe acá porque es determinista:
@@ -128,7 +128,7 @@ function archive(root, agent, period = '', kind = 'agent', reason = '') {
   // firmadas— y de paso bloqueaban la siguiente de su cargo (caso 142). Archivar es lo que corresponde:
   // no hubo nada que aprobar, y la firma se gastó sobre un documento vacío.
   const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
-  if (SIGNED.test(text) && !undecided(change)) {
+  if (SIGNED.test(approval(text)) && !undecided(change)) {
     throw new Error(
       `${path.basename(file)} está firmada: lo que sigue es aplicarla con agent-promote, no archivarla. `
       + 'Archivar es para lo que se miró y no cambia nada.',
@@ -152,15 +152,17 @@ function archive(root, agent, period = '', kind = 'agent', reason = '') {
       + 'El motivo es lo que evita que el próximo informe lo vuelva a recomendar.',
     )
   }
-  const stamped = text
-    .replace(/^status:\s*\S+\s*$/m, 'status: archived')
-    // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
-    // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción
-    // que el comentario de `seal` nombra, por el otro destino.
-    .replace(UNSEALED, '- Estado: archivada')
-    .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
-    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
-  atomicWrite(file, why ? stamped.replace(/^(-[ \t]*Estado:[ \t]*archivada[ \t]*)$/m, `$1\n- Motivo: ${why}`) : stamped)
+  const stamped = inApproval(text.replace(/^status:\s*\S+\s*$/m, 'status: archived'), (part) => {
+    const done = part
+      // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
+      // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción
+      // que el comentario de `seal` nombra, por el otro destino.
+      .replace(UNSEALED, '- Estado: archivada')
+      .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
+      .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
+    return why ? done.replace(/^(-[ \t]*Estado:[ \t]*archivada[ \t]*)$/m, `$1\n- Motivo: ${why}`) : done
+  })
+  atomicWrite(file, stamped)
   // La fila va para los dos tipos, y no sólo para los recorridos como en `seal`: allá los cargos los
   // registra `agent-promote` al aplicar, y archivar no pasa por ningún workflow que lo haga.
   // La raíz del cargo, que es `<cargo>/learning/proposals/<archivo>` sin sus tres últimos tramos:
@@ -222,8 +224,9 @@ function mismatch(name, print) {
 
 function printOf(text) {
   // Sólo es una firma vieja si no hay línea de huella: una presente y mal escrita se niega, o romperla alcanzaría.
-  if (!/^-[ \t]*Huella:/mi.test(text)) return { ok: true, legacy: true }
-  const signed = (text.match(/^-[ \t]*Huella:[ \t]*sha256:([0-9a-f]{64})[ \t]*$/m) || [])[1] || ''
+  const block = approval(text)
+  if (!/^-[ \t]*Huella:/mi.test(block)) return { ok: true, legacy: true }
+  const signed = (block.match(/^-[ \t]*Huella:[ \t]*sha256:([0-9a-f]{64})[ \t]*$/m) || [])[1] || ''
   const current = fingerprint(text)
   return { ok: current === signed, signed, current }
 }
