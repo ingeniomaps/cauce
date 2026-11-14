@@ -128,7 +128,8 @@ Encontrado y no previsto, por la revisión independiente:
    del paso de `agent-promote` por un modelo. No en GitHub Actions: lo decidió quien firma, y la próxima firma real lo
    ejercita.
 7. hecho: lo que depende de un modelo, que el agente de `agent-promote` reporte el código de salida del chequeo, se
-   corrió con uno por `claude -p`.
+   corrió con uno por `claude -p`. Lo que depende de GitHub Actions no corrió ahí: quien firma decidió cerrarlo con la
+   prueba local (confirmado el 2026-11-14), y la primera firma real de diciembre lo ejercita («Sin probar»).
 8. hecho: corrieron el paso real, el CLI, `claude -p` y las pruebas, sobre el código final.
 9. hecho: dos commits (el aprobado y la punta), un PR con propuesta y otro sin, huella intacta, editada, rota y
    ausente, y seis textos en la comparación del `awk` con el motor.
