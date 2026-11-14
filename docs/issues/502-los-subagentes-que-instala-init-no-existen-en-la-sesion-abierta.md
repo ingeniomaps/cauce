@@ -142,7 +142,9 @@ Lo que el caso no preveía:
    desde esta sesión de Claude Code (`CLAUDECODE=1`): la línea `!` y el cierre nuevo. Con `env -u CLAUDECODE`, ninguna
    de las dos. `init --runner ninguno --install`, exit 0.
 7. hecho: el mecanismo del runner, medido con la sonda en Claude Code 2.1.325 (arriba). La salida, desde una sesión
-   real de Claude Code.
+   real de Claude Code, y además dentro de una sesión `claude -p` con Haiku que corrió `automation install` sola: la
+   línea `!` salió, y el agente le dijo a la persona que abriera una sesión nueva en la ruta que nombraba (cierre del
+   503).
 8. hecho: corrieron `install` en sidecar y en un repositorio con `ops/` adentro (el de `init`), con la variable y sin
    ella, la primera instalación y las repetidas, y `gemini`. No corrieron Codex ni Antigravity, que no declaran
    `startup`, ni el modo embebido.
@@ -153,7 +155,9 @@ Lo que el caso no preveía:
 11. hecho: tres pasadas independientes. La primera encontró el `ninguno` (impedía entregar) y siete menores, todos
     arreglados. La segunda, una línea de 121 caracteres (impedía entregar) y dos menores, arreglados. La tercera,
     sobre ese arreglo, nada. Queda anotado su borde: un `command` propio con comillas escapadas antes de
-    `guard-chat.` corta el match, igual que en `live`.
+    `guard-chat.` corta el match, igual que en `live`. Después de la tercera se recortaron comentarios de las pruebas, y
+    una cuarta pasada los revisó todos: el encabezado de `open-session.test.js` decía que el cierre de `init` también
+    depende de lo instalado, y no depende. Se corrigió, sin nada que impidiera entregar.
 12. hecho: pasada uno por uno. Se recortaron dos comentarios de prueba que repetían la razón del código. El
     tokenizador a 0,22 no da nada propio por encima de 0,25.
 13. hecho: `npm run ci` con los archivos nuevos stageados.

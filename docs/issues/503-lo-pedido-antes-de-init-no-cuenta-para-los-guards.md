@@ -110,6 +110,11 @@ Contra el caso:
 
 Lo que el caso no preveía:
 
+- **La sesión abierta no aplica los hooks recién instalados al instante.** En la primera sesión real, la escritura que
+  siguió enseguida a `install` no pasó por `PreToolUse`: `NOTAS.md` se escribió, y el hook de `Stop` sí corrió al
+  final. Con 10 s de pausa en el medio, la escritura se frenó. Es una corrida de cada una, y no alcanza para decir
+  cuánto tarda. Es del runner, y la salida es la misma: abrir una sesión nueva.
+
 - **CI, un rol delegado y un subagente tampoco tienen registro**, y ahí la línea sería falsa: no hay una persona que
   repita nada. Los tres la callan, con una aserción cada uno.
 - **Antigravity no registra mensajes**, y la línea no le sale porque su puente manda `sessionId` y no `session_id`
@@ -130,8 +135,11 @@ Lo que el caso no preveía:
 6. hecho: la reproducción del caso con el motor de la rama sobre la copia. Sin registro, `plan-first` y la gobernanza
    dan `exit=2` con la línea nueva (la gobernanza, con las 172 rutas de la instancia stageadas). Con un mensaje, los
    dos `exit=0`. Con un registro de otro mensaje, `plan-first` frena sin la línea. Se repitió con el texto final.
-7. hecho: el hook corre como lo corre el runner, por `engine/hooks/run.js` con el payload de Claude Code. La mitad de
-   `install` corrió desde una sesión real de Claude Code (cierre del 502).
+7. hecho: en sesiones reales de Claude Code 2.1.325, con `claude -p` y Haiku, sobre un proyecto recién creado con la
+   instancia adentro, una tarea en cola y el motor de la rama, sin hooks instalados al abrir. La sesión corrió
+   `automation install`, esperó 10 s y escribió `NOTAS.md`: `PreToolUse:Write` la frenó con la línea nueva, y el agente
+   se la pasó a la persona tal cual, sin escribir la aprobación ni usar la variable. Después, una sesión nueva con el
+   mismo pedido escribió el archivo sin bloqueo. Costó USD 0,03 en total.
 8. hecho: corrieron `plan-first` y la gobernanza, con y sin registro, con registro de otro mensaje, y con subagente,
    CI y rol delegado. No corrieron Codex ni Gemini, que mandan `session_id` y usan la misma función.
 9. hecho: dos guards, y dos sesiones por guard: una sin registro y otra con el registro de otro mensaje.
@@ -140,12 +148,14 @@ Lo que el caso no preveía:
 11. hecho: las tres pasadas independientes del 502 cubrieron este diff. De la primera salieron dos menores de acá: el
     encabezado afirmaba que la función excluía un runner sin hook de mensaje, cuando eso pasa por el payload de
     Antigravity, y «Pedile que lo repita» daba por hecho que la sesión abierta registra. Se arreglaron los dos. Las
-    otras dos pasadas no encontraron nada de acá.
+    otras dos pasadas no encontraron nada de acá. La cuarta, sobre los comentarios recortados después, encontró que el de
+    `chatSession()` en la prueba afirmaba que con `CI` no se registra nada, y sí se registra, como no humano. Se
+    corrigió.
 12. hecho: pasada uno por uno. El encabezado de la prueba repetía el del módulo y se recortó.
 13. hecho: `npm run ci` con los archivos nuevos stageados.
 14. hecho: recorrido arriba contra Fix, «Lo que no se propone» y Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba.
 16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.120.0`, y entrada en el CHANGELOG junto con el 502.
 
-**Sin probar:** Codex y Gemini en una sesión real, y si la sesión abierta registra los mensajes que llegan después de
-instalar.
+**Sin probar:** Codex y Gemini en una sesión real; si la sesión abierta registra los mensajes que llegan después de
+instalar; y cuánto tarda la sesión abierta en aplicar los hooks recién instalados.
