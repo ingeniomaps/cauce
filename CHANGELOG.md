@@ -181,6 +181,11 @@ diseño — eso vive en el commit y en el código.
 - **El aviso OPS-001 nombra los commits que cuenta** (caso 504): hasta cinco, con hash y asunto, y cuántos más hay.
   Antes decía sólo el número, también con `--json`, y había que buscarlos en `git log`. La ventana sigue comparando
   por día: el día que se instala Cauce puede contar un commit de antes, y ahora se ve cuál es.
+- **Un caso nuevo de una propuesta mensual llega a la firma con su fixture** (caso 501). Si el hecho que el caso
+  necesita vive en un documento, código o datos, `agent-propose` copia en la propuesta la ruta y el contenido completo
+  del archivo, junto al enunciado, y `agent-promote` lo crea al aplicarla. Si el caso lo necesita y la propuesta no lo
+  trae, aplicar no lo inventa: lo deja como desviación. Antes, el caso entraba sin el archivo y su primera corrida medía
+  el caso y no al cargo.
 
 ## [0.119.0] - 2026-11-03
 
