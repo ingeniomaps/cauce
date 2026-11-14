@@ -364,6 +364,11 @@
     "branches": 70,
     "functions": 97
   },
+  "engine/hooks/runtime.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
+  },
   "engine/hooks/secrets-shell.js": {
     "lines": 100,
     "branches": 87,
