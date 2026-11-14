@@ -190,6 +190,11 @@ diseño — eso vive en el commit y en el código.
 - **Sellar, archivar y contar propuestas firmadas leen la firma en «Aprobación humana»** (caso 507). Antes buscaban
   `- Estado:` en todo el archivo, así que un fixture con esa línea dentro de la propuesta se sellaba en lugar de la
   firma, y una propuesta pendiente cuyo fixture decía «aprobada» se contaba como firmada.
+- **Un cargo aplicado siempre deja su entrada en el CHANGELOG, y la entrada dice qué cambió** (casos 497 y 500).
+  Cuando el agente que aplica dejaba él mismo la propuesta sellada, el sello no anotaba nada y el cargo salía en la
+  release sin entrada; ahora anota igual, una sola vez en todo el archivo, y quien aplica no toca el estado ni el
+  historial. «Cambio propuesto» abre con una línea `**En una línea:** …`, y la entrada sale de ahí: antes copiaba el
+  primer párrafo, que solía decir dónde y por qué y no qué. Las propuestas sin esa línea siguen como antes.
 
 ## [0.119.0] - 2026-11-03
 
