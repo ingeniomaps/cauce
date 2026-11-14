@@ -18,7 +18,8 @@ const { block, commandOf, opsRoot, asRun, configOf, unquoted } = require('./inpu
 const { WRAPPER } = require('./git-globals')
 const AP = require('./approval')
 
-// En posición de comando —al principio o después de `;`, `&`, `|` o `(`—, con variables de entorno delante:
+// En posición de comando —al principio o después de `;`, `&`, `|` o `(` que no estén en el script de otro lenguaje
+// (`separates`)—, con variables de entorno delante:
 // `jest` dentro de un `grep` o de un mensaje no es correrlo. Una comilla abre comando sólo detrás del `-c` de
 // un shell, que es donde lo entrecomillado se ejecuta. Contarla siempre tomaba por una corrida el patrón
 // `'jest'` de un `grep`, y también lo que seguía a la comilla de cierre de cualquier argumento: `'swc'
@@ -61,9 +62,16 @@ const NO_RUN = /(?:^|\s)(?:--version|--help|-h|--listTests|--showConfig)\b/
 // paréntesis, y su comando de afuera es la sustitución y no quien la recibe. Sin eso, un runner puesto ahí
 // heredaba la cota de un comando que nunca lo contuvo (caso 313). Lo que no lee: el `)` de un `case`.
 function outerCommand(text, index) {
-  let [start, quote, depth, escaped] = [0, '', 0, -2]
+  const read = scan(text, index)
+  return read ? text.slice(read.start, index) : ''
+}
+
+// Cómo está el texto en esa posición, leído como el shell: desde dónde va el comando de afuera, y si está entre
+// comillas, cuáles y desde dónde. Null si cae en un comentario.
+function scan(text, index) {
+  let [start, quote, depth, escaped, opened] = [0, '', 0, -2, -1]
   const outside = []
-  const leave = () => { ({ start, quote, depth } = outside.pop()) }
+  const leave = () => { ({ start, quote, depth, opened } = outside.pop()) }
   for (let at = 0; at < index; at += 1) {
     const char = text[at]
     if (quote === "'") { if (char === "'") quote = ''; continue }
@@ -73,20 +81,38 @@ function outerCommand(text, index) {
     const tick = char === '`'
     if (tick && outside.at(-1)?.tick) leave()
     else if (tick || (char === '(' && (before === '$' || (!quote && /[<>]/.test(before))))) {
-      outside.push({ start, quote, depth, tick })
-      ;[start, quote, depth] = [at + 1, '', 0]
+      outside.push({ start, quote, depth, tick, opened })
+      ;[start, quote, depth, opened] = [at + 1, '', 0, -1]
     } else if (quote) quote = char === quote ? '' : quote
     else if (char === '(') depth += 1
     else if (char === ')' && depth) depth -= 1
     else if (char === ')' && outside.length) leave()
-    else if (char === "'" || char === '"') quote = before === '$' && char === "'" ? "$'" : char
+    else if (char === "'" || char === '"') [quote, opened] = [before === '$' && char === "'" ? "$'" : char, at]
     else if (char === '#' && /^$|[\s;&|]/.test(before)) {
       const end = text.indexOf('\n', at)
-      if (end === -1 || end >= index) return ''
+      if (end === -1 || end >= index) return null
       at = end - 1
     } else if (';&|\n'.includes(char)) start = at + 1
   }
-  return text.slice(start, index)
+  return { start, quote, opened }
+}
+
+// El script entre comillas de un intérprete de otro lenguaje no es shell: su `|` o su `;` no abren comando, y `node -e
+// '/(pytest|jest)/'` no corre jest (caso 499). Sólo los intérpretes nombrados acá: cualquier otra comilla —un `sh -c`,
+// un `eval`, una sustitución— sigue separando, así que lo que no está en la lista nace frenando.
+// Un runner que ese script lanza por `execSync` o `os.system` tampoco se ve: este guard no lee otros lenguajes.
+// En posición de comando, como el runner: `su node -c '…'` nombra a un usuario, y ese `-c` es un script de shell.
+// Cada uno con la bandera que recibe el script, y no otra: en `node`, `-c` revisa la sintaxis y `-r` precarga. Sólo
+// los que se comprobaron con su `--help` (node 24, bun 1.3, python 3.14, perl 5); otro intérprete sigue frenando.
+const SCRIPT_FLAG = String.raw`(?:(?:node|bun)(?:\s+-[^\s'"]*)*\s+(?:-e|-p|--eval|--print)`
+  + String.raw`|python[\d.]*(?:\s+-[^\s'"]*)*\s+-c|perl(?:\s+-[^\s'"]*)*\s+-e)`
+const INTERPRETER = new RegExp(String.raw`(?:^|[;&|(\n])\s*` + WRAPPED + String.raw`(?:\w+=\S*\s+)*(?:\S*\/)?`
+  + SCRIPT_FLAG + String.raw`\s*['"]$`)
+function separates(text, index) {
+  // Con el separador ya leído: el `(` de una sustitución entre comillas dobles empieza afuera de ellas.
+  const read = scan(text, index + 1)
+  // En un comentario se juzga como antes: su comando de afuera queda vacío y frena (caso 313).
+  return !read || !read.quote || !INTERPRETER.test(text.slice(0, read.opened + 1))
 }
 
 // Lo que el proyecto declaró que ya corre con tope de recursos —un script que lanza dentro de un contenedor
@@ -158,6 +184,7 @@ function launched(read) {
   const found = []
   for (const match of read.matchAll(RUNNER)) {
     const [, tool, args] = match
+    if (/^[;&|(\n]/.test(match[0]) && !separates(read, match.index)) continue
     // Desde dónde está el runner y no desde donde empieza la coincidencia, que arranca en el separador: con
     // `acotado …; npx jest` el comando de afuera de ese `jest` es el segundo.
     found.push({ tool, args, outer: outerCommand(read, match.index + match[0].length - args.length - tool.length) })
