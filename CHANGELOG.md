@@ -161,8 +161,9 @@ diseño — eso vive en el commit y en el código.
   sólo frenaba un `consulted` vacío. Lo que un proyecto no quiere exigir —lockfiles, snapshots— lo declara en la llave
   nueva `reviewExempt` de `ops.config.json`, con patrones glob. El motor comprueba la declaración, no que se haya leído
   bien.
-- **Una propuesta firmada no se aplica si «Cambio propuesto» cambió después de la firma** (caso 486). La firma guarda
-  una huella sha256 de esa sección, y `agent-promote` la comprueba antes de aplicar con el comando nuevo
+- **Una propuesta firmada no se aplica si «Cambio propuesto» o «Evaluación» cambiaron después de la firma** (casos
+  486, 505 y 506). La firma guarda una huella sha256 de las dos secciones, que es lo que se aplica, y un título dentro
+  de un bloque de código no corta ninguna. `agent-promote` la comprueba antes de aplicar con el comando nuevo
   `ops learn <cargo> --check-signature`; si no coincide, para y dice las dos huellas. Sellar con `--applied` también se
   niega. Una propuesta firmada antes de esta versión no trae huella y se aplica como hasta ahora; una con la línea de
   huella rota, no. Y `sign-proposal.yml` ya no firma si la rama recibió un push después de la aprobación: pide volver a

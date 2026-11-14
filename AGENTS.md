@@ -289,8 +289,8 @@ separación vive en el encabezado de `sign-proposal.yml`, no acá.
 
 **La firma queda atada a lo que aprobaste** (caso 486). Si la rama recibe un push entre tu aprobación y la firma, el
 job no firma: falla nombrando el commit que aprobaste y el que hay, y lo que corresponde es revisar lo nuevo y volver a
-aprobar. Y la firma guarda la huella de «Cambio propuesto»: si alguien lo edita después, `agent-promote` no lo aplica y
-dice las dos huellas.
+aprobar. Y la firma guarda la huella de «Cambio propuesto» y «Evaluación», que es lo que `agent-promote` aplica: si
+alguien edita cualquiera de las dos después, no la aplica y dice las dos huellas (casos 505 y 506).
 
 #### Declinar una propuesta es archivarla, no cerrar su PR
 
