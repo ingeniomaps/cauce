@@ -147,6 +147,11 @@ no puede hacer, así que ese recorrido vive en el runner:
 /autobuild  ejecuta una tarea ya promovida, fase por fase.
 ```
 
+**Después de `init`, una sesión nueva.** Si corriste `init` desde una sesión de Claude Code, esa sesión no tiene los
+subagentes que `/autobuild` necesita: Claude Code los lee al arrancar el proceso. Tampoco cuenta lo que le pediste
+antes de instalar, porque el hook que registra tus mensajes todavía no existía. `install` lo avisa con la ruta donde
+abrir la nueva (casos 502 y 503).
+
 ### Cómo se lo llama en cada runner
 
 El nombre del recorrido es el mismo en todos —`onboard`, `flow`, `autobuild`, `integration-sync`,

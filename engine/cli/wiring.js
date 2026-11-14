@@ -199,8 +199,12 @@ function onboard(rootArg, cli, runner = '') {
   }
   // Un solo cierre: tres líneas que suenan a final se leen como tres finales, y quien recién instaló
   // termina sin saber cuál era el paso.
-  console.log(runner
-    ? `\n→ Abrí ${runner} acá y contestale esa pregunta.`
+  // La sesión desde la que se corrió `init` no tiene los subagentes recién instalados (caso 502). `ninguno` no es
+  // un runner que abrir.
+  const own = A.RUNNER_NAMES.includes(runner)
+  const anew = own && A.insideSession(A.runnerManifest(root, runner)) ? 'una sesión nueva de ' : ''
+  console.log(own
+    ? `\n→ Abrí ${anew}${runner} acá y contestale esa pregunta.`
     : '\n→ Contestá esa pregunta cuando corras el arranque.')
   console.log('  Con tus respuestas escribe organization/, el mapa real en'
     + ' organization/workspace.md y la primera épica.')

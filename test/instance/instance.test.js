@@ -230,6 +230,8 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   )
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
+  // Desde una terminal suelta: dentro de una sesión de Claude Code el cierre pide una nueva (caso 502).
+  delete env.CLAUDECODE
   const result = spawnSync(
     process.execPath,
     [CLI, 'init', '--runner', 'claude', '--integration', 'jira', '--install'],
