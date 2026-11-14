@@ -206,6 +206,11 @@ diseño — eso vive en el commit y en el código.
   `python -c` cuyo script traía `pytest|jest` en una expresión regular frenaba como si corriera jest sin cota. Vale
   para `node` y `bun` con `-e` o `-p`, `python` con `-c` y `perl` con `-e`; en cualquier otra comilla —un `sh -c`, un
   `eval`— el separador sigue contando. Un runner que esos scripts lancen por su cuenta no lo ve este guard.
+- **El agente ya no puede apagar los guards reescribiendo sus scripts** (caso 508). Dos guards nuevos, `runtime` y
+  `runtime-shell`, frenan escribir, borrar, mover o quitarle el permiso de ejecución a lo que Cauce entregó para que
+  corran los guards: los scripts de `automatization/hooks/`, el registro `.cauce/manifest.json` y lo que recibió cada
+  runner, su configuración incluida. También por la carpeta, un glob o git. Pasa si la persona lo pide nombrando el
+  archivo o lo confirma en el turno. Un guard propio al lado no se frena, y `cauce upgrade` sigue actualizándolos.
 
 ## [0.119.0] - 2026-11-03
 
