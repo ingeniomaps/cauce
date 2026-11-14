@@ -178,6 +178,9 @@ diseño — eso vive en el commit y en el código.
   ruta donde abrir la nueva, y el cierre de `init` dice «una sesión nueva». Desde una terminal no cambia nada. Y cuando
   `plan-first` o la gobernanza frenan en una sesión sin ningún mensaje registrado, el bloqueo dice que lo pedido antes
   no cuenta.
+- **El aviso OPS-001 nombra los commits que cuenta** (caso 504): hasta cinco, con hash y asunto, y cuántos más hay.
+  Antes decía sólo el número, también con `--json`, y había que buscarlos en `git log`. La ventana sigue comparando
+  por día: el día que se instala Cauce puede contar un commit de antes, y ahora se ve cuál es.
 
 ## [0.119.0] - 2026-11-03
 
