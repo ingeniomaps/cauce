@@ -9,6 +9,7 @@ const fs = require('node:fs')
 const F = require('../core/files')
 const P = require('../planning/parser')
 const catalog = require('../agents/catalog')
+const M = require('../core/manifest')
 const { installRoot, runnerManifest, RUNNER_NAMES } = require('./runners')
 
 // Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
@@ -61,13 +62,81 @@ function installRoleSkills(root, runner, output) {
       + `${runner.roleSkills}. Renombrá el cargo en agents/roles/ antes de instalar.`,
     )
   }
+  const copy = copiesRoles(root, runner)
   for (const role of roles) {
     const file = path.join(base, role.slug, 'SKILL.md')
     F.assertNoSymlinkPath(install, file)
-    F.atomicWrite(file, roleSkill(role))
+    if (copy && role.system) writeCopy(install, base, role)
+    else {
+      F.atomicWrite(file, roleSkill(role))
+      // Un puntero no lleva referencias: las que hay son de una copia de cuando Gemini estaba instalado.
+      fs.rmSync(path.join(base, role.slug, 'references'), { recursive: true, force: true })
+    }
   }
   if (roles.length) output.log(`✓ ${runner.name}: ${roles.length} cargo(s) disponibles en ${runner.roleSkills}`)
   retireRoleSkills(install, runner, roles, output)
+}
+
+// Gemini CLI no lee ninguna ruta con un tramo `node_modules`, ni gitignoreada ni incluida a mano (caso 512), y el
+// puntero de un cargo del catálogo lleva justamente ahí. Para el runner que lo declara —y para la carpeta que comparte
+// con él, así otro adaptador que se instale después no la vuelve a punteros—, el cargo va copiado: su `SKILL.md` y sus
+// `references/`, que es lo que el contrato cita. Los cargos propios viven en la instancia y siguen como puntero.
+function copiesRoles(root, runner) {
+  if (runner.roleSkillsCopy) return true
+  const installed = Object.keys(M.readRunners(root))
+  return RUNNER_NAMES.some((other) => {
+    if (other === runner.name) return false
+    let manifest
+    try { manifest = runnerManifest(root, other) } catch { return false }
+    return manifest.roleSkills === runner.roleSkills && manifest.roleSkillsCopy
+      && installed.some((key) => key.startsWith(`${other}/`))
+  })
+}
+
+const referencesOf = (dir) => {
+  const base = path.join(dir, 'references')
+  try { return fs.readdirSync(base).filter((one) => fs.statSync(path.join(base, one)).isFile()) } catch { return [] }
+}
+
+// Si lo que hay en la carpeta del runner para un cargo es lo que hoy se instalaría: la copia entera —el contrato y
+// cada referencia, ni una de más— o el puntero. Lo pregunta `doctor`.
+function installedCurrent(root, runner, role, dir) {
+  if (!(copiesRoles(root, runner) && role.system)) {
+    try { return fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8') === roleSkill(role) } catch { return false }
+  }
+  let present = []
+  try { present = fs.readdirSync(path.join(dir, 'references')) } catch { present = [] }
+  return copied(dir, role) && present.length === referencesOf(role.dir).length
+}
+
+// La carpeta `references/` de una copia es generada entera: lo que el catálogo ya no trae se va, para que una
+// referencia retirada entre versiones no deje la copia pareciendo editada para siempre.
+function writeCopy(install, base, role) {
+  // Antes de escribir y de listar: una `references/` enlazada llevaría el borrado de lo que sobra a donde apunta.
+  F.assertNoSymlinkPath(install, path.join(base, role.slug, 'references'))
+  F.atomicWrite(path.join(base, role.slug, 'SKILL.md'), fs.readFileSync(path.join(role.dir, 'SKILL.md'), 'utf8'))
+  const shipped = referencesOf(role.dir)
+  let present = []
+  try { present = fs.readdirSync(path.join(base, role.slug, 'references')) } catch { present = [] }
+  for (const name of present.filter((one) => !shipped.includes(one))) {
+    F.removeFile(path.join(base, role.slug, 'references', name), install)
+  }
+  for (const name of shipped) {
+    const file = path.join(base, role.slug, 'references', name)
+    F.assertNoSymlinkPath(install, file)
+    F.atomicWrite(file, fs.readFileSync(path.join(role.dir, 'references', name), 'utf8'))
+  }
+}
+
+// Si lo que hay en la carpeta de un cargo es la copia que escribimos, tal cual: su `SKILL.md` y cada referencia
+// iguales a las del catálogo. Al desinstalar, una copia editada es de alguien y se conserva, como un puntero editado.
+function copied(dir, role) {
+  if (!role) return false
+  const read = (base, relative) => fs.readFileSync(path.join(base, relative), 'utf8')
+  const same = (relative) => { try { return read(dir, relative) === read(role.dir, relative) } catch { return false } }
+  let extra = []
+  try { extra = fs.readdirSync(path.join(dir, 'references')) } catch { extra = [] }
+  return same('SKILL.md') && extra.every((name) => same(path.join('references', name)))
 }
 
 // La carpeta donde un adaptador dejaba sus punteros antes de mudarse. Gemini los escribía en
@@ -109,6 +178,7 @@ const plain = (install, file) => { try { F.assertNoSymlinkPath(install, file); r
 // un cargo —las de Codex en la misma carpeta, una propia— no es nuestra y no se menciona.
 function prunePointers(base, roles, install) {
   const known = new Set(roles.map((role) => role.slug))
+  const bySlug = new Map(roles.filter((role) => role.system).map((role) => [role.slug, role]))
   const kept = []
   let removed = 0
   let names = []
@@ -119,7 +189,13 @@ function prunePointers(base, roles, install) {
     if (!plain(install, file)) continue
     let text = ''
     try { text = fs.readFileSync(file, 'utf8') } catch { continue }
-    if (generated(text)) {
+    const dir = path.dirname(file)
+    if (generated(text) || copied(dir, bySlug.get(slug))) {
+      let references = []
+      if (plain(install, path.join(dir, 'references'))) {
+        try { references = fs.readdirSync(path.join(dir, 'references')) } catch { references = [] }
+      }
+      for (const name of references) F.removeFile(path.join(dir, 'references', name), install)
       F.removeFile(file, install)
       removed += 1
     } else if (known.has(slug)) kept.push(path.relative(install, file))
@@ -148,4 +224,4 @@ function uninstallRoleSkills(root, name, runner, install, recorded, output) {
   return prunePointers(path.resolve(install, runner.roleSkills), roleCatalog(root), install)
 }
 
-module.exports = { roleCatalog, roleSkill, installRoleSkills, uninstallRoleSkills }
+module.exports = { roleCatalog, roleSkill, installedCurrent, installRoleSkills, uninstallRoleSkills }

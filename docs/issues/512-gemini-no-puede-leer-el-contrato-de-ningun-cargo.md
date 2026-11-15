@@ -1,14 +1,15 @@
 ---
 caso: 512
 titulo: Gemini no puede leer el contrato de ningún cargo, porque el puntero lo manda a una ruta dentro de node_modules
-estado: abierto
+estado: resuelto
+resuelto-en: 0.121.0
 prioridad: alta
 version-detectada: 0.120.0
 ---
 
 # 512 — Gemini no puede leer el contrato de ningún cargo, porque el puntero lo manda a una ruta dentro de node_modules
 
-**🔴 abierto** · detectado en 0.120.0 · prioridad **alta** para toda instancia con Gemini: cada cargo trabaja con su
+**🟢 resuelto en 0.121.0** · detectado en 0.120.0 · prioridad **alta** para toda instancia con Gemini: cada cargo trabaja con su
 descripción de una línea y sin su contrato, y nada lo avisa.
 
 ## Resumen
@@ -79,3 +80,76 @@ un `grep_search` rechazado sobre el paquete.
 
 - 092 (Gemini rechaza `.env` por su cuenta, el mismo mensaje).
 - 360 (Gemini y Codex leyendo `.agents/skills` a la vez).
+
+## Cierre
+
+Se tomó la opción A. El manifiesto de Gemini declara `roleSkillsCopy`, y `engine/automation/roles.js` escribe en
+`.agents/skills/<cargo>/` el `SKILL.md` del catálogo y sus `references/` en vez del puntero. También lo hace para la
+carpeta que otro runner instalado comparte con uno que la declara, así Codex instalado después no la vuelve a punteros.
+Los cargos propios siguen como puntero a la instancia. `doctor` compara contra lo que se instalaría: la copia entera o el
+puntero.
+
+Línea de base: las cinco sondas del caso con Gemini CLI 0.63.0, todas «Path not in workspace» salvo el control.
+
+Contra el caso:
+
+- **Fix A, copiar el contrato al skill sólo para Gemini:** se hizo, por capacidad del manifiesto. Lo que se copia es el
+  `SKILL.md` y `references/`: 106 archivos y 1,1 MB para los 53 cargos, no los 318 y 6,1 MB del caso, que contaban
+  también `agents/` y `learning/`, que el contrato no cita.
+- **Fix B, un espejo para todos:** se decidió que no, por la opción tomada.
+- **Tradeoff, una segunda copia que se pudre:** se atendió. `install` la rehace entera —también retira la referencia que
+  el catálogo ya no trae— y `doctor` la marca desactualizada si falta o sobra una referencia. Se hizo distinto de lo que
+  el caso decía: no se registra en el manifiesto archivo por archivo, se reconoce por contenido, como los punteros.
+- **Tradeoff, Codex y Gemini en la misma carpeta:** medido en los dos órdenes. Con los dos, copia; desinstalado Gemini,
+  Codex vuelve a punteros al reinstalarse, sin referencias huérfanas.
+- **Tradeoff, correr un cargo de verdad en Gemini:** hecho (ver «Qué se corrió»).
+
+Lo que el caso no preveía:
+- `doctor` marcaba las 53 copias como desactualizadas (lo vio la primera prueba real);
+- desinstalar Gemini antes que Codex dejaba carpetas `references/` huérfanas (primera revisión);
+- una referencia retirada entre versiones dejaba la copia pareciendo editada para siempre (primera revisión);
+- una `references/` enlazada llevaba el borrado de lo que sobra a donde apunta (segunda revisión).
+
+Queda anotado, sin arreglar: si el chequeo de enlace frena a mitad de un `install`, los cargos ya escritos quedan y el
+manifiesto no se escribe, igual que el chequeo por cargo que ya había.
+
+### Lista de cierre
+
+1. hecho: las cinco sondas del caso con Gemini 0.63.0, en el proyecto `gemini` de la prueba de punta a punta.
+2. hecho: en la rama `fix/e2e-120-findings`.
+3. hecho: «van copiados» en `test/wiring/shared-skills.test.js`, en rojo sin la copia y en verde con ella.
+4. hecho: mutaciones en rojo en una copia: sin la capacidad en el manifiesto, sin `writeCopy`, sin la carpeta compartida,
+   sin reconocer la copia al desinstalar, con el `&&` de `copied` cambiado, sin retirar lo que sobra, sin limpiar al
+   volver a puntero, sin contar referencias en `doctor` y sin el chequeo de enlace.
+5. hecho: lo que se quita es el puntero en la carpeta de Gemini. La prueba afirma que la copia no menciona `node_modules`,
+   y la sesión real de antes y la de después están en «Qué se corrió».
+6. hecho: Gemini real con el motor de la rama, dos veces: con la primera versión y con el código final.
+7. hecho: lo que depende del runner corrió en Gemini CLI 0.63.0.
+8. hecho: corrieron Gemini solo, Codex y Gemini en los dos órdenes, un cargo propio y uno del catálogo. No corrió Codex
+   real ni Antigravity.
+9. hecho: dos runners en la misma carpeta, en los dos órdenes de instalar y desinstalar.
+10. hecho: `doctor`, `uninstallRoleSkills`, `retireRoleSkills` y las pruebas de la carpeta compartida (caso 371).
+11. hecho: tres pasadas independientes. La primera halló el orden de desinstalar y las referencias retiradas; la segunda,
+    el enlace en `references/`; la tercera, nada que impidiera entregar, y moví el chequeo antes de escribir.
+12. hecho: pasada uno por uno sobre el diff.
+13. hecho: `npm run ci` con los cambios stageados: 1806 pruebas, 0 fallas.
+14. hecho: recorrido arriba contra Fix y Tradeoffs.
+15. hecho: lo corrido y lo no previsto, arriba y en «Qué se corrió».
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.121.0`, y entrada en el CHANGELOG.
+
+### Qué se corrió
+
+Gemini CLI 0.63.0, `GEMINI_CLI_TRUST_WORKSPACE=true gemini --yolo -o json`, pidiéndole al cargo `backend-engineer` leer
+su contrato y su referencia con `read_file`:
+
+```
+antes   Path not in workspace: Attempted path ".../ops/node_modules/@ingeniomaps/cauce/agents/roles/system/backend-engineer/SKILL.md" …
+después # Backend Engineer
+        # Modelo operativo de Backend Engineering
+        .../gemini/.agents/skills/backend-engineer/SKILL.md
+        .../gemini/.agents/skills/backend-engineer/references/operating-model.md
+```
+
+`automation doctor ops gemini`: antes del arreglo de `doctor`, «53 cargo(s) desactualizados»; después, «0 advertencia(s)».
+
+**Sin probar:** Codex real leyendo la copia, y Antigravity, que no usa esta carpeta.

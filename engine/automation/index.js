@@ -13,7 +13,7 @@ const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, toolsDrift,
 } = require('./runners')
-const { roleCatalog, roleSkill, installRoleSkills, uninstallRoleSkills } = require('./roles')
+const { roleCatalog, roleSkill, installedCurrent, installRoleSkills, uninstallRoleSkills } = require('./roles')
 const {
   GUARD_NAMES, groupWrappers, supersededGuards,
   legacyGuardWiring, listHooks,
@@ -115,7 +115,7 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
     for (const role of roleCatalog(root)) {
       const file = path.join(paths.install, runner.roleSkills, role.slug, 'SKILL.md')
       if (!fs.existsSync(file)) missing.push(role.slug)
-      else if (fs.readFileSync(file, 'utf8') !== roleSkill(role)) stale.push(role.slug)
+      else if (!installedCurrent(root, runner, role, path.dirname(file))) stale.push(role.slug)
     }
     if (missing.length) {
       warnings.push(`${missing.length} cargo(s) sin instalar en ${runner.roleSkills}: reinstalá el adaptador`)
