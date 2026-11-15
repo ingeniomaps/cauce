@@ -26,8 +26,8 @@ test('en sidecar, install dice dónde abrir la sesión, y a Antigravity le da su
   }
 })
 
-// En un repo git que es a la vez la carpeta de instalación, toda subcarpeta queda dentro de la búsqueda del
-// runner y no hay repo de producto aparte: el aviso sería ruido.
+// En un repo git que es a la vez la carpeta de instalación, una subcarpeta lleva los guards —por la búsqueda del
+// runner, o en Claude Code por `settings.local.json`— y no hay repo de producto aparte: el aviso sería ruido.
 test('embebido en la raíz de un repo git, install no avisa', () => {
   const repo = path.join(tempRoot('cauce-sesion-embebido-'), 'app')
   fs.mkdirSync(repo)

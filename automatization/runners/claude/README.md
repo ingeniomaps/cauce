@@ -13,6 +13,15 @@ ahora los guards, y lo que la persona pide en el chat pasa (caso 104). Si ya
 existe una versión distinta de un archivo, se detiene sin sobrescribirla para no destruir
 personalizaciones del proyecto. También crea `CLAUDE.md` cuando no existe y conserva uno existente.
 
+**Una sesión abierta en una subcarpeta.** Claude Code lee `.claude/settings.json` sólo de la carpeta donde se abre la
+sesión —medido con 2.1.325—, así que abierta en una subcarpeta del proyecto no cargaba ningún guard. `install` suma
+los mismos hooks al `.claude/settings.local.json` de la raíz git, que sí se lee desde cualquier subcarpeta, con la
+ruta absoluta de la instalación, y corren sólo en una sesión abierta debajo de ella: en la instalación misma ya
+corren los de `settings.json`, y lo de afuera —la raíz de un monorepo, otra instancia— no es suyo. Lo que la persona
+tenga en ese archivo queda; el archivo es de la máquina y va al `.gitignore`. No se escribe si la raíz git contiene
+el home ni si el archivo está versionado. `uninstall` saca sólo las entradas de esa instalación. Un repo de producto
+con git propio sigue afuera.
+
 En `.claude/workflows/` deja los cinco recorridos que anuncia —`/onboard`, `/flow`, `/autobuild`,
 `/integration-sync` e `/integration-promote`— y tres del ciclo de cargos que se invocan igual pero no
 figuran en la lista de recorridos: `/agent-eval`, `/agent-propose` y `/agent-promote`. El catálogo de

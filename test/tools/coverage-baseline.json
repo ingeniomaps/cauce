@@ -673,5 +673,20 @@
     "lines": 100,
     "branches": 98,
     "functions": 100
+  },
+  "engine/automation/subfolder-hooks.js": {
+    "lines": 95,
+    "branches": 78,
+    "functions": 100
+  },
+  "engine/automation/runner-extras.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/hooks/nearer-install.js": {
+    "lines": 100,
+    "branches": 75,
+    "functions": 100
   }
 }
