@@ -45,6 +45,11 @@ test('quien construye verifica y commitea, no se revisa, y entrega con su eviden
     assert.match(handoff.prompt, /en Review el phase del frontmatter/)
     assert.match(handoff.prompt, /## Evidencia de Build.*"test":"TestAltaDuplicada"/)
     assert.match(handoff.prompt, /Si ya hay una .* queda una sola/)
+    // Caso 511: en una devolución las notas de la entrega anterior no se arrastran; Build repite las que siguen.
+    assert.match(handoff.prompt, /con kind note sólo los de esta entrega/)
+    assert.doesNotMatch(handoff.prompt, /discovered de la de antes seguidos de éstos\./)
+    assert.match(run.prompts.find((one) => one.key === KEY.build).prompt,
+      /trae una sección "## Evidencia de Build" de una entrega anterior, repetí en discovered.*sólo sus notas/)
     assert.ok(!run.asked.some((key) => key.startsWith('release:') || key.endsWith('|release:T-1')), 'soltó la reserva')
     assert.ok(!run.prompts.some((one) => /pidió.*--role/.test(one.prompt)), 'el rol viajó como pedido')
   }

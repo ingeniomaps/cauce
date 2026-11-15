@@ -76,3 +76,53 @@ la entrada sale de ahí.
 - 484: la re-revisión comprueba lo que mandó a corregir, y `done/` registra como `corregido:` sólo lo confirmado. Cubrió
   el lado de Review; este es el de Build.
 - 510.
+
+## Cierre
+
+`review-fix` devuelve con esquema (`AMENDED`) qué notas de construcción dejó sin efecto, por su número, y cuáles agrega;
+`buildNotes` se recalcula con eso, sin repetir y con el tope de `INBOX_CAP`, y es lo que llega a `decisions:`. En el camino
+de dos sesiones, la entrega devuelta reemplaza las notas de la anterior, y Build repite las que siguen valiendo.
+
+Línea de base: la entrada de DONE de la corrida del 2026-11-14 (commit `e16d096` del proyecto de prueba), con los dos
+supuestos que la corrección había vuelto falsos.
+
+Contra el caso:
+
+- **Fix 1, la corrección devuelve las notas que siguen en pie:** se hizo distinto. Contesta qué notas deja sin efecto y
+  cuáles agrega, en vez de reescribirlas todas: así una corrección que no las mira no las borra.
+- **Fix 1, lo mismo en la entrega acumulada:** se hizo.
+- **Fix 2, frenar el commit si el cierre ve una contradicción:** se decidió que no, por ahora. Con las notas al día, la
+  contradicción que el cierre vio en la corrida no se arma; frenar por la que detecte el propio cierre es otra decisión.
+- **Tradeoff, perder una nota que seguía valiendo:** atendido. La corrección no la reescribe: sólo la saca si la nombra.
+- **Tradeoff, una vuelta de modelo más:** no hay vuelta más. Es la misma llamada, con esquema.
+
+Lo que el caso no preveía: una corrección que no contesta ahora frena con `agent-unavailable`; antes seguía a la
+re-revisión sin saber qué notas quedaban.
+
+### Lista de cierre
+
+1. hecho: la entrada de DONE de la corrida del 2026-11-14, con sus dos contradicciones.
+2. hecho: en la rama `fix/e2e-120-findings`.
+3. hecho: «las notas que la corrección deja sin efecto no llegan a done/», en `autobuild-review-rounds.test.js`, y la
+   del handoff en `autobuild-roles.test.js`, en rojo antes y en verde después.
+4. hecho: mutaciones en rojo en una copia: sin recalcular, sin las nuevas, el handoff con las notas de las dos entregas, y
+   Build sin el pedido de repetir las que siguen.
+5. hecho: lo que se quita es el arrastre de notas viejas. Las pruebas afirman que la nota dejada sin efecto no aparece en
+   lo que llega a DONE y que el handoff ya no dice «seguidos de éstos».
+6. pendiente: la corrida real de `/autobuild` (sesión 129bad91) no tuvo vuelta de corrección —Review aprobó de una—, así
+   que el camino nuevo corrió sólo en el arnés. Falta una corrida real con corrección, o que la persona decida cerrarlo
+   sin ella.
+7. pendiente: lo mismo que el punto 6.
+8. hecho: en el arnés corrieron la sesión sola con corrección y el camino de dos sesiones; en real, una sesión sola sin
+   corrección.
+9. no aplica: no coordina nada entre runners ni raíces.
+10. hecho: el arnés de `autobuild` contesta la corrección con un esquema por defecto, y las pruebas de vueltas de
+    corrección (caso 343 y 484) siguen en verde.
+11. hecho: tres pasadas independientes; la primera pidió deduplicar y acotar las notas nuevas, y se hizo.
+12. hecho: pasada uno por uno sobre el diff.
+13. hecho: `npm run ci` con los cambios stageados: 1806 pruebas, 0 fallas.
+14. hecho: recorrido arriba contra Fix y Tradeoffs.
+15. hecho: lo corrido y lo no previsto, arriba.
+16. pendiente: el estado sigue en `abierto` hasta resolver el punto 6.
+
+**Sin probar:** una corrida real de `/autobuild` con una vuelta de corrección de Review.

@@ -70,3 +70,29 @@ test('un bloqueante nuevo que no se declara corregible sigue frenando a la segun
   assert.equal(turn, 2)
   assert.match(result.detail, /cambiar sólo esa frase/)
 })
+
+// Caso 511: las notas de Build van a `decisions:` de DONE como supuestos. La corrección cambiaba el código y no las
+// notas, así que DONE afirmaba la versión que Review había mandado a deshacer. La corrección contesta qué notas dejó
+// sin efecto y cuáles agrega, y DONE recibe eso.
+test('las notas que la corrección deja sin efecto no llegan a done/, y las nuevas sí', async () => {
+  let turn = 0
+  const run = await runFlow({
+    [KEY.build]: { completed: true, summary: 'ok', closedTask: false, redFirst: [{ test: 'TestAltaDuplicada',
+      failure: 'want error, got nil' }], discovered: [
+      { kind: 'note', detail: 'el subtotal ahora se redondea antes del impuesto' },
+      { kind: 'note', detail: 'el servidor sigue llamando a total sin cupón' }] },
+    [KEY.review]: () => {
+      turn += 1
+      return turn === 1 ? reviewedWith([first])
+        : { ...reviewedWith([], 'aprobado'), previous: [{ id: 'r1-B1', fixed: true, evidence: 'x.js:1' }] }
+    },
+    'Review|review-fix': { dropped: [0], added: ['sin cupón se usa la fórmula de antes'] },
+  })
+  ranToEnd(run.result)
+  const fix = run.prompts.find((one) => one.key === 'Review|review-fix').prompt
+  assert.match(fix, /0: el subtotal ahora se redondea/, 'la corrección recibe las notas con su número')
+  const done = run.written.find((text) => text.includes('notas-de-build=')) || ''
+  assert.doesNotMatch(done, /se redondea antes del impuesto/, 'la que la corrección dejó sin efecto no llega')
+  assert.match(done, /sigue llamando a total sin cupón/, 'la que sigue valiendo, sí')
+  assert.match(done, /sin cupón se usa la fórmula de antes/, 'y la nueva también')
+})

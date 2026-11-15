@@ -283,6 +283,15 @@ const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'criti
           fixable: { type: 'boolean' } },
       } },
   } }
+// Lo que devuelve una corrección: qué notas de construcción dejó sin efecto, por su número, y cuáles agrega.
+const AMENDED = {
+  type: 'object', additionalProperties: false, required: ['dropped', 'added'],
+  properties: {
+    dropped: { type: 'array', items: { type: 'integer' } },
+    added: { type: 'array', items: { type: 'string' } },
+  },
+}
+
 // La re-revisión contesta por cada bloqueante que se mandó a corregir: sin esto `done/` registraba como corregido
 // todo lo mandado, también lo que la segunda pasada no volvió a mirar (caso 484).
 const REREVIEWED = { ...REVIEWED, required: [...REVIEWED.required, 'previous'],
@@ -1803,7 +1812,12 @@ while (rounds++ < MAX_TASKS) {
     `asercia lo que dice aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que ` +
     `necesites para ver ese ` +
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
-    `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
+    `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. ` +
+    // En una devolución las notas de la entrega anterior se reemplazan por las de ésta (caso 511): la que no se repite
+    // no llega a DONE, y una que la vuelta volvió falsa no se puede sacar de otra forma.
+    (ROLE === 'build' ? `Si el WIP ya trae una sección "${EVIDENCE}" de una entrega anterior, repetí en discovered, ` +
+      `con kind=note, sólo sus notas que sigan valiendo después de esta vuelta. ` : '') +
+    `Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
     `anotás en redFirst y nombrás en test, y citás en red el id de ese rojo—. Lo que notaste y no impide ` +
     `entregar la aceptación es una de ` +
@@ -1855,7 +1869,7 @@ while (rounds++ < MAX_TASKS) {
   const kept = (kind) => found(kind).slice(0, INBOX_CAP)
   const spilled = ['open', 'debt', 'note', 'mutation'].map((kind) => [kind, found(kind).length - kept(kind).length])
     .filter(([, extra]) => extra > 0).map(([kind, extra]) => `${extra} ${kind} sin volcar`)
-  const buildNotes = kept('note')
+  let buildNotes = kept('note')
   // Una mutación declarada y no corrida no es una pregunta ni deuda: es trabajo que un agente puede hacer
   // en una copia, y la fase que ya trabaja así es QA. Como fila se cerraba pidiendo que alguien la corriera
   // (caso 256).
@@ -2073,10 +2087,20 @@ while (rounds++ < MAX_TASKS) {
       let pending = tagged(blockers(review), 1)
       for (let round = 1; pending.length; round += 1) {
         passed.push(...review.concerns.filter((one) => !one.blocking && !one.decision))
-        await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${toFix(pending)}. `
+        // Las notas de Build van a DONE como supuestos, y la corrección puede volverlas falsas: sin preguntarlo, DONE
+        // afirmaba la versión que Review mandó a deshacer (caso 511).
+        const amended = await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${toFix(pending)}. `
           + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
-          + `describa la forma vieja, una fila que la enumere— y nada más que eso.${WHERE}`,
-          { label: 'review-fix' })
+          + `describa la forma vieja, una fila que la enumere— y nada más que eso.${WHERE} `
+          + 'Al terminar, devolvé en dropped el número de cada nota de construcción que tu corrección dejó sin efecto, '
+          + 'y en added las que tu corrección deja como supuesto nuevo. '
+          + (buildNotes.length ? `Las notas: ${buildNotes.map((note, index) => `${index}: ${note}`).join(' · ')}.`
+            : 'Hoy no hay ninguna.'),
+          { label: 'review-fix', schema: AMENDED })
+        if (!amended) return halt('agent-unavailable', 'la corrección no devolvió qué notas cambió')
+        const dropped = new Set(amended.dropped || [])
+        buildNotes = [...new Set([...buildNotes.filter((_, index) => !dropped.has(index)), ...(amended.added || [])])]
+          .slice(0, INBOX_CAP)
         review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
           + `—${task.acceptance}—. Antes, contestá en previous por cada hallazgo que se mandó a corregir: `
           + 'su id, fixed=true sólo si comprobaste en el diff que ya no está, y en evidence la línea que lo '
@@ -2435,7 +2459,9 @@ while (rounds++ < MAX_TASKS) {
     await scribe(`Dejá en Review el phase del frontmatter de ${P}/${planning.wipFile}, y agregá al final del archivo `
       + `una sección "${EVIDENCE}" con este JSON en un bloque de código, tal cual: ${JSON.stringify(evidence)}. Si ya `
       + 'hay una —la de una entrega anterior, antes de una devolución—, queda una sola: un JSON con los redFirst y los '
-      + `discovered de la de antes seguidos de éstos. Nada más: ni los pasos, ni el plan, ni ${P}/done/, ni `
+      + 'discovered de kind edge y mutation de la de antes seguidos de éstos, y con kind note sólo los de esta '
+      + 'entrega. '
+      + `Nada más: ni los pasos, ni el plan, ni ${P}/done/, ni `
       + `${queueFile()}, ni la reserva.`, { label: 'handoff' })
     const delivered = await readContext()
     if (!delivered || !/^review$/i.test(unquoted((delivered.wip || {}).phase))) {
