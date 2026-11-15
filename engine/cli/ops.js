@@ -118,6 +118,7 @@ async function init(target, cli) {
   // instancia hecha con el comando en error (caso 096). `BOOT.run` vuelve a validar con la misma función.
   try { BOOT.validate(options) } catch (error) { fail(error.message, USAGE) }
   IN.scaffold(root, { name, mode, force })
+  IN.ignoreInstance(root)
   const relative = path.relative(process.cwd(), root)
   const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
   console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
@@ -274,7 +275,7 @@ async function run(cli) {
   else if (command === 'worktree') WT.worktree(arg[1], arg[2], cli)
   else if (command === 'evidence') PL.evidence(arg[1], cli)
   else if (command === 'upgrade') IN.upgrade(arg[1], cli)
-  else if (command === 'destroy') IN.destroy(arg[1], cli)
+  else if (command === 'destroy') require('./destroy').destroy(arg[1], cli)
   else if (command === 'agents') CAT.agents(arg[1], arg[2], arg[3], cli)
   else if (command === 'archive') AR.archive(arg[1], arg[2])
   else if (command === 'adopt') AR.adopt(arg[1])

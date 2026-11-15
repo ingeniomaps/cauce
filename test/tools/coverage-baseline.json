@@ -134,6 +134,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/cli/destroy.js": {
+    "lines": 100,
+    "branches": 66,
+    "functions": 88
+  },
   "engine/cli/governed.js": {
     "lines": 94,
     "branches": 64,
@@ -222,6 +227,11 @@
   "engine/core/frontmatter.js": {
     "lines": 100,
     "branches": 100,
+    "functions": 100
+  },
+  "engine/core/ignore-block.js": {
+    "lines": 100,
+    "branches": 93,
     "functions": 100
   },
   "engine/core/known-red.js": {

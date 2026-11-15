@@ -420,6 +420,12 @@ function install(root, name, output = console, options = {}) {
   }
   installOwnWorkflows(root, name, runner, paths, output)
   installRoleSkills(root, runner, output)
+  // Lo que acaba de escribir con la ruta de esta carpeta y git no ignora va al bloque de Cauce del `.gitignore` del
+  // repositorio (caso 513): antes era un aviso que pedía editarlo a mano en cada proyecto.
+  const ignored = require('./machine-bound').ignoreLoose(root, paths.install)
+  if (ignored && ignored.added.length) {
+    output.log(`  ${name}: ${ignored.added.join(', ')} al bloque de Cauce de ${ignored.file}`)
+  }
   // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `flow`,
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
   // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
