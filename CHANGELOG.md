@@ -29,6 +29,10 @@ diseño — eso vive en el commit y en el código.
   copia de una mutación, que R23 pide hacer siempre en una copia, se frenaba por la herramienta de archivos y los
   agentes terminaban mutando el árbol de trabajo. Un enlace del temporal que lleva afuera sigue frenando, y el bloqueo
   fuera de las raíces nombra el temporal como el lugar de una copia desechable.
+- **En Gemini, la copia de una mutación se escribe en su temporal de proyecto** (caso 516). Gemini CLI no deja usar
+  `/tmp`, y su único lugar desechable, `~/.gemini/tmp/<proyecto>`, lo frenaba el límite de raíces. Ahora es escribible
+  para los dos guards de límites, deducido del `transcript_path` que Gemini manda y sólo si no es un enlace, y el
+  bloqueo nombra ese lugar en vez de `/tmp`. Tampoco cuenta ya un scratchpad de Claude Code que sea un enlace.
 - **En Gemini, los cargos del catálogo se instalan copiados en `.agents/skills/`** (caso 512): el contrato y sus
   `references/`, en vez del puntero a `node_modules`, que Gemini CLI no lee. Codex, que comparte la carpeta, lee lo
   mismo mientras Gemini esté instalado. Los cargos propios siguen como puntero.
