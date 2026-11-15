@@ -21,6 +21,7 @@ const { steps, removals, creations, home, asRead, writes } = require('./shell-ch
 const { landing } = require('../core/files')
 const { beyond, reached, removed, refusal, inTemp } = require('./boundary')
 const LS = require('./line-scope')
+const GI = require('./git-internals')
 const AP = require('./approval')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
@@ -331,6 +332,7 @@ function shellBoundary(input) {
   const allowed = writableRoots(input)
   const found = []
   const strayed = []
+  const inner = []
   // Sin el cuerpo de los heredocs, también con un delimitador como `END-1` (`asRead`).
   for (const { raw, base } of writes(rawCommandOf(input), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
@@ -347,7 +349,9 @@ function shellBoundary(input) {
     const lands = landing(base || '/', raw)
     const own = selfApprovalShell(input, file) || selfApprovalShell(input, lands)
     if (own) block(own)
-    if (!allowed || DEVICES.test(file) || inTemp(lands)) continue
+    if (DEVICES.test(file) || inTemp(lands)) continue
+    if (GI.internal(lands)) inner.push(`escribe ${lands}`)
+    if (!allowed) continue
     const out = beyond(input, base || '/', raw, allowed)
     if (out) found.push({ verb: 'escribe', out })
     const off = !out && LS.strayed(input, file, lands)
@@ -357,7 +361,6 @@ function shellBoundary(input) {
   // no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga: `cd "$DIR" && rm -rf
   // node_modules` es la limpieza de cualquier script, y frenarla enseña a apagar el guard. Lo catastrófico de
   // esa forma lo cuida `destructive`.
-  if (!allowed) return
   const command = commandOf(input)
   const assigned = assignedValues(asRead(command)) || ((text) => text)
   const ran = steps(rawCommandOf(input), cwdOf(input))
@@ -371,13 +374,15 @@ function shellBoundary(input) {
     if (/[$`\u0000]/.test(named) || (base === null && !path.isAbsolute(named))) continue
     const at = lands(base || '/', named)
     if (inTemp(at)) continue
+    if (GI.internal(at)) inner.push(`${verb} ${at}`)
+    if (!allowed) continue
     const out = beyond(input, base || '/', named, allowed, at)
     if (out) found.push({ verb, out })
     const off = !out && LS.strayed(input, path.resolve(base || '/', named), at)
     if (off) strayed.push(off)
   }
   // Un `git` que cambia el checkout de otra sesión no escribe en ningún destino de los de arriba (caso 423).
-  for (const { dir, sub, unplaced } of LS.gitTargets(ran, { resolve: assigned })) {
+  for (const { dir, sub, unplaced } of allowed ? LS.gitTargets(ran, { resolve: assigned }) : []) {
     const off = unplaced ? LS.unplaced(input, unplaced, sub) : LS.strayed(input, dir, landing(path.sep, dir), sub)
     if (off) strayed.push(off)
   }
@@ -386,6 +391,8 @@ function shellBoundary(input) {
   if (why) block(why)
   const off = LS.refusal(input, strayed)
   if (off) block(off)
+  const hooked = GI.refusal(input, [...inner, ...GI.gitWrites(ran)])
+  if (hooked) block(hooked)
 }
 
 function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {

@@ -25,6 +25,7 @@ const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
 const LT = require('../core/line-trees')
 const LS = require('./line-scope')
+const GI = require('./git-internals')
 const { instanceTreeOf, resolved } = require('./instance-tree')
 
 // Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
@@ -330,9 +331,12 @@ function workspaceBoundary(input) {
   const deleted = new Set([...patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)].map((one) => one[1].trim()))
   const found = []
   const strayed = []
+  const inner = []
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
     if (runnerOwn(file)) continue
+    const lands = landing(cwdOf(input), raw)
+    if (!inTemp(lands) && GI.internal(lands)) inner.push(`${deleted.has(raw) ? 'borra' : 'escribe'} ${lands}`)
     // Lo mismo que en `shell-boundary`: la aprobación de la persona se juzga aunque no haya raíces.
     const own = selfApproval(input, file) || selfApproval(input, landing(cwdOf(input), raw))
     if (own) block(own)
@@ -352,6 +356,8 @@ function workspaceBoundary(input) {
   }
   const off = LS.refusal(input, strayed)
   if (off) block(off)
+  const hooked = GI.refusal(input, inner)
+  if (hooked) block(hooked)
 }
 
 // Hace falta un guard aparte porque `workspace-boundary` no lo cubre: `node_modules/` cae dentro de
