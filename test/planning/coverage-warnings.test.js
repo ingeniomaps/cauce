@@ -85,19 +85,20 @@ test('un commit que sólo toca el planning no cuenta como trabajo sin anotar', (
   git('add', 'ops.config.json', 'planning/done/una.md')
   git('commit', '-q', '-m', 'chore(planning): close una')
   const done = { entries: [{ fecha: '2000-01-01', commit: '' }], set: new Set() }
-  assert.deepEqual(R.coverageWarnings(repo, done).filter((one) => /1 commit/.test(one)).length, 1,
-    'el primero toca también ops.config.json, que no es planning')
+  assert.deepEqual(R.coverageWarnings(repo, done), [], 'el que instala la instancia no cuenta')
 
   fs.writeFileSync(path.join(repo, 'planning', 'done', 'otra.md'), 'slug: otra\n')
-  git('add', 'planning/done/otra.md')
+  fs.mkdirSync(path.join(repo, 'organization'))
+  fs.writeFileSync(path.join(repo, 'organization', 'company.md'), '# Empresa\n')
+  git('add', 'planning/done/otra.md', 'organization/company.md')
   git('commit', '-q', '-m', 'chore(planning): close otra')
-  assert.match(R.coverageWarnings(repo, done)[0], /1 commit\(s\)/, 'el que sólo toca planning no suma')
+  assert.deepEqual(R.coverageWarnings(repo, done), [], 'ni el que sólo toca lo de la instancia, organization/ incluido')
 
   fs.writeFileSync(path.join(repo, 'a.js'), 'module.exports = 1\n')
   fs.writeFileSync(path.join(repo, 'planning', 'done', 'otra.md'), 'slug: otra\nnota: x\n')
   git('add', 'a.js', 'planning/done/otra.md')
   git('commit', '-q', '-m', 'feat: algo con planning al lado')
-  assert.match(R.coverageWarnings(repo, done)[0], /2 commit\(s\)/, 'el que toca código además sí')
+  assert.match(R.coverageWarnings(repo, done)[0], /1 commit\(s\)/, 'el que toca código además sí')
 })
 
 // El aviso nombra los commits que cuenta, con su asunto, hasta cinco, y dice cuántos más hay: sin eso, quien lo leía
@@ -148,13 +149,40 @@ test('un commit anterior a la instancia no cuenta, aunque sea del mismo día', (
   const done = { entries: [{ fecha: today, commit: '' }], set: new Set() }
   assert.deepEqual(R.coverageWarnings(repo, done), [], 'sin commitear la instancia, cuenta desde su archivo')
 
-  git('add', 'ops.config.json')
+  // Como lo deja `init` en embebido: también toca archivos del producto.
+  fs.writeFileSync(path.join(repo, 'package.json'), '{"devDependencies":{"@ingeniomaps/cauce":"0.121.0"}}\n')
+  git('add', 'ops.config.json', 'package.json')
   at(`${today}T00:00:02Z`, 'commit', '-q', '-m', 'chore: install cauce')
   fs.writeFileSync(path.join(repo, 'b.js'), '2\n')
   git('add', 'b.js')
   at(`${today}T00:00:03Z`, 'commit', '-q', '-m', 'feat: lo de después')
   const [aviso] = R.coverageWarnings(repo, done)
-  assert.match(aviso, /2 commit\(s\)/, 'lo de después de instalar sí, incluido el que la instala')
+  assert.match(aviso, /1 commit\(s\)/, 'lo de después de instalar sí, y el que la instala no')
   assert.match(aviso, /feat: lo de después/)
   assert.doesNotMatch(aviso, /initial/, 'y el anterior no')
+})
+
+// En sidecar dentro del repositorio, la carpeta de la instancia entera es su propio estado: antes sólo se salteaba
+// `ops/planning`, y un commit de `ops/organization` salía como trabajo sin registrar.
+test('en sidecar dentro del repositorio, un commit que sólo toca la instancia no cuenta', () => {
+  const repo = tempRoot('ops-cobertura-sidecar-adentro-')
+  const git = (...args) => spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).stdout.trim()
+  git('init', '-q')
+  git('config', 'user.email', 'x@y.z')
+  git('config', 'user.name', 'x')
+  const ops = path.join(repo, 'ops')
+  fs.mkdirSync(path.join(ops, 'organization'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'ops.config.json'),
+    JSON.stringify({ mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '..' }] }))
+  git('add', 'ops/ops.config.json')
+  git('commit', '-q', '-m', 'chore: install cauce')
+  fs.writeFileSync(path.join(ops, 'organization', 'company.md'), '# Empresa\n')
+  git('add', 'ops/organization/company.md')
+  git('commit', '-q', '-m', 'docs(ops): onboard')
+  const done = { entries: [{ fecha: '2000-01-01', commit: '' }], set: new Set() }
+  assert.deepEqual(R.coverageWarnings(ops, done), [])
+  fs.writeFileSync(path.join(repo, 'app.js'), '1\n')
+  git('add', 'app.js')
+  git('commit', '-q', '-m', 'feat: producto')
+  assert.match(R.coverageWarnings(ops, done)[0], /1 commit\(s\).*feat: producto/)
 })
