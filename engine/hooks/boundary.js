@@ -5,7 +5,9 @@
 // que tienen que contestar lo mismo sobre la misma ruta.
 //
 // Qué garantiza. Una ruta escrita afuera frena como siempre, salvo en el temporal del sistema, que los dos eximen
-// por dónde cae la escritura: un enlace de afuera que lleva ahí pasa, y uno de ahí que lleva afuera no.
+// por dónde cae la escritura: un enlace de afuera que lleva ahí pasa, y uno de ahí que lleva afuera no. El lugar de
+// paso de la sesión —el scratchpad de Claude Code, el temporal de proyecto de Gemini— llega como raíz escribible desde
+// `writableRoots`, en `input.js`.
 // Una ruta escrita adentro que por un enlace simbólico cae afuera, también frena (caso 317). Y lo que se
 // alcanza por un enlace y sigue siendo del proyecto no frena: la raíz declarada como enlace, un enlace entre
 // carpetas de una raíz, y las carpetas que una línea de trabajo enlaza desde la instancia de la que salió.

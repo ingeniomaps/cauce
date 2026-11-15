@@ -10,7 +10,7 @@ const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
-  writableRoots, outsideRoots, DECLARE_IT,
+  writableRoots, outsideRoots, DECLARE_IT, runnerScratch,
 } = require('./input')
 const { landing } = require('../core/files')
 const { patchMoves } = require('../core/migrations')
@@ -343,10 +343,12 @@ function workspaceBoundary(input) {
   }
   const why = refusal(input, found, (all) => `${all.map(({ out }) => reached(out)).join(' y ')} `
     + (all.length > 1 ? 'están' : 'está'))
-  // La copia de una mutación es lo que más llega acá, y R23 la quiere en un lugar desechable: se nombra cuál.
+  // La copia de una mutación es lo que más llega acá, y R23 la quiere en un lugar desechable: se nombra el del runner
+  // que corre, porque Gemini no deja usar el del sistema (caso 516).
   if (why) {
-    block(`${why}\nUna copia desechable —una mutación, una sonda— va en el temporal del sistema, ${os.tmpdir()}, `
-      + 'que este límite no frena.')
+    const [own] = runnerScratch(input)
+    block(`${why}\nUna copia desechable —una mutación, una sonda— va en el temporal `
+      + `${own ? `de esta sesión, ${own}` : `del sistema, ${os.tmpdir()}`}, que este límite no frena.`)
   }
   const off = LS.refusal(input, strayed)
   if (off) block(off)

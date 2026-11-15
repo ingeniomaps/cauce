@@ -3,8 +3,8 @@
 // Hasta dónde puede escribir una herramienta y hasta dónde puede escribir un comando, que son
 // la misma pregunta hecha a dos guards y tienen que contestar lo mismo.
 
-const { outsideTempRoot } = require('../support/environment')
-const { blocked, git, chatSession } = require('../support/hooks-harness')
+const { outsideTempRoot, tempRoot } = require('../support/environment')
+const { blocked, git, chatSession, messageOf } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -277,4 +277,58 @@ test('el scratchpad de la sesión se puede escribir, y sólo si cuelga del tempo
   const home = path.join(os.homedir(), 'trabajo')
   blocked('workspace-boundary', write(path.join(home, 'a.txt'), home), /fuera de las raíces/)
   blocked('workspace-boundary', write('/etc/a.txt', '/'), /fuera de las raíces/)
+})
+
+// Caso 516: Gemini no deja escribir en `/tmp` y su único lugar desechable es su temporal de proyecto,
+// `~/.gemini/tmp/<proyecto>`, que llega a los hooks en `transcript_path`. Cuenta ese y sólo ése, con la forma exacta.
+test('el temporal de proyecto de Gemini se puede escribir, y sólo el de la sesión', () => {
+  const root = outsideTempRoot('ops-hook-gemini-temporal-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [] }))
+  const temp = path.join(os.homedir(), '.gemini', 'tmp', 'proyecto-1')
+  const transcript = path.join(temp, 'chats', 'session-2026-11-15T13-32-abc.jsonl')
+  const write = (file, given = transcript) => ({ cwd: root, transcript_path: given, tool_input: { file_path: file } })
+  const shell = (file) => ({ cwd: root, transcript_path: transcript, tool_input: { command: `echo x > ${file}` } })
+  assert.doesNotThrow(() => execute('workspace-boundary', write(path.join(temp, 'mut', 'cart.js'))))
+  assert.doesNotThrow(() => execute('shell-boundary', shell(path.join(temp, 'sonda.js'))))
+
+  // Sin el dato, otro proyecto, una forma que no es la de Gemini o una que sale con `..`: nada se abre.
+  const message = messageOf('workspace-boundary', write(path.join(temp, 'mut.js'), ''))
+  assert.match(message, /fuera de las raíces/)
+  blocked('workspace-boundary', write(path.join(os.homedir(), '.gemini', 'tmp', 'otro', 'x.js')), /fuera de las raíces/)
+  blocked('workspace-boundary', write(path.join(os.homedir(), 'notas.md'),
+    path.join(os.homedir(), 'chats', 'x.jsonl')), /fuera de las raíces/)
+  blocked('workspace-boundary', write(path.join(os.homedir(), '.gemini', 'settings.json'),
+    path.join(os.homedir(), '.gemini', 'tmp', '..', 'chats', 'x.jsonl')), /fuera de las raíces/)
+  blocked('workspace-boundary', write(path.join(temp, 'mut.js'), path.join(temp, 'otra', 'x.jsonl')),
+    /fuera de las raíces/)
+
+  // Y el bloqueo le nombra ese lugar, no `/tmp`, que Gemini no le deja usar.
+  const hinted = messageOf('workspace-boundary', write('/etc/fuera.txt'))
+  assert.match(hinted, new RegExp(`va en el temporal de esta sesión, ${temp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+  assert.doesNotMatch(hinted, /temporal del sistema/)
+})
+
+// De la revisión del 516: una carpeta de la sesión que es un enlace abriría lo que tiene detrás —el home entero, si
+// alguien la enlaza ahí—, porque el límite juzga por dónde cae la escritura. Ni la de Gemini ni el scratchpad cuentan
+// si son un enlace. El home es falso y cuelga de /var/tmp: ninguna prueba arma nada bajo el home real.
+test('una carpeta de la sesión que es un enlace no abre nada', () => {
+  const root = outsideTempRoot('ops-hook-sesion-enlace-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [] }))
+  const home = outsideTempRoot('ops-hook-home-falso-')
+  fs.mkdirSync(path.join(home, '.gemini', 'tmp'), { recursive: true })
+  fs.symlinkSync(home, path.join(home, '.gemini', 'tmp', 'p1'))
+  const previous = process.env.HOME
+  process.env.HOME = home
+  try {
+    const transcript = path.join(home, '.gemini', 'tmp', 'p1', 'chats', 'x.jsonl')
+    blocked('workspace-boundary', { cwd: root, transcript_path: transcript,
+      tool_input: { file_path: path.join(home, '.gemini', 'tmp', 'p1', '.bashrc') } }, /fuera de las raíces/)
+  } finally { process.env.HOME = previous }
+
+  const scratch = path.join(tempRoot('ops-hook-scratch-enlace-'), 'scratchpad')
+  fs.symlinkSync(home, scratch)
+  blocked('workspace-boundary', { cwd: root, scratchpad_dir: scratch,
+    tool_input: { file_path: path.join(scratch, '.bashrc') } }, /fuera de las raíces/)
 })
