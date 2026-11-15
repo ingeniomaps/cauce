@@ -240,9 +240,30 @@ function evaluationBench(root, agent, caso, force, kind) {
   const dir = path.join(root, '.cauce-eval', safe(agent), safe(caso || '_libre'))
   const { git } = makeBench(root, dir, force, 'Banco de evaluación')
 
+  // En una instancia el banco es una copia de la empresa y no del molde (caso 509): su contexto, sus reglas, y sus
+  // cargos y recorridos propios —el sujeto, y los que un recorrido propio pone en escena—. Sin eso el banco resolvía
+  // el cargo del catálogo, o ninguno, y lo medía sin lo que la empresa le dice. Los cargos y recorridos van sin
+  // `evaluations/` ni `learning/`, que no son del contrato.
+  if (O.mode(root) !== 'toolkit') {
+    // Un enlace absoluto seguiría apuntando a la instancia viva, y lo que el banco escribiera ahí caería en ella: no
+    // se copia. La carpeta se copia por su ruta real, por si la empresa la tiene enlazada.
+    const linksOut = (file) => fs.lstatSync(file).isSymbolicLink() && path.isAbsolute(fs.readlinkSync(file))
+    const contract = (base) => (file) => !path.relative(base, file).split(path.sep)
+      .some((part) => part === 'evaluations' || part === 'learning')
+    for (const [relative, catalog] of [['organization', false], [path.join('planning', 'rules'), false],
+      ['agents', true], ['flows', true]]) {
+      if (!fs.existsSync(path.join(root, relative))) continue
+      const from = fs.realpathSync(path.join(root, relative))
+      const only = (file) => !linksOut(file) && (!catalog || contract(from)(file))
+      fs.cpSync(from, path.join(dir, relative), { recursive: true, verbatimSymlinks: true, filter: only })
+    }
+    // El banco cuelga de la instancia de una empresa, cuyo `.gitignore` no lo conoce: se ignora a sí mismo.
+    fs.writeFileSync(path.join(root, '.cauce-eval', '.gitignore'), '*\n')
+  }
   // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
   // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
-  // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir.
+  // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir. Y después de la
+  // copia de la empresa, para ganar si cae en una de sus rutas.
   if (caso) {
     const fixture = EV.fixtures(root, agent, caso, kind)
     if (fixture.files.length) fs.cpSync(fixture.dir, dir, { recursive: true })

@@ -1,14 +1,15 @@
 ---
 caso: 509
 titulo: En una instancia no hay banco de evaluación, así que /agent-eval no le entrega al cargo los archivos de sus casos y /flow-eval no corre
-estado: abierto
+estado: resuelto
+resuelto-en: 0.121.0
 prioridad: alta
 version-detectada: 0.120.0
 ---
 
 # 509 — En una instancia no hay banco de evaluación, así que /agent-eval no le entrega al cargo los archivos de sus casos y /flow-eval no corre
 
-**🔴 abierto** · detectado en 0.120.0 · prioridad **alta**: una empresa que forkea un cargo y lo evalúa recibe un registro
+**🟢 resuelto en 0.121.0** · detectado en 0.120.0 · prioridad **alta**: una empresa que forkea un cargo y lo evalúa recibe un registro
 con veredictos que no miden lo que dicen, y `/agent-promote` vuelve a correr esos mismos casos antes de aplicar una
 propuesta.
 
@@ -112,3 +113,76 @@ Prueba de punta a punta de 0.120.0 (2026-11-14), en un proyecto Node de prueba c
 
 - 487–490: casos de eval con fixtures, construidos y medidos en el toolkit, donde el banco existe.
 - `AGENTS.md`, «El banco de evaluación».
+
+## Cierre
+
+Se tomó la opción A. En una instancia, `evaluate <sujeto> --bench <caso>` arma el banco para un cargo o recorrido propio
+(`EV.owned`, en `engine/agents/evaluations.js`), y `--cases --json` dice `owned`. El banco es una copia de la empresa, no
+del molde: `organization/`, `planning/rules/`, y sus `agents/` y `flows/` sin `evaluations/` ni `learning/`; después, los
+archivos del caso. `.cauce-eval/` se ignora a sí mismo. `agent-eval` y `flow-eval` usan el banco en el toolkit o con un
+sujeto propio, y con uno del catálogo se niegan diciendo cómo hacerlo propio.
+
+Línea de base: las dos corridas del caso (sesiones 827e29d4 y faa8527a).
+
+Contra el caso:
+
+- **Fix A, banco en la instancia:** se hizo, para cargos y recorridos.
+- **Fix B, sin banco:** se decidió que no, por la opción tomada.
+- **Un caso con archivos que el cargo no pudo leer no se registra:** se hizo distinto. Con el banco los archivos están
+  siempre donde el prompt los nombra, así que el caso no ocurre por este camino. Si el banco no se puede armar, la corrida
+  ya frena con `banco-sin-rehacer` o `sin-banco` antes de responder.
+- **Tradeoff, un directorio por caso dentro de la instancia:** se paga; `.cauce-eval/.gitignore` lo deja fuera de git.
+- **Tradeoff, cambiar la negativa de `bench.js`:** se hizo. Dos pruebas de `bench.test.js` fijaban la decisión vieja («el
+  banco es del toolkit»; «forkear no habilita nada») y se reescribieron al contrato nuevo.
+- **Tradeoff, registros viejos que no valen:** dicho en el CHANGELOG.
+
+Lo que el caso no preveía, de la primera revisión: el banco armado desde el molde medía al cargo sin el contexto de la
+empresa, y un recorrido propio no encontraba los cargos propios de su elenco. Y de la tercera: un enlace absoluto de la
+empresa, copiado al banco, seguía apuntando a la instancia viva; no se copia.
+
+Queda anotado: el filtro descarta cualquier tramo llamado `evaluations` o `learning`, también dentro de `references/`.
+
+### Lista de cierre
+
+1. hecho: las dos corridas del caso, antes del cambio.
+2. hecho: en la rama `fix/e2e-120-findings`.
+3. hecho: «un cargo propio tiene banco» y «un recorrido propio tiene banco», en `test/agents/bench.test.js`, en rojo sin
+   el cambio y en verde con él.
+4. hecho: mutaciones en rojo en una copia: el banco negado en toda instancia, sin copiar lo propio, sin el `.gitignore`
+   del banco, con `evaluations/` copiado, `owned` sin excluir `node_modules`, `--cases` sin `owned`, sin la copia de
+   `organization/` y reglas, sin `verbatimSymlinks` y sin descartar el enlace absoluto.
+5. hecho: lo que se quita es la negativa del banco en la instancia. Las pruebas viejas que la afirmaban se reescribieron
+   con su aserción de ausencia («el mensaje viejo no sale»), y la salida de antes y la de después de las corridas reales
+   están en «Qué se corrió».
+6. hecho: en el proyecto de punta a punta con el motor de la rama: `/agent-eval` del cargo forkeado y `/flow-eval` de un
+   recorrido propio.
+7. hecho: lo que depende del modelo corrió en Claude Code, con `claude -p`: USD 5,23, 4,91 y 3,19.
+8. hecho: corrieron un cargo forkeado con dos casos con archivos, uno con el banco final, y un recorrido propio. Un cargo
+   del catálogo se negó como debe. No corrieron Gemini ni Antigravity, que no tienen estos recorridos.
+9. hecho: cargo y recorrido; sujeto propio y del catálogo.
+10. hecho: `bench.test.js`, `workflows-eval.test.js` y el aviso del juez sobre el enlace, que ahora nombra el motor y no
+    sólo el repositorio del toolkit.
+11. hecho: tres pasadas independientes. La primera halló el banco sin la empresa; la tercera, el enlace absoluto. Ninguna,
+    nada que impidiera entregar en este caso.
+12. hecho: pasada uno por uno sobre el diff.
+13. hecho: `npm run ci` con los cambios stageados: 1806 pruebas, 0 fallas.
+14. hecho: recorrido arriba contra Fix y Tradeoffs.
+15. hecho: lo corrido y lo no previsto, arriba y en «Qué se corrió».
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.121.0`, y entrada en el CHANGELOG.
+
+### Qué se corrió
+
+`claude -p '/agent-eval software-architect …'` sobre el cargo forkeado:
+
+```
+antes   07 pasa porque no pudo abrir el diff; 09 0/4 sin haber visto el código («el cargo nunca tuvo acceso a los archivos»)
+después 07 pasa: abrió pr-318.diff y encontró el timeout y el pool que se pierden
+        09 3/4: leyó plan.md y src/*.js; falla en una condición de aceptación, no por falta de archivos
+banco final, 07: pasa; el juez cita el workspace.md de la empresa, que el banco ahora trae
+```
+
+`claude -p '/flow-eval intake …'` sobre `flows/intake` propio: antes `fuera-del-toolkit`; después el caso 04 pasa, con el
+recorrido corrido en el banco. `git status` de la instancia, después de cada una: sólo el registro, nada de `.cauce-eval/`.
+
+**Sin probar:** un recorrido propio cuyo elenco tenga un cargo propio, corrido de verdad (la copia de `agents/` lo
+cubre por código y prueba, no por corrida).
