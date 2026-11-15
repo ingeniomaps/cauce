@@ -433,6 +433,14 @@ function install(root, name, output = console, options = {}) {
   if (invocation && (runner.commands.names || []).length) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
+    // Los que sólo este runner instala —los de mantener un cargo propio en Claude— no entran en la lista común, que
+    // es igual en todos; sin esta línea quien forkeaba un cargo no sabía que tenía con qué evaluarlo.
+    const extra = (runner.artifacts || [])
+      .map((item) => (String(item.target).match(/workflows\/([^/]+)\.js$/) || [])[1])
+      .filter((one) => one && !runner.commands.names.includes(one))
+    if (extra.length) {
+      output.log(`  ${name}: y también ${extra.map((one) => invocation.replace('{name}', one)).join(', ')}`)
+    }
   }
   // Lo que había en la configuración, no lo anotado: un `settings.json` recreado vuelve a recibir el hook.
   const chat = (config) => (JSON.stringify(config).match(/"command":"[^"]*"/g) || [])
