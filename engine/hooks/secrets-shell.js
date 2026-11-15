@@ -8,6 +8,7 @@
 // Como todo lo que lee el texto de un comando, frena la forma habitual y no un script decidido: un nombre
 // armado en una variable o un `grep -r` sobre la carpeta sin nombrar el archivo pasan.
 
+const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { asRun, commandOf, rawCommandOf, cwdOf, block, isCommit, opsRoot } = require('./input')
@@ -202,8 +203,14 @@ function secretsShell(input) {
   if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
   // El mensaje de un commit es dato, como en `destructive`: nombrar el archivo ahí no lo lee. Lo demás corre.
   const command = isCommit(raw) ? asRun(raw) : raw
+  // Una identidad declarada se reconoce también por su ruta resuelta desde la carpeta del tramo; la regla por nombre la
+  // resuelve desde la sesión. Sólo contra las identidades: por nombre, un `.` resuelto tomaría el de su carpeta.
+  const root = opsRoot(input)
+  const declared = root && fs.existsSync(path.join(root, 'organization', 'secrets.json'))
+    ? require('../secrets').identityFiles(root) : []
   const named = readTokens(command, cwdOf(input))
-    .filter(({ token }) => patternNames(token).some((name) => credential(input, name)))
+    .filter(({ token, base }) => patternNames(token).some((name) => credential(input, name))
+      || (base !== null && declared.includes(path.resolve(base, token.replace(/^~(?=$|\/)/, os.homedir())))))
   // Bajo un `cd` que no se sabe no hay qué ruta aprobar; pasa si la persona lo pidió en el chat nombrándolo, como la
   // escritura.
   const lost = named.find(({ token, base }) => base === null && !/^[~/]/.test(token)
