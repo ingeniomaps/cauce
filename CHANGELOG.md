@@ -23,7 +23,8 @@ diseño — eso vive en el commit y en el código.
   un guard, y nada lo decía. `install` suma los mismos hooks al `.claude/settings.local.json` de la raíz git, con la
   ruta absoluta de la instalación, y corren sólo en una sesión abierta debajo de ella: en la instalación misma ya
   corren los de `settings.json`, y la raíz de un monorepo o la carpeta de otra instancia quedan afuera. Lo que tengas
-  en ese archivo queda. No se escribe si la raíz git contiene tu home ni si el archivo está versionado: se avisa.
+  en ese archivo queda. Se escribe sólo si la raíz git es la carpeta de instalación o la de la instancia, como el
+  bloque del `.gitignore`, y no si contiene tu home o si el archivo está versionado: se avisa.
   Reinstalá el adaptador de Claude para que lo escriba. Un repo de producto con git propio, en sidecar, sigue
   necesitando la sesión abierta en la carpeta de instalación.
 
