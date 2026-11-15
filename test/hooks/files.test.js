@@ -128,6 +128,11 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
     ['tests/alta.py', '@pytest.mark.skip\ndef test_alta(): pass'],
     ['test_alta.py', '@unittest.skip("wip")\ndef test_alta(): pass'],
     ['alta_spec.rb', 'xit "alta" do end'],
+    // Las formas de node:test, el runner de un proyecto sin dependencias: la opción y el contexto.
+    ['alta.test.js', "test('alta', { skip: true }, () => {})"],
+    ['alta.test.js', "test('alta', { todo: 'falta el fixture' }, () => {})"],
+    ['alta.test.js', "test('alta', (t) => { t.skip('flaky') })"],
+    ['alta.spec.js', "it('alta', function () { this.skip() })"],
   ]
   for (const [name, content] of cases) {
     blocked('test-evidence', { tool_input: { file_path: `/project/${name}`, content } }, /apaga una prueba/)
@@ -143,6 +148,21 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
   } }))
   assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
     file_path: '/project/src/runner.ts', content: 'export const skip = (n) => n.only',
+  } }))
+  // Vaciarla con la herramienta de escribir es borrarla. Escribir vacío un archivo nuevo, o uno que ya estaba
+  // vacío, no le quita nada a la suite.
+  const dir = tempRoot('ops-hook-vaciar-')
+  fs.writeFileSync(path.join(dir, 'alta.test.js'), "test('alta', () => {})\n")
+  fs.writeFileSync(path.join(dir, 'vacia.test.js'), '')
+  blocked('test-evidence', { cwd: dir, tool_input: { file_path: path.join(dir, 'alta.test.js'), content: '' } },
+    /borra una prueba: escribirla vacía/)
+  for (const name of ['nueva.test.js', 'vacia.test.js']) {
+    assert.doesNotThrow(() => execute('test-evidence', { cwd: dir, tool_input: { file_path: path.join(dir, name),
+      content: '' } }), name)
+  }
+  // Una opción que no apaga nada no frena.
+  assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
+    file_path: '/project/alta.test.js', content: "test('alta', { skip: false, timeout: 500 }, () => {})",
   } }))
   // Apagar una prueba puede ser correcto; lo que no puede es ser invisible.
   process.env.OPS_TEST_EVIDENCE_OVERRIDE = '1'

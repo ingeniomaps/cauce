@@ -13,7 +13,7 @@ const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, toolsDrift,
 } = require('./runners')
-const { roleCatalog, roleSkill, installRoleSkills, uninstallRoleSkills } = require('./roles')
+const { roleCatalog, roleSkill, installedCurrent, installRoleSkills, uninstallRoleSkills } = require('./roles')
 const {
   GUARD_NAMES, groupWrappers, supersededGuards,
   legacyGuardWiring, listHooks,
@@ -115,7 +115,7 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
     for (const role of roleCatalog(root)) {
       const file = path.join(paths.install, runner.roleSkills, role.slug, 'SKILL.md')
       if (!fs.existsSync(file)) missing.push(role.slug)
-      else if (fs.readFileSync(file, 'utf8') !== roleSkill(role)) stale.push(role.slug)
+      else if (!installedCurrent(root, runner, role, path.dirname(file))) stale.push(role.slug)
     }
     if (missing.length) {
       warnings.push(`${missing.length} cargo(s) sin instalar en ${runner.roleSkills}: reinstalá el adaptador`)
@@ -420,6 +420,12 @@ function install(root, name, output = console, options = {}) {
   }
   installOwnWorkflows(root, name, runner, paths, output)
   installRoleSkills(root, runner, output)
+  // Lo que acaba de escribir con la ruta de esta carpeta y git no ignora va al bloque de Cauce del `.gitignore` del
+  // repositorio (caso 513): antes era un aviso que pedía editarlo a mano en cada proyecto.
+  const ignored = require('./machine-bound').ignoreLoose(root, paths.install)
+  if (ignored && ignored.added.length) {
+    output.log(`  ${name}: ${ignored.added.join(', ')} al bloque de Cauce de ${ignored.file}`)
+  }
   // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `flow`,
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
   // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
@@ -433,6 +439,14 @@ function install(root, name, output = console, options = {}) {
   if (invocation && (runner.commands.names || []).length) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
+    // Los que sólo este runner instala —los de mantener un cargo propio en Claude— no entran en la lista común, que
+    // es igual en todos; sin esta línea quien forkeaba un cargo no sabía que tenía con qué evaluarlo.
+    const extra = (runner.artifacts || [])
+      .map((item) => (String(item.target).match(/workflows\/([^/]+)\.js$/) || [])[1])
+      .filter((one) => one && !runner.commands.names.includes(one))
+    if (extra.length) {
+      output.log(`  ${name}: y también ${extra.map((one) => invocation.replace('{name}', one)).join(', ')}`)
+    }
   }
   // Lo que había en la configuración, no lo anotado: un `settings.json` recreado vuelve a recibir el hook.
   const chat = (config) => (JSON.stringify(config).match(/"command":"[^"]*"/g) || [])

@@ -120,6 +120,31 @@ test('onboard lleva al INBOX tres preguntas abiertas y cuenta las demás', async
   assert.ok(said.some((text) => /2 pregunta\(s\) abierta\(s\) más no entraron/.test(text)), 'y se dicen')
 })
 
+// El esquema tenía `humanActions` y el pedido no lo nombraba: el agente escribía la fila de allowPush y devolvía la
+// lista vacía, y el cierre decía «0 acción(es) humana(s)» con el archivo a la vista.
+test('onboard pide las acciones humanas que escribió y las cuenta', async () => {
+  const { compileWorkflow } = require('../support/workflow')
+  const prompts = []
+  const said = []
+  const script = {
+    inventario: { fresh: true, services: [], inboxIdeas: [], today: '2026-11-14' },
+    contexto: { files: [], humanActions: ['planning/human/runner-allow-push.md'] },
+    'epica-001': { file: 'planning/roadmap/epic-001-x.md', passed: true },
+  }
+  const agent = async (prompt, options = {}) => {
+    prompts.push({ key: options.label, prompt })
+    return script[options.label]
+  }
+  const result = await compileWorkflow('onboard')(
+    agent, () => {}, (text) => said.push(text), async (thunks) => Promise.all(thunks.map((t) => t())),
+    async () => [], async () => ({}), { context: 'una tienda' },
+    { total: null, spent: () => 0, remaining: () => Infinity },
+  )
+  assert.match(prompts.find((one) => one.key === 'contexto').prompt, /en humanActions cada acción humana/)
+  assert.equal(result.humanActions, 1)
+  assert.ok(said.some((text) => /1 acción\(es\) humana\(s\)/.test(text)))
+})
+
 // La otra mitad, la que el arnés no ve: el campo en el schema y el pedido que lo copia del comando.
 test('onboard pide la fecha del motor junto con los nombres del INBOX', () => {
   assert.match(onboardWorkflow, /today: \{ type: 'string' \}/)

@@ -25,6 +25,13 @@ function subject(root, slug, kind = 'agent') {
   return catalog.resolve(root, slug)
 }
 
+// Si el sujeto es de la instancia —un cargo forkeado o escrito acá, un recorrido propio— y no del paquete. Es lo que
+// decide si una instancia puede evaluarlo en un banco (caso 509): lo del catálogo se evalúa en el toolkit.
+function owned(root, slug, kind = 'agent') {
+  const relative = path.relative(path.resolve(root), subject(root, slug, kind))
+  return !relative.startsWith('..') && !path.isAbsolute(relative) && !relative.split(path.sep).includes('node_modules')
+}
+
 const RESULTS = ['evaluations', 'results']
 
 function caseFiles(dir) {
@@ -339,5 +346,5 @@ function summary(state) {
 const shortList = (ids) => (ids.length > 4 ? `${ids.slice(0, 4).join(', ')} y ${ids.length - 4} más` : ids.join(', '))
 
 module.exports = {
-  behaviors, composed, fixtures, list, latest, nextResult, parseCase, summary, validate, resultsDir,
+  behaviors, composed, fixtures, list, latest, nextResult, owned, parseCase, subject, summary, validate, resultsDir,
 }

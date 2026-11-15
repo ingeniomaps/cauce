@@ -48,6 +48,7 @@ const CASES = {
     cli: { type: 'string' },
     mode: { type: 'string' },
     system: { type: 'boolean' },
+    owned: { type: 'boolean' },
   },
 }
 
@@ -92,8 +93,8 @@ const context = await agent(
   `Set cli to the one that exists, and use it in both commands below. Report only what they printed. ` +
   `Read no other file.\n` +
   `1. "node <cli> evaluate ${AGENT} --cases --json" — it prints an object: copy its "cases" ` +
-  `array into items, its "forbidden" array into forbidden and its "subject" into subject, all ` +
-  `verbatim. Read that output from stdout: write no file.\n` +
+  `array into items, its "forbidden" array into forbidden, its "subject" into subject and its "owned" into ` +
+  `owned, all verbatim. Read that output from stdout: write no file.\n` +
   `2. "node <cli> agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
   `printed for ${AGENT}. That command prints paths relative to ${ROOT} and the next agents run from ` +
   `elsewhere, so the prefix is not optional.\n` +
@@ -126,7 +127,9 @@ if (ONLY.length) {
 // cada caso se arma sola.
 const BENCH_ROOT = `${ROOT}/.cauce-eval/${AGENT}`
 let benchPath = null
-if (context.mode === 'toolkit') {
+// En el toolkit, y en una instancia para un cargo suyo (caso 509): sin banco, el cargo no recibía los archivos de sus
+// casos —el prompt los nombraba «en tu instancia» y vivían bajo `evaluations/`, que tiene prohibido leer—.
+if (context.mode === 'toolkit' || context.owned) {
   const benches = await agent(
     `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
     context.items.map((item) => `  node ${context.cli} evaluate ${AGENT} --bench ${item.id}`).join('\n') +
@@ -207,8 +210,9 @@ const verdicts = await pipeline(
         // para que el CLI funcione en el banco sin pagar un `npm install` por corrida, y su costo es
         // que el repo del toolkit se ve desde adentro: si alguien lo edita mientras corre la
         // evaluación, aparece en el chequeo de integridad como si lo hubiera tocado el cargo.
-        `Un aviso sobre ese banco: su "node_modules/@ingeniomaps/cauce" es un symlink al repositorio ` +
-        `vivo del toolkit, no una copia. Si ahí aparece algo modificado, comprobá la fecha y el ` +
+        `Un aviso sobre ese banco: su "node_modules/@ingeniomaps/cauce" es un symlink al motor —el ` +
+        `repositorio vivo del toolkit, o el paquete instalado—, no una copia. Si ahí aparece algo ` +
+        `modificado, comprobá la fecha y el ` +
         `contenido antes de atribuírselo al cargo — puede ser trabajo concurrente ajeno a esta ` +
         `corrida. Lo que sí importa es que el cargo no haya tocado su propio SKILL.md ni el motor.\n\n`
       : '') +

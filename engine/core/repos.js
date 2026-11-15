@@ -9,6 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { textOf, TOO_LARGE } = require('./readable')
+const O = require('./ownership')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
@@ -137,7 +138,7 @@ function lastCommit(repo, branch) {
 // vuelve a cero cada vez que el flujo se cierra, y lo que queda visible es la deriva de ahora.
 //
 // Los merges quedan afuera: no son trabajo, son la forma de integrarlo.
-function unrecordedCommits(repo, since, recorded, skip = '') {
+function unrecordedCommits(repo, since, recorded, skip = [], born = { at: 0, sha: '' }) {
   if (!repo || !since) return []
   // La fecha se compara acá y no con `--since`, y eso lo encontró una prueba: `--since` **poda la
   // caminata**, así que un commit con fecha vieja en la punta esconde todo lo que tiene detrás. Con un
@@ -145,8 +146,9 @@ function unrecordedCommits(repo, since, recorded, skip = '') {
   // Un commit que sólo toca el planning no es trabajo que el planning tenga que nombrar: es el planning. En
   // una instancia embebida vive en el mismo repositorio, y desde que el recorrido commitea su estado al
   // cerrar cada tarea, ese commit aparecía acá como trabajo sin registrar (caso 270).
-  const paths = skip ? ['--', '.', `:(exclude)${skip}`] : []
-  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s', ...paths)
+  const skipped = [].concat(skip).filter(Boolean)
+  const paths = skipped.length ? ['--', '.', ...skipped.map((one) => `:(exclude)${one}`)] : []
+  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %ct %s', ...paths)
   if (log.status !== 0) return []
   const known = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
   // El hash y la fecha se leen partiendo por espacios y no por columna: `%h` mide 7 por default y git lo
@@ -154,13 +156,40 @@ function unrecordedCommits(repo, since, recorded, skip = '') {
   // vez de la fecha y ningún commit pasaba el filtro. El aviso quedaba mudo sin decirlo, que es la peor
   // forma de que una puerta falle (caso 169).
   return log.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
-    .map((line) => ({ line, sha: line.split(/\s+/)[0], date: line.split(/\s+/)[1] }))
-    .filter((one) => one.date >= since)
+    .map((line) => {
+      const [sha, date, at, ...subject] = line.split(/\s+/)
+      return { line: [sha, date, ...subject].join(' '), sha, date, at: Number(at) }
+    })
+    .filter((one) => one.date >= since && one.at >= born.at && !(born.sha && born.sha.startsWith(one.sha)))
     .filter((one) => !known.has(one.sha.slice(0, 7)))
     .map((one) => one.line)
 }
 
 const NAMED = 5
+
+// Desde cuándo existe la instancia, en segundos: el commit que agregó su `ops.config.json`, o la fecha del archivo si
+// todavía no se commiteó. La ventana del aviso es por día, y sin esto el commit anterior a instalar Cauce —el «initial»
+// del mismo día— se contaba como trabajo sin registrar; salió en las dos corridas a ciegas.
+// Devuelve también el commit que la instala, que tampoco es trabajo que DONE deba nombrar.
+function bornAt(opsRoot) {
+  const added = git(opsRoot, 'log', '--diff-filter=A', '--format=%ct %H', '--', 'ops.config.json')
+  const first = added.status === 0 ? added.stdout.split('\n').filter(Boolean).pop() : ''
+  if (first) return { at: Number(first.split(' ')[0]), sha: first.split(' ')[1] }
+  try {
+    const stat = fs.statSync(path.join(opsRoot, 'ops.config.json'))
+    return { at: Math.floor((stat.birthtimeMs || stat.mtimeMs) / 1000), sha: '' }
+  } catch { return { at: 0, sha: '' } }
+}
+
+// Lo que es de la instancia dentro de un repositorio: un commit que sólo toca eso es su propio estado, no trabajo que
+// DONE tenga que nombrar (caso 270, que miraba sólo `planning/`). En sidecar dentro del repositorio es la carpeta
+// entera; en embebido, lo que el molde trae y el registro, porque la instancia comparte la raíz con el producto.
+function instancePaths(repo, opsRoot) {
+  const relative = path.relative(repo, opsRoot)
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return []
+  if (relative) return [relative]
+  return [...O.TEMPLATE_PREFIXES, 'ops.config.json', '.cauce/', 'AGENTS.md']
+}
 
 // Cuánto del trabajo que entró a los repositorios quedó registrado, desde la última tarea cerrada. Avisa
 // y no falla, por lo mismo que el resto de esta familia: es un hecho del pasado que no se arregla
@@ -182,9 +211,9 @@ function coverageWarnings(opsRoot, done) {
     for (const sha of String(entry.commit || '').matchAll(/\b[0-9a-f]{7,40}\b/g)) recorded.add(sha[0])
   }
   const warnings = []
+  const born = bornAt(opsRoot)
   for (const repo of reposFor(opsRoot, '.')) {
-    const planning = path.relative(repo, path.join(opsRoot, 'planning'))
-    const unrecorded = unrecordedCommits(repo, since, recorded, planning.startsWith('..') ? '' : planning)
+    const unrecorded = unrecordedCommits(repo, since, recorded, instancePaths(repo, opsRoot), born)
     if (!unrecorded.length) continue
     // Cuáles, no sólo cuántos: sin el hash, salir del aviso era buscarlos a mano en `git log` (caso 504). Son los más
     // nuevos, sin su fecha: el aviso ya dice desde cuándo cuenta.

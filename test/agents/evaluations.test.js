@@ -119,34 +119,37 @@ test('lo que quedó sin veredicto se nombra, y dos tandas componen una medición
   assert.equal(completo.warnings.some((one) => /con veredicto|no pasan/.test(one)), false)
 })
 
+// Sobre un cargo propio en una instancia temporal: escribir en el directorio real de un cargo del sistema dejaba
+// registros con fecha 2099 que otra prueba, en paralelo, listaba y no alcanzaba a leer (caso 496).
 test('dos corridas el mismo día conviven y la segunda es la vigente', () => {
-  const dir = evaluations.resultsDir(REPO, 'qa-engineer')
+  const real = evaluations.resultsDir(REPO, 'qa-engineer')
+  const listing = () => (fs.existsSync(real) ? fs.readdirSync(real).sort() : [])
+  const before = listing()
+  const target = installedProject('Corridas del día')
+  writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const dir = evaluations.resultsDir(target, 'probe')
   const first = path.join(dir, '2099-03-01.md')
   const second = path.join(dir, '2099-03-01-2.md')
   fs.mkdirSync(dir, { recursive: true })
-  const nextFor = (day) => evaluations.nextResult(REPO, 'qa-engineer', day)
-  try {
-    assert.equal(nextFor('2099-03-01'), '2099-03-01.md', 'la primera no lleva sufijo')
-    fs.writeFileSync(first, '---\nagent: qa-engineer\n---\n\n### 01-x\n\n- Veredicto: no pasa\n')
-    assert.equal(nextFor('2099-03-01'), '2099-03-01-2.md', 'la segunda no la pisa')
+  const nextFor = (day) => evaluations.nextResult(target, 'probe', day)
+  assert.equal(nextFor('2099-03-01'), '2099-03-01.md', 'la primera no lleva sufijo')
+  fs.writeFileSync(first, '---\nagent: probe\n---\n\n### 01-x\n\n- Veredicto: no pasa\n')
+  assert.equal(nextFor('2099-03-01'), '2099-03-01-2.md', 'la segunda no la pisa')
 
-    fs.writeFileSync(second, '---\nagent: qa-engineer\n---\n\n### 01-x\n\n- Veredicto: pasa\n')
-    assert.equal(nextFor('2099-03-01'), '2099-03-01-3.md')
+  fs.writeFileSync(second, '---\nagent: probe\n---\n\n### 01-x\n\n- Veredicto: pasa\n')
+  assert.equal(nextFor('2099-03-01'), '2099-03-01-3.md')
 
-    // Un `latest` que ordena por nombre pasa las demás afirmaciones de este caso y devuelve el
-    // veredicto de la corrida vieja, así que hay que mirar los veredictos y no sólo el archivo.
-    const current = evaluations.latest(REPO, 'qa-engineer')
-    assert.equal(current.file, second, 'la vigente es la última corrida, no la primera del día')
-    assert.equal(current.passed, 1, 'y con sus veredictos, no los de la anterior')
-    // El día, sin el sufijo de la corrida, aunque el registro que ganó venga de la segunda.
-    assert.equal(current.date, '2099-03-01')
-    assert.equal(current.run, 2)
+  // Un `latest` que ordena por nombre pasa las demás afirmaciones de este caso y devuelve el
+  // veredicto de la corrida vieja, así que hay que mirar los veredictos y no sólo el archivo.
+  const current = evaluations.latest(target, 'probe')
+  assert.equal(current.file, second, 'la vigente es la última corrida, no la primera del día')
+  assert.equal(current.passed, 1, 'y con sus veredictos, no los de la anterior')
+  // El día, sin el sufijo de la corrida, aunque el registro que ganó venga de la segunda.
+  assert.equal(current.date, '2099-03-01')
+  assert.equal(current.run, 2)
 
-    assert.throws(() => nextFor('ayer'), /fecha inválida/)
-  } finally {
-    fs.rmSync(first, { force: true })
-    fs.rmSync(second, { force: true })
-  }
+  assert.throws(() => nextFor('ayer'), /fecha inválida/)
+  assert.deepEqual(listing(), before, 'el directorio real del cargo no se tocó mientras corría')
 })
 
 // El catálogo del sistema no lo habría encontrado nunca: sus viñetas entran todas en una línea. El

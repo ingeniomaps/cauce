@@ -5,6 +5,7 @@
 // ninguno, porque la cola es de lo aprobado y la escribe una persona.
 
 const fs = require('node:fs')
+const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
@@ -101,14 +102,30 @@ function claim(dir, slug, cli) {
     // Un reclamo sin empujar no protege de nada: el otro runner lee lo que hay en su copia. Decirlo acá
     // es lo único que separa «tomé la tarea» de «creí que la había tomado». Lo de una sesión delegada lo publica quien
     // la lanzó: su rol le prohíbe empujar, y la orden contraria cada una la anotaba como desvío (caso 471).
-    if (process.env.CAUCE_DELEGATED !== '1') {
-      console.log(`  commiteá y empujá ${CL.DIR}/${slug}.md para que el equipo lo vea`)
-    }
+    if (process.env.CAUCE_DELEGATED !== '1') console.log(`  ${publishAdvice(root, `${CL.DIR}/${slug}.md`)}`)
     // Y con qué id volver. Este dato lo imprimía `ops worktree` al crear el árbol; en sidecar no se crea
     // ninguno, así que ese comando no corre nunca y el id no quedaba escrito en el único momento en que
     // alguien lo tiene delante: ahora, que se acaba de guardar en el reclamo.
     console.log(`  export CAUCE_RUNNER=${shellWord(from)}`)
+    // Y dónde va el plan: el nombre sale del id aplanado, y dos corridas a ciegas tuvieron que leer el motor para
+    // saberlo.
+    const plan = path.join(root, 'wip', `${P.wipName(from)}.md`)
+    console.log(`  plan: ${path.relative(process.cwd(), plan) || plan}`)
   }
+}
+
+// Qué hacer con el reclamo para que el equipo lo vea. Sin remoto no hay a dónde empujarlo, y con
+// `runner.allowPush` apagado el push lo pide una persona: decirle al agente «empujá» lo mandaba contra un guard.
+function publishAdvice(root, claim) {
+  const ops = path.join(root, '..')
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')))
+  const remotes = (spawnSync('git', ['-C', ops, 'remote'], { encoding: 'utf8', env }).stdout || '').trim()
+  if (!remotes) return `commiteá ${claim}: sin remoto, el reclamo vale sólo en esta copia`
+  let config = {}
+  try { config = JSON.parse(fs.readFileSync(path.join(ops, 'ops.config.json'), 'utf8')) } catch { config = {} }
+  if ((config.runner || {}).allowPush === true) return `commiteá y empujá ${claim} para que el equipo lo vea`
+  return `commiteá ${claim}; para que el equipo lo vea hay que empujarlo, y con runner.allowPush apagado `
+    + 'ese push lo pide una persona'
 }
 
 function release(dir, slug, cli) {

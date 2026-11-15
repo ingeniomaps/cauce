@@ -33,10 +33,11 @@ const forInstance = (root) => {
 
 // Cuáles de esos rastros **git no está ignorando** en esta instancia.
 //
-// La línea que los cubre la trae `template/gitignore`, y ese archivo se escribe al **crear** la
-// instancia: `upgrade` no lo toca, porque es de la empresa y puede llevar líneas propias que un
-// reemplazo se llevaría puestas. Así que una instancia anterior a cada rastro nuevo se queda sin su
-// línea para siempre, y el archivo aparece en `git status` listo para commitearse por descuido.
+// La línea que los cubre la trae `template/gitignore`, y en sidecar ese archivo se escribe al **crear**
+// la instancia: `upgrade` no lo toca, porque es de la empresa y puede llevar líneas propias que un
+// reemplazo se llevaría puestas. Así que una instancia sidecar anterior a cada rastro nuevo se queda sin
+// su línea, y el archivo aparece en `git status` listo para commitearse por descuido. En embebido, desde
+// el caso 513, `upgrade` los suma al bloque de Cauce del `.gitignore` del producto.
 //
 // Se pregunta por el **efecto** y no por el texto del molde, y la diferencia importa en los dos
 // sentidos: la empresa puede cubrirlo con una regla propia —y comparar líneas daría un falso positivo—,
@@ -66,8 +67,8 @@ function tracked(root) {
 }
 
 // El aviso, en la forma que `check` publica el resto: cuenta, nombra y no falla. Lleva las rutas porque
-// son exactamente lo que hay que pegar, que es lo único accionable — el archivo es de la empresa y Cauce
-// no lo edita.
+// son exactamente lo que hay que pegar, que es lo único accionable: fuera del bloque marcado del caso 513,
+// el archivo es de la empresa y Cauce no lo edita.
 function warnings(root) {
   if (!forInstance(root)) return []
   const kept = tracked(root)

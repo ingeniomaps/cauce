@@ -45,6 +45,7 @@ const CASES = {
     // corridas cuyos bancos estaban recién borrados.
     cli: { type: 'string' },
     mode: { type: 'string' },
+    owned: { type: 'boolean' },
   },
 }
 
@@ -82,8 +83,8 @@ const context = await agent(
   `From ${ROOT}, the CLI is "tools/ops.js" if that file exists and "engine/cli/ops.js" otherwise. ` +
   `Set cli to the one that exists and use it in every command below.\n` +
   `1. "node <cli> evaluate ${FLOW} --flow --cases --json" — it prints an object: copy its ` +
-  `"cases" array into items, its "forbidden" array into forbidden and its "subject" into ` +
-  `subject, all verbatim. Read that output from stdout: write no file.\n` +
+  `"cases" array into items, its "forbidden" array into forbidden, its "subject" into ` +
+  `subject and its "owned" into owned, all verbatim. Read that output from stdout: write no file.\n` +
   `2. Read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
 
   { schema: CASES, label: 'casos' },
@@ -110,10 +111,11 @@ if (ONLY.length) {
 // El recorrido escribe: épica candidata, INBOX, acciones humanas. Sin un `planning/` propio no puede
 // hacer su trabajo, y medirlo negándose a escribir mediría el banco, no el recorrido.
 const BENCH_ROOT = `${ROOT}/.cauce-eval/${FLOW}`
-if (context.mode !== 'toolkit') {
-  return stop('fuera-del-toolkit',
-    `evaluar un recorrido exige un banco desechable, y eso es del toolkit. En una empresa el ` +
-    `recorrido corre sobre su propio planning/.`)
+// En una instancia, un recorrido suyo se evalúa en un banco suyo (caso 509); uno del catálogo, en el toolkit.
+if (context.mode !== 'toolkit' && !context.owned) {
+  return stop('recorrido-del-catalogo',
+    `${FLOW} es del catálogo de Cauce: se evalúa en el toolkit. Para evaluarlo acá, copiá su carpeta a ` +
+    `flows/${FLOW}/ y evaluá esa.`)
 }
 const benches = await agent(
   `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +

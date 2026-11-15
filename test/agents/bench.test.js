@@ -198,42 +198,19 @@ test('cada caso recibe su propio banco', () => {
   assert.match(escape.stderr, /nombre inválido para el banco/)
 })
 
-// Los dos modos en la misma prueba: separados, un `--bench` que devolviera siempre lo mismo pasaría
-// la mitad que se mirara. Por qué en una empresa no hay banco, en `evaluationBench`.
-test('el banco es del toolkit; una instancia recibe la salida que le corresponde', () => {
+// Los dos modos en la misma prueba: separados, un `--bench` que devolviera siempre lo mismo pasaría la mitad que se
+// mirara. Desde el caso 509 una instancia tiene banco para lo suyo; para un cargo del catálogo la salida es adoptarlo,
+// y ahora adoptarlo sí habilita el banco (lo mide «un cargo propio tiene banco», más abajo).
+test('en una instancia, el banco de un cargo del catálogo se niega nombrando cómo hacerlo propio', () => {
   const base = tempRoot('cauce-bench-')
-  const target = path.join(base, 'demo-ops')
-  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
-  const result = run(['evaluate', 'product-manager', '--bench'], target)
-  assert.equal(result.status, 2)
-  assert.match(result.stderr, /--bench es del toolkit/)
-  assert.match(result.stderr, /evaluate product-manager/, 'y nombra la salida real')
-})
-
-// Por qué el consejo tiene que ser una salida y no una condición lo explica `cli/catalog.js`, donde se
-// redactó. Acá se fija que el mensaje **no** nombre adoptar: un consejo que devuelve a quien lo sigue al
-// mismo bloqueo se lee como un mensaje correcto, y sólo se nota intentándolo dos veces.
-//
-// La asimetría que lo delató: `learn` sí cambia de comportamiento con el fork —falla antes, escribe el
-// informe después— y por eso su mensaje puede hablar de adoptar. Éste no.
-test('el error de --bench dice qué hacer, no un fork que no cambia nada', () => {
-  const base = tempRoot('cauce-bench-consejo-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   linkEngine(target)
-
-  const negado = run(['evaluate', 'backend-engineer', '--bench'], target)
-  assert.equal(negado.status, 2)
-  const dicho = negado.stderr + negado.stdout
-  assert.match(dicho, /--bench es del toolkit/)
-  assert.doesNotMatch(dicho, /agents fork/, 'adoptarlo no habilita el banco: el guard mira el modo')
-  assert.match(dicho, /evaluate backend-engineer/, 'y dice el comando que sí corresponde acá')
-
-  // Y adoptarlo no cambia la respuesta, que es justamente lo que el consejo viejo prometía.
-  assert.equal(run(['agents', 'fork', 'backend-engineer'], target).status, 0)
-  const trasFork = run(['evaluate', 'backend-engineer', '--bench'], target)
-  assert.equal(trasFork.status, 2)
-  assert.doesNotMatch(trasFork.stderr + trasFork.stdout, /agents fork/)
+  const result = run(['evaluate', 'product-manager', '--bench'], target)
+  assert.equal(result.status, 2)
+  assert.match(result.stderr, /product-manager es del catálogo de Cauce: se evalúa en el toolkit/)
+  assert.match(result.stderr, /ops agents fork product-manager/, 'y nombra la salida real')
+  assert.doesNotMatch(result.stderr, /--bench es del toolkit/, 'el mensaje viejo, que ya no es cierto, no sale')
 })
 
 // Se mide por el efecto: con la variable puesta a propósito, ni el señuelo gana el commit del banco ni
@@ -397,4 +374,66 @@ test('un banco que sobrevive a su borrado corta la corrida, y sólo se borra den
   // Con el borrado de verdad, sobre el temporal que esta prueba creó, no queda nada y no hay motivo.
   assert.equal(CAT.clearBench(dir, scratch), null)
   assert.equal(fs.existsSync(dir), false)
+})
+
+// Caso 509: en una instancia el banco es para lo propio. Un cargo forkeado se evalúa con los archivos de sus casos a
+// mano, en una instancia desechable que lo resuelve a él —no al del catálogo— y que git no ve; uno del catálogo se
+// sigue evaluando en el toolkit.
+test('en una instancia, un cargo propio tiene banco con sus archivos, y uno del catálogo no', () => {
+  const { installedProject, CLI } = require('../support/environment')
+  const { target, runCli: atRoot, env } = installedProject('cauce-banco-instancia-')
+  const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { cwd: target, encoding: 'utf8', env })
+  spawnSync('git', ['init', '-q'], { cwd: target })
+  const catalogo = runCli(['evaluate', 'software-architect', '--bench', '07-approval-without-looking'])
+  assert.equal(catalogo.status, 2)
+  assert.match(catalogo.stderr, /del catálogo de Cauce.*agents fork software-architect/s)
+  assert.equal(JSON.parse(runCli(['evaluate', 'software-architect', '--cases', '--json']).stdout).owned, false)
+
+  assert.equal(atRoot(['agents', 'fork', 'software-architect', target]).status, 0)
+  fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nUna empresa que vende ruteo.\n')
+  fs.writeFileSync(path.join(target, 'planning', 'rules', 'propias.md'), '# Reglas propias\n')
+  // Un enlace relativo de la empresa viaja como enlace relativo: absoluto, lo que el banco escribiera ahí caería en la
+  // instancia viva.
+  fs.symlinkSync(path.join('..', 'software-architect', 'SKILL.md'),
+    path.join(target, 'agents', 'roles', 'software-architect', 'references', 'enlace.md'))
+  // Uno absoluto apuntaría a la instancia viva desde el banco: no viaja.
+  fs.symlinkSync(path.join(target, 'organization', 'workspace.md'), path.join(target, 'organization', 'vivo.md'))
+  assert.equal(JSON.parse(runCli(['evaluate', 'software-architect', '--cases', '--json']).stdout).owned, true)
+  const made = runCli(['evaluate', 'software-architect', '--bench', '07-approval-without-looking'])
+  assert.equal(made.status, 0, made.stderr)
+  const dir = path.resolve(target, made.stdout.trim())
+  assert.ok(fs.existsSync(path.join(dir, 'pr-318.diff')), 'el archivo del caso está donde el prompt lo nombra')
+  const roles = JSON.parse(runCli(['agents', 'list', dir, '--json']).stdout)
+  const role = roles.find((one) => one.slug === 'software-architect')
+  assert.equal(role.system, false, 'el banco resuelve el cargo propio, no el del catálogo')
+  assert.equal(fs.existsSync(path.join(dir, role.path, 'evaluations')), false, 'sin los casos ni lo esperado')
+  assert.equal(runCli(['check', path.join(dir, 'planning')]).status, 0, 'el banco es una instancia válida')
+  // Y es una copia de la empresa, no del molde: su contexto y sus reglas viajan al banco.
+  assert.match(fs.readFileSync(path.join(dir, 'organization', 'company.md'), 'utf8'), /Una empresa que vende ruteo/)
+  assert.ok(fs.existsSync(path.join(dir, 'planning', 'rules', 'propias.md')), 'sus reglas también')
+  assert.equal(fs.readlinkSync(path.join(dir, role.path, 'references', 'enlace.md')),
+    path.join('..', 'software-architect', 'SKILL.md'), 'el enlace sigue relativo, dentro del banco')
+  assert.equal(fs.existsSync(path.join(dir, 'organization', 'vivo.md')), false, 'el absoluto no viaja')
+  const status = spawnSync('git', ['-C', target, 'status', '--porcelain', '--untracked-files=all'],
+    { encoding: 'utf8' }).stdout
+  assert.doesNotMatch(status, /\.cauce-eval/, 'git no ve el banco')
+})
+
+// La otra mitad del 509: un recorrido propio también tiene banco en la instancia, y el banco lo resuelve a él.
+test('en una instancia, un recorrido propio tiene banco, y uno del catálogo no', () => {
+  const { installedProject, CLI } = require('../support/environment')
+  const { target, env } = installedProject('cauce-banco-recorrido-')
+  const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { cwd: target, encoding: 'utf8', env })
+  const [caso] = JSON.parse(runCli(['evaluate', 'intake', '--flow', '--cases', '--json']).stdout).cases
+  const catalogo = runCli(['evaluate', 'intake', '--flow', '--bench', caso.id])
+  assert.equal(catalogo.status, 2)
+  assert.match(catalogo.stderr, /copiá su carpeta a flows\/intake\//)
+
+  fs.cpSync(path.join(TOOLKIT, 'flows', 'system', 'intake'), path.join(target, 'flows', 'intake'), { recursive: true })
+  fs.appendFileSync(path.join(target, 'flows', 'intake', 'README.md'), '\nNuestra versión.\n')
+  const made = runCli(['evaluate', 'intake', '--flow', '--bench', caso.id])
+  assert.equal(made.status, 0, made.stderr)
+  const dir = path.resolve(target, made.stdout.trim())
+  assert.match(fs.readFileSync(path.join(dir, 'flows', 'intake', 'README.md'), 'utf8'), /Nuestra versión/)
+  assert.equal(runCli(['flow', 'show', 'intake']).status, 0)
 })

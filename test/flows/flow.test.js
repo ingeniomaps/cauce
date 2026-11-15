@@ -250,6 +250,21 @@ test('un equipo que no existe se dice, con los que sí', async () => {
   assert.match(result.detail, /product-development/)
 })
 
+// Del nombre de un recorrido sin los dos puntos: frena antes de la primera etapa, y una palabra cualquiera no.
+test('una intención que empieza con el nombre de un recorrido, sin los dos puntos, frena y pregunta', async () => {
+  const flows = ['product-development', 'intake', 'incident-review']
+  const { result, asked } = await runFlow({
+    'flow-contract': { ...baseScript()['flow-contract'], name: 'product-development', flows },
+  }, 'intake Ana de ventas pidió poder pegar el cupón')
+  assert.equal(result.reason, 'recorrido-sin-dos-puntos')
+  assert.match(result.detail, /\/flow intake: Ana de ventas pidió/)
+  assert.ok(!asked.some((key) => key.startsWith('stage:')), 'ninguna etapa corrió')
+  // Una palabra que no es un recorrido sigue siendo la intención.
+  const plain = await runFlow({ 'flow-contract': { ...baseScript()['flow-contract'], flows } },
+    'quiero que el alta no duplique vendedores')
+  assert.notEqual(plain.result.reason, 'recorrido-sin-dos-puntos')
+})
+
 // `intake` existe para enrutar —su etapa `route` produce el destino recomendado— y ninguna etapa
 // recibía qué recorridos existen: el destino salía de memoria, que es exactamente la conducta que los
 // casos adversariales de los cargos miden y castigan. `flow list` sólo se corría cuando el slug fallaba,

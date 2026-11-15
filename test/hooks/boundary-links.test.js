@@ -5,7 +5,7 @@
 // Los enlaces de estas pruebas apuntan a una carpeta que no existe, así que no se crea nada fuera del
 // temporal.
 
-const { tempRoot } = require('../support/environment')
+const { outsideTempRoot } = require('../support/environment')
 const { blocked } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -23,7 +23,7 @@ const realPath = (file) => landing(path.sep, file)
 const OUTSIDE = path.join(os.homedir(), 'fuera-de-las-raices')
 
 function project(name) {
-  const base = tempRoot(name)
+  const base = outsideTempRoot(name)
   const root = path.join(base, 'repo')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.mkdirSync(path.join(root, 'service', 'src'), { recursive: true })
@@ -157,7 +157,7 @@ test('desde una línea de trabajo se escribe en el producto de la instancia de l
   const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' })
   // Con la raíz por defecto y con el servicio declarado por su carpeta: en la segunda la raíz es el enlace.
   for (const declared of ['..', '../app']) {
-    const base = tempRoot('cauce-enlaces-linea-')
+    const base = outsideTempRoot('cauce-enlaces-linea-')
     const ops = path.join(base, 'side', 'ops')
     fs.mkdirSync(path.join(ops, 'planning'), { recursive: true })
     fs.mkdirSync(path.join(ops, 'cache'))
@@ -231,4 +231,31 @@ test('una variable de git en el entorno no cambia cuál es la instancia de orige
   assert.equal(shellElsewhere(base, root, service, 'echo x > hacia/a.js').status, 2)
   const env = { GIT_DIR: path.join(victim, '.git') }
   assert.equal(shellElsewhere(base, root, service, 'echo x > hacia/a.js', env).status, 2)
+})
+
+// Caso 510: R23 manda correr una mutación en una copia, y la copia en el temporal se escribía por shell y se frenaba
+// por la herramienta de archivos. Los dos guards contestan lo mismo, y un enlace del temporal que lleva afuera sigue
+// frenando por los dos.
+test('la herramienta de archivos escribe en el temporal igual que el shell, y el bloqueo lo nombra', () => {
+  const { base, root } = project('cauce-enlaces-temporal-archivos-')
+  const service = path.join(root, 'service')
+  const temp = path.join(base, 'temporal')
+  fs.mkdirSync(temp)
+  fs.symlinkSync(OUTSIDE, path.join(temp, 'sale'))
+  const run = path.join(__dirname, '..', '..', 'engine', 'hooks', 'run.js')
+  const env = { ...process.env, TMPDIR: temp, OPS_ROOT: root }
+  const write = (file) => spawnSync(process.execPath, [run, 'workspace-boundary'], { encoding: 'utf8', env,
+    input: JSON.stringify({ cwd: service, tool_input: { file_path: file, content: 'x' } }) })
+  const shellAt = (file) => spawnSync(process.execPath, [run, 'shell-boundary'], { encoding: 'utf8', env,
+    input: JSON.stringify({ cwd: service, tool_input: { command: `echo x > ${file}` } }) }).status
+  const copy = path.join(temp, 'mutacion', 'src', 'cart.js')
+  assert.equal(write(copy).status, 0, write(copy).stderr)
+  assert.equal(shellAt(copy), 0)
+  const escaped = path.join(temp, 'sale', 'a.js')
+  assert.equal(write(escaped).status, 2, 'un enlace del temporal que sale no es el temporal')
+  assert.equal(shellAt(escaped), 2)
+  const outside = write(path.join(base, 'otro', 'a.js'))
+  assert.equal(outside.status, 2)
+  assert.match(outside.stderr, new RegExp(`copia desechable.*${temp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, que este `
+    + 'límite no frena', 's'))
 })

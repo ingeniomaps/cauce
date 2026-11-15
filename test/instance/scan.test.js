@@ -141,6 +141,18 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
   assert.doesNotMatch(after.stdout, /¿De qué trata/, 'no vuelve a preguntar lo contestado')
 })
 
+// Un proyecto de un solo paquete es la raíz, y su ruta es «.»: el cierre del arranque decía «esto es lo que hay: .».
+test('onboard nombra la raíz del repositorio en vez de imprimir un punto', () => {
+  const repo = path.join(tempRoot('cauce-guia-raiz-'), 'tienda')
+  fs.mkdirSync(repo, { recursive: true })
+  fs.writeFileSync(path.join(repo, 'package.json'), '{"scripts":{"test":"node --test"}}')
+  const target = path.join(repo, 'ops')
+  assert.equal(run(['init', target, '--name', 'Tienda', '--mode', 'sidecar', '--no-install']).status, 0)
+  const guide = run(['onboard', target])
+  assert.match(guide.stdout, /esto es lo que hay: la raíz del repositorio \(\.\)/)
+  assert.doesNotMatch(guide.stdout, /esto es lo que hay: \.$/m)
+})
+
 // Qué tiene que saber el inventario sin ayuda —dónde mirar, qué saltear y qué comandos declara cada
 // servicio— y que no corra ninguno. Por qué es determinista y no lo hace un modelo, en `scan.js`.
 test('scan inventaría el workspace y saltea lo que nunca es un servicio', () => {

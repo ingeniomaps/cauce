@@ -4,7 +4,7 @@
 // y árboles de verdad, y junto a lo que tiene que seguir cerrado: todo lo que no es la carpeta de una tarea
 // reclamada, en el lugar donde `ops worktree` la arma, registrada en el repositorio de algo declarado.
 
-const { tempRoot } = require('../support/environment')
+const { outsideTempRoot } = require('../support/environment')
 const { blocked } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -18,7 +18,7 @@ const { taskTrees } = require('../../engine/core/task-trees')
 
 // Una instancia con una raíz por repositorio: `api` es el repositorio y la raíz, al lado de la instancia.
 function instance(prefix, rootPath = '../api') {
-  const base = fs.realpathSync(tempRoot(prefix))
+  const base = fs.realpathSync(outsideTempRoot(prefix))
   const root = path.join(base, 'ops')
   const api = path.join(base, 'api')
   fs.mkdirSync(path.join(root, 'planning', 'claims'), { recursive: true })
@@ -161,7 +161,7 @@ test('el árbol de una tarea abre lo mismo que su raíz, no más', () => {
 // En una instancia embebida la instancia entera es escribible en el árbol principal, aunque la raíz de
 // código sea una carpeta. En el árbol de la tarea tiene que valer lo mismo: ni más, ni menos.
 test('en una instancia embebida, el árbol de la tarea abre también lo que abre la instancia', () => {
-  const base = fs.realpathSync(tempRoot('ops-hook-task-tree-embebida-'))
+  const base = fs.realpathSync(outsideTempRoot('ops-hook-task-tree-embebida-'))
   const repo = path.join(base, 'producto')
   fs.mkdirSync(path.join(repo, 'planning', 'claims'), { recursive: true })
   fs.mkdirSync(path.join(repo, 'src'))

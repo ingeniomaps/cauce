@@ -371,6 +371,24 @@ test('cada tarea queda en su rama, también cuando el repositorio quedó en la d
   assert.match(other, /Ahí cortá igual `git switch -c <tipo>\/T-2`, desde donde está/)
 })
 
+// Caso 515: la rama donde estaba parado el repositorio —la que la persona cortó para todo el hito— no es la de otra
+// tarea. Sólo cuenta como usada la que el recorrido cortó, que se llama por la tarea.
+test('la rama que eligió la persona sirve para todas las tareas de la corrida', async () => {
+  const first = baseScript()[KEY.context]
+  const two = { contexts: [first, { ...first, slug: 'T-2' }, { ...first, hasTask: false, queued: 0 }] }
+  const commit = { committed: true, hash: 'abc123', branch: 'feat/entrega', live: false }
+  const { prompts, result } = await runFlow({ 'Claim|claim:T-2': { claimed: true }, [KEY.commit]: commit }, two)
+  assert.deepEqual(result.done, ['T-1', 'T-2'])
+  const [, other] = prompts.filter((item) => item.key === KEY.commit).map((item) => item.prompt)
+  assert.doesNotMatch(other, /las que esta corrida ya usó/, 'feat/entrega no la cortó ninguna tarea')
+  assert.match(other, /Si el repositorio ya está en una rama que no es viva, commiteá en ésa/)
+  // Una rama de la persona que termina en el id sin ser `<tipo>/<id>` tampoco es de la tarea.
+  const suffixed = { ...commit, branch: 'feat/entrega-T-1' }
+  const again = await runFlow({ 'Claim|claim:T-2': { claimed: true }, [KEY.commit]: suffixed }, two)
+  const [, second] = again.prompts.filter((item) => item.key === KEY.commit).map((item) => item.prompt)
+  assert.doesNotMatch(second, /las que esta corrida ya usó/)
+})
+
 // Caso 400: cada tarea nombra su propio archivo de mensaje, y el pie se comprueba antes de commitear. El porqué,
 // junto a `MESSAGE_OF` en `autobuild.js`.
 test('el commit de la tarea ata el mensaje a su id, tarea por tarea', async () => {

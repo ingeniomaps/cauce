@@ -14,6 +14,72 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.121.0] - 2026-11-15
+
+### Cambiado
+
+- **Una instancia puede evaluar sus propios cargos y recorridos en un banco** (caso 509). `/agent-eval` sobre un cargo
+  forkeado y `/flow-eval` sobre un recorrido copiado a `flows/` arman, como en el toolkit, una instancia desechable por
+  caso bajo `.cauce-eval/` —con `organization/`, las reglas, y los cargos y recorridos propios de la empresa—, y los
+  archivos de cada caso quedan donde el cargo los lee. Antes el cargo respondía sin ver esos archivos y `/flow-eval` se
+  negaba en toda instancia. Un cargo o recorrido del catálogo se sigue evaluando en el toolkit, y el mensaje dice cómo
+  hacerlo propio. Los registros de evaluación de casos con archivos escritos en una instancia antes de esta versión no
+  midieron lo que dicen.
+- **`workspace-boundary` deja escribir en el temporal del sistema, como ya lo hacía `shell-boundary`** (caso 510). La
+  copia de una mutación, que R23 pide hacer siempre en una copia, se frenaba por la herramienta de archivos y los
+  agentes terminaban mutando el árbol de trabajo. Un enlace del temporal que lleva afuera sigue frenando, y el bloqueo
+  fuera de las raíces nombra el temporal como el lugar de una copia desechable.
+- **En Gemini, la copia de una mutación se escribe en su temporal de proyecto** (caso 516). Gemini CLI no deja usar
+  `/tmp`, y su único lugar desechable, `~/.gemini/tmp/<proyecto>`, lo frenaba el límite de raíces. Ahora es escribible
+  para los dos guards de límites, deducido del `transcript_path` que Gemini manda y sólo si no es un enlace, y el
+  bloqueo nombra ese lugar en vez de `/tmp`. Tampoco cuenta ya un scratchpad de Claude Code que sea un enlace.
+- **En Gemini, los cargos del catálogo se instalan copiados en `.agents/skills/`** (caso 512): el contrato y sus
+  `references/`, en vez del puntero a `node_modules`, que Gemini CLI no lee. Codex, que comparte la carpeta, lee lo
+  mismo mientras Gemini esté instalado. Los cargos propios siguen como puntero.
+- **Lo que la instancia necesita ignorar llega al `.gitignore` que aplica, en un bloque marcado** (caso 513). En
+  embebido, `init` y `upgrade` lo escriben en el del producto —y el molde ya no copia el suyo—; `automation install`
+  agrega ahí lo que el runner escribe con la ruta de la carpeta, si el repositorio es el de la instancia o el de la
+  carpeta de instalación; `destroy` lo saca. Una línea que ignoraría algo que el repositorio versiona no entra, y se
+  dice.
+
+- **`init` propone declarar `timeZone` cuando la máquina no está en UTC.** Sin esa llave la instancia fecha en UTC, que
+  de noche en América es el día siguiente. Lo propone con el huso de la máquina y no lo escribe: el huso es del equipo.
+- **`automation install claude` nombra también `/agent-eval`, `/agent-propose`, `/agent-promote` y `/flow-eval`**, que
+  instala además de los cinco comunes a todos los runners.
+- **`destroy` nombra los árboles de tarea que dejó `ops worktree`** y cómo quitarlos. No los borra: pueden tener trabajo
+  sin commitear.
+
+### Corregido
+
+- **`/autobuild` deja en la rama que cortó la persona todas las tareas de un hito** (caso 515). La primera commiteaba
+  ahí y desde la segunda la corrida la tomaba por la rama de otra tarea, y repartía la entrega en una rama por tarea.
+  Ahora sólo cuenta como de otra tarea la rama que cortó el recorrido, `<tipo>/<tarea>`.
+- **La entrada de DONE ya no conserva los supuestos que la corrección de Review volvió falsos** (caso 511). La
+  corrección contesta qué notas de construcción dejó sin efecto y cuáles agrega; en el camino de dos sesiones, las notas
+  de una entrega reemplazan a las de la anterior.
+- **`renumber-epic` mueve también un número entre comillas** (`epic: '001'`). Antes renombraba el archivo y las citas y
+  dejaba el frontmatter viejo, y `check` quedaba en rojo.
+- **`test-evidence` frena las formas de `node:test` y mocha que apagan una prueba** —`{ skip: true }`, `{ todo: … }`,
+  `t.skip()`, `this.skip()`— y escribir vacía una prueba que tenía contenido, que la saca de la suite igual que borrarla.
+- **`/onboard` cuenta las acciones humanas que escribió.** El pedido no las nombraba y el cierre decía siempre 0.
+- **`/flow intake <texto>` sin los dos puntos frena antes de la primera etapa** y muestra la forma correcta, en vez de
+  correr entero el recorrido por defecto con el nombre como parte de la intención.
+- **`ops claim` dice dónde va el plan y si empujar el reclamo le toca al agente.** Imprime la ruta del archivo del WIP,
+  que había que deducir del id del runner. Y ya no pide «commiteá y empujá» sin remoto, ni con `runner.allowPush`
+  apagado, donde ese push lo pide una persona.
+- **El aviso OPS-001 no cuenta lo que no es trabajo del producto.** La ventana es por día, y el commit inicial del
+  producto, hecho el mismo día antes de instalar Cauce, salía como trabajo sin registrar; también el de la instalación,
+  y en embebido o en sidecar dentro del repositorio, un commit que sólo tocaba la instancia (`organization/`, por
+  ejemplo, que el caso 270 no cubría). Cuenta desde el commit que agregó `ops.config.json` —sin contarlo—, o desde la
+  fecha del archivo si todavía no se commiteó, y saltea los commits que sólo tocan la instancia.
+- **`ops evidence` sin ninguna entrada en DONE termina con 1**, no con el código de uso: es un estado del proyecto.
+- **`automation` sobre una ruta que no es una instancia lo dice en una línea**, en vez de listar cada archivo faltante y
+  mandar a correr `npm install`.
+- **`agents list --own` sin cargos propios lo dice**, en vez de no imprimir nada.
+- **El arranque nombra la raíz del repositorio** en vez de cerrar con «esto es lo que hay: .».
+- **`GEMINI.md` dice lo que pasa sin confiar en la carpeta**: sin confianza Gemini no arranca, y con `--skip-trust` corre
+  sin ningún guard y sin avisarlo.
+
 ## [0.120.0] - 2026-11-05
 
 ### Cargos

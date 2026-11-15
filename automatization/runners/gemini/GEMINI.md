@@ -10,9 +10,10 @@ y un checkpoint pendiente —el de tu línea en `{{OPS_DIR}}planning/checkpoints
 todas— bloquea una corrida nueva.
 
 Los hooks de `.gemini/settings.json` son obligatorios y bloquean por su cuenta. **Requieren que la
-carpeta esté marcada como confiable**: si no lo está, Gemini los desactiva y avisa con
-`Project hooks disabled because the folder is not trusted`, y entonces nada te detiene. Confía en la
-carpeta antes de trabajar.
+carpeta esté marcada como confiable**: si no lo está, Gemini los desactiva y entonces nada te detiene.
+Medido con Gemini CLI 0.63.0 sin interfaz: sin confianza no arranca, y con `--skip-trust` corre sin la
+configuración del proyecto —sin ningún guard— y sin avisarlo. Confía en la carpeta antes de trabajar: en tu
+lista de carpetas de confianza, o con `GEMINI_CLI_TRUST_WORKSPACE=true`.
 
 Los cargos llegan como skills en `.agents/skills/`. Cada uno conserva nombre y descripción, y remite al
 contrato completo; leé ese `SKILL.md` antes de actuar en su terreno. Para la lista:

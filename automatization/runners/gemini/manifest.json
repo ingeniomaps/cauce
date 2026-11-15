@@ -42,6 +42,7 @@
     "nativeSkills": true
   },
   "roleSkills": ".agents/skills",
+  "roleSkillsCopy": true,
   "retiredRoleSkills": [".gemini/skills"],
   "commands": {
     "invocation": "/cauce:{name}",

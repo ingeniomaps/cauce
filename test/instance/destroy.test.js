@@ -109,3 +109,29 @@ test('destroy sigue aunque el package.json esté roto', () => {
   assert.equal(fs.readFileSync(path.join(repo, 'package.json'), 'utf8'), '{ esto no es json\n',
     'y el archivo roto se deja como estaba, sin adivinar qué quiso decir')
 })
+
+// `ops worktree` arma un árbol al lado del repositorio con su propia copia de la instancia. Borrarla dejaba ese
+// árbol registrado en git sin nombrarlo: no se borra —puede tener trabajo sin commitear—, pero se dice.
+test('destroy nombra los árboles de tarea que quedan en pie', () => {
+  const { spawnSync } = require('node:child_process')
+  const gitIn = (cwd, ...args) => spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args],
+    { cwd, encoding: 'utf8' })
+  const repo = path.join(tempRoot('cauce-destroy-arbol-'), 'app')
+  fs.mkdirSync(repo, { recursive: true })
+  assert.equal(gitIn(repo, 'init', '-q').status, 0)
+  fs.writeFileSync(path.join(repo, 'README.md'), '# app\n')
+  const target = path.join(repo, 'ops')
+  assert.equal(run(['init', target, '--name', 'App', '--mode', 'sidecar', '--no-install']).status, 0)
+  gitIn(repo, 'add', 'README.md', 'ops')
+  assert.equal(gitIn(repo, 'commit', '-qm', 'init').status, 0)
+  const tree = path.join(path.dirname(repo), 'app-alta')
+  assert.equal(gitIn(repo, 'worktree', 'add', '-q', '-b', 'task/alta', tree).status, 0)
+
+  const warning = run(['destroy', target])
+  assert.match(warning.stdout, /quedan en pie 1 árbol\(es\) de tarea/)
+  assert.match(warning.stdout, new RegExp(`${tree.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(task/alta\\)`))
+  const done = run(['destroy', target, '--force'])
+  assert.equal(done.status, 0, done.stderr)
+  assert.match(done.stdout, /git worktree remove/)
+  assert.equal(fs.existsSync(tree), true, 'el árbol no se borra: puede tener trabajo sin commitear')
+})

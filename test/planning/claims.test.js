@@ -55,7 +55,7 @@ test('dos personas no reciben la misma tarea, y la segunda no puede pisar a la p
   assert.equal(tomada.status, 0, tomada.stderr)
   assert.match(tomada.stdout, /tomada por ana@acme\.com/)
   // Un reclamo sin empujar no reserva nada, y el comando es el único lugar donde eso se puede decir.
-  assert.match(tomada.stdout, /commiteá y empujá/)
+  assert.match(tomada.stdout, /commiteá claims\/dashboard\.md/)
 
   const luis = como('luis@acme.com', () => run(['context', dir]))
   assert.match(luis.stdout, /^TASK {3}boton/m, 'la tomada no se le ofrece')

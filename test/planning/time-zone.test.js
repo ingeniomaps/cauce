@@ -78,3 +78,19 @@ test('el CLI fecha con el huso de la instancia que le nombran', () => {
   assert.match(west, /^\d{4}-\d{2}-\d{2}$/)
   assert.ok(east > west, `${east} tendría que ser posterior a ${west}`)
 })
+
+// Sin declarar el huso la instancia fecha en UTC, y de noche en América eso es el día siguiente: lo decidió el caso
+// 303 y sigue siendo así, pero nadie lo ofrecía. `init` lo propone con el huso de la máquina, sin escribirlo.
+test('init propone declarar el huso de la máquina cuando no es UTC', () => {
+  const { run } = require('../support/environment')
+  const target = path.join(tempRoot('cauce-init-huso-'), 'demo-ops')
+  const bogota = run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install'], undefined,
+    { TZ: 'America/Bogota' })
+  assert.equal(bogota.status, 0, bogota.stderr)
+  assert.match(bogota.stdout, /"timeZone": "America\/Bogota"/)
+  const config = JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8'))
+  assert.equal(config.timeZone, undefined, 'lo propone, no lo escribe')
+  const utc = run(['init', path.join(tempRoot('cauce-init-utc-'), 'demo-ops'), '--name', 'Demo', '--mode',
+    'sidecar', '--no-install'], undefined, { TZ: 'UTC' })
+  assert.doesNotMatch(utc.stdout, /timeZone/, 'en UTC no hay nada que proponer')
+})

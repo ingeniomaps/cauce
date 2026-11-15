@@ -4,7 +4,7 @@
 // una línea vacía recibe el repositorio de su primera tarea, y sólo con una tarea suya. Y mientras no tiene ninguno,
 // `ops lines` la muestra igual, con su cola.
 
-const { tempRoot, run, discard } = require('../support/environment')
+const { outsideTempRoot, run, discard } = require('../support/environment')
 const { mount, git } = require('../support/worktree-bench')
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -92,7 +92,7 @@ test('una línea vacía no arma nada, y la primera tarea que pide su árbol le s
 // El porqué, en `seenFrom` (`engine/cli/worktree.js`).
 test('la línea suma por su nombre un repositorio que la carpeta de sesión alcanza por un enlace', () => {
   const { base, repo, planning } = mount('cauce-wt-linea-enlace-')
-  const far = path.join(tempRoot('cauce-wt-afuera-'), 'producto')
+  const far = path.join(outsideTempRoot('cauce-wt-afuera-'), 'producto')
   fs.renameSync(repo, far)
   fs.symlinkSync(far, repo, 'dir')
   const ops = path.dirname(planning)

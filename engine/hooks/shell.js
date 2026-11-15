@@ -9,7 +9,6 @@
 // no usa más que `run`; lo que un commit no toca sin una persona vive en `governance.js`, por lo mismo.
 // Cambian por otra causa: una herramienta nueva, no una evasión nueva.
 
-const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
@@ -20,7 +19,7 @@ const { REDIRECTIONS } = require('./shell-writes')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead, writes } = require('./shell-changes')
 const { landing } = require('../core/files')
-const { beyond, reached, real, removed, refusal } = require('./boundary')
+const { beyond, reached, removed, refusal, inTemp } = require('./boundary')
 const LS = require('./line-scope')
 const AP = require('./approval')
 const { publish } = require('./push')
@@ -322,7 +321,6 @@ function gitAdd(input) {
 // El temporal se juzga por dónde cae la escritura y no por cómo está escrita: un enlace que vive ahí y apunta
 // afuera no es el temporal.
 const DEVICES = /^\/dev\/(?:null|stdout|stderr|tty|fd\/)/
-const TEMP = new RegExp(`^${real(os.tmpdir())}(?:/|$)`)
 
 // El destino de una escritura se juzgaba sólo en `Edit`/`Write`, así que el mismo archivo se escribía
 // sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien quería pasar.
@@ -349,7 +347,7 @@ function shellBoundary(input) {
     const lands = landing(base || '/', raw)
     const own = selfApprovalShell(input, file) || selfApprovalShell(input, lands)
     if (own) block(own)
-    if (!allowed || DEVICES.test(file) || TEMP.test(lands)) continue
+    if (!allowed || DEVICES.test(file) || inTemp(lands)) continue
     const out = beyond(input, base || '/', raw, allowed)
     if (out) found.push({ verb: 'escribe', out })
     const off = !out && LS.strayed(input, file, lands)
@@ -372,7 +370,7 @@ function shellBoundary(input) {
     const named = /\$\{\w+[^\w}]/.test(raw) ? raw : home(assigned(raw))
     if (/[$`\u0000]/.test(named) || (base === null && !path.isAbsolute(named))) continue
     const at = lands(base || '/', named)
-    if (TEMP.test(at)) continue
+    if (inTemp(at)) continue
     const out = beyond(input, base || '/', named, allowed, at)
     if (out) found.push({ verb, out })
     const off = !out && LS.strayed(input, path.resolve(base || '/', named), at)

@@ -10,11 +10,11 @@ const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
-  writableRoots, outsideRoots, DECLARE_IT,
+  writableRoots, outsideRoots, DECLARE_IT, runnerScratch,
 } = require('./input')
 const { landing } = require('../core/files')
 const { patchMoves } = require('../core/migrations')
-const { beyond, reached, refusal } = require('./boundary')
+const { beyond, reached, refusal, inTemp } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { unrecordedNote } = require('./unrecorded')
@@ -124,6 +124,9 @@ const TEST_OFF = [
   [/\b(?:describe|context|it|test|suite)\s*\.\s*(?:skip|only|todo)\b/, 'skip/only'],
   [/\b[xf](?:it|test|describe|context)\s*[("'`]/, 'xit/fit'],
   [/\bt\.Skip(?:Now)?\s*\(/, 't.Skip'],
+  // Las formas de node:test, por la opción o por el contexto, y la de mocha por `this`. `skip: false` no apaga nada.
+  [/[{,]\s*(?:skip|todo)\s*:\s*(?!false\b)[^\s,}]/, '{ skip | todo }'],
+  [/\b(?:t|this)\.(?:skip|todo)\s*\(/, 't.skip'],
   [/@pytest\.mark\.(?:skip|skipif|xfail)\b/, 'pytest.mark.skip'],
   [/@unittest\.skip/, 'unittest.skip'],
   [/@(?:Ignore|Disabled)\b/, 'Ignore/Disabled'],
@@ -162,6 +165,14 @@ function testEvidence(input) {
   for (const { from, to } of patchMoves(patchOf(input))) {
     if (!isTestFile(from) || isTestFile(to) || approved(input, from)) continue
     block(`${from} borra una prueba: renombrada a ${to} deja de serlo.\n${why}${how(from)}`)
+  }
+  // Escribir una prueba vacía encima de la que había la borra igual que `rm`, y por el camino de escribir.
+  if ((input.tool_input || {}).content === '') {
+    for (const raw of filesOf(input)) {
+      const file = path.resolve(cwdOf(input), raw)
+      if (!isTestFile(raw) || approved(input, raw) || !fs.existsSync(file) || !fs.statSync(file).size) continue
+      block(`${raw} borra una prueba: escribirla vacía la saca de la suite.\n${why}${how(raw)}`)
+    }
   }
   const content = contentOf(input)
   if (!content) return
@@ -325,14 +336,20 @@ function workspaceBoundary(input) {
     // Lo mismo que en `shell-boundary`: la aprobación de la persona se juzga aunque no haya raíces.
     const own = selfApproval(input, file) || selfApproval(input, landing(cwdOf(input), raw))
     if (own) block(own)
-    const out = allowed && beyond(input, cwdOf(input), raw, allowed)
+    const out = allowed && !inTemp(landing(cwdOf(input), raw)) && beyond(input, cwdOf(input), raw, allowed)
     if (out) found.push({ verb: deleted.has(raw) ? 'borra' : 'escribe', out })
     const off = !out && LS.strayed(input, file, landing(cwdOf(input), raw))
     if (off) strayed.push(off)
   }
   const why = refusal(input, found, (all) => `${all.map(({ out }) => reached(out)).join(' y ')} `
     + (all.length > 1 ? 'están' : 'está'))
-  if (why) block(why)
+  // La copia de una mutación es lo que más llega acá, y R23 la quiere en un lugar desechable: se nombra el del runner
+  // que corre, porque Gemini no deja usar el del sistema (caso 516).
+  if (why) {
+    const [own] = runnerScratch(input)
+    block(`${why}\nUna copia desechable —una mutación, una sonda— va en el temporal `
+      + `${own ? `de esta sesión, ${own}` : `del sistema, ${os.tmpdir()}`}, que este límite no frena.`)
+  }
   const off = LS.refusal(input, strayed)
   if (off) block(off)
 }

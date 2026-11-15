@@ -269,9 +269,11 @@ test('install deja el puente de Antigravity resoluble desde una carpeta que no l
     })
     assert.equal(bridgeInstalled.normalize(write('x'), target).cwd, workspace, 'el cwd es el workspace')
     assert.equal(bridgeInstalled.evaluate('pre-files', write('ops/planning/nota.md')).decision, 'allow')
-    const outside = bridgeInstalled.evaluate('pre-files', write('../fuera/x.md'))
+    // Relativa, contra el workspace, y fuera del temporal, que desde el caso 510 es escribible. Sólo se juzga.
+    const away = path.join('/var/tmp', 'cauce-fuera-de-las-raices', 'x.md')
+    const outside = bridgeInstalled.evaluate('pre-files', write(path.relative(workspace, away)))
     assert.equal(outside.decision, 'deny')
-    assert.ok(outside.reason.includes(path.join(base, 'fuera')), 'juzga la ruta que el agente quiso escribir')
+    assert.ok(outside.reason.includes(away), 'juzga la ruta que el agente quiso escribir')
   } finally {
     if (previous === undefined) delete process.env.OPS_ROOT
     else process.env.OPS_ROOT = previous

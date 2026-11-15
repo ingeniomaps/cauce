@@ -140,7 +140,7 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
 
   // El banco enlaza al repositorio vivo, así que una edición concurrente del toolkit se ve desde
   // adentro. Tres jueces la descartaron bien por su cuenta; decirlo de entrada les ahorra el trabajo.
-  assert.match(evalWf, /symlink al repositorio/, 'el juez sabe que el banco no está aislado')
+  assert.match(evalWf, /symlink al motor/, 'el juez sabe que el banco no está aislado')
   assert.match(evalWf, /trabajo concurrente ajeno/, 'y qué significa encontrar algo modificado ahí')
 })
 

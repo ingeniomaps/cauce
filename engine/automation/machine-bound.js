@@ -7,9 +7,9 @@
 // los reinstala con su ruta y los ve modificados para siempre. Son generados —`automation install` los
 // rehace—, así que no tienen por qué viajar.
 //
-// El molde los ignora en `gitignore`, pero ese archivo se escribe al crear la instancia y `upgrade` no lo
-// toca. Para la que nació antes está este aviso, que pregunta por el **efecto** —si git los ignora, si ya
-// los tiene— y no por el texto del `.gitignore`, igual que el de los rastros locales y por lo mismo.
+// `automation install` los suma al bloque de Cauce del `.gitignore` del repositorio, si es el de la instancia
+// o el de la carpeta donde se instaló (caso 513). Para lo demás —un repositorio de más arriba, lo que ya está
+// en git— queda este aviso, que pregunta por el **efecto** y no por el texto del `.gitignore`.
 //
 // Cuáles son no se enumera: sale de las plantillas de cada runner instalado, las que traen el marcador de
 // la raíz. La configuración de hooks queda afuera aunque lo traiga —la de Codex—: ahí conviven las entradas
@@ -22,6 +22,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const M = require('../core/manifest')
+const IB = require('../core/ignore-block')
 const { ownGenerated } = require('./own-workflows')
 const {
   RUNNER_NAMES, OPS_ROOT, runnerManifest, runnerPaths, resolveItem, render, opsPrefix,
@@ -100,16 +101,19 @@ function absentWarnings(root, runners) {
   })
 }
 
-function trackedWarnings(root, runners) {
+// Lo del runner que lleva la ruta, está en el repositorio y git no ignora, con las líneas que lo ignorarían.
+function looseFiles(root, runners) {
   const files = runners.flatMap((one) => one.present)
   const generated = runners.flatMap((one) => one.generated)
-  if (!files.length) return []
-  const git = (args, input) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', input })
+  if (!files.length) return null
+  // Sin `GIT_*`, por lo mismo que en `core/ignore-block.js`: lo que git contesta decide dónde se escribe.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')))
+  const git = (args, input) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', input, env })
   const shown = git(['rev-parse', '--show-toplevel'])
-  if (shown.status !== 0) return []
+  if (shown.status !== 0) return null
   const top = fs.realpathSync(shown.stdout.trim())
   const here = files.filter((one) => !path.relative(top, one).startsWith('..'))
-  if (!here.length) return []
+  if (!here.length) return null
   // `-z` en los dos: sin él git escribe entre comillas y con escapes la ruta que trae un acento, y deja de
   // coincidir con la nuestra. `check-ignore` sólo lo admite leyendo las rutas por la entrada.
   const listed = (out, base) => new Set((out.stdout || '').split('\0').filter(Boolean)
@@ -120,18 +124,38 @@ function trackedWarnings(root, runners) {
   // la línea al `.gitignore` no saca de git lo que ya está adentro.
   const ignored = listed(git(['check-ignore', '-z', '--stdin'], here.join('\0')), root)
   const loose = here.filter((one) => !ignored.has(one))
-  if (!loose.length) return []
-  const lines = patterns(loose, top, generated)
   const inGit = here.filter((one) => tracked.has(one))
+  return { top, loose, lines: patterns(loose, top, generated), inGit, untrack: patterns(inGit, top, generated) }
+}
+
+function trackedWarnings(root, runners) {
+  const found = looseFiles(root, runners)
+  if (!found || !found.loose.length) return []
+  const { top, loose, lines, inGit } = found
   const untrack = inGit.length
-    ? ` ${inGit.length} ya están en git: sacalos con git rm -r --cached `
-      + `${patterns(inGit, top, generated).join(' ')} —quedan en disco—.`
+    ? ` ${inGit.length} ya están en git: sacalos con git rm -r --cached ${found.untrack.join(' ')} —quedan en disco—.`
     : ''
   // Las líneas valen para el `.gitignore` de la raíz del repositorio, y el comando se corre desde ahí.
   const from = top === root ? '' : ` Las rutas son desde la raíz del repositorio, ${top}.`
   return [`${loose.length} archivo(s) del runner llevan escrita la ruta de esta carpeta y git no los ignora `
     + `(${lines.join(', ')}): en git, cada clon y cada línea de trabajo los ve modificados. Son generados, los `
     + `rehace automation install; agregá esa(s) línea(s) a tu .gitignore.${untrack}${from}`]
+}
+
+// Escribe en el bloque de Cauce del `.gitignore` del repositorio las líneas que faltan (caso 513). Lo que ya está en
+// git no se saca del índice acá: eso sigue siendo el aviso, porque cambia lo que el próximo commit borra.
+//
+// Sólo si ese repositorio es el de la instancia o el de la carpeta donde se instaló: uno de más arriba —un `$HOME`
+// versionado, un monorepo ajeno— no es de este proyecto, y ahí sigue el aviso.
+function ignoreLoose(given, install) {
+  let root
+  try { root = fs.realpathSync(given) } catch { return null }
+  const found = looseFiles(root, survey(root, [root, path.resolve(given)]))
+  if (!found || !found.lines.length) return null
+  const own = [root, install].filter(Boolean).map((one) => { try { return fs.realpathSync(one) } catch { return one } })
+  if (!own.includes(found.top)) return null
+  const file = path.join(found.top, '.gitignore')
+  return { file, ...IB.add(file, found.lines, found.top) }
 }
 
 // La raíz se resuelve antes de preguntar: git contesta con rutas reales, y por un enlace a la instancia
@@ -144,4 +168,4 @@ function warnings(given) {
   return [...absentWarnings(root, runners), ...trackedWarnings(root, runners)]
 }
 
-module.exports = { warnings }
+module.exports = { warnings, ignoreLoose }

@@ -365,6 +365,7 @@ function writableRoots(input) {
     ...withTaskTrees(root, declared),
     ...writableOutsideRoots(root, config).map((entry) => entry.path),
     ...sessionScratch(input),
+    ...runnerScratch(input),
   ]
 }
 
@@ -378,7 +379,26 @@ function writableRoots(input) {
 function sessionScratch(input) {
   const given = input && typeof input.scratchpad_dir === 'string' ? path.resolve(input.scratchpad_dir) : ''
   const disposable = [os.tmpdir(), '/tmp'].some((base) => given.startsWith(`${path.resolve(base)}${path.sep}`))
-  return given && disposable ? [given] : []
+  return given && disposable && !linked(given) ? [given] : []
+}
+
+// Si la carpeta es un enlace: el límite juzga por dónde cae la escritura, así que una carpeta de la sesión que apunta
+// a otra parte abriría lo de detrás —el home entero, si alguien la enlaza ahí— (revisión del caso 516).
+function linked(dir) {
+  try { return fs.lstatSync(dir).isSymbolicLink() } catch { return false }
+}
+
+// El temporal de proyecto que Gemini CLI le da a la sesión, `~/.gemini/tmp/<proyecto>`: Gemini no deja escribir en
+// `/tmp`, así que es el único lugar donde va la copia de una mutación (caso 516). Se deduce de `transcript_path`, que
+// cuelga de ahí en `chats/`, y lo único que se abre es esa carpeta, si no es un enlace: el home y `~/.gemini` no se
+// vuelven escribibles por venir en la entrada.
+function runnerScratch(input) {
+  const given = input && typeof input.transcript_path === 'string' ? path.resolve(input.transcript_path) : ''
+  const base = path.join(os.homedir(), '.gemini', 'tmp')
+  const parts = path.relative(base, given).split(path.sep)
+  if (!given || parts[0] === '..' || parts[1] !== 'chats') return []
+  const dir = path.join(base, parts[0])
+  return linked(dir) ? [] : [dir]
 }
 
 // La pregunta exacta y nada más. Las excepciones viven en quien las necesita: un `>` a `/dev/null` es
@@ -410,6 +430,7 @@ module.exports = {
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,
   assignedValues,
+  runnerScratch,
   findOpsRoot, opsRoot, within, realPath, toplevel,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

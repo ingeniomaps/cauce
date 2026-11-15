@@ -85,3 +85,13 @@ test('el cierre de init pide una sesión nueva sólo dentro de una, y sin runner
   assert.match(closing('gemini', true), /→ Abrí gemini acá/)
   assert.match(closing('ninguno', true), /→ Contestá esa pregunta cuando corras el arranque/)
 })
+
+// Prueba del aviso de `install` sobre los recorridos que no están en la lista común.
+test('install nombra también los recorridos que sólo instala ese runner', () => {
+  const project = installedProject('cauce-install-extra-')
+  const claude = project.runCli(['automation', 'install', project.target, 'claude'])
+  assert.equal(claude.status, 0, claude.stderr)
+  assert.match(claude.stdout, /claude: y también .*\/agent-eval.*\/agent-promote/)
+  const gemini = project.runCli(['automation', 'install', project.target, 'gemini'])
+  assert.doesNotMatch(gemini.stdout, /gemini: y también/, 'Gemini no instala más que la lista común')
+})

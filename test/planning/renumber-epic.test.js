@@ -73,6 +73,19 @@ test('una épica escrita como carpeta se mueve entera', () => {
   assert.equal(after.status, 0, after.out)
 })
 
+// Un agente escribe el frontmatter como YAML, y `epic: '001'` lo es: `check` lo leía y el comando no lo movía.
+test('el número entre comillas también se mueve, y conserva sus comillas', () => {
+  const dir = collided('cauce-renumber-quoted-')
+  for (const [quote, file] of [["'", 'roadmap/epic-001-envios.md'], ['"', 'roadmap/epic-001-pagos.md']]) {
+    fs.writeFileSync(path.join(dir, file), read(dir, file).replace(/^epic: 001$/m, `epic: ${quote}001${quote}`))
+  }
+  assert.equal(run(['renumber-epic', dir, 'epic-001-envios.md', '002']).status, 0)
+  assert.match(read(dir, 'roadmap/epic-002-envios.md'), /^epic: '002'$/m)
+  assert.match(read(dir, 'roadmap/epic-001-pagos.md'), /^epic: "001"$/m, 'la otra épica no se toca')
+  const after = check(dir)
+  assert.equal(after.status, 0, after.out)
+})
+
 test('un pedido que no se puede cumplir se niega y no mueve nada', () => {
   const dir = collided('cauce-renumber-refuse-')
   const before = run(['tree', dir, '--json']).stdout

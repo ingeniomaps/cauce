@@ -5,7 +5,7 @@
 // de la instancia con su línea. Los dos se deciden por la ruta de lo que se escribe; el porqué, en `lineAt`
 // (`engine/hooks/files.js`).
 
-const { tempRoot, run } = require('../support/environment')
+const { outsideTempRoot, run } = require('../support/environment')
 const { blocked, BACKLOG_WITH_TASK } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -25,7 +25,7 @@ const ok = (cwd, ...args) => {
 // La carpeta de sesión con la instancia y un repositorio declarado como raíz propia —la forma en que la carpeta
 // de sesión no es una raíz—, una tarea en la cola y la línea `pagos` armada sobre ese repositorio.
 function session(name) {
-  const base = fs.realpathSync(tempRoot(name))
+  const base = fs.realpathSync(outsideTempRoot(name))
   const ops = path.join(base, 'ops')
   assert.equal(run(['init', ops, '--name', 'Lineas', '--mode', 'sidecar', '--no-install']).status, 0)
   ok(ops, 'init', '-q', '-b', 'main')
@@ -136,7 +136,7 @@ test('los guards de commit juzgan el árbol de una línea declarada', () => {
       blocked('git-add', { cwd, tool_input: { command } }, /está prohibido/)
     }
     // Lo que no es de ninguna línea ni raíz sigue afuera, como pide R26.
-    const foreign = fs.realpathSync(tempRoot('cauce-hook-linea-ajeno-'))
+    const foreign = fs.realpathSync(outsideTempRoot('cauce-hook-linea-ajeno-'))
     assert.doesNotThrow(() => execute('git-add', { cwd: foreign, tool_input: { command: `git add ${all}` } }))
   } finally {
     if (root === undefined) delete process.env.OPS_ROOT

@@ -4,12 +4,15 @@
 // escrita. Lo comparten los dos guards de límites —el que lee comandos y el de la herramienta de archivos—,
 // que tienen que contestar lo mismo sobre la misma ruta.
 //
-// Qué garantiza. Una ruta escrita afuera frena como siempre, con una salvedad en el guard de comandos: el
-// temporal del sistema se exime por dónde cae la escritura, así que un enlace de afuera que lleva ahí pasa.
+// Qué garantiza. Una ruta escrita afuera frena como siempre, salvo en el temporal del sistema, que los dos eximen
+// por dónde cae la escritura: un enlace de afuera que lleva ahí pasa, y uno de ahí que lleva afuera no. El lugar de
+// paso de la sesión —el scratchpad de Claude Code, el temporal de proyecto de Gemini— llega como raíz escribible desde
+// `writableRoots`, en `input.js`.
 // Una ruta escrita adentro que por un enlace simbólico cae afuera, también frena (caso 317). Y lo que se
 // alcanza por un enlace y sigue siendo del proyecto no frena: la raíz declarada como enlace, un enlace entre
 // carpetas de una raíz, y las carpetas que una línea de trabajo enlaza desde la instancia de la que salió.
 
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { landing } = require('../core/files')
@@ -17,6 +20,13 @@ const { outsideRoots, opsRoot, configOf, DECLARE_IT } = require('./input')
 const AP = require('./approval')
 
 const real = (file) => landing(path.sep, file)
+
+// El temporal del sistema, por su ruta real: lo que cae ahí es desechable para los dos guards (casos 360 y 510), y un
+// enlace que vive ahí y apunta afuera no cae ahí.
+const inTemp = (lands) => {
+  const temp = real(os.tmpdir())
+  return lands === temp || lands.startsWith(`${temp}${path.sep}`)
+}
 
 // Las raíces de la instancia de la que salió este árbol, si es un árbol de trabajo de otro. `ops line` arma
 // una línea así: un árbol aparte de la instancia, con el producto enlazado desde la original. Quien trabaja
@@ -81,4 +91,4 @@ function refusal(input, found, where) {
     + AP.HOW(null, held, input, held, { turn: true })
 }
 
-module.exports = { beyond, reached, real, removed, refusal, confirmedOnly }
+module.exports = { beyond, reached, real, removed, refusal, confirmedOnly, inTemp }

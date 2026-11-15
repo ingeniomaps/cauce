@@ -71,6 +71,10 @@ function agents(action, dir, extra, cli) {
     const mark = role.system ? '' : ' (propio)'
     console.log(`${role.slug.padEnd(width)}${mark}  ${role.summary || '— sin resumen'}`)
   }
+  if (!roles.length && own) {
+    console.log('Ningún cargo propio todavía. Uno se escribe en agents/roles/<slug>/, o se adopta uno del catálogo '
+      + 'con "ops agents fork <slug>".')
+  }
   // La respuesta negativa tiene que ser tan barata como la positiva: si ninguna línea encaja, el
   // camino no es forzar el cargo más parecido, es escribir el propio.
   if (roles.length && !own) {
@@ -163,20 +167,18 @@ function learn(agent, cli) {
   } catch (error) { fail(error.message, USAGE) }
 }
 
+// Un sujeto que no se resuelve no es propio: lo dice el error que da después quien lo busque de verdad.
+const ownedOrNot = (root, agent, kind) => { try { return EV.owned(root, agent, kind) } catch { return false } }
+
 function evaluate(agent, caso, cli) {
   const root = opsRoot()
   // De quién son los casos, resuelto por bandera y no por el slug. Por qué no se deduce, en `subject`.
   const kind = cli.has('--flow') ? 'flow' : 'agent'
-  // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
-  // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
   if (cli.has('--bench')) {
-    if (O.mode(root) !== 'toolkit') {
-      // Lo que decide es el modo de la instancia, así que el consejo tiene que ser una salida y no una
-      // condición: mandaba a adoptar el cargo, y adoptarlo no habilita nada —quien seguía el consejo
-      // forkeaba, repetía el comando y recibía el mismo mensaje diciéndole que forkeara—.
-      fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: corré '
-        + `"ops evaluate ${agent}" sin la bandera, que valida sus controles, casos y propuestas `
-        + 'contra este proyecto.', USAGE)
+    // En una instancia, sólo lo propio: un cargo o recorrido del catálogo se evalúa en el toolkit (caso 509).
+    if (O.mode(root) !== 'toolkit' && !ownedOrNot(root, agent, kind)) {
+      fail(`${agent} es del catálogo de Cauce: se evalúa en el toolkit. Para evaluarlo acá, hacelo tuyo: `
+        + (kind === 'flow' ? `copiá su carpeta a flows/${agent}/.` : `"ops agents fork ${agent}".`), USAGE)
     }
     // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
     // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
@@ -204,7 +206,7 @@ function evaluate(agent, caso, cli) {
       //
       // `subject` es contra lo que el evaluador comprueba que la lista sea del sujeto que pidió; por qué
       // no alcanza con pedirla bien, en `agent-eval` (caso 387).
-      return console.log(JSON.stringify({ subject: agent, cases, forbidden }))
+      return console.log(JSON.stringify({ subject: agent, owned: EV.owned(root, agent, kind), cases, forbidden }))
     }
     // Dónde escribir el registro de esta corrida. Lo pregunta el recorrido en vez de componer el
     // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.

@@ -4,7 +4,7 @@
 // que eso obliga a cuidar es que desinstalar uno no deje al otro sin cargos, y que una instalación vieja no conserve
 // la copia que sobra.
 
-const { installedProject, tempRoot } = require('../support/environment')
+const { installedProject, tempRoot, discard } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -95,4 +95,81 @@ test('Gemini solo instala y desinstala sus punteros en la carpeta compartida com
   assert.equal(out.status, 0, out.stderr)
   assert.doesNotMatch(out.stdout, /los usa también/)
   assert.equal(fs.existsSync(pointer(workspace, '.agents/skills', first.slug)), false)
+})
+
+// Caso 512: Gemini no lee nada bajo `node_modules`, y ahí apuntaba el puntero de cada cargo del catálogo. En la carpeta
+// que lee Gemini, el cargo del catálogo va copiado —contrato y referencias, sin una sola ruta al paquete—, y el propio
+// sigue siendo puntero. Codex instalado después no la vuelve a punteros, y desinstalar se lleva las copias.
+test('en la carpeta que lee Gemini los cargos del catálogo van copiados, y los propios como puntero', () => {
+  const { workspace, target, runCli } = installedProject('cauce-skills-copia-')
+  const roles = roleCatalog(target)
+  const system = roles.find((role) => role.system && fs.existsSync(path.join(role.dir, 'references')))
+  assert.ok(system, 'hay un cargo del catálogo con referencias')
+  assert.equal(runCli(['agents', 'fork', 'qa-engineer', target]).status, 0)
+  assert.equal(runCli(['automation', 'install', target, 'gemini']).status, 0)
+
+  const copy = pointer(workspace, '.agents/skills', system.slug)
+  assert.equal(fs.readFileSync(copy, 'utf8'), fs.readFileSync(path.join(system.dir, 'SKILL.md'), 'utf8'))
+  const references = fs.readdirSync(path.join(system.dir, 'references'))
+  for (const name of references) {
+    assert.ok(fs.existsSync(path.join(path.dirname(copy), 'references', name)), `${name} copiada`)
+  }
+  assert.doesNotMatch(fs.readFileSync(copy, 'utf8'), /node_modules/, 'nada lleva al paquete')
+  assert.match(fs.readFileSync(pointer(workspace, '.agents/skills', 'qa-engineer'), 'utf8'),
+    /Leé `ops\/agents\/roles\/qa-engineer\/SKILL\.md`/, 'el propio sigue como puntero a la instancia')
+  // `doctor` compara contra lo que se instaló, no contra el puntero: con la copia no hay nada desactualizado.
+  const doctor = runCli(['automation', 'doctor', target, 'gemini'])
+  assert.doesNotMatch(doctor.stdout + doctor.stderr, /desactualizados/)
+
+  // Codex comparte la carpeta: instalado después, no la vuelve a punteros mientras Gemini esté.
+  assert.equal(runCli(['automation', 'install', target, 'codex']).status, 0)
+  assert.equal(fs.readFileSync(copy, 'utf8'), fs.readFileSync(path.join(system.dir, 'SKILL.md'), 'utf8'))
+
+  // Desinstalar los dos se lleva las copias enteras, y la editada se queda.
+  const [other] = roles.filter((role) => role.system && role.slug !== system.slug)
+  fs.appendFileSync(pointer(workspace, '.agents/skills', other.slug), '\nnota mía\n')
+  assert.equal(runCli(['automation', 'uninstall', target, 'codex']).status, 0)
+  const out = runCli(['automation', 'uninstall', target, 'gemini'])
+  assert.equal(out.status, 0, out.stderr)
+  assert.equal(fs.existsSync(path.dirname(copy)), false, 'la copia se fue con sus referencias')
+  assert.ok(fs.existsSync(pointer(workspace, '.agents/skills', other.slug)), 'la editada se queda')
+  assert.match(out.stdout, new RegExp(`conservado \\.agents/skills/${other.slug}`))
+})
+
+// De la revisión del 512: una referencia que el catálogo ya no trae no deja la copia pareciendo editada, y desinstalar
+// Gemini antes que Codex deja a Codex con punteros limpios al reinstalar, sin referencias huérfanas.
+test('la copia se rehace entera, y al volver a punteros no quedan referencias de la copia', () => {
+  const { workspace, target, runCli } = installedProject('cauce-skills-copia-orden-')
+  const system = roleCatalog(target).find((role) => role.system && fs.existsSync(path.join(role.dir, 'references')))
+  const folder = path.dirname(pointer(workspace, '.agents/skills', system.slug))
+  assert.equal(runCli(['automation', 'install', target, 'gemini']).status, 0)
+  fs.writeFileSync(path.join(folder, 'references', 'retirada.md'), '# De una versión anterior\n')
+  const extra = runCli(['automation', 'doctor', target, 'gemini'])
+  assert.match(extra.stdout + extra.stderr, /desactualizados/, 'doctor la ve')
+  assert.equal(runCli(['automation', 'install', target, 'gemini']).status, 0)
+  assert.equal(fs.existsSync(path.join(folder, 'references', 'retirada.md')), false, 'reinstalar la retira')
+  // Y una que falta en la copia también la deja desactualizada.
+  const [first] = fs.readdirSync(path.join(folder, 'references'))
+  fs.rmSync(path.join(folder, 'references', first))
+  const missing = runCli(['automation', 'doctor', target, 'gemini'])
+  assert.match(missing.stdout + missing.stderr, /desactualizados/, 'doctor ve la que falta')
+  assert.equal(runCli(['automation', 'install', target, 'gemini']).status, 0)
+  // Una `references/` que es un enlace no se recorre para borrar lo que sobra: lo de detrás no es nuestro.
+  const behind = path.join(tempRoot('cauce-skills-referencias-afuera-'), 'refs')
+  fs.mkdirSync(behind, { recursive: true })
+  fs.writeFileSync(path.join(behind, 'ajena.md'), '# Ajena\n')
+  discard(path.join(folder, 'references'))
+  fs.symlinkSync(behind, path.join(folder, 'references'))
+  assert.notEqual(runCli(['automation', 'install', target, 'gemini']).status, 0, 'se niega')
+  assert.ok(fs.existsSync(path.join(behind, 'ajena.md')), 'y lo de detrás del enlace queda')
+  fs.unlinkSync(path.join(folder, 'references'))
+  assert.equal(runCli(['automation', 'install', target, 'gemini']).status, 0)
+
+  assert.equal(runCli(['automation', 'install', target, 'codex']).status, 0)
+  assert.equal(runCli(['automation', 'uninstall', target, 'gemini']).status, 0)
+  assert.equal(runCli(['automation', 'install', target, 'codex']).status, 0)
+  assert.equal(fs.readFileSync(path.join(folder, 'SKILL.md'), 'utf8'), roleSkill(system), 'Codex vuelve al puntero')
+  assert.equal(fs.existsSync(path.join(folder, 'references')), false, 'sin las referencias de la copia')
+  const doctor = runCli(['automation', 'doctor', target, 'codex'])
+  assert.doesNotMatch(doctor.stdout + doctor.stderr, /desactualizados/)
 })

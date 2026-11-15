@@ -4,7 +4,7 @@
 // límite de raíces las sume, que `check` las muestre con su origen, que un archivo roto exente menos y nunca
 // más, y que de ese archivo no se lea nada que no sea una ruta — el push sigue decidiéndose en el compartido.
 
-const { tempRoot, run } = require('../support/environment')
+const { outsideTempRoot, run } = require('../support/environment')
 const { blocked, pushRoot, WORK } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -15,7 +15,7 @@ const CP = require('../../engine/config/paths')
 const C = require('../../engine/config/validate')
 
 function instance(name, local) {
-  const root = tempRoot(name)
+  const root = outsideTempRoot(name)
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     workspaceRoots: [{ name: 'main', path: '.' }], writableOutsideRoots: ['../compartida'],
@@ -62,7 +62,7 @@ test('check avisa lo que el archivo local no puede hacer, sin fallar', () => {
 })
 
 test('check muestra cada ruta exenta con el archivo que la declaró, y avisa el local roto', () => {
-  const target = path.join(tempRoot('cauce-local-cli-'), 'demo-ops')
+  const target = path.join(outsideTempRoot('cauce-local-cli-'), 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   assert.match(fs.readFileSync(path.join(target, '.gitignore'), 'utf8'), /^ops\.config\.local\.json$/m,
     'init lo deja fuera de git')

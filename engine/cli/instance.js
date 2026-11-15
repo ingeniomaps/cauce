@@ -10,14 +10,11 @@ const path = require('node:path')
 const F = require('../core/files')
 const O = require('../core/ownership')
 const M = require('../core/manifest')
-const OB = require('../core/onboarding')
-const P = require('../planning/parser')
-const BK = require('../planning/backlog')
-const ST = require('../planning/state')
 const RC = require('../planning/recurring')
 const A = require('../automation')
+const IB = require('../core/ignore-block')
 const { fail, TODAY, USAGE, REFUSED } = require('./io')
-const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
+const { declareEngine, pinEngine } = require('./dependency')
 const { adviceFor, previewUpgrade, reportUpgrade } = require('./upgrade-report')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
@@ -100,10 +97,11 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     '{{MODE}}': mode,
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
     ...RC.sinceValues(TODAY()),
-  }, force, [...providerNames(), ...(mode === 'embedded' ? ['.github'] : [])], quiet)
+  }, force, [...providerNames(), ...(mode === 'embedded' ? ['.github', 'gitignore'] : [])], quiet)
   // El `.github/` del toolkit no se copia: su `ci.yml` valida el toolkit con `npm run ci`, que una instancia no
   // tiene. La instancia recibe el suyo desde el molde (caso 231), salvo en embedded, donde el repositorio es el
-  // del producto y su CI ya existe.
+  // del producto y su CI ya existe. Por lo mismo el `.gitignore`: en embedded es del producto, y lo de la instancia
+  // le llega en un bloque que mira qué versiona antes de ignorarlo (`ignoreInstance`, caso 513).
   Object.assign(preserved, copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
     path.join(root, 'automatization', 'hooks'),
@@ -142,100 +140,26 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   return root
 }
 
+// En embebido el `.gitignore` es del producto y el molde no lo escribe: lo que la instancia necesita ignorar va al
+// bloque de Cauce de ése (caso 513). En sidecar la instancia tiene el suyo y no hace falta.
+function ignoreInstance(root) {
+  if (O.mode(root) !== 'embedded') return []
+  const file = path.join(root, '.gitignore')
+  const { added, skipped } = IB.add(file, IB.instanceLines(path.join(PROJECT_ROOT, 'template', 'gitignore')), root)
+  if (added.length) console.log(`✓ ${file}: ${added.join(', ')} al bloque de Cauce`)
+  for (const { line, tracked } of skipped) {
+    console.log(`  ${line} no se agregó: ignoraría ${tracked.length} archivo(s) que el repositorio versiona `
+      + `(${tracked.slice(0, 3).join(', ')}${tracked.length > 3 ? ', …' : ''}). Si alguno es local, ignoralo vos.`)
+  }
+  return added
+}
+
 function instanceVersion(root) {
   try {
     return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).cauceVersion || ''
   } catch { return '' }
 }
 
-// Qué se pierde al borrar una instancia. Se cuenta antes de tocar nada porque es lo único que vuelve
-// reversible la decisión: quien lee esto todavía puede no seguir.
-// Lo cuenta el mismo parser que usan `check` y `tree`, no una expresión regular propia: los moldes traen
-// ejemplos comentados, y contarlos a mano anunciaba una tarea en cola y otra terminada en una instancia
-// recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
-function whatIsLost(root) {
-  const planning = path.join(root, 'planning')
-  const queued = BK.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
-  const humanActions = ST.pendingHumanActions(planning).length
-  return {
-    epicas: P.readEpics(planning).length,
-    hechas: (P.readDone(planning).entries || []).length,
-    enCola: queued,
-    humanActions,
-    contexto: !OB.guide(root).fresh,
-    runners: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))],
-  }
-}
-
-// Saca la instancia entera y el wiring que dejó en cada runner. Existe porque la alternativa era una
-// lista de pasos a mano —desinstalar cada runner y después `rm -rf`—, y una lista se ejecuta a medias:
-// el orden importa, y borrar primero la carpeta deja al runner ejecutando guards que ya no existen.
-//
-// Nunca borra sin que alguien lo haya pedido dos veces. Lo que hay adentro —planning, organization, la
-// evidencia de lo hecho— es del proyecto y no lo repone ningún `init`.
-function destroy(dir, cli) {
-  const root = path.resolve(dir || '.')
-  if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
-    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, USAGE)
-  }
-  if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, USAGE)
-
-  const loss = whatIsLost(root)
-  const lines = [
-    loss.epicas && `${loss.epicas} épica(s) en el roadmap`,
-    loss.enCola && `${loss.enCola} tarea(s) en la cola`,
-    loss.hechas && `${loss.hechas} tarea(s) terminada(s) con su evidencia`,
-    loss.humanActions && `${loss.humanActions} acción(es) humana(s) pendiente(s)`,
-    loss.contexto && 'el contexto escrito en organization/',
-  ].filter(Boolean)
-
-  const embedded = O.mode(root) === 'embedded'
-  if (!cli.has('--force')) {
-    console.log(embedded
-      ? `Sacar Cauce de ${root} se lleva:`
-      : `Borrar ${root} se lleva:`)
-    for (const textLine of lines) console.log(`  − ${textLine}`)
-    if (!lines.length) console.log('  − nada escrito todavía: la instancia está como salió de init')
-    if (loss.runners.length) {
-      console.log(`  y saca el wiring de: ${loss.runners.join(', ')} (lo tuyo queda donde está)`)
-    }
-    if (embedded) {
-      console.log('  el código del repositorio no se toca: en modo embebido la instancia es él mismo.')
-    }
-    console.log('\nNada de esto lo repone un init. Si es lo que querés: repetí con --force.')
-    process.exit(1)
-  }
-
-  for (const runner of loss.runners) {
-    try { A.uninstall(root, runner, console) } catch (error) { console.error(`  ${runner}: ${error.message}`) }
-  }
-  // El orden no es negociable: primero el wiring, después la carpeta. Al revés, cada llamada de
-  // herramienta del runner queda ejecutando un guard que ya no está.
-  // En modo embebido la instancia **es** el repositorio: borrar la carpeta se lleva el código del
-  // producto, que Cauce nunca escribió y no repone nadie. Ahí se saca lo del toolkit y se deja el repo.
-  if (O.mode(root) === 'embedded') {
-    const ownPath = [
-      'planning', 'organization', 'flows', 'integrations', 'automatization', 'tools',
-      'ops.config.json', '.cauce', 'AGENTS.md',
-    ]
-    for (const relative of ownPath) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
-    console.log(`✓ ${ownPath.length} ruta(s) de Cauce quitadas de ${root}`)
-    for (const line of undeclareEngine(path.join(root, 'package.json'))) console.log(`✓ ${line}`)
-    const npm = ['node_modules', 'package-lock.json']
-      .filter((one) => fs.existsSync(path.join(root, one)))
-    if (npm.length) {
-      console.log(`  queda ${npm.join(' y ')}: lo escribe npm y puede tener lo tuyo. Borralo vos si el`)
-      console.log('  repositorio no usaba npm antes de instalar Cauce.')
-    }
-    return console.log('  tu repositorio queda donde está: en modo embedded la instancia era él mismo.')
-  }
-  const inside = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
-  fs.rmSync(root, { recursive: true, force: true })
-  console.log(`✓ ${root} borrado`)
-  // Correrlo desde adentro es lo natural —ahí está `tools/ops.js`— y deja la terminal en un directorio
-  // que ya no existe: el próximo comando falla con un `getcwd` que no dice nada de esto.
-  if (inside) console.log('  tu terminal quedó en esa carpeta: hacé "cd .." antes del próximo comando.')
-}
 
 // El rename de `teams/` a `flows/`, que ninguna instancia puede hacer sola. Mueve la carpeta y los dos
 // archivos de cada recorrido propio; los del catálogo viajan en el paquete y no están acá. Si las dos
@@ -441,6 +365,7 @@ function upgrade(dir, cli) {
 
   config.cauceVersion = to
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
+  ignoreInstance(root)
   // Acá es donde las tres versiones se saben a la vez, así que es donde pueden quedar diciendo lo mismo.
   const pinned = pinEngine(root, to)
 
@@ -453,4 +378,4 @@ function upgrade(dir, cli) {
   })
 }
 
-module.exports = { copyTemplate, scaffold, providerNames, upgrade, destroy, PROJECT_ROOT }
+module.exports = { copyTemplate, scaffold, providerNames, upgrade, ignoreInstance, PROJECT_ROOT }

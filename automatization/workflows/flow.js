@@ -265,6 +265,15 @@ if (contract.exists === false) {
 if (!contract.name || !contract.stages || !contract.guardrails) {
   return stop('contrato-incompleto', `el manifiesto de ${CANDIDATE} no trae nombre, etapas o guardrails`)
 }
+// Sin los dos puntos, `/flow intake …` corría el recorrido por defecto con «intake …» de intención: frenar acá cuesta
+// una llamada, y seguir, la corrida entera del recorrido equivocado.
+const firstWord = (raw.match(/^([a-z][a-z0-9-]*)\s+(.+)$/s) || [])
+if (!input.flow && !prefix && !RESUME && firstWord[1] && firstWord[1] !== CANDIDATE
+  && (contract.flows || []).includes(firstWord[1])) {
+  return stop('recorrido-sin-dos-puntos', `la intención empieza con "${firstWord[1]}", que es un recorrido. Si es ` +
+    `ése, repetí "/flow ${firstWord[1]}: ${firstWord[2]}"; si no, repetí con ` +
+    `{"flow": "${CANDIDATE}", "intent": "${raw}"}.`)
+}
 const FLOW = CANDIDATE
 const GOAL = INTENT || (contract.resume ? contract.resume.intent : '')
 
