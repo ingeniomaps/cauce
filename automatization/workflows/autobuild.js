@@ -2573,7 +2573,10 @@ while (rounds++ < MAX_TASKS) {
     }
   }
   holding = ''
-  if (commit && commit.branch && !usedBranches.includes(commit.branch)) usedBranches.push(commit.branch)
+  // Sólo la rama que cortó el recorrido, que se llama por la tarea (`<tipo>/<slug>`): la que la persona dejó puesta
+  // para el hito sirve para todas sus tareas, y anotarla repartía la entrega en una rama por tarea (caso 515).
+  const taskBranch = commit && commit.branch && commit.branch.endsWith(`/${task.id}`)
+  if (taskBranch && !usedBranches.includes(commit.branch)) usedBranches.push(commit.branch)
   completed.push(task.id)
   planning = await readContext()
   if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
