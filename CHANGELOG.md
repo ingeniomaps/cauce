@@ -14,6 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.122.0] - 2026-11-15
+
+### Cambiado
+
+- **En Codex, `install` abre el `.git` de cada repositorio en el sandbox.** Con `-s workspace-write`, Codex monta `.git`
+  en sólo lectura, y `$autobuild` construía la tarea pero no podía cortar su rama ni commitear: terminaba en una acción
+  humana. `install` escribe en `.codex/config.toml` un bloque entre `# >>> cauce` y `# <<< cauce` con
+  `sandbox_workspace_write.writable_roots`, en rutas relativas, y `uninstall` lo saca. Si ese archivo ya tiene su
+  propia tabla `[sandbox_workspace_write]`, no se toca y el bloque de Cauce se saca: `install` y `doctor` dicen la línea
+  que le falta. Lo que agregues al final del archivo, debajo del bloque, queda dentro de esa tabla: va arriba. Reinstalá
+  el adaptador de Codex para que lo escriba.
+- **`workspace-boundary` y `shell-boundary` frenan escribir un hook o la configuración de git.** Un archivo en
+  `.git/hooks/`, `.git/config` o el `config.worktree` de un árbol de trabajo —también los de un submódulo—, un
+  `git config` que escribe la del repositorio y un `git init` o `git clone` con `--template` corren después fuera de
+  cualquier sandbox, cuando commitea la persona. Frenan hasta que la persona lo confirma, en todos los runners. Leer la
+  configuración, `--global`, lo que escribe un commit y un repositorio de prueba en el temporal pasan.
+- **El recorrido `autobuild` de Codex, Gemini y Antigravity pide escribir el checkpoint del hito.** Decía «detente en el
+  checkpoint entre hitos», y Codex cerró un hito sin escribir `checkpoints/<hito>.md`: la corrida siguiente habría
+  arrancado el hito que sigue sin revisión. Ahora nombra el archivo, su estado y que se compruebe con `ops context`, y
+  el paso 14 de `PROTOCOL.md` también.
+
 ## [0.121.0] - 2026-11-15
 
 ### Cambiado
