@@ -45,8 +45,8 @@ Con `mode: sidecar` hay un solo `planning/` por máquina, así que un archivo co
 los agentes que corren ahí: el segundo pisa el plan del primero, y `ops context` le entrega la tarea que
 el primero está construyendo — con el plan ajeno adentro y diciéndole que está libre.
 
-El nombre sale del id del runner, aplanado para poder ser un nombre de archivo. Queda largo y legible a
-propósito: sirve para ver de quién es cada plan cuando algo quedó a medias.
+El nombre sale del id del runner, aplanado para poder ser un nombre de archivo —`ops claim` imprime la ruta—.
+Queda largo y legible a propósito: sirve para ver de quién es cada plan cuando algo quedó a medias.
 
 ## Qué mira cada comando
 

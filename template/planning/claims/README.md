@@ -53,7 +53,8 @@ evita que un runner lleve dos.
 ## Un reclamo sin empujar no protege
 
 El otro runner lee lo que hay en su copia. Tomar una tarea y no commitear el archivo se ve igual que no
-haberla tomado, y por eso `ops claim` lo recuerda al terminar.
+haberla tomado, y por eso `ops claim` lo recuerda al terminar. Si el repositorio no tiene remoto lo dice, y con
+`runner.allowPush` apagado recuerda que ese push lo pide una persona.
 
 ## Cuando alguien se va
 
