@@ -15,6 +15,19 @@ Codex guarda la confianza contra el hash del archivo y saltea en silencio lo nue
 una sesión y usá `/hooks` para revisarlos y confiarlos; hay que repetirlo cada vez que el wiring cambie,
 porque cambia el hash. No se usa `--dangerously-bypass-hook-trust`.
 
+**El sandbox y `.git`.** Con `-s workspace-write`, Codex monta `.git` en sólo lectura, y una tarea no puede cortar
+su rama ni commitear: medido con `codex-cli` 0.163.0, `git switch -c` da `Read-only file system`. `install` escribe en
+`.codex/config.toml` un bloque entre `# >>> cauce` y `# <<< cauce` con `sandbox_workspace_write.writable_roots`: el
+`.git` de cada repositorio, relativo a `.codex/`, que es desde donde Codex lo resuelve. `uninstall` lo saca. Si el
+archivo ya tiene su propia tabla `[sandbox_workspace_write]`, no se toca —dos tablas iguales no son TOML válido—, el
+bloque de Cauce se saca, e `install` dice la línea que le falta; `doctor` lo vuelve a decir mientras falte. Lo tuyo va
+arriba del bloque: una clave escrita debajo cae dentro de esa tabla.
+
+Abrir `.git` deja escribir también `hooks/` y `config`, que corren después fuera del sandbox, cuando commitea la
+persona. Eso lo frenan `workspace-boundary` y `shell-boundary` hasta que la persona lo confirma: un hook, un
+`git config` que escribe la del repositorio, o un `--template`. Lo que escriba un script por su cuenta no lo ven, ni un
+`.git` común con otro nombre.
+
 Los `matcher` filtran el **nombre de la herramienta**: los comandos de shell llegan como `Bash` y las
 ediciones como `apply_patch`, `Edit` o `Write`. No son los nombres internos del protocolo.
 
