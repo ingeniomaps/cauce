@@ -121,6 +121,14 @@ async function init(target, cli) {
   const relative = path.relative(process.cwd(), root)
   const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
   console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
+  // Sin `timeZone` la instancia fecha en UTC (caso 303), que de noche en América es el día siguiente. Se propone y
+  // no se escribe: el huso es del equipo, y quien instala puede no estar donde trabaja el resto.
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const declared = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).timeZone
+  if (zone && !/^(?:UTC|Etc\/UTC|Etc\/GMT)$/.test(zone) && !declared) {
+    console.log('  las fechas salen en UTC; si el equipo trabaja en el huso de esta máquina, declaralo en '
+      + `ops.config.json: "timeZone": "${zone}"`)
+  }
   for (const { file, name: section } of CT.missingSections(root)) {
     console.log(`! ${file} se conservó y no trae la sección ${section}: hasta que la tenga, \`ops contract\` falla `
       + `y los agentes no reciben contrato. ${CT.restoreAdvice(file)}`)
