@@ -18,6 +18,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **En Claude Code, los guards corren también en una sesión abierta en una subcarpeta del proyecto.** Claude Code lee
+  `.claude/settings.json` sólo de la carpeta donde se abre la sesión, así que abierta en una subcarpeta no cargaba ni
+  un guard, y nada lo decía. `install` suma los mismos hooks al `.claude/settings.local.json` de la raíz git, con la
+  ruta absoluta de la instalación, y corren sólo en una sesión abierta debajo de ella: en la instalación misma ya
+  corren los de `settings.json`, y la raíz de un monorepo o la carpeta de otra instancia quedan afuera. Lo que tengas
+  en ese archivo queda. No se escribe si la raíz git contiene tu home ni si el archivo está versionado: se avisa.
+  Reinstalá el adaptador de Claude para que lo escriba. Un repo de producto con git propio, en sidecar, sigue
+  necesitando la sesión abierta en la carpeta de instalación.
+
 - **`secrets-shell` resuelve una lectura desde el `cd` de su propio comando** (caso 518). `cd <dir> && grep … .env` se
   juzgaba como lectura del `.env` de la carpeta de la sesión: el bloqueo nombraba un archivo que el comando no lee, y
   aprobar el que sí lee no lo destrababa. Ahora nombra el de `<dir>`, y un `( … )` o un `$( … )` no mueven lo que
