@@ -101,9 +101,12 @@ Contra el caso:
   ruta que llega, y no si esa carpeta es un enlace. Con eso se abre también el historial de la propia sesión
   (`chats/`), que la sesión puede reescribir o borrar; es de la sesión y lo escribe Gemini, y exceptuarlo se decidió que
   no, porque no protege nada que la sesión no pudiera tocar ya por la herramienta de Gemini.
-- **Tradeoff, medirlo con una mutación real de `/autobuild` en Gemini:** se hizo distinto. Se midió la escritura con la
-  herramienta de Gemini en una sesión real, que es lo que el caso frenaba; Gemini no corre `/autobuild` con subagentes
-  como Claude.
+- **Tradeoff, medirlo con una mutación real de `/autobuild` en Gemini:** se hizo. `/cauce:autobuild` corrió en el banco
+  de Gemini sobre `agregar-resta`, con la mutación declarada en la aceptación. La sesión armó la copia en `/tmp` desde su
+  terminal —el límite de Gemini es de su herramienta de archivos, no del shell— y la mutación dio rojo ahí
+  (`AssertionError: -2 == 2`); `src/resta.js` quedó como lo commiteó (`a3ce8a3`). En esa corrida no usó su temporal de
+  proyecto: el arreglo deja disponible ese lugar para la herramienta de archivos, y la corrida no lo necesitó. Su primer
+  intento lo frenó la política propia de Gemini (`Tool execution denied by policy`), no un guard.
 
 Lo que el caso no preveía, de la revisión independiente: una carpeta de la sesión que es un enlace abría lo que tiene
 detrás, porque el límite juzga por dónde cae la escritura. Pasaba también con el scratchpad de Claude Code (caso 288); se
@@ -120,7 +123,8 @@ cerró en los dos.
    sobrevivió porque no cambiaba lo que se abre, y se quitó.
 5. hecho: lo que se quita es el freno del temporal de Gemini. La prueba afirma que el home, `~/.gemini`, otro proyecto y
    una carpeta enlazada siguen frenando, y la sonda de antes y la de después están en «Qué se corrió».
-6. hecho: Gemini CLI 0.63.0 real, con el motor de la rama, dos veces: con la primera versión y con la final.
+6. hecho: Gemini CLI 0.63.0 real, con el motor de la rama: la escritura en el temporal de proyecto con la primera versión
+   y con la final, y un `/cauce:autobuild` entero con su mutación en una copia.
 7. hecho: lo que depende del runner corrió en Gemini.
 8. hecho: corrieron la herramienta de archivos de Gemini y, en pruebas, la de shell; el `transcript_path` de Claude Code
    no abre nada. No corrió Codex.
@@ -148,5 +152,6 @@ después Successfully created and wrote to new file: $HOME/.gemini/tmp/gemini-1/
 
 El archivo de la sonda se borró después de leer su ruta y su contenido.
 
-**Sin probar:** Codex, y una mutación de un recorrido entero corrida en Gemini.
+**Sin probar:** Codex, y un `/cauce:autobuild` de Gemini que escriba la copia con su herramienta de archivos en vez de
+la terminal.
 
