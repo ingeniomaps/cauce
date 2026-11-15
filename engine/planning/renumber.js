@@ -55,7 +55,7 @@ function plan(root, epicName, num) {
     const text = P.read(file)
     let next = text.split(oldBase).join(newBase)
     if (file === spec) {
-      next = next.replace(new RegExp(`^epic:\\s*${old}\\s*$`, 'm'), `epic: ${num}`)
+      next = next.replace(new RegExp(`^epic:\\s*(['"]?)${old}\\1\\s*$`, 'm'), `epic: $1${num}$1`)
         .replace(new RegExp(`^(#\\s+Épica\\s+)${old}\\b`, 'm'), `$1${num}`)
     } else {
       // Sólo las tareas de esta épica: con el número repetido, las de la otra citan el mismo `(epic: NNN)`.
