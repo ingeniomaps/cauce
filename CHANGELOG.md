@@ -23,7 +23,8 @@ diseño — eso vive en el commit y en el código.
   aprobar el que sí lee no lo destrababa. Ahora nombra el de `<dir>`, y un `( … )` o un `$( … )` no mueven lo que
   sigue. Si aprobaste la ruta equivocada para destrabarlo, esa línea de `.ops-approval` ya no hace falta. Un `cd` a un
   destino que no se resuelve —`cd "$DIR"`— antes de leer una credencial pide la ruta absoluta, como ya lo hacía la
-  escritura.
+  escritura. Una identidad declarada en `organization/secrets.json` también se reconoce después de un `cd`: antes,
+  `cd .. && cat <identidad>` pasaba.
 
 ## [0.122.0] - 2026-11-15
 

@@ -111,6 +111,14 @@ Contra el caso:
   con el `.env` de la sesión aprobado, ahora pide la ruta absoluta. Pasa si la persona lo pidió en el chat. Seguir el
   alcance era lo que la primera versión hacía mal.
 
+Lo que el caso no preveía y se arregló: una identidad declarada en `organization/secrets.json` se reconocía por su
+ruta resuelta desde la sesión, así que `cd .. && cat local-dev.env` pasaba sin freno —también en `main`—. Ahora se
+resuelve también desde la carpeta del tramo, comparada sólo contra las identidades: comparada por nombre, `grep -r x
+.` dentro de una carpeta llamada `server.key` frenaba, y la revisión lo encontró antes de entregar. Salió de la prueba
+real, en el arnés. Quedan como estaban: la regla por nombre sigue resolviendo una identidad desde la sesión —`cd portal
+&& cat local-dev.env` frena nombrando `portal/local-dev.env`—, y una identidad no se ve bajo un `cd` que no se resuelve
+ni por un comodín (`local-dev.*`).
+
 Lo que el caso no preveía, y queda como en `main`: `pushd`/`popd`, un `bash -c 'cd x && cat .env'` —la escritura sí
 lee el script de adentro—, un `cd .. 2>&1 && …` —el `&` de la redirección se lee como fondo— y `cd ~usuario` siguen
 resolviendo contra la carpeta de la sesión, igual que `cd .. &>/dev/null && …` y `cd .. >&2; …`. Tampoco se ve un
@@ -147,8 +155,9 @@ El «antes» corrió con el motor de `origin/main` enlazado en el mismo banco.
    `<raíz>/portal/.env`, y la salida de antes y la de después están en «Qué se corrió».
 6. hecho: por la cadena real de hooks en un banco, sin dobles.
 7. no aplica: no depende de un modelo ni de un runner; el guard es el mismo en todos.
-8. hecho: corrieron la prueba, las 448 de guards, la cadena real con el motor de antes y el de después; no corrió una
-   sesión con modelo.
+8. hecho: corrieron la prueba, las 449 de guards, la cadena real con el motor de antes y el de después, y una sesión
+   real de Claude Code (haiku) parada en `portal/`: con la ruta aprobada leyó (`1`), y sin aprobar frenó nombrando el
+   archivo correcto.
 9. no aplica: no coordina nada entre runners ni raíces.
 10. hecho: `readTokens` la usa sólo `secretsShell`; las pruebas de `secrets-shell` existentes siguen sin cambios.
 11. hecho: tres pasadas independientes. La primera encontró tres cosas que impedían entregar y la versión se
@@ -162,5 +171,5 @@ El «antes» corrió con el motor de `origin/main` enlazado en el mismo banco.
 15. hecho: lo corrido y lo no previsto, arriba.
 16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.123.0`, y entrada en el CHANGELOG.
 
-**Sin probar:** una sesión real con modelo que lea una credencial después de un `cd`; el guard no depende del modelo.
+**Sin probar:** nada.
 
