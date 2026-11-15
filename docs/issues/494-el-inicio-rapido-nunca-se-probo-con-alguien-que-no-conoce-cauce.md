@@ -141,3 +141,26 @@ Contra el resto del caso:
 
 **Sin probar:** la corrida en otro runner, en un monorepo y en una instancia `embedded`; y si una persona adivina
 distinto que el modelo en los pasos 5 y 7.
+
+## Corrida del 2026-11-15, antes de 0.121.0
+
+Repetida por la regla de `AGENTS.md`, con el paquete de la rama `fix/e2e-120-findings` empaquetado con `npm pack`
+—0.121.0 no estaba publicada— en `/var/tmp/ciego-121`, un proyecto Node de dos archivos con git. La consulta de control
+con `--setting-sources project,local` contestó que no conocía Cauce. USD 2,20, 79 turnos, unos 6 minutos. Instaló en
+`ops/` (sidecar dentro del repositorio) y llevó «filtrar notas por texto» de punta a punta, con la prueba vista en rojo,
+evidencia en DONE y commit en rama. El informe quedó en `ops/planning/reports/2026-11-15-informe-ciego.md` del banco.
+
+Contrastado contra su `.jsonl` y contra el README del paquete:
+- **Lo nuevo anduvo:** `automation install` dejó `.claude/workflows/` en el bloque de Cauce del `.gitignore` (caso 513) y
+  `check` no avisó; `install` le dijo que abriera una sesión nueva y repitiera el pedido (502 y 503).
+- **Bloqueos del diseño de la prueba:** el commit de la instancia lo frenó la gobernanza y el informe en la raíz,
+  `plan-first`, porque siguió en la sesión en que instaló; con `-p` no puede abrir otra. El `.jsonl` muestra el aviso de
+  `install`. Su paso 4 lee mal el README: dice que prometía una sesión sin guards, y el README (línea 150 del paquete)
+  dice que le faltan los subagentes y lo pedido antes.
+- **Instalar desde un tarball:** artefacto de la prueba, por no estar publicado.
+- **Repetidos de la corrida anterior, y arreglados en esta misma rama:** el nombre del archivo del WIP, que tuvo que
+  sacar leyendo el motor, y `ops claim` pidiendo «commiteá y empujá» sin remoto y con `allowPush` apagado. `claim` ahora
+  imprime la ruta del plan y dice quién empuja.
+- **Repetido y anotado:** el aviso OPS-001 cuenta el commit inicial, anterior a Cauce y del mismo día.
+- **No volvieron a aparecer:** `/onboard` como skill (no la usó) y el `.gitignore` sin la línea.
+

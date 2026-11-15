@@ -57,6 +57,9 @@ diseño — eso vive en el commit y en el código.
 - **`/onboard` cuenta las acciones humanas que escribió.** El pedido no las nombraba y el cierre decía siempre 0.
 - **`/flow intake <texto>` sin los dos puntos frena antes de la primera etapa** y muestra la forma correcta, en vez de
   correr entero el recorrido por defecto con el nombre como parte de la intención.
+- **`ops claim` dice dónde va el plan y si empujar el reclamo le toca al agente.** Imprime la ruta del archivo del WIP,
+  que había que deducir del id del runner. Y ya no pide «commiteá y empujá» sin remoto, ni con `runner.allowPush`
+  apagado, donde ese push lo pide una persona.
 - **`ops evidence` sin ninguna entrada en DONE termina con 1**, no con el código de uso: es un estado del proyecto.
 - **`automation` sobre una ruta que no es una instancia lo dice en una línea**, en vez de listar cada archivo faltante y
   mandar a correr `npm install`.
