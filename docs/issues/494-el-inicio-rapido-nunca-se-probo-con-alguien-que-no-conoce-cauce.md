@@ -161,6 +161,8 @@ Contrastado contra su `.jsonl` y contra el README del paquete:
 - **Repetidos de la corrida anterior, y arreglados en esta misma rama:** el nombre del archivo del WIP, que tuvo que
   sacar leyendo el motor, y `ops claim` pidiendo «commiteá y empujá» sin remoto y con `allowPush` apagado. `claim` ahora
   imprime la ruta del plan y dice quién empuja.
-- **Repetido y anotado:** el aviso OPS-001 cuenta el commit inicial, anterior a Cauce y del mismo día.
+- **Repetido, y arreglado después en la misma rama:** el aviso OPS-001 contaba el commit inicial, anterior a Cauce y del
+  mismo día. Ahora cuenta desde que existe la instancia; sobre este banco, `check` ya no lo da, y en un clon con un
+  commit nuevo sin registrar lo sigue dando.
 - **No volvieron a aparecer:** `/onboard` como skill (no la usó) y el `.gitignore` sin la línea.
 

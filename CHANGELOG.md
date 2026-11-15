@@ -60,6 +60,9 @@ diseño — eso vive en el commit y en el código.
 - **`ops claim` dice dónde va el plan y si empujar el reclamo le toca al agente.** Imprime la ruta del archivo del WIP,
   que había que deducir del id del runner. Y ya no pide «commiteá y empujá» sin remoto, ni con `runner.allowPush`
   apagado, donde ese push lo pide una persona.
+- **El aviso OPS-001 no cuenta los commits anteriores a la instancia.** La ventana es por día, y el commit inicial del
+  producto, hecho el mismo día antes de instalar Cauce, salía como trabajo sin registrar. Cuenta desde el commit que
+  agregó `ops.config.json`, o desde la fecha del archivo si todavía no se commiteó.
 - **`ops evidence` sin ninguna entrada en DONE termina con 1**, no con el código de uso: es un estado del proyecto.
 - **`automation` sobre una ruta que no es una instancia lo dice en una línea**, en vez de listar cada archivo faltante y
   mandar a correr `npm install`.
