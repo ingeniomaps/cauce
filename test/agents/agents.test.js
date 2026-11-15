@@ -187,6 +187,16 @@ test('una empresa puede acotar el catálogo a lo que sí mantiene', () => {
   assert.match(run(['learn', 'qa-engineer'], target).stderr, /se hace en el toolkit/)
 })
 
+// Sin cargos propios, la salida vacía no distinguía «no hay» de «no corrió».
+test('--own sin cargos propios lo dice y nombra cómo tener uno', () => {
+  const target = installedProject('SinPropios')
+  const listed = run(['agents', 'list', target, '--own'])
+  assert.equal(listed.status, 0, listed.stderr)
+  assert.match(listed.stdout, /Ningún cargo propio todavía/)
+  assert.match(listed.stdout, /ops agents fork <slug>/)
+  assert.deepEqual(JSON.parse(run(['agents', 'list', target, '--own', '--json']).stdout), [], 'el JSON sigue vacío')
+})
+
 // El único párrafo que todos los cargos comparten palabra por palabra: el recorrido de artefactos que
 // cierra «Entrega mínima». No se puede factorizar a un archivo compartido — un `SKILL.md` lo lee el
 // agente tal cual del paquete, sin que cauce lo renderice, así que un `{{INCLUDE:}}` le llegaría

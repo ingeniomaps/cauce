@@ -71,6 +71,10 @@ function agents(action, dir, extra, cli) {
     const mark = role.system ? '' : ' (propio)'
     console.log(`${role.slug.padEnd(width)}${mark}  ${role.summary || '— sin resumen'}`)
   }
+  if (!roles.length && own) {
+    console.log('Ningún cargo propio todavía. Uno se escribe en agents/roles/<slug>/, o se adopta uno del catálogo '
+      + 'con "ops agents fork <slug>".')
+  }
   // La respuesta negativa tiene que ser tan barata como la positiva: si ninguna línea encaja, el
   // camino no es forzar el cargo más parecido, es escribir el propio.
   if (roles.length && !own) {

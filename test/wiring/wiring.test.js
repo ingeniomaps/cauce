@@ -59,6 +59,18 @@ test('automation list-hooks explica los guards disponibles', () => {
   assert.match(report.stdout, new RegExp(`${Object.keys(guards).length} guards`), 'y es lo que informa')
 })
 
+// Una ruta que no es una instancia —que no existe, o el runner puesto donde va la raíz— listaba 42 faltantes que
+// mandaban a correr `npm install`, cuando lo que estaba mal era la invocación.
+test('automation sobre algo que no es una instancia lo dice en una línea', () => {
+  const missing = path.join(tempRoot('cauce-auto-sin-'), 'no-existe')
+  for (const args of [['check', missing], ['doctor', missing, 'claude'], ['install', missing, 'claude']]) {
+    const result = run(['automation', ...args])
+    assert.equal(result.status, 2, args.join(' '))
+    assert.match(result.stderr, /no es una instancia de Cauce: falta ops\.config\.json/)
+    assert.doesNotMatch(result.stderr, /npm install/)
+  }
+})
+
 // Un guard que a veces no corre tiene que decir cuándo, o el conteo de arriba promete una cobertura que
 // no está. Se mide contra una instancia recién creada —el estado en que `plan-first` queda inerte— y
 // contra la misma con una tarea, porque decir siempre lo mismo no informa nada.

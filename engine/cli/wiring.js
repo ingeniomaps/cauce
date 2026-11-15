@@ -186,7 +186,8 @@ function onboard(rootArg, cli, runner = '') {
     for (const dimension of state.dimensions) console.log(`  · ${dimension.need}`)
     console.log('')
   }
-  const listed = services.slice(0, MAX_LISTED).map((service) => service.path).join(', ')
+  const listed = services.slice(0, MAX_LISTED)
+    .map((service) => (service.path === '.' ? 'la raíz del repositorio (.)' : service.path)).join(', ')
   const more = services.length > MAX_LISTED ? ` y ${services.length - MAX_LISTED} más` : ''
   console.log(services.length
     ? `Mientras tanto, esto es lo que hay: ${listed}${more}`
@@ -238,6 +239,9 @@ async function integration(action, rootArg, provider, key, cli) {
 function automation(action, rootArg, runnerName, cli) {
   const root = opsRoot(rootArg)
   if (action === 'list-hooks') return A.listHooks()
+  if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
+    fail(`${root} no es una instancia de Cauce: falta ops.config.json. Pasá la raíz de la instancia.`, USAGE)
+  }
   if (action === 'list') {
     for (const name of A.RUNNER_NAMES) {
       const runner = A.runnerManifest(root, name)

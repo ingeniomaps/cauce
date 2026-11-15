@@ -51,7 +51,8 @@ function evidence(dir, cli) {
   // Sin `--task`, la más reciente, y la decide `fecha:` — por qué ese campo existe lo dice el contrato.
   const reciente = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
   const entry = slug ? entries.find((one) => one.slug === slug) : reciente
-  if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', USAGE)
+  if (!entry && slug) return fail(`DONE no tiene la entrada ${slug}`, USAGE)
+  if (!entry) return fail('DONE no tiene ninguna entrada', REFUSED)
 
   let config = {}
   try { config = JSON.parse(fs.readFileSync(path.join(opsDir, 'ops.config.json'), 'utf8')) } catch { /* sin raíces */ }

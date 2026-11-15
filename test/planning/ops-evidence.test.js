@@ -72,8 +72,17 @@ test('evidence lee el registro de gates y elige la entrada que se le pide', () =
   assert.deepEqual(report.runs, [{ at: '2026-09-07T10:00:00Z', gate: 'test', status: 0 }])
 
   const inexistente = run(['evidence', path.join(ops, 'planning'), '--task', 'no-existe'])
-  assert.notEqual(inexistente.status, 0)
+  assert.equal(inexistente.status, 2, 'nombrar una tarea que no está es la invocación')
   assert.match(inexistente.stderr, /DONE no tiene la entrada no-existe/)
+})
+
+// Una instancia recién creada no tiene nada en DONE, y eso es un estado del proyecto, no una invocación mal hecha.
+test('evidence sin ninguna entrada se niega con 1, no con el código de uso', () => {
+  const ops = path.join(tempRoot('cauce-evidence-vacio-'), 'demo-ops')
+  assert.equal(run(['init', ops, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const empty = run(['evidence', path.join(ops, 'planning')])
+  assert.equal(empty.status, 1, empty.stderr)
+  assert.match(empty.stderr, /DONE no tiene ninguna entrada/)
 })
 
 test('evidence no afirma ausencia donde no hay dónde mirar', () => {
