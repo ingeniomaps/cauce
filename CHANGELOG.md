@@ -51,6 +51,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`/autobuild` deja en la rama que cortó la persona todas las tareas de un hito** (caso 515). La primera commiteaba
+  ahí y desde la segunda la corrida la tomaba por la rama de otra tarea, y repartía la entrega en una rama por tarea.
+  Ahora sólo cuenta como de otra tarea la rama que cortó el recorrido, `<tipo>/<tarea>`.
 - **La entrada de DONE ya no conserva los supuestos que la corrección de Review volvió falsos** (caso 511). La
   corrección contesta qué notas de construcción dejó sin efecto y cuáles agrega; en el camino de dos sesiones, las notas
   de una entrega reemplazan a las de la anterior.
