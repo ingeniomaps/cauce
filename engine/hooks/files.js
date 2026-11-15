@@ -124,6 +124,9 @@ const TEST_OFF = [
   [/\b(?:describe|context|it|test|suite)\s*\.\s*(?:skip|only|todo)\b/, 'skip/only'],
   [/\b[xf](?:it|test|describe|context)\s*[("'`]/, 'xit/fit'],
   [/\bt\.Skip(?:Now)?\s*\(/, 't.Skip'],
+  // Las formas de node:test, por la opción o por el contexto, y la de mocha por `this`. `skip: false` no apaga nada.
+  [/[{,]\s*(?:skip|todo)\s*:\s*(?!false\b)[^\s,}]/, '{ skip | todo }'],
+  [/\b(?:t|this)\.(?:skip|todo)\s*\(/, 't.skip'],
   [/@pytest\.mark\.(?:skip|skipif|xfail)\b/, 'pytest.mark.skip'],
   [/@unittest\.skip/, 'unittest.skip'],
   [/@(?:Ignore|Disabled)\b/, 'Ignore/Disabled'],
@@ -162,6 +165,14 @@ function testEvidence(input) {
   for (const { from, to } of patchMoves(patchOf(input))) {
     if (!isTestFile(from) || isTestFile(to) || approved(input, from)) continue
     block(`${from} borra una prueba: renombrada a ${to} deja de serlo.\n${why}${how(from)}`)
+  }
+  // Escribir una prueba vacía encima de la que había la borra igual que `rm`, y por el camino de escribir.
+  if ((input.tool_input || {}).content === '') {
+    for (const raw of filesOf(input)) {
+      const file = path.resolve(cwdOf(input), raw)
+      if (!isTestFile(raw) || approved(input, raw) || !fs.existsSync(file) || !fs.statSync(file).size) continue
+      block(`${raw} borra una prueba: escribirla vacía la saca de la suite.\n${why}${how(raw)}`)
+    }
   }
   const content = contentOf(input)
   if (!content) return
