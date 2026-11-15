@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.121.0] - 2026-11-15
+
+### Cambiado
+
+- **`init` propone declarar `timeZone` cuando la máquina no está en UTC.** Sin esa llave la instancia fecha en UTC, que
+  de noche en América es el día siguiente. Lo propone con el huso de la máquina y no lo escribe: el huso es del equipo.
+- **`automation install claude` nombra también `/agent-eval`, `/agent-propose`, `/agent-promote` y `/flow-eval`**, que
+  instala además de los cinco comunes a todos los runners.
+- **`destroy` nombra los árboles de tarea que dejó `ops worktree`** y cómo quitarlos. No los borra: pueden tener trabajo
+  sin commitear.
+
+### Corregido
+
+- **`renumber-epic` mueve también un número entre comillas** (`epic: '001'`). Antes renombraba el archivo y las citas y
+  dejaba el frontmatter viejo, y `check` quedaba en rojo.
+- **`test-evidence` frena las formas de `node:test` y mocha que apagan una prueba** —`{ skip: true }`, `{ todo: … }`,
+  `t.skip()`, `this.skip()`— y escribir vacía una prueba que tenía contenido, que la saca de la suite igual que borrarla.
+- **`/onboard` cuenta las acciones humanas que escribió.** El pedido no las nombraba y el cierre decía siempre 0.
+- **`/flow intake <texto>` sin los dos puntos frena antes de la primera etapa** y muestra la forma correcta, en vez de
+  correr entero el recorrido por defecto con el nombre como parte de la intención.
+- **`ops evidence` sin ninguna entrada en DONE termina con 1**, no con el código de uso: es un estado del proyecto.
+- **`automation` sobre una ruta que no es una instancia lo dice en una línea**, en vez de listar cada archivo faltante y
+  mandar a correr `npm install`.
+- **`agents list --own` sin cargos propios lo dice**, en vez de no imprimir nada.
+- **El arranque nombra la raíz del repositorio** en vez de cerrar con «esto es lo que hay: .».
+- **`GEMINI.md` dice lo que pasa sin confiar en la carpeta**: sin confianza Gemini no arranca, y con `--skip-trust` corre
+  sin ningún guard y sin avisarlo.
+
 ## [0.120.0] - 2026-11-05
 
 ### Cargos
