@@ -10,8 +10,10 @@
 // fuera de ella —la raíz de un monorepo, la carpeta de otra instancia— no le toca opinar (R26). El archivo es de esta
 // máquina, así que la ruta absoluta no ata a nadie más; va al bloque de Cauce del `.gitignore`.
 //
-// No se escribe en un repositorio que contiene el home —uno de dotfiles—: todo lo que se abra bajo el home lo
-// cargaría. Ni en un `settings.local.json` versionado, que llevaría la ruta de esta máquina a todos.
+// Se escribe sólo en el repositorio del proyecto, con el criterio del bloque del `.gitignore` (caso 513): el que tiene
+// su raíz en la carpeta de instalación o en la de la instancia. Uno de más arriba no es del proyecto. Tampoco en uno
+// que contiene el home —uno de dotfiles—, que todo lo que se abra bajo el home cargaría, ni en un
+// `settings.local.json` versionado, que llevaría la ruta de esta máquina a todos.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -30,12 +32,13 @@ const git = (dir, ...args) => {
 }
 
 // Dónde va el archivo, o por qué no va.
-function target(paths, runner) {
+function target(root, paths, runner) {
   if (!runner.subfolderConfig || !fs.existsSync(paths.install)) return null
   const install = fs.realpathSync(paths.install)
   const asked = git(install, 'rev-parse', '--show-toplevel')
   if (asked.status !== 0) return null
   const repo = fs.realpathSync(asked.stdout.trim())
+  if (repo !== install && repo !== fs.realpathSync(root)) return null
   const file = path.join(repo, runner.subfolderConfig)
   const home = fs.realpathSync(os.homedir())
   if (home === repo || home.startsWith(repo === path.sep ? repo : `${repo}${path.sep}`)) {
@@ -112,7 +115,7 @@ const REFUSED = {
 }
 
 function install(root, paths, runner, name, output) {
-  const at = target(paths, runner)
+  const at = target(root, paths, runner)
   if (!at) return
   const lost = 'una sesión abierta en una subcarpeta corre sin guards'
   if (at.refused) {
@@ -134,8 +137,8 @@ function install(root, paths, runner, name, output) {
   output.log(`  ${name}: ${at.file} lleva los guards a una sesión abierta en una subcarpeta`)
 }
 
-function remove(paths, runner) {
-  const at = target(paths, runner)
+function remove(root, paths, runner) {
+  const at = target(root, paths, runner)
   if (!at || at.refused || !fs.existsSync(at.file)) return false
   const { config, why } = read(at.file)
   if (why) return false
@@ -149,7 +152,7 @@ function remove(paths, runner) {
 // Lo que `doctor` dice: sin estas entradas, una sesión abierta en una subcarpeta trabaja sin un solo guard. Lo que
 // reinstalar no arregla se dice con lo que sí lo arregla.
 function problems(root, paths, runner) {
-  const at = target(paths, runner)
+  const at = target(root, paths, runner)
   if (!at || at.refused === 'home') return []
   if (at.refused) return [`${at.file} ${REFUSED[at.refused]}: sacalo del repositorio y reinstalá el adaptador`]
   const { config, why } = read(at.file)
@@ -162,8 +165,8 @@ function problems(root, paths, runner) {
 }
 
 // Si una sesión abierta en una subcarpeta lleva los guards.
-const covers = (paths, runner) => {
-  const at = target(paths, runner)
+const covers = (root, paths, runner) => {
+  const at = target(root, paths, runner)
   return Boolean(at && !at.refused)
 }
 

@@ -237,7 +237,7 @@ function uninstall(root, name, output = console) {
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
   }
 
-  RX.remove(paths, runner, name, output)
+  RX.remove(root, paths, runner, name, output)
 
   M.write(root, undefined, deliveredPaths)
   output.log(`✓ ${name}: ${removed} archivo(s) del toolkit quitados de ${paths.install}`)
@@ -419,7 +419,7 @@ function install(root, name, output = console, options = {}) {
   // producto con git propio. Sólo en Antigravity se midió un flag que lo resuelve, y lo declara su manifiesto.
   if (runner.capabilities && runner.capabilities.nativeHooks && !(paths.install === root && isGitRoot(root))) {
     const escape = runner.addDir ? `; desde ahí abrila con ${runner.command} ${runner.addDir} ${paths.install}` : ''
-    const loose = RX.coversSubfolders(paths, runner) ? '' : 'en una subcarpeta sin git ni '
+    const loose = RX.coversSubfolders(root, paths, runner) ? '' : 'en una subcarpeta sin git ni '
     output.log(`  ${name}: los guards corren en una sesión abierta en ${paths.install}, no ${loose}en un repo de `
       + `producto con git propio${escape}`)
   }

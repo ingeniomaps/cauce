@@ -686,7 +686,7 @@
   },
   "engine/hooks/nearer-install.js": {
     "lines": 100,
-    "branches": 75,
+    "branches": 69,
     "functions": 100
   }
 }

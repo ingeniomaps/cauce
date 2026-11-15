@@ -68,6 +68,12 @@ test('install lleva los guards de Claude a una sesión abierta en una subcarpeta
   assert.equal(inside.status, 2, inside.stderr)
   assert.match(inside.stderr, new RegExp(`lee ${path.join(workspace, 'credentials.json')}`))
   assert.equal(run(workspace).status, 0)
+  // Y en la raíz frena el de `settings.json`: retirarse es sólo de los que llegan desde el archivo local.
+  const rootShell = commands(path.join(workspace, '.claude', 'settings.json'))
+    .find((one) => one.endsWith('guard-shell.sh'))
+  const atRoot = spawnSync('sh', ['-c', rootShell], { input, encoding: 'utf8',
+    env: { ...env, CLAUDE_PROJECT_DIR: workspace } })
+  assert.equal(atRoot.status, 2, atRoot.stderr)
   // Por un enlace a la subcarpeta, también: se compara la ruta real.
   fs.symlinkSync(path.join(workspace, 'portal'), path.join(path.dirname(workspace), 'atajo'))
   assert.equal(run(path.join(path.dirname(workspace), 'atajo')).status, 2)
@@ -99,10 +105,10 @@ test('un settings.local.json que sólo tenía los guards de Cauce se va con unin
   assert.equal(fs.existsSync(local), false)
 })
 
-// Dos instancias en el mismo repositorio: cada una escribe y saca sólo lo suyo, y sus guards corren sólo debajo de
-// ella. La raíz del repositorio y la carpeta de la otra quedan afuera.
-test('dos instancias en un repositorio no se pisan, y cada una opina sólo debajo de sí', () => {
-  const base = tempRoot('cauce-subcarpeta-dos-')
+// Una instalación que no es la raíz de su repositorio no escribe en el de más arriba, con el criterio del bloque del
+// `.gitignore` (caso 513): ese repositorio no es del proyecto.
+test('una instalación debajo de la raíz git no escribe en el repositorio de más arriba', () => {
+  const base = tempRoot('cauce-subcarpeta-arriba-')
   const repo = path.join(base, 'mono')
   const env = { ...process.env, HOME: path.join(base, 'home'), XDG_CONFIG_HOME: path.join(base, 'home', '.config') }
   for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR', 'CLAUDECODE']) delete env[key]
@@ -110,31 +116,15 @@ test('dos instancias en un repositorio no se pisan, y cada una opina sólo debaj
   fs.mkdirSync(path.join(base, 'home'), { recursive: true })
   const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env })
   assert.equal(spawnSync('git', ['init', '-q', repo], { env }).status, 0)
-  const targets = ['uno', 'dos'].map((one) => path.join(repo, one, 'ops'))
-  for (const target of targets) {
-    fs.mkdirSync(path.join(path.dirname(target), 'src'), { recursive: true })
-    assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-    linkEngine(target)
-    assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
-  }
-  const local = path.join(repo, '.claude', 'settings.local.json')
-  const shells = commands(local).filter((one) => one.endsWith('guard-shell.sh ;; esac'))
-  assert.equal(shells.length, 2, 'las dos instancias tienen sus guards')
-  for (const target of targets) {
-    assert.doesNotMatch(said(runCli(['automation', 'doctor', target, 'claude'])), /subcarpeta/)
-  }
-  const [uno] = shells.filter((one) => one.includes(`'${path.join(repo, 'uno')}'/*)`))
-  const input = JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', session_id: 's',
-    cwd: repo, tool_input: { command: 'cat credentials.json' } })
-  const run = (dir) => spawnSync('sh', ['-c', uno], { input, encoding: 'utf8',
-    env: { ...env, CLAUDE_PROJECT_DIR: dir } })
-  assert.equal(run(path.join(repo, 'uno', 'src')).status, 2, 'debajo de la instancia, frena')
-  for (const dir of [repo, path.join(repo, 'dos', 'src'), path.join(repo, 'uno')]) assert.equal(run(dir).status, 0, dir)
-
-  assert.equal(runCli(['automation', 'uninstall', targets[0], 'claude']).status, 0)
-  const left = commands(local).filter((one) => one.endsWith('guard-shell.sh ;; esac'))
-  assert.equal(left.length, 1)
-  assert.ok(left[0].includes(`'${path.join(repo, 'dos')}'/*)`), 'quedan los de la otra')
+  const target = path.join(repo, 'uno', 'ops')
+  assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  const installed = runCli(['automation', 'install', target, 'claude'])
+  assert.equal(installed.status, 0, said(installed))
+  assert.equal(fs.existsSync(path.join(repo, '.claude', 'settings.local.json')), false)
+  assert.equal(fs.existsSync(path.join(repo, '.gitignore')), false)
+  assert.match(installed.stdout, /no en una subcarpeta sin git ni en un repo de producto/)
+  assert.doesNotMatch(said(runCli(['automation', 'doctor', target, 'claude'])), /settings\.local\.json/)
 })
 
 // Donde escribir dañaría más de lo que cubre: un repositorio que contiene el home, un archivo versionado, una forma
@@ -142,7 +132,7 @@ test('dos instancias en un repositorio no se pisan, y cada una opina sólo debaj
 test('no escribe en un repositorio que contiene el home, en un archivo versionado ni en una forma rara', () => {
   const base = tempRoot('cauce-subcarpeta-home-')
   const home = path.join(base, 'home')
-  const target = path.join(home, 'Code', 'empresa', 'ops')
+  const target = path.join(home, 'ops')
   const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config') }
   for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR', 'CLAUDECODE']) delete env[key]
   for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key]
@@ -204,9 +194,10 @@ function bare(name) {
   return { base, env, runCli, place }
 }
 
-// Una instancia dentro de otra: en la carpeta de la de adentro, la sesión es de ella, y los guards de la de afuera se
-// retiran aunque su `case` la alcance (`engine/hooks/nearer-install.js`).
-test('con una instancia dentro de otra, en la de adentro no juzgan los guards de la de afuera', () => {
+// Una instancia dentro de otra: en la carpeta de la de adentro corren sus guards, y los de la de afuera se retiran
+// aunque su `case` la alcance (`engine/hooks/nearer-install.js`). Debajo de ella, la de adentro no tiene entradas en el
+// archivo local —su carpeta no es la raíz del repositorio—, así que juzga la de afuera.
+test('con una instancia dentro de otra, en la carpeta de la de adentro no juzgan los guards de la de afuera', () => {
   const { base, env, place } = bare('cauce-subcarpeta-anidadas-')
   const repo = path.join(base, 'mono')
   assert.equal(spawnSync('git', ['init', '-q', repo], { env }).status, 0)
@@ -215,50 +206,32 @@ test('con una instancia dentro de otra, en la de adentro no juzgan los guards de
   place(path.join(repo, 'pkg', 'ops'))
   const shells = commands(path.join(repo, '.claude', 'settings.local.json'))
     .filter((one) => one.includes('guard-shell'))
-  const [outer] = shells.filter((one) => one.includes(`in '${repo}'/*)`))
-  const [inner] = shells.filter((one) => one.includes(`in '${path.join(repo, 'pkg')}'/*)`))
+  assert.equal(shells.length, 1, 'sólo la de la raíz escribe en el archivo local')
+  const [outer] = shells
   const input = JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', session_id: 's',
-    cwd: path.join(repo, 'pkg', 'src'), tool_input: { command: 'cat ../../credentials.json' } })
-  const run = (shell, dir) => spawnSync('sh', ['-c', shell], { input, encoding: 'utf8',
+    cwd: path.join(repo, 'pkg'), tool_input: { command: 'cat ../credentials.json' } })
+  const run = (dir) => spawnSync('sh', ['-c', outer], { input, encoding: 'utf8',
     env: { ...env, CLAUDE_PROJECT_DIR: dir } })
-  assert.equal(run(inner, path.join(repo, 'pkg', 'src')).status, 2, 'la de adentro juzga')
-  assert.equal(run(outer, path.join(repo, 'pkg', 'src')).status, 0, 'la de afuera se retira')
-  assert.equal(run(outer, path.join(repo, 'pkg')).status, 0)
-  fs.mkdirSync(path.join(repo, 'otra'))
-  assert.equal(run(outer, path.join(repo, 'otra')).status, 2, 'fuera de la de adentro, la de afuera juzga')
-  // La de adentro instalada antes de esto, sin entradas en el archivo local: en una subcarpeta suya juzga la de afuera.
-  const localFile = path.join(repo, '.claude', 'settings.local.json')
-  const saved = fs.readFileSync(localFile, 'utf8')
-  const prefix = `in '${path.join(repo, 'pkg')}'/*)`
-  const json = JSON.parse(saved)
-  for (const groups of Object.values(json.hooks)) {
-    for (const group of groups) group.hooks = group.hooks.filter((hook) => !hook.command.includes(prefix))
-  }
-  fs.writeFileSync(localFile, JSON.stringify(json))
-  assert.equal(run(outer, path.join(repo, 'pkg', 'src')).status, 2, 'sin entradas, no cubre su subcarpeta')
-  assert.equal(run(outer, path.join(repo, 'pkg')).status, 0, 'en su carpeta la cubre su settings.json')
-  fs.writeFileSync(localFile, saved)
-  // Y al revés: con sus entradas puestas pero sin `settings.json`, en su propia carpeta no la cubre nada suyo.
-  const innerSettings = path.join(repo, 'pkg', '.claude', 'settings.json')
-  const innerSaved = fs.readFileSync(innerSettings, 'utf8')
-  fs.rmSync(innerSettings)
-  assert.equal(run(outer, path.join(repo, 'pkg')).status, 2, 'sin su settings.json, no cubre su carpeta')
-  assert.equal(run(outer, path.join(repo, 'pkg', 'src')).status, 0, 'debajo la cubren sus entradas')
-  fs.writeFileSync(innerSettings, innerSaved)
-  // Entradas de una instancia que ya no está —se borró sin uninstall— no cubren nada.
-  fs.renameSync(path.join(repo, 'pkg', 'ops'), path.join(repo, 'pkg', 'ops-ida'))
-  assert.equal(run(outer, path.join(repo, 'pkg', 'src')).status, 2, 'sin la instancia, juzga la de afuera')
-  fs.renameSync(path.join(repo, 'pkg', 'ops-ida'), path.join(repo, 'pkg', 'ops'))
+  assert.equal(run(path.join(repo, 'pkg')).status, 0, 'en la carpeta de la de adentro, se retira')
+  assert.equal(run(path.join(repo, 'pkg', 'src')).status, 2, 'debajo, juzga')
   // Un `settings.json` que nombra los guards sin poder correrlos —copiado de la raíz, o en un permiso— no es una
-  // instalación: retirarse ahí dejaba la sesión sin ninguno.
+  // instalación: retirarse ahí dejaba la sesión sin ninguno. Tampoco el de la de adentro sin su instancia.
   for (const [dir, text] of [['copia', fs.readFileSync(path.join(repo, '.claude', 'settings.json'), 'utf8')],
     ['permiso', JSON.stringify({ permissions: { deny: ['Edit(ops/automatization/hooks/guard-*)'] } })]]) {
     fs.mkdirSync(path.join(repo, dir, '.claude'), { recursive: true })
-    fs.mkdirSync(path.join(repo, dir, 'src'))
     fs.writeFileSync(path.join(repo, dir, '.claude', 'settings.json'), text)
-    assert.equal(run(outer, path.join(repo, dir, 'src')).status, 2, dir)
-    assert.equal(run(outer, path.join(repo, dir)).status, 2, dir)
+    assert.equal(run(path.join(repo, dir)).status, 2, dir)
   }
+  fs.renameSync(path.join(repo, 'pkg', 'ops'), path.join(repo, 'pkg', 'ops-ida'))
+  assert.equal(run(path.join(repo, 'pkg')).status, 2, 'sin la instancia, juzga la de afuera')
+  // Una embebida en la carpeta misma apunta a sus guards sin prefijo, y también cubre.
+  const flat = path.join(repo, 'plana')
+  fs.mkdirSync(path.join(flat, '.claude'), { recursive: true })
+  fs.mkdirSync(path.join(flat, 'automatization', 'hooks'), { recursive: true })
+  fs.writeFileSync(path.join(flat, 'automatization', 'hooks', 'guard-shell.sh'), '')
+  fs.writeFileSync(path.join(flat, '.claude', 'settings.json'), JSON.stringify({ hooks: { PreToolUse: [{ hooks: [
+    { type: 'command', command: '$CLAUDE_PROJECT_DIR/automatization/hooks/guard-shell.sh' }] }] } }))
+  assert.equal(run(flat).status, 0, 'embebida sin prefijo')
 })
 
 // Un `$` en la ruta es texto: como patrón de reemplazo, `$$` o `$&` armaban otra ruta y el hook salía con 127, que en

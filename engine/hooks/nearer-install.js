@@ -2,14 +2,14 @@
 
 // Un guard que llega desde el `settings.local.json` de la raíz git (`engine/automation/subfolder-hooks.js`) corre en
 // toda sesión abierta debajo de su instalación. Si entre la carpeta de la sesión y esa instalación hay otra de Cauce
-// que de verdad cubre la sesión —una instancia dentro de otra, como un monorepo con una embebida en la raíz y otra en
-// un paquete—, la sesión es de la más cercana, y éste se retira: es la misma regla con que los guards encuentran su
-// instancia.
+// cuyos guards de verdad corren en la sesión —una instancia dentro de otra, como un monorepo con una embebida en la
+// raíz y otra en un paquete—, la sesión es de la más cercana, y éste se retira: es la misma regla con que los guards
+// encuentran su instancia.
 //
-// Cubrir es que sus guards corran de verdad, y cada fuente corre en un lugar: en la carpeta misma, su `settings.json`;
-// debajo de ella, sus entradas del `settings.local.json`. En las dos el script al que apuntan tiene que existir. Un
-// `settings.json` copiado a una subcarpeta, o las entradas de una instancia que ya no está, nombran guards que no
-// corren: retirarse ahí dejaba la sesión sin ninguno.
+// Correr de verdad es que la sesión se abrió en esa carpeta y su `settings.json` apunta a un script que existe: es lo
+// único que Claude Code lee de ella. La de adentro no escribe entradas en el `settings.local.json`, porque su carpeta
+// no es la raíz del repositorio. Un `settings.json` copiado a una subcarpeta, que nombra guards que no corren, no
+// cuenta: retirarse ahí dejaba la sesión sin ninguno.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -22,50 +22,27 @@ const real = (dir) => {
   try { return fs.realpathSync(dir) } catch { return '' }
 }
 
-const commandsOf = (file) => {
-  try {
-    const { hooks } = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return Object.values(hooks || {}).flatMap((groups) => (Array.isArray(groups) ? groups : [])
-      .flatMap((group) => (Array.isArray(group && group.hooks) ? group.hooks : []))
-      .map((hook) => String(hook && hook.command)))
-  } catch { return [] }
-}
+// Con la instancia en una subcarpeta (`ops/`) o embebida en la carpeta misma, sin prefijo.
+const SCRIPT = /^\$CLAUDE_PROJECT_DIR(\/(?:\S*\/)?automatization\/hooks\/guard-[\w-]+\.sh)/
 
-// La raíz git que contiene la instalación, que es donde está el `settings.local.json`.
-function repoOf(dir) {
-  for (let current = dir; ; current = path.dirname(current)) {
-    if (fs.existsSync(path.join(current, '.git'))) return current
-    if (path.dirname(current) === current) return ''
+// Si los guards de `settings.json` corren en una sesión abierta en `dir`.
+function runsHere(dir) {
+  let hooks
+  try { ({ hooks } = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8'))) } catch {
+    return false
   }
-}
-
-const SCRIPT = /^(\/\S*\/automatization\/hooks\/guard-[\w-]+\.sh)/
-
-// Si los guards de la instalación `dir` corren en una sesión abierta en `session`.
-function covers(dir, session, local) {
-  if (dir === session) {
-    return commandsOf(path.join(dir, '.claude', 'settings.json')).some((command) => {
-      const script = (command.replace(/^\$CLAUDE_PROJECT_DIR/, '').match(SCRIPT) || [])[1]
-      return command.startsWith('$CLAUDE_PROJECT_DIR/') && Boolean(script) && fs.existsSync(path.join(dir, script))
+  return Object.values(hooks || {}).flatMap((groups) => (Array.isArray(groups) ? groups : []))
+    .flatMap((group) => (Array.isArray(group && group.hooks) ? group.hooks : []))
+    .some((hook) => {
+      const script = (String(hook && hook.command).match(SCRIPT) || [])[1]
+      return Boolean(script) && fs.existsSync(path.join(dir, script))
     })
-  }
-  const head = `${opener(dir)}CAUCE_SUBFOLDER_OF=${quoted(dir)} ${quoted(dir)}`
-  return local.some((command) => {
-    const script = command.startsWith(head) && (command.slice(head.length).match(SCRIPT) || [])[1]
-    return Boolean(script) && fs.existsSync(path.join(dir, script))
-  })
 }
 
+// Sólo un guard del archivo local trae su instalación; que la sesión esté debajo de ella ya lo decidió el `case`.
 function nearer(session, install) {
-  const own = install && real(install)
-  const start = session && real(session)
-  if (!own || !start) return false
-  const repo = repoOf(own)
-  const local = repo ? commandsOf(path.join(repo, '.claude', 'settings.local.json')) : []
-  for (let current = start; current.startsWith(`${own}${path.sep}`); current = path.dirname(current)) {
-    if (covers(current, start, local)) return true
-  }
-  return false
+  const start = install && session && real(session)
+  return Boolean(start) && runsHere(start)
 }
 
 module.exports = { nearer, opener, quoted }

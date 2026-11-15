@@ -12,9 +12,9 @@ function install(root, name, paths, runner, output) {
   SH.install(root, paths, runner, name, output)
 }
 
-function remove(paths, runner, name, output) {
+function remove(root, paths, runner, name, output) {
   if (SB.remove(paths, runner)) output.log(`✓ ${name}: ${runner.sandbox.target} sin el bloque de Cauce`)
-  if (SH.remove(paths, runner)) output.log(`✓ ${name}: ${runner.subfolderConfig} sin los guards de Cauce`)
+  if (SH.remove(root, paths, runner)) output.log(`✓ ${name}: ${runner.subfolderConfig} sin los guards de Cauce`)
 }
 
 const problems = (root, paths, runner) => [...SB.problems(root, paths, runner), ...SH.problems(root, paths, runner)]
