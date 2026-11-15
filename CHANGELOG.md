@@ -18,6 +18,26 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **Una instancia puede evaluar sus propios cargos y recorridos en un banco** (caso 509). `/agent-eval` sobre un cargo
+  forkeado y `/flow-eval` sobre un recorrido copiado a `flows/` arman, como en el toolkit, una instancia desechable por
+  caso bajo `.cauce-eval/` —con `organization/`, las reglas, y los cargos y recorridos propios de la empresa—, y los
+  archivos de cada caso quedan donde el cargo los lee. Antes el cargo respondía sin ver esos archivos y `/flow-eval` se
+  negaba en toda instancia. Un cargo o recorrido del catálogo se sigue evaluando en el toolkit, y el mensaje dice cómo
+  hacerlo propio. Los registros de evaluación de casos con archivos escritos en una instancia antes de esta versión no
+  midieron lo que dicen.
+- **`workspace-boundary` deja escribir en el temporal del sistema, como ya lo hacía `shell-boundary`** (caso 510). La
+  copia de una mutación, que R23 pide hacer siempre en una copia, se frenaba por la herramienta de archivos y los
+  agentes terminaban mutando el árbol de trabajo. Un enlace del temporal que lleva afuera sigue frenando, y el bloqueo
+  fuera de las raíces nombra el temporal como el lugar de una copia desechable.
+- **En Gemini, los cargos del catálogo se instalan copiados en `.agents/skills/`** (caso 512): el contrato y sus
+  `references/`, en vez del puntero a `node_modules`, que Gemini CLI no lee. Codex, que comparte la carpeta, lee lo
+  mismo mientras Gemini esté instalado. Los cargos propios siguen como puntero.
+- **Lo que la instancia necesita ignorar llega al `.gitignore` que aplica, en un bloque marcado** (caso 513). En
+  embebido, `init` y `upgrade` lo escriben en el del producto —y el molde ya no copia el suyo—; `automation install`
+  agrega ahí lo que el runner escribe con la ruta de la carpeta, si el repositorio es el de la instancia o el de la
+  carpeta de instalación; `destroy` lo saca. Una línea que ignoraría algo que el repositorio versiona no entra, y se
+  dice.
+
 - **`init` propone declarar `timeZone` cuando la máquina no está en UTC.** Sin esa llave la instancia fecha en UTC, que
   de noche en América es el día siguiente. Lo propone con el huso de la máquina y no lo escribe: el huso es del equipo.
 - **`automation install claude` nombra también `/agent-eval`, `/agent-propose`, `/agent-promote` y `/flow-eval`**, que
@@ -27,6 +47,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **La entrada de DONE ya no conserva los supuestos que la corrección de Review volvió falsos** (caso 511). La
+  corrección contesta qué notas de construcción dejó sin efecto y cuáles agrega; en el camino de dos sesiones, las notas
+  de una entrega reemplazan a las de la anterior.
 - **`renumber-epic` mueve también un número entre comillas** (`epic: '001'`). Antes renombraba el archivo y las citas y
   dejaba el frontmatter viejo, y `check` quedaba en rojo.
 - **`test-evidence` frena las formas de `node:test` y mocha que apagan una prueba** —`{ skip: true }`, `{ todo: … }`,
