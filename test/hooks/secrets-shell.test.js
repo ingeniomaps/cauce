@@ -205,3 +205,28 @@ test('secrets-shell resuelve una lectura desde el cd del mismo comando', () => {
     assert.doesNotThrow(() => execute('secrets-shell', said(runs('cd "$DIR" && cat .env.keys'))))
   } finally { chat.close() }
 })
+
+// Del mismo caso: una identidad declarada en `organization/secrets.json` se reconoce por su ruta, y la ruta se resuelve
+// desde el `cd` del comando como el resto de la lectura. Resuelta desde la sesión, `cd .. && cat local-dev.env` pasaba.
+test('una identidad declarada se reconoce también después de un cd', () => {
+  const root = planFirstRoot('ops-hook-identidad-cd-', WIP_CON_PLAN)
+  const fs = require('node:fs')
+  fs.mkdirSync(path.join(root, 'organization'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'organization', 'secrets.json'),
+    JSON.stringify({ identities: { dev: { source: 'file', file: 'local-dev.env' } } }))
+  const portal = path.join(root, 'portal')
+  fs.mkdirSync(portal)
+  const runs = (command) => ({ cwd: portal, tool_input: { command } })
+  for (const command of ['cd .. && cat local-dev.env', 'cat ../local-dev.env', `cd ${root}; grep x local-dev.env`]) {
+    blocked('secrets-shell', runs(command), new RegExp(`lee ${path.join(root, 'local-dev.env')},`))
+  }
+  assert.doesNotThrow(() => execute('secrets-shell', runs('cd .. && cat README.md')))
+  // Una carpeta que se llama como una credencial no es una: `.` resuelto toma su nombre, y por nombre frenaría.
+  for (const dir of ['credenciales-api', 'server.key']) {
+    fs.mkdirSync(path.join(root, dir))
+    const inside = { cwd: path.join(root, dir), tool_input: { command: 'grep -r x .' } }
+    assert.doesNotThrow(() => execute('secrets-shell', inside))
+    assert.doesNotThrow(() => execute('secrets-shell', runs(`cd ../${dir} && grep -r x .`)))
+  }
+})
+
