@@ -152,6 +152,17 @@ después Successfully created and wrote to new file: $HOME/.gemini/tmp/gemini-1/
 
 El archivo de la sonda se borró después de leer su ruta y su contenido.
 
-**Sin probar:** Codex, y un `/cauce:autobuild` de Gemini que escriba la copia con su herramienta de archivos en vez de
-la terminal.
+Después de publicar 0.121.0 (2026-11-15), un `/cauce:autobuild` de Gemini CLI 0.63.0 sobre un banco instalado con el
+paquete publicado, con la aceptación pidiendo la copia con `write_file` en el temporal de proyecto:
+
+```
+write_file          $HOME/.gemini/tmp/gemini-2/resta-mutation.js  «module.exports = (a, b) => b - a»
+run_shell_command   node -e "… require('…/resta-mutation.js'); assert.equal(resta(5, 3), 2)"  → AssertionError: -2 == 2
+```
+
+Ningún guard frenó la copia; los dos bloqueos de la sesión fueron un `git commit` y un `git push` sobre `master`, y
+`src/resta.js` quedó con `a - b` (`f533801`). La copia la pidió la aceptación: sin eso, la corrida anterior la hizo por
+la terminal en `/tmp`.
+
+**Sin probar:** Codex.
 
