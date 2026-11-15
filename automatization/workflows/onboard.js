@@ -189,7 +189,8 @@ const drafted = await agent(
   `que no pidas declararlo de nuevo: lo que falta es dónde se carga el valor y quién lo hace, y ningún ` +
   `valor se propone acá. Además, una por cada sistema externo o MCP a conectar, y una por la autoridad ` +
   `del runner, que hoy declara runner.allowPush=false.\n` +
-  `Devolvé en files cada archivo que tocaste, en assumptions cada supuesto que dejaste marcado y en ` +
+  `Devolvé en files cada archivo que tocaste, en assumptions cada supuesto que dejaste marcado, en ` +
+  `humanActions cada acción humana que escribiste en ${HUMAN} —su archivo o su fila— y en ` +
   `openQuestions las preguntas que quedaron abiertas, de la más a la menos importante. No las escribas en ` +
   `${P}/INBOX.md ni en ${INBOX}: eso lo hace el paso siguiente.`,
   { schema: WRITTEN, label: 'contexto' },
