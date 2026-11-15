@@ -16,6 +16,8 @@ const BK = require('../planning/backlog')
 const ST = require('../planning/state')
 const RC = require('../planning/recurring')
 const A = require('../automation')
+const R = require('../core/repos')
+const { spawnSync } = require('node:child_process')
 const { fail, TODAY, USAGE, REFUSED } = require('./io')
 const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
 const { adviceFor, previewUpgrade, reportUpgrade } = require('./upgrade-report')
@@ -164,7 +166,25 @@ function whatIsLost(root) {
     humanActions,
     contexto: !OB.guide(root).fresh,
     runners: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))],
+    trees: taskTrees(root),
   }
+}
+
+// Los árboles que `ops worktree` armó, en el repositorio de la instancia y en sus raíces. Se nombran y no se
+// borran: pueden tener trabajo sin commitear, y llevan su propia copia de la instancia que este borrado no alcanza.
+function taskTrees(root) {
+  const repos = [root, ...R.declaredRoots(root).map((one) => one.dir)]
+  const found = new Map()
+  for (const dir of repos) {
+    const listed = spawnSync('git', ['-C', dir, 'worktree', 'list', '--porcelain'], { encoding: 'utf8' })
+    if (listed.status !== 0) continue
+    for (const block of listed.stdout.split('\n\n')) {
+      const tree = (block.match(/^worktree (.+)$/m) || [])[1]
+      const branch = (block.match(/^branch refs\/heads\/(task\/.+)$/m) || [])[1]
+      if (tree && branch) found.set(tree, branch)
+    }
+  }
+  return [...found].map(([tree, branch]) => ({ tree, branch }))
 }
 
 // Saca la instancia entera y el wiring que dejó en cada runner. Existe porque la alternativa era una
@@ -202,6 +222,10 @@ function destroy(dir, cli) {
     if (embedded) {
       console.log('  el código del repositorio no se toca: en modo embebido la instancia es él mismo.')
     }
+    if (loss.trees.length) {
+      console.log(`  y quedan en pie ${loss.trees.length} árbol(es) de tarea, que no se borran:`)
+      for (const one of loss.trees) console.log(`    ${one.tree} (${one.branch})`)
+    }
     console.log('\nNada de esto lo repone un init. Si es lo que querés: repetí con --force.')
     process.exit(1)
   }
@@ -213,6 +237,9 @@ function destroy(dir, cli) {
   // herramienta del runner queda ejecutando un guard que ya no está.
   // En modo embebido la instancia **es** el repositorio: borrar la carpeta se lleva el código del
   // producto, que Cauce nunca escribió y no repone nadie. Ahí se saca lo del toolkit y se deja el repo.
+  for (const one of loss.trees) {
+    console.log(`  queda ${one.tree} (${one.branch}): si ya no sirve, "git worktree remove ${one.tree}".`)
+  }
   if (O.mode(root) === 'embedded') {
     const ownPath = [
       'planning', 'organization', 'flows', 'integrations', 'automatization', 'tools',
