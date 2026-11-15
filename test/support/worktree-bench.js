@@ -3,7 +3,7 @@
 // El banco de las pruebas de `ops worktree`: lo comparten las de un árbol por tarea (`test/planning/worktree.test.js`)
 // y las de una línea (`test/planning/line-worktree.test.js`), que no entraban en un solo archivo.
 
-const { tempRoot } = require('./environment')
+const { outsideTempRoot } = require('./environment')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
@@ -14,7 +14,7 @@ const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 // Una instancia sidecar con un repositorio al lado, que es el montaje que la guía recomienda para varios
 // agentes: `ops/` una sola vez y los árboles de trabajo aparte.
 function mount(prefix) {
-  const base = tempRoot(prefix)
+  const base = outsideTempRoot(prefix)
   const repo = path.join(base, 'producto')
   fs.mkdirSync(path.join(repo, 'api'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'api', 'main.go'), 'package main\n')

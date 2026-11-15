@@ -81,7 +81,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
     { cwd: workspace, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: workspace },
       input: JSON.stringify({ tool_input: { file_path: file }, cwd: workspace }) },
   )
-  assert.match(guard('/tmp/fuera-de-todo.txt').stderr, /BLOQUEADO/, 'lo de afuera no pasa')
+  assert.match(guard('/var/tmp/cauce-fuera-de-todo.txt').stderr, /BLOQUEADO/, 'lo de afuera no pasa')
   // Y el día uno deja pasar el cambio de producto pese al WIP en IDLE: `plan-first` está inerte
   // mientras el planning no declare tareas, que es el estado de una instancia recién creada. Que
   // muerde en cuanto hay una tarea lo mide `hooks.test.js`; acá importa que la instalación no

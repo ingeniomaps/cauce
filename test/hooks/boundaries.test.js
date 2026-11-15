@@ -3,7 +3,7 @@
 // Hasta dónde puede escribir una herramienta y hasta dónde puede escribir un comando, que son
 // la misma pregunta hecha a dos guards y tienen que contestar lo mismo.
 
-const { tempRoot } = require('../support/environment')
+const { outsideTempRoot } = require('../support/environment')
 const { blocked, git, chatSession } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -15,7 +15,7 @@ const path = require('node:path')
 const { execute, guards } = require('../../engine/hooks/run')
 
 test('guard-workspace-boundary limita escrituras a las raíces declaradas', () => {
-  const root = tempRoot('ops-hook-boundary-')
+  const root = outsideTempRoot('ops-hook-boundary-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.mkdirSync(path.join(root, 'service'))
   const config = { workspaceRoots: [{ name: 'service', path: 'service' }] }
@@ -27,7 +27,7 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
 // Una sustitución corre aunque el comando de afuera sólo imprima (caso 475). Lo citado no corre, y lo que sólo lee no
 // se juzga: frenar eso es lo que enseñaría a apagar el guard.
 test('lo que una sustitución borra o crea fuera de las raíces se frena', () => {
-  const root = tempRoot('ops-hook-sustitucion-')
+  const root = outsideTempRoot('ops-hook-sustitucion-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [{ name: 'r', path: '.' }] }))
   const at = (command) => ({ cwd: root, tool_input: { command } })
@@ -47,7 +47,7 @@ test('lo que una sustitución borra o crea fuera de las raíces se frena', () =>
 
 // Un grupo detrás de una palabra de bloque corre igual, y lo que un cuerpo sin comillas sustituye corre al armarlo.
 test('lo que corre en un grupo de un bloque o en el cuerpo de un heredoc se juzga (caso 477)', () => {
-  const root = tempRoot('ops-hook-grupo-')
+  const root = outsideTempRoot('ops-hook-grupo-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [{ name: 'r', path: '.' }] }))
   const at = (command) => ({ cwd: root, tool_input: { command } })
@@ -68,7 +68,7 @@ test('lo que corre en un grupo de un bloque o en el cuerpo de un heredoc se juzg
 })
 
 test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible', () => {
-  const root = tempRoot('ops-hook-exempt-')
+  const root = outsideTempRoot('ops-hook-exempt-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.mkdirSync(path.join(root, 'service'))
   const memoria = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')
@@ -92,7 +92,7 @@ test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible
 // llega lo cuenta `shellBoundary`; acá lo que importa es que las dos listas se midan juntas, porque un
 // guard sólo se puede juzgar por lo que frena y lo que deja pasar a la vez.
 test('guard-shell-boundary mira el destino de un comando, sin morder lo corriente', () => {
-  const root = tempRoot('ops-hook-shell-boundary-')
+  const root = outsideTempRoot('ops-hook-shell-boundary-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     workspaceRoots: [{ name: 'main', path: '.' }],
@@ -141,7 +141,7 @@ test('guard-shell-boundary mira el destino de un comando, sin morder lo corrient
 // es su propia `.ops-approval`, o sea la aprobación que después le habilita el push a la rama viva. Es lo
 // que cerraron el 098 y el 119, reabierto por una barra (caso 164).
 test('el override de noclobber no es una puerta de atrás al destino', () => {
-  const root = tempRoot('ops-hook-noclobber-')
+  const root = outsideTempRoot('ops-hook-noclobber-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     workspaceRoots: [{ name: 'main', path: '.' }],
@@ -161,7 +161,7 @@ test('el override de noclobber no es una puerta de atrás al destino', () => {
 })
 
 test('los dos guards de límites responden lo mismo sobre la misma ruta', () => {
-  const root = tempRoot('ops-hook-boundary-par-')
+  const root = outsideTempRoot('ops-hook-boundary-par-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     workspaceRoots: [{ name: 'main', path: '.' }],
@@ -180,7 +180,7 @@ test('los dos guards de límites responden lo mismo sobre la misma ruta', () => 
 // destino que no se puede resolver no se juzga, y este caso es lo que se pone rojo el día que alguien
 // decida adivinarlo.
 test('guard-shell-boundary no juzga un destino que no puede resolver', () => {
-  const root = tempRoot('ops-hook-shell-boundary-var-')
+  const root = outsideTempRoot('ops-hook-shell-boundary-var-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
@@ -191,7 +191,7 @@ test('guard-shell-boundary no juzga un destino que no puede resolver', () => {
 })
 
 test('guard-engine protege el motor instalado y deja trabajar al toolkit', () => {
-  const root = tempRoot('ops-hook-engine-')
+  const root = outsideTempRoot('ops-hook-engine-')
   const pkg = path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine')
   fs.mkdirSync(pkg, { recursive: true })
   fs.mkdirSync(path.join(root, 'agents'))
@@ -225,7 +225,7 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
 // rompe esa disciplina; de ahí `--save-exact`. Traer el motor tampoco alcanza: las rutas del sistema
 // de la instancia se refrescan con `upgrade`, que es el segundo paso.
 test('guard-engine indica un camino de actualización que funciona', () => {
-  const root = tempRoot('ops-hook-engine-msg-')
+  const root = outsideTempRoot('ops-hook-engine-msg-')
   fs.mkdirSync(path.join(root, 'node_modules', '@ingeniomaps', 'cauce'), { recursive: true })
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
@@ -242,7 +242,7 @@ test('guard-engine indica un camino de actualización que funciona', () => {
 // runner: frenarlo dejaba al modo plan sin poder escribir lo único que escribe. Sólo esa carpeta y un
 // `.md`: el resto de `~/.claude` —configuración, memoria— sigue adentro del límite.
 test('el archivo de plan del runner no es una escritura fuera de las raíces', () => {
-  const root = tempRoot('ops-hook-boundary-plan-')
+  const root = outsideTempRoot('ops-hook-boundary-plan-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
@@ -260,7 +260,7 @@ test('el archivo de plan del runner no es una escritura fuera de las raíces', (
 // sondas y sus scripts. Los dos guards de límites tienen que contestar lo mismo, y sólo vale lo que cuelga
 // del temporal: la ruta llega en la entrada, y no cualquier cosa escrita ahí se vuelve escribible.
 test('el scratchpad de la sesión se puede escribir, y sólo si cuelga del temporal', () => {
-  const root = tempRoot('ops-hook-scratch-')
+  const root = outsideTempRoot('ops-hook-scratch-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [] }))
   const scratch = path.join(os.tmpdir(), 'runner-x', 'sesion-1', 'scratchpad')
@@ -270,15 +270,11 @@ test('el scratchpad de la sesión se puede escribir, y sólo si cuelga del tempo
   assert.doesNotThrow(() => execute('workspace-boundary', write(inside, scratch)))
   assert.doesNotThrow(() => execute('shell-boundary', shell(inside, scratch)))
 
-  // Sin el dato, o con otro scratchpad, la misma ruta sigue fuera.
-  blocked('workspace-boundary', write(inside), /fuera de las raíces/)
-  blocked('workspace-boundary', write(inside, path.join(os.tmpdir(), 'runner-x', 'otra', 'scratchpad')),
-    /fuera de las raíces/)
-  blocked('workspace-boundary', write(path.join(os.tmpdir(), 'runner-x', 'vecino.txt'), scratch), /fuera de las/)
-
-  // Un «scratchpad» que no es desechable no abre nada: ni el home, ni la raíz, ni el temporal entero.
+  // Desde el caso 510 el temporal entero es desechable también para la herramienta de archivos, como ya lo era para el
+  // shell (caso 360): la misma ruta pasa sin el dato. Lo que el dato no puede es abrir lo que no es desechable.
+  assert.doesNotThrow(() => execute('workspace-boundary', write(inside)))
+  assert.doesNotThrow(() => execute('workspace-boundary', write(path.join(os.tmpdir(), 'suelto.txt'), os.tmpdir())))
   const home = path.join(os.homedir(), 'trabajo')
   blocked('workspace-boundary', write(path.join(home, 'a.txt'), home), /fuera de las raíces/)
   blocked('workspace-boundary', write('/etc/a.txt', '/'), /fuera de las raíces/)
-  blocked('workspace-boundary', write(path.join(os.tmpdir(), 'suelto.txt'), os.tmpdir()), /fuera de las raíces/)
 })

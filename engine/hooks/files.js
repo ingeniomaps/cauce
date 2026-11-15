@@ -14,7 +14,7 @@ const {
 } = require('./input')
 const { landing } = require('../core/files')
 const { patchMoves } = require('../core/migrations')
-const { beyond, reached, refusal } = require('./boundary')
+const { beyond, reached, refusal, inTemp } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { unrecordedNote } = require('./unrecorded')
@@ -336,14 +336,18 @@ function workspaceBoundary(input) {
     // Lo mismo que en `shell-boundary`: la aprobación de la persona se juzga aunque no haya raíces.
     const own = selfApproval(input, file) || selfApproval(input, landing(cwdOf(input), raw))
     if (own) block(own)
-    const out = allowed && beyond(input, cwdOf(input), raw, allowed)
+    const out = allowed && !inTemp(landing(cwdOf(input), raw)) && beyond(input, cwdOf(input), raw, allowed)
     if (out) found.push({ verb: deleted.has(raw) ? 'borra' : 'escribe', out })
     const off = !out && LS.strayed(input, file, landing(cwdOf(input), raw))
     if (off) strayed.push(off)
   }
   const why = refusal(input, found, (all) => `${all.map(({ out }) => reached(out)).join(' y ')} `
     + (all.length > 1 ? 'están' : 'está'))
-  if (why) block(why)
+  // La copia de una mutación es lo que más llega acá, y R23 la quiere en un lugar desechable: se nombra cuál.
+  if (why) {
+    block(`${why}\nUna copia desechable —una mutación, una sonda— va en el temporal del sistema, ${os.tmpdir()}, `
+      + 'que este límite no frena.')
+  }
   const off = LS.refusal(input, strayed)
   if (off) block(off)
 }

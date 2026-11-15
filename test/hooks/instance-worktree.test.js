@@ -4,7 +4,7 @@
 // la raíz de la sesión, así que el mismo archivo cambiaba de respuesta según el árbol: de más en `plan-first`, y de
 // menos en `ops-config`, que no veía la llave de push de esa copia.
 
-const { tempRoot, writeWip } = require('../support/environment')
+const { outsideTempRoot, writeWip } = require('../support/environment')
 const { blocked, git, initRepo, WIP_IDLE, WIP_CON_PLAN, BACKLOG_WITH_TASK } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -14,7 +14,7 @@ const { execute } = require('../../engine/hooks/run')
 const { instanceTreeOf } = require('../../engine/hooks/instance-tree')
 
 function sidecar(name, wip = WIP_IDLE, mode = 'sidecar') {
-  const base = fs.realpathSync(tempRoot(name))
+  const base = fs.realpathSync(outsideTempRoot(name))
   const root = path.join(base, 'ops')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   const roots = [{ name: 'main', path: mode === 'sidecar' ? '..' : '.' }]
