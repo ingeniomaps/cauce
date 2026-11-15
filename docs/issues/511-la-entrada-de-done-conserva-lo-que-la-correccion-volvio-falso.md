@@ -1,14 +1,15 @@
 ---
 caso: 511
 titulo: La entrada de DONE conserva los supuestos que la corrección de Review volvió falsos, y se commitea con la contradicción a la vista
-estado: abierto
+estado: resuelto
+resuelto-en: 0.121.0
 prioridad: media
 version-detectada: 0.120.0
 ---
 
 # 511 — La entrada de DONE conserva los supuestos que la corrección de Review volvió falsos, y se commitea con la contradicción a la vista
 
-**🔴 abierto** · detectado en 0.120.0 · prioridad **media**: DONE es la evidencia que se lee sola dentro de tres meses
+**🟢 resuelto en 0.121.0** · detectado en 0.120.0 · prioridad **media**: DONE es la evidencia que se lee sola dentro de tres meses
 (R14), y acá afirma un cambio de comportamiento que el código final no tiene.
 
 ## Resumen
@@ -109,10 +110,11 @@ re-revisión sin saber qué notas quedaban.
    Build sin el pedido de repetir las que siguen.
 5. hecho: lo que se quita es el arrastre de notas viejas. Las pruebas afirman que la nota dejada sin efecto no aparece en
    lo que llega a DONE y que el handoff ya no dice «seguidos de éstos».
-6. pendiente: la corrida real de `/autobuild` (sesión 129bad91) no tuvo vuelta de corrección —Review aprobó de una—, así
-   que el camino nuevo corrió sólo en el arnés. Falta una corrida real con corrección, o que la persona decida cerrarlo
-   sin ella.
-7. pendiente: lo mismo que el punto 6.
+6. no aplica: la persona decidió el 2026-11-15 cerrarlo sin la corrida real con corrección. La de `/autobuild` (sesión
+   129bad91) no tuvo vuelta de corrección —Review aprobó de una—, así que el camino nuevo corrió sólo en el arnés. Otra
+   costaba unos USD 10 sin garantía de que Review mandara a corregir, y una sola no mide si el modelo contesta bien las
+   notas.
+7. no aplica: por la misma decisión del punto 6, lo que depende del modelo queda en «Sin probar».
 8. hecho: en el arnés corrieron la sesión sola con corrección y el camino de dos sesiones; en real, una sesión sola sin
    corrección.
 9. no aplica: no coordina nada entre runners ni raíces.
@@ -123,6 +125,6 @@ re-revisión sin saber qué notas quedaban.
 13. hecho: `npm run ci` con los cambios stageados: 1806 pruebas, 0 fallas.
 14. hecho: recorrido arriba contra Fix y Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba.
-16. pendiente: el estado sigue en `abierto` hasta resolver el punto 6.
+16. hecho: estado y encabezado en `resuelto`, `resuelto-en: 0.121.0`, y entrada en el CHANGELOG.
 
 **Sin probar:** una corrida real de `/autobuild` con una vuelta de corrección de Review.
