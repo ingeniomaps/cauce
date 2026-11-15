@@ -121,4 +121,4 @@ function remove(file) {
   return true
 }
 
-module.exports = { instanceLines, add, remove, split }
+module.exports = { instanceLines, add, remove, split, render }

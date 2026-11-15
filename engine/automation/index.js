@@ -27,6 +27,7 @@ const {
 // escriben. Se reexporta para que sus consumidores sigan pidiéndoselo a este módulo.
 const { check } = require('./check')
 const { registrationProblems } = require('./registration')
+const SB = require('./sandbox')
 const PG = require('./project-guards')
 const { probeBridge } = require('./probe-bridge')
 
@@ -127,6 +128,7 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
   // Un puente que no responde niega cada llamada del runner: es error, no advertencia.
   for (const problem of probeBridge(paths, runner)) errors.push(problem)
   for (const problem of registrationProblems(paths, runner)) (afterInstall ? warnings : errors).push(problem)
+  for (const problem of SB.problems(root, paths, runner)) (afterInstall ? warnings : errors).push(problem)
 
   const executable = spawnSync(
     'sh',
@@ -234,6 +236,8 @@ function uninstall(root, name, output = console) {
     else { F.removeFile(paths.configTarget, paths.install); removed += 1 }
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
   }
+
+  if (SB.remove(paths, runner)) output.log(`✓ ${name}: ${runner.sandbox.target} sin el bloque de Cauce`)
 
   M.write(root, undefined, deliveredPaths)
   output.log(`✓ ${name}: ${removed} archivo(s) del toolkit quitados de ${paths.install}`)
@@ -419,6 +423,7 @@ function install(root, name, output = console, options = {}) {
       + ` ni en un repo de producto con git propio${escape}`)
   }
   installOwnWorkflows(root, name, runner, paths, output)
+  SB.install(root, name, paths, runner, output)
   installRoleSkills(root, runner, output)
   // Lo que acaba de escribir con la ruta de esta carpeta y git no ignora va al bloque de Cauce del `.gitignore` del
   // repositorio (caso 513): antes era un aviso que pedía editarlo a mano en cada proyecto.

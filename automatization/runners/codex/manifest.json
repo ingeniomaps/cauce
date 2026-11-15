@@ -12,6 +12,9 @@
     "fallback": "~/.codex",
     "trust": "abrí codex en esa carpeta y confialos con /hooks"
   },
+  "sandbox": {
+    "target": ".codex/config.toml"
+  },
   "instructions": [
     {
       "source": "AGENTS.md",

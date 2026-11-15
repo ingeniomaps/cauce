@@ -102,7 +102,8 @@ invariantes.
     commitea en la rama en la que está el repositorio de la instancia. Si ésa es una rama viva que no
     admite push, va a **una** rama de trabajo que se acumula, con un solo PR abierto: la que ya exista,
     y no una nueva por cada cambio de estado.
-14. Cierre: check verde, deuda residual al INBOX y checkpoint entre hitos.
+14. Cierre: check verde, deuda residual al INBOX y checkpoint entre hitos: con
+    `runner.humanCheckpointBetweenMilestones`, el hito que se cerró deja `checkpoints/<hito>.md` en `pendiente`.
 
 ## Lanes
 

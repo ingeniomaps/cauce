@@ -11,6 +11,12 @@ aprobada, persiste el estado en WIP y ejecuta en orden las fases que pide su car
 reales del servicio, registra evidencia verificable en DONE y detente en el checkpoint entre hitos. No hagas push ni
 deploy.
 
+El checkpoint es un archivo que escribís vos. Si la tarea cerró su hito —en la cola no queda ninguna con ese `hito:`— y
+`{{OPS_DIR}}ops.config.json` tiene `runner.humanCheckpointBetweenMilestones` en true, escribí
+`{{OPS_DIR}}planning/checkpoints/<hito>.md` con la forma de su `README.md`, en `status: pendiente`, commitealo y
+comprobá con `ops context` que frena. Sin ese archivo la corrida siguiente arranca el hito que sigue sin que nadie lo
+haya revisado.
+
 Si el pedido trae `--role`, la tarea la construye una sesión y la revisa otra (paso 12 de `PROTOCOL.md`):
 
 - `--role build`: eres quien construye. Las fases que pide su carril hasta Commit, salvo Review y QA. Deja el WIP en

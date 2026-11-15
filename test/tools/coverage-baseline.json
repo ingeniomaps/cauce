@@ -663,5 +663,15 @@
     "lines": 100,
     "branches": 100,
     "functions": 100
+  },
+  "engine/automation/sandbox.js": {
+    "lines": 100,
+    "branches": 77,
+    "functions": 100
+  },
+  "engine/hooks/git-internals.js": {
+    "lines": 100,
+    "branches": 98,
+    "functions": 100
   }
 }
