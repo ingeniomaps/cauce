@@ -1,6 +1,7 @@
 # API pública de Cauce
 
-**Borrador para decidir la 1.0.0.** Desde la 1.0.0, un cambio que rompe algo de lo que esta página nombra saca una
+**Firmada por @ingeniomaps (Manuel Pinzon) el 2026-11-15**, al aprobar la review del PR que trae esta línea. Desde la
+1.0.0, un cambio que rompe algo de lo que esta página nombra saca una
 versión mayor; lo demás cambia en minor o patch, como hasta ahora. Lo que no está acá no es API, aunque se pueda usar.
 
 ## Lo que es API
@@ -83,11 +84,11 @@ Fijados al publicar la 0.100.0: se saca después del ensamblaje del 2026-11-01 s
 | Criterio | Estado | Por qué |
 |---|---|---|
 | 1. Un ciclo mensual completo sin intervención a mano | **no se cumple** | El ensamblaje del 2026-11-01 corrió solo y el caso 242 funcionó: 14 propuestas «sin cambio» se archivaron solas. Pero hubo que arreglar a mano el CI de #955 y #962, y declinar #943 y #971 cerrándolos no los archivó (se arregló en #987). El siguiente ciclo para medirlo es el del 2026-12-01. |
-| 2. La versión usada en las instancias reales, sin regresiones | **a medias** | De las dos instancias de esta máquina, una está en la 0.122.0 y la otra sigue en la 0.99.1, anterior a la 0.100.0. Desde la 0.100.0 hay 271 casos, 91 salidos de una instancia; 11 se describen como regresión de un cambio de Cauce (por el texto, sin revisarlos uno por uno), todos cerrados. |
-| 3. Una definición escrita de qué es API pública | **borrador** | Esta página. Falta que la persona la revise y la firme. |
+| 2. La versión usada en las instancias reales, sin regresiones | **a medias** | De las dos instancias de esta máquina, una está en la 0.122.0 y la otra se actualizó de la 0.99.1 a la 0.122.0 el 2026-11-15: `upgrade` limpio y `check` en verde, pero todavía sin uso con esa versión. Desde la 0.100.0 hay 271 casos, 91 salidos de una instancia; 11 se describen como regresión de un cambio de Cauce (por el texto, sin revisarlos uno por uno), todos cerrados. |
+| 3. Una definición escrita de qué es API pública | **se cumple** | Esta página, firmada el 2026-11-15. |
 | 4. Ningún caso abierto de prioridad alta | **se cumple** | No hay casos abiertos; el único reciente, el 517, quedó aplazado con prioridad baja. |
 
 **Veredicto: todavía no.** El contrato ya se comporta como uno estable —en 37 versiones no se quitó ni un comando ni
-un campo, y una instancia de la 0.100.0 se actualiza limpia—, pero el criterio 1 no se cumplió en noviembre y el 2
-tiene una instancia que no se actualizó. Lo que destraba la 1.0.0: firmar esta página, que el ciclo del 2026-12-01
-cierre sin arreglos a mano, y actualizar la instancia que sigue en la 0.99.1.
+un campo, y una instancia de la 0.100.0 se actualiza limpia—, y la definición está firmada. Falta lo que sólo da el
+tiempo: que el ciclo del 2026-12-01 cierre sin arreglos a mano, y que las dos instancias trabajen con la versión nueva
+sin regresiones.
