@@ -27,7 +27,7 @@ const {
 // escriben. Se reexporta para que sus consumidores sigan pidiéndoselo a este módulo.
 const { check } = require('./check')
 const { registrationProblems } = require('./registration')
-const SB = require('./sandbox')
+const RX = require('./runner-extras')
 const PG = require('./project-guards')
 const { probeBridge } = require('./probe-bridge')
 
@@ -128,7 +128,7 @@ function doctor(root, name, output = console, { afterInstall = false } = {}) {
   // Un puente que no responde niega cada llamada del runner: es error, no advertencia.
   for (const problem of probeBridge(paths, runner)) errors.push(problem)
   for (const problem of registrationProblems(paths, runner)) (afterInstall ? warnings : errors).push(problem)
-  for (const problem of SB.problems(root, paths, runner)) (afterInstall ? warnings : errors).push(problem)
+  for (const problem of RX.problems(root, paths, runner)) (afterInstall ? warnings : errors).push(problem)
 
   const executable = spawnSync(
     'sh',
@@ -237,7 +237,7 @@ function uninstall(root, name, output = console) {
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
   }
 
-  if (SB.remove(paths, runner)) output.log(`✓ ${name}: ${runner.sandbox.target} sin el bloque de Cauce`)
+  RX.remove(root, paths, runner, name, output)
 
   M.write(root, undefined, deliveredPaths)
   output.log(`✓ ${name}: ${removed} archivo(s) del toolkit quitados de ${paths.install}`)
@@ -414,16 +414,17 @@ function install(root, name, output = console, options = {}) {
   }
   // Dónde corren los guards, que no se invocan y por eso nadie nota que faltan. Los runners cargan la
   // configuración del proyecto desde la carpeta en que se abre la sesión hasta la raíz de su repo git, y no más
-  // arriba (caso 393): medido en Antigravity, Claude Code y Gemini; Codex, por su documentación. Sin git en la
-  // carpeta de instalación, una subcarpeta ya queda afuera; en sidecar, también cada repo de producto con git
-  // propio. Sólo en Antigravity se midió un flag que lo resuelve, y lo declara su manifiesto.
+  // arriba (caso 393): medido en Antigravity y Gemini; Codex, por su documentación. Claude Code no sube con su
+  // `settings.json`, y eso lo cubre `subfolder-hooks.js` dentro del repositorio. En sidecar queda afuera cada repo de
+  // producto con git propio. Sólo en Antigravity se midió un flag que lo resuelve, y lo declara su manifiesto.
   if (runner.capabilities && runner.capabilities.nativeHooks && !(paths.install === root && isGitRoot(root))) {
     const escape = runner.addDir ? `; desde ahí abrila con ${runner.command} ${runner.addDir} ${paths.install}` : ''
-    output.log(`  ${name}: los guards corren en una sesión abierta en ${paths.install}, no en una subcarpeta sin git`
-      + ` ni en un repo de producto con git propio${escape}`)
+    const loose = RX.coversSubfolders(root, paths, runner) ? '' : 'en una subcarpeta sin git ni '
+    output.log(`  ${name}: los guards corren en una sesión abierta en ${paths.install}, no ${loose}en un repo de `
+      + `producto con git propio${escape}`)
   }
   installOwnWorkflows(root, name, runner, paths, output)
-  SB.install(root, name, paths, runner, output)
+  RX.install(root, name, paths, runner, output)
   installRoleSkills(root, runner, output)
   // Lo que acaba de escribir con la ruta de esta carpeta y git no ignora va al bloque de Cauce del `.gitignore` del
   // repositorio (caso 513): antes era un aviso que pedía editarlo a mano en cada proyecto.

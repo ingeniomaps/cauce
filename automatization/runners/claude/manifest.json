@@ -31,6 +31,7 @@
       }
     }
   },
+  "subfolderConfig": ".claude/settings.local.json",
   "instructions": [
     {
       "source": "CLAUDE.md",
