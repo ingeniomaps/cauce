@@ -159,3 +159,74 @@ test('secrets-shell frena escribir una credencial por shell como escritura, y no
     assert.doesNotThrow(() => execute('secrets-shell', asked(runs('echo x > .pypirc'))))
   } finally { chat.close() }
 })
+
+// Caso 518. Una lectura se resuelve desde la carpeta en que la deja el `cd` de su propio comando, como ya se resolvía
+// la escritura. Resuelta desde la de la sesión, el bloqueo nombraba un archivo que el comando no lee, y aprobar el que
+// sí lee no lo destrababa.
+test('secrets-shell resuelve una lectura desde el cd del mismo comando', () => {
+  const root = planFirstRoot('ops-hook-lectura-cd-', WIP_CON_PLAN)
+  const portal = path.join(root, 'portal')
+  require('node:fs').mkdirSync(portal)
+  const runs = (command) => ({ cwd: portal, tool_input: { command } })
+  const asked = `cd ${root} && grep -c GITHUB .env`
+  const message = messageOf('secrets-shell', runs(asked))
+  assert.match(message, new RegExp(`lee ${path.join(root, '.env')},`))
+  assert.doesNotMatch(message, new RegExp(path.join(portal, '.env')))
+  pasteApproval(root, message)
+  assert.doesNotThrow(() => execute('secrets-shell', runs(asked)))
+
+  const keys = (dir) => new RegExp(`lee ${path.join(dir, '.env.keys')},`)
+  for (const [command, dir] of [[`cd "${root}" && cat .env.keys`, root], ['cd .. && cat .env.keys', root],
+    ['cd ..; cat .env.keys', root], [`if cd ${root}; then cat .env.keys; fi`, root],
+    // Lo que no mueve la carpeta: un `cd` en otro proceso.
+    ['cd .. | cat .env.keys', portal], ['cd .. & cat .env.keys', portal], ['cd .. |& cat .env.keys', portal],
+    ['cd .. &\ncat .env.keys', portal], ['cd .. |\ncat .env.keys', portal]]) {
+    blocked('secrets-shell', runs(command), keys(dir))
+  }
+  // El mismo nombre leído desde dos carpetas son dos archivos.
+  blocked('secrets-shell', runs(`cat .env.keys; cd ${root} && cat .env.keys`),
+    new RegExp(`lee ${path.join(portal, '.env.keys')}, ${path.join(root, '.env.keys')},`))
+  // Lo que no se sabe sin interpretar no se adivina: se pide la ruta absoluta. Con `.env` aprobada en las dos carpetas
+  // que se podrían adivinar, ninguna de estas pasa.
+  require('node:fs').appendFileSync(path.join(root, 'planning', '.ops-approval'), `${path.join(portal, '.env')}\n`)
+  for (const command of ['cd "$DIR" && cat .env', 'cd - && cat .env', 'cd .. || cat .env', 'cd -P .. && cat .env',
+    'cd "sub dir" && cat .env', 'cd "$(git rev-parse --show-toplevel)" && cat .env', 'x="$(cd .. && pwd)"; cat .env',
+    'echo `cd ..`; cat .env', '(cd ..; true) 2>/dev/null; cat .env', `(cd ${root} && cat .env)`,
+    "echo 'hint; cd ..; make'; cat .env", 'true # ; cd ..\ncat .env', 'if cd ..; then :; else cat .env; fi',
+    'cd .. && cat a || cat .env']) {
+    blocked('secrets-shell', runs(command), /cd` a un destino que no se puede resolver/)
+  }
+  assert.doesNotThrow(() => execute('secrets-shell', runs('cd "$DIR" && cat README.md')))
+  assert.doesNotThrow(() => execute('secrets-shell', runs(`cat ${path.join(root, '.env')}`)))
+  // Lo que la persona pidió en el chat nombrándolo pasa también bajo un `cd` que no se resuelve, como la escritura.
+  const chat = chatSession()
+  try {
+    const said = chat.says('leé el .env.keys de $DIR y decime qué claves tiene')
+    assert.doesNotThrow(() => execute('secrets-shell', said(runs('cd "$DIR" && cat .env.keys'))))
+  } finally { chat.close() }
+})
+
+// Del mismo caso: una identidad declarada en `organization/secrets.json` se reconoce por su ruta, y la ruta se resuelve
+// desde el `cd` del comando como el resto de la lectura. Resuelta desde la sesión, `cd .. && cat local-dev.env` pasaba.
+test('una identidad declarada se reconoce también después de un cd', () => {
+  const root = planFirstRoot('ops-hook-identidad-cd-', WIP_CON_PLAN)
+  const fs = require('node:fs')
+  fs.mkdirSync(path.join(root, 'organization'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'organization', 'secrets.json'),
+    JSON.stringify({ identities: { dev: { source: 'file', file: 'local-dev.env' } } }))
+  const portal = path.join(root, 'portal')
+  fs.mkdirSync(portal)
+  const runs = (command) => ({ cwd: portal, tool_input: { command } })
+  for (const command of ['cd .. && cat local-dev.env', 'cat ../local-dev.env', `cd ${root}; grep x local-dev.env`]) {
+    blocked('secrets-shell', runs(command), new RegExp(`lee ${path.join(root, 'local-dev.env')},`))
+  }
+  assert.doesNotThrow(() => execute('secrets-shell', runs('cd .. && cat README.md')))
+  // Una carpeta que se llama como una credencial no es una: `.` resuelto toma su nombre, y por nombre frenaría.
+  for (const dir of ['credenciales-api', 'server.key']) {
+    fs.mkdirSync(path.join(root, dir))
+    const inside = { cwd: path.join(root, dir), tool_input: { command: 'grep -r x .' } }
+    assert.doesNotThrow(() => execute('secrets-shell', inside))
+    assert.doesNotThrow(() => execute('secrets-shell', runs(`cd ../${dir} && grep -r x .`)))
+  }
+})
+

@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.123.0] - 2026-11-15
+
+### Cambiado
+
+- **`secrets-shell` resuelve una lectura desde el `cd` de su propio comando** (caso 518). `cd <dir> && grep … .env` se
+  juzgaba como lectura del `.env` de la carpeta de la sesión: el bloqueo nombraba un archivo que el comando no lee, y
+  aprobar el que sí lee no lo destrababa. Ahora nombra el de `<dir>`, y un `( … )` o un `$( … )` no mueven lo que
+  sigue. Si aprobaste la ruta equivocada para destrabarlo, esa línea de `.ops-approval` ya no hace falta. Un `cd` a un
+  destino que no se resuelve —`cd "$DIR"`— antes de leer una credencial pide la ruta absoluta, como ya lo hacía la
+  escritura. Una identidad declarada en `organization/secrets.json` también se reconoce después de un `cd`: antes,
+  `cd .. && cat <identidad>` pasaba.
+
 ## [0.122.0] - 2026-11-15
 
 ### Cambiado

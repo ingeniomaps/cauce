@@ -8,6 +8,7 @@
 // Como todo lo que lee el texto de un comando, frena la forma habitual y no un script decidido: un nombre
 // armado en una variable o un `grep -r` sobre la carpeta sin nombrar el archivo pasan.
 
+const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { asRun, commandOf, rawCommandOf, cwdOf, block, isCommit, opsRoot } = require('./input')
@@ -98,21 +99,67 @@ function withoutPattern(segment, verb) {
   return kept.join(' ')
 }
 
-// Las palabras de cada tramo que lee: el que empieza con un lector, o el que redirige un archivo a la
-// entrada. Lo entrecomillado se mira, porque el código de un `node -e` nombra el archivo ahí adentro.
-function readTokens(command) {
-  const found = []
-  for (const segment of unbraced(command).split(/[;&|\n]+|\$\(|`/)) {
-    const words = segment.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
-      .split(/\s+/).filter(Boolean)
-    const verb = verbOf(words)
-    const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(segment)
-    // Lo que va después de `>` es el destino, no lo que se lee: `cat > .npmrc` escribe, y eso lo juzga
-    // `writtenCredentials` como escritura (caso 402).
-    const read = withoutPattern(segment, verb).replace(REDIRECT, ' ')
-    if (reads) found.push(...(read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || []))
+// Si un separador de comandos cae entre comillas, que es donde partir por él deja un `cd` que no corre.
+function quotedSeparator(text) {
+  let quote = ''
+  for (const char of text) {
+    if (quote) {
+      if (char === quote) quote = ''
+      else if (/[;&|\n]/.test(char)) return true
+    } else if (char === '"' || char === "'") quote = char
   }
-  return [...new Set(found)]
+  return false
+}
+
+// A dónde lleva un `cd` desde `base`, o null si no se sabe: una variable, una sustitución, una opción, comillas que la
+// partición por espacios dejó abiertas.
+function moved(base, to) {
+  if (base === null) return null
+  const home = (to === undefined ? '~' : to).replace(/^(["']?)\$(?:HOME\b|\{HOME\})/, `$1${os.homedir()}`)
+  const target = home.replace(/^(["'])(.*)\1$/, '$2')
+  if (/[$`*?"'\\]/.test(target) || target.startsWith('-')) return null
+  return path.resolve(base, target.replace(/^~(?=$|\/)/, os.homedir()))
+}
+
+// Las palabras de cada tramo que lee, con la carpeta desde la que se resuelven: el que empieza con un lector, o el que
+// redirige un archivo a la entrada. Lo entrecomillado se mira, porque el código de un `node -e` nombra el archivo ahí
+// adentro.
+//
+// La carpeta es la que deja el `cd` de un tramo anterior (caso 518), y sólo cuando se sabe sin interpretar: el `cd`
+// mueve lo que sigue a `&&`, `;` o un salto; tras un `||` —inmediato o más adelante—, o en la rama `else` de un
+// `if`, no se sabe si corrió; tras cualquier otro separador corre en otro proceso y no mueve nada. Con un `( … )`, un
+// `$( … )`, un backtick, un comentario o un separador entre comillas en el comando, lo que sigue a un `cd` no se sabe:
+// seguirlos pedía leer bien comillas y redirecciones, y leerlas mal hacía pasar una lectura aprobada en otra carpeta.
+// Una carpeta que no se sabe no se adivina: la lectura de una credencial pide la ruta absoluta.
+function readTokens(command, cwd) {
+  const found = new Map()
+  const text = unbraced(command)
+  const scoped = /[()`#]/.test(text) || quotedSeparator(text)
+  let base = cwd
+  let pending
+  for (const [at, segment] of text.split(/([;&|\n]+)/).entries()) {
+    if (at % 2) {
+      if (segment.includes('||') && (pending !== undefined || base !== cwd)) base = null
+      else if (pending !== undefined && /^(?:&&|;|\n)+$/.test(segment)) base = pending
+      pending = undefined
+      continue
+    }
+    for (const piece of segment.split(/\$\(|`/)) {
+      const words = piece.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
+        .split(/\s+/).filter(Boolean)
+      if (/^\s*(?:else|elif)\b/.test(piece) && base !== cwd) base = null
+      const verb = verbOf(words)
+      if (verb === 'cd') pending = scoped ? null : moved(base, words[1])
+      const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(piece)
+      // Lo que va después de `>` es el destino, no lo que se lee: `cat > .npmrc` escribe, y eso lo juzga
+      // `writtenCredentials` como escritura (caso 402).
+      const read = withoutPattern(piece, verb).replace(REDIRECT, ' ')
+      for (const token of reads ? read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || [] : []) {
+        found.set(`${base}\0${token}`, { token, base })
+      }
+    }
+  }
+  return [...found.values()]
 }
 
 // Escribir una credencial desde el shell, con la misma regla y la misma aprobación que el guard `secrets` aplica a
@@ -156,9 +203,24 @@ function secretsShell(input) {
   if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
   // El mensaje de un commit es dato, como en `destructive`: nombrar el archivo ahí no lo lee. Lo demás corre.
   const command = isCommit(raw) ? asRun(raw) : raw
-  const cwd = cwdOf(input)
-  const files = readTokens(command).filter((token) => patternNames(token).some((name) => credential(input, name)))
-    .map((token) => path.resolve(cwd, token.replace(/^~(?=$|\/)/, os.homedir())))
+  // Una identidad declarada se reconoce también por su ruta resuelta desde la carpeta del tramo; la regla por nombre la
+  // resuelve desde la sesión. Sólo contra las identidades: por nombre, un `.` resuelto tomaría el de su carpeta.
+  const root = opsRoot(input)
+  const declared = root && fs.existsSync(path.join(root, 'organization', 'secrets.json'))
+    ? require('../secrets').identityFiles(root) : []
+  const named = readTokens(command, cwdOf(input))
+    .filter(({ token, base }) => patternNames(token).some((name) => credential(input, name))
+      || (base !== null && declared.includes(path.resolve(base, token.replace(/^~(?=$|\/)/, os.homedir())))))
+  // Bajo un `cd` que no se sabe no hay qué ruta aprobar; pasa si la persona lo pidió en el chat nombrándolo, como la
+  // escritura.
+  const lost = named.find(({ token, base }) => base === null && !/^[~/]/.test(token)
+    && CHAT.unauthorized(input, [token]).length)
+  if (lost) {
+    block(`el comando lee ${lost.token}, que es una credencial, después de un \`cd\` a un destino que no se puede `
+      + 'resolver acá: escribí la ruta absoluta, o hacé el `cd` en un comando aparte.')
+  }
+  const files = named.filter(({ token, base }) => base !== null || /^[~/]/.test(token))
+    .map(({ token, base }) => path.resolve(base || '/', token.replace(/^~(?=$|\/)/, os.homedir())))
   const left = AP.pending(opsRoot(input), [...new Set(files)], input)
   if (!left.length) return
   block(`el comando lee ${left.join(', ')}, que es una credencial: leerla la deja en el contexto de la sesión. `
