@@ -198,6 +198,46 @@ test('un rastro que no se puede escribir no frena el push que ya estaba autoriza
   } finally { chat.close() }
 })
 
+test('una redirección en el push no es otra rama (caso 525)', () => {
+  const root = pushRoot('ops-hook-push-redireccion-')
+  for (const command of ['git push origin feat/x 2>&1', 'git push -u origin feat/x 2>&1; echo "exit=$?"',
+    'git push origin feat/x > /tmp/push.log', 'git push origin feat/x 2>/dev/null',
+    'git push origin feat/x 2> err.log', 'git push origin feat/x &> push.log',
+    'git push origin feat/x >> push.log 2>&1', 'git push origin feat/x >& push.log',
+  ]) {
+    const chat = chatSession()
+    try {
+      assert.doesNotThrow(() => execute('destructive',
+        chat.says('subí feat/x a origin')({ cwd: root, tool_input: { command } })), command)
+    } finally { chat.close() }
+  }
+  // Sólo al final: lo que sigue a una redirección y no es otra no se lee —una rama, un `--force`, un `+`—, así que el
+  // push frena entero en vez de aprobarse por una rama que no es la que se publica.
+  for (const command of ['git push 2>&1 origin feat/y', 'git push &> push.log origin feat/y',
+    'git push origin feat/x 2>&1 --force', 'git push origin feat/x 2>&1 -f', 'git push origin 2>&1 +feat/x',
+    'git push origin >& feat/x', 'git push origin feat/x >|log main', "git push origin feat/x '>x:main'"]) {
+    const chat = chatSession()
+    try {
+      const call = chat.says('subí feat/x a origin')({ cwd: root, tool_input: { command } })
+      assert.doesNotMatch(messageOf('destructive', call), /\n {2}push origin (?:2>|feat\/x @)/, command)
+    } finally { chat.close() }
+  }
+})
+
+test('lo que no se puede leer detrás de una redirección no lo destraba ni allowPush ni un «dale» (caso 525)', () => {
+  const root = pushRoot('ops-hook-push-ilegible-', { allowPush: true })
+  for (const command of ['git push origin feat/x 2>/dev/null main', 'git push origin feat/x > log --all',
+    'git push origin feat/x 2>&1 --force']) {
+    blocked('destructive', { cwd: root, tool_input: { command } }, /no se puede leer a dónde publica/)
+  }
+  const chat = chatSession()
+  try {
+    const call = { cwd: root, tool_input: { command: 'git push origin feat/x 2>/dev/null main' } }
+    blocked('destructive', chat.says('subí feat/x a origin')(call), /no se puede leer a dónde publica/)
+    blocked('destructive', chat.says('dale')(call), /no se puede leer a dónde publica/)
+  } finally { chat.close() }
+})
+
 test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ningún permiso', () => {
   const root = pushRoot('ops-hook-push-viva-', { allowPush: true })
   const push = (command, extra = {}) => ({ cwd: root, tool_input: { command }, ...extra })

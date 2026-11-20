@@ -47,6 +47,13 @@ diseño — eso vive en el commit y en el código.
   cuerpo trae un `;` —`-b "listo; va"`— pide el comando entero: detrás del `;` podía ir un `--admin` que la línea
   aprobada no nombraba.
 
+- **Una redirección en el push ya no se lee como otra rama** (caso 525). En `git push origin feat/x 2>&1`, el `2>` salía
+  como una segunda rama, así que la orden «subí feat/x a origin» no alcanzaba y el bloqueo ofrecía pegar
+  `push origin 2> @ …`. Los agentes agregan `2>&1` casi siempre, y en una sesión real la orden de push por chat casi
+  nunca funcionaba. Ahora una redirección al final del push (`2>&1`, `> log`, `2>/dev/null`, `&> log`) no cuenta. Si
+  después de una redirección viene otra cosa —una rama, `--all`, `--force`—, el push frena entero, también con
+  `allowPush`: no se puede leer a dónde publica. Se corrige escribiendo la redirección al final.
+
 - **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
   —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus
   `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para
