@@ -25,6 +25,14 @@ diseño — eso vive en el commit y en el código.
   escribir esa línea en `.ops-approval`: «agregá la api a .ops-approval» alcanzaba. Ahora el comando se pide
   nombrándolo, o con un «dale» después del bloqueo. Para un archivo nada cambia: «leé el .env» sigue alcanzando.
 
+- **La orden de push por chat ya no publica lo que la persona exceptuó, y no exige un verbo de una lista** (caso 522).
+  «subí a origin todo menos feat/x», «subí main a origin y feat/x no» y «pará, subí feat/x a origin después»
+  autorizaban el push de `feat/x`; ahora lo frenan. Y como con el merge, ordena la frase que nombra el remoto y la rama:
+  «mandá feat/x a origin» pasa. Si la persona quiso publicar lo juzga el agente, así que una frase que nombra los dos
+  sin pedir el push —«revisá feat/x en origin»— también pasa. Lo que frena de más: una negación en cualquier parte del
+  mensaje, como «subí feat/x a origin, no main», que antes pasaba; se repite la orden sin la negación. La línea de push
+  que el agente se escribe en `.ops-approval` sigue pidiendo el verbo de publicar, porque llega hasta la rama viva.
+
 ## [0.123.0] - 2026-11-15
 
 ### Cambiado

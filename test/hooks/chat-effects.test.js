@@ -49,6 +49,9 @@ test('la aprobación sólo recibe las líneas que la persona nombró en su mensa
     // Una línea de push se pregunta como un push y no como una ruta; el porqué está en `isPush`.
     const orders = chat.says('agregá push origin main a .ops-approval')
     assert.doesNotThrow(() => execute('workspace-boundary', orders(writes('push origin main\n'))))
+    // Sin pedir publicar no hay línea de push: `publish`, en `orders.js` (caso 522).
+    const reviews = chat.says('revisá main en origin y agregalo a .ops-approval')
+    blocked('workspace-boundary', reviews(writes('push origin main\n')), /no las pidió/)
     const loginOnly = chat.says('agregá src/login.js a .ops-approval y arreglá el login')
     blocked('workspace-boundary', loginOnly(writes('push origin feat/login\n')), /no las pidió/)
     // Y con el repositorio al final, que es la forma que aprueba desde el 446: sigue siendo un push.

@@ -24,16 +24,27 @@ test('un push que la persona ordena con su remoto y su rama pasa, y ningún otro
     blocked('destructive', push(asked, 'git push origin feat/x feat/y'), WORK)
     const withFlag = push(chat.says('subí feat/x a origin'), 'git push -u origin feat/x')
     assert.doesNotThrow(() => execute('destructive', withFlag))
-    // Nombrar no es ordenar: sin verbo de publicar, con otro verbo, negado, o un nombre dentro de otro. Y el
-    // basename no cuenta, que es por lo que esto no pasa por `mentions`.
+    // El verbo no decide (caso 522): ordena la frase que nombra remoto y rama.
+    for (const message of ['mandá feat/x a origin', 'llevá feat/x a origin', 'dale con feat/x en origin']) {
+      const alone = chatSession()
+      try { assert.doesNotThrow(() => execute('destructive', push(alone.says(message), 'git push origin feat/x')),
+        message) } finally { alone.close() }
+    }
+    // Lo que frena: el basename, una negación en cualquier lugar del mensaje o la rama exceptuada, la pregunta, el
+    // mensaje que arranca frenando, y un nombre dentro de otro.
     for (const [message, command] of [
       ['Arreglá el login y no subas nada', 'git push origin feat/login'],
-      ['revisá feat/x en origin', 'git push origin feat/x'],
       ['no subas feat/x a origin', 'git push origin feat/x'],
-      // Con el verbo presente, lo único que frena es la negación.
       ['no hay que subir feat/x a origin', 'git push origin feat/x'],
       ["don't push feat/x to origin", 'git push origin feat/x'],
+      ['subí main a origin y feat/x no', 'git push origin feat/x'],
+      ['subí a origin todo menos feat/x', 'git push origin feat/x'],
+      ['subí main y feat/x a origin, pero no feat/x', 'git push origin feat/x'],
+      ['feat/x a origin, no lo subas', 'git push origin feat/x'],
+      ['feat/x a origin: no', 'git push origin feat/x'],
+      ['subí feat/x a origin, no main', 'git push origin feat/x'],
       ['¿qué tiene origin feat/x?', 'git push origin feat/x'],
+      ['pará, subí feat/x a origin después', 'git push origin feat/x'],
       ['subí feat/xy a origin2', 'git push origin feat/x'],
     ]) {
       // Cada frase en su sesión: lo que se mide es si la frase ordena, y con una sesión compartida el bloqueo
