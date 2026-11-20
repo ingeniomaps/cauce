@@ -145,7 +145,7 @@ pegó las líneas en `.ops-approval`. Costó varias vueltas y no salió nunca po
 ## Cierre
 
 Decidido por la persona el 2026-11-19, entre las tres salidas del tradeoff: el modelo del 280 sólo para `close` y
-`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-70` de `15d609f8`) arma un ítem por PR y repositorio para
+`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-71` de `15d609f8`) arma un ítem por PR y repositorio para
 `merge`, `close` y `reopen`, con el acto adentro, y la lectura que era `ordersMerge` se llama `ordersPull`
 (`engine/hooks/orders.js:65` de `15d609f8`) y lee los tres. `review` y `comment` siguen con el comando entero, y un comando que
 mezcla uno de ellos también. Un `close` o `reopen` se lee por número sólo si cada palabra es el número, el repositorio o

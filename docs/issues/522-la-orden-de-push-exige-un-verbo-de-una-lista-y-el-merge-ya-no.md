@@ -266,8 +266,8 @@ stubs que anotan lo que corre, y el push iba a un remoto local:
 12. hecho: uno por uno sobre el diff final; tres se corrigieron (el del «dale», el de la lista de verbos y el de la
     prueba), el de `chat-effects` pasó a apuntar a `orders.js` en vez de repetirlo, y ninguno queda por encima de los
     pares preexistentes con el tokenizador a 0,22. El contraste del cierre, que rehízo la pasada sobre `40936526`,
-   encontró que el comentario de `push.test.js` sobre la rama viva habilitada repetía la razón de `push.js` (0,231), y
-   quedó en «Caso 522.» (`e3fa4bc5`).
+    encontró que el comentario de `push.test.js` sobre la rama viva habilitada repetía la razón de `push.js` (0,231), y
+    quedó en «Caso 522.» (`e3fa4bc5`).
 13. hecho: `npm run ci` con el cambio y este caso stageados, `exit 0`.
 14. hecho: recorrido arriba contra los defectos, el Fix y los Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».
