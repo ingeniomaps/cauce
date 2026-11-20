@@ -42,6 +42,11 @@ diseño — eso vive en el commit y en el código.
   `.ops-approval` con el comando entero y su `-c` —`gh pr close 69 -c "duplicado" --repo <repo>`, y lo mismo con
   `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`.
 
+- **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
+  —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus
+  `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para
+  marcar una historia descartada, sacala de «Historias» y dejala en las notas de la épica.
+
 ## [0.123.0] - 2026-11-15
 
 ### Cambiado

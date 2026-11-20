@@ -479,7 +479,8 @@ function inboxSections(dir) {
 module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING,
   TASK_LINE, TASK_LINE_ANY_LANE,
-  read, section, withoutComments, frontmatter, readEpics, readDone, readWip, readWips, wipName, noSplitReason,
+  read, section, withoutComments, frontmatter, epicFiles, readEpics, readDone, readWip, readWips, wipName,
+  noSplitReason,
   acceptanceConditions, tableRows, taskFromLine,
   readInbox, inboxHeads, inboxFiles, inboxSections, entryNames, readHumanActions,
 }

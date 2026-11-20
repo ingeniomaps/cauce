@@ -186,6 +186,54 @@ test('check avisa cuando dos secciones de una épica compiten por el mismo rol',
   assert.deepEqual(SR.competingSections(root), [])
 })
 
+// Caso 519: qué viñetas de «Historias» avisa `unreadStories`, sobre qué épicas, y que el aviso llegue a `check`.
+const epica = (historias, head = 'epic: 001\nstatus: closed') => `---\n${head}\ntitle: Demo\nservice: app\n---\n\n`
+  + `# Épica — Demo\n\n## Criterios\n\n- **C1** — real\n\n## Historias\n\n${historias}\n## Riesgos\n\n- Ninguno\n`
+test('el aviso nombra una línea de historia que el parser no lee', () => {
+  const root = tempRoot('ops-historia-ilegible-')
+  const roadmap = path.join(root, 'roadmap')
+  fs.mkdirSync(roadmap, { recursive: true })
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica('- [x] **a** (→ C1) — uno. (service: app)\n'
+    + '* [~] **cancelada** (→ C1) — dos. (service: app)\n- [ x] **mal** (→ C1) — tres. (service: app)\n'))
+  const avisos = SR.unreadStories(root)
+  assert.equal(avisos.length, 2, avisos.join('\n'))
+  assert.match(avisos[0], /epic-001-demo\.md.*cancelada.*\[ \] o \[x\]/)
+  assert.match(avisos[1], /mal/)
+
+  // Las casillas que la gramática lee, y la viñeta sin casilla, no avisan; tampoco una fuera de «Historias».
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica('- [x] **a** (→ C1) — uno. (service: app)\n'
+    + '* [ ] **b** (→ C1) — dos. (service: app)\n- [X] **c** (→ C1) — tres. (service: app)\n'
+    + '- **d** (→ C1) — cuatro. (service: app)\n')
+    .replace('## Riesgos\n\n- Ninguno', '## Riesgos\n\n- [~] **e** prosa'))
+  assert.deepEqual(SR.unreadStories(root), [])
+})
+
+test('el aviso recorre las épicas que lee el parser, también la graduada, y no la plantilla', () => {
+  const roadmap = path.join(tempRoot('ops-historia-epicas-'), 'roadmap')
+  fs.mkdirSync(path.join(roadmap, 'epic-002-grad'), { recursive: true })
+  const write = (name, slug, head) => fs.writeFileSync(path.join(roadmap, name),
+    epica(`* [~] **${slug}** — x. (service: app)\n`, head))
+  write('epic-002-grad/spec.md', 'graduada')
+  write('epic-003-old.md.bak', 'vieja')
+  write('epic-004-plantilla.md', 'molde', 'epic: 004\nstatus: template')
+  write('epic-000-cero.md', 'cero', 'epic: 000\nstatus: open')
+  const found = SR.unreadStories(path.dirname(roadmap))
+  assert.ok(found.some((one) => /epic-002-grad\/spec\.md.*graduada/.test(one)), found.join('\n'))
+  assert.equal(found.length, 1, found.join('\n'))
+})
+
+test('el aviso de una historia que no se lee sale en check', () => {
+  const target = path.join(tempRoot('ops-historia-check-'), 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-demo.md'), '---\nepic: 001\ntitle: Demo\nstatus: open\n'
+    + 'service: app\n---\n\n# Épica 001 — Demo\n\n## Criterios\n\n- **C1** — real\n\n## Historias\n\n'
+    + '- [ ] **a** (→ C1) — uno. (service: app)\n* [~] **cancelada** (→ C1) — dos. (service: app)\n')
+  const { warnings } = JSON.parse(run(['check', planning, '--json']).stdout)
+  assert.ok(warnings.some((one) => /epic-001-demo\.md: «\* \[~\] \*\*cancelada\*\*» parece una historia/.test(one)),
+    JSON.stringify(warnings))
+})
+
 // Caso 208. Una regla derogada dice qué rige en su lugar o por qué se dio de baja. Que falte avisa —las
 // derogadas de antes no lo traían—, y lo que se escribe mal es error: citar algo que no existe, o a sí misma.
 test('una regla derogada dice qué la reemplaza, y la cita tiene que llevar a algo', () => {
