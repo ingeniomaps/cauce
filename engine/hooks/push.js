@@ -23,6 +23,7 @@ const { spawnSync } = require('node:child_process')
 const { block, commandOf, opsRoot, configOf, toplevel } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const { ordersPush } = require('./orders')
 const CF = require('./confirm')
 const TRAIL = require('./trail')
 
@@ -185,7 +186,7 @@ function publish(input, command) {
   // Se pregunta sin conceder, a diferencia de lo que pasa por `AP.pending`: volver a leer lo que ya se
   // leyó no agrega consecuencia y volver a publicar sí, así que la autorización de un push vale para esa
   // operación y no para el mensaje siguiente (R10).
-  const cleared = CHAT.authorized(input, items, { asked: CHAT.ordersPush })
+  const cleared = CHAT.authorized(input, items, { asked: ordersPush })
   const unordered = items.filter((item) => !cleared.some((one) => one.item === item))
   if (unordered.length) block(workMessage(unordered, input, sure))
   const destination = new Map(destinations.map((to) => [filedAs(to, topOf()), to]))

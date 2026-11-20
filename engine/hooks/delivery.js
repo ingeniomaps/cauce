@@ -12,7 +12,7 @@
 // `deployCommands`.
 
 const { configOf, opsRoot } = require('./input')
-const CHAT = require('./chat')
+const { ordersMerge } = require('./orders')
 
 // Dónde empieza un comando, y qué puede ir entre el programa y su verbo sin salir de él: banderas, con su
 // valor separado o pegado (`kubectl -n prod apply`, `terraform -chdir=infra apply`).
@@ -56,7 +56,7 @@ function mergeItems(command) {
   if (!acts.length || acts.some((act) => act[1] !== 'merge')) return null
   return [...new Set(acts.map((act) => mergeItem(act[2])))]
 }
-const MERGE = { items: mergeItems, asked: (text, item, how) => CHAT.ordersMerge(text, item, how) }
+const MERGE = { items: mergeItems, asked: (text, item, how) => ordersMerge(text, item, how) }
 
 // Dónde vale cada aprobación, en el quinto lugar de cada regla (caso 446). Un `gh` sin destino lo resuelve solo,
 // por lo que dice la regla de `pr create`, así que por archivo se aprueba sólo nombrándolo: con `--repo`, o con
