@@ -126,8 +126,7 @@ function declared(input) {
       `'${one.trim()}' está declarado en deployCommands de ops.config.json: ${DEPLOY}`, null, DIR])
 }
 
-// En la forma de la tabla de `destructive`: patrón, mensaje, si tiene salida —todas la tienen—, cuando el ítem
-// no es el comando entero cómo se lee, dónde vale, y que publica.
+// En la forma de la tabla de `destructive`, que describe `rulesOf` (`shell.js`): todas tienen salida y todas publican.
 function deliveryRules(input) {
   return [...RULES, ...declared(input)]
     .map(([pattern, message, by, place]) => [pattern, message, true, by, place, true])
