@@ -179,9 +179,10 @@ instalado del banco de `main`, pasó sin ninguna aprobación, y por el de esta r
 5. no aplica: no quita ni reemplaza nada; suma lo que la regla reconoce. La salida de antes y después está arriba igual.
 6. hecho: por la entrada real de los hooks y en una sesión real, sin el arnés de las pruebas.
 7. hecho: sesión real de Claude Code con los dos motores, arriba.
-8. hecho: las pruebas de `test/hooks`, los 28 comandos y la sesión real. El último cambio después de la sesión fue
-   `namesRepo`, que no toca el comando de terraform de la sesión: ese comando se volvió a pasar por la entrada real
-   con la versión final.
+8. hecho: las pruebas de `test/hooks`, los 28 comandos y la sesión real. Lo último que cambió el código después fue
+   `namesRepo`: el comando que escribió el agente en la sesión se volvió a pasar por la entrada real con la versión
+   final (frena; con `main`, pasa), y los 28 comandos se repitieron con la versión commiteada (`a1f0caaa`) y dieron
+   lo mismo, fila por fila.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: `AT` lo usan todas las reglas de `delivery.js`, `ACTS` y los `deployCommands`; `namesRepo` lo leen
     `destructive` y `unplaced`; `PROGRAM_PATH`, sólo `delivery.js` y la regla de disco. La línea que ofrece el
