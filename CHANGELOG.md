@@ -69,6 +69,13 @@ diseño — eso vive en el commit y en el código.
   arranca frenando —«pará», «esperá», «cancelá»— se lleva todo lo concedido en la sesión, también la lectura de un
   archivo o un comando: lo que haga falta después se pide de nuevo.
 
+- **Un deploy, un acto sobre un PR o un `mkfs` escritos con la ruta del binario ya no pasan sin preguntar** (caso 528).
+  `/usr/bin/terraform apply`, `./node_modules/.bin/cdk deploy`, `/usr/bin/gh pr merge 69 …` o `/sbin/mkfs.ext4
+  /dev/sdb` no los reconocía ninguna regla, y un agente que desconfiaba del binario del `PATH` lo escribió así por su
+  cuenta. Ahora frenan como sin la ruta. Para autorizarlos por chat se nombra el comando con su ruta, o se contesta
+  «dale» al bloqueo; el merge por número no cambia. Frena de más una ruta en posición de argumento que termina como el
+  programa y sigue con su verbo (`ls infra/terraform apply`), como ya pasaba con la palabra suelta.
+
 - **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
   —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus
   `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para

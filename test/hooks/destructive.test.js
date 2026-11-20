@@ -429,3 +429,12 @@ test('git clean se frena si fuerza, en cualquier opción, y no si sólo simula',
     assert.doesNotThrow(() => execute('destructive', { tool_input: { command } }), command)
   }
 })
+
+// Caso 528.
+test('el borrado de disco frena también con el binario escrito por ruta', () => {
+  const forms = ['/sbin/mkfs.ext4 /dev/sdb', '/usr/bin/shred -u secreto.txt', 'sudo /usr/sbin/mkfs -t ext4 /dev/sdb']
+  for (const command of forms) {
+    blocked('destructive', { cwd: '/tmp', tool_input: { command } }, /disco o dispositivo/)
+  }
+  assert.doesNotThrow(() => execute('destructive', { cwd: '/tmp', tool_input: { command: 'cat docs/mkfs.md' } }))
+})

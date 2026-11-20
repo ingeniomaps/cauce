@@ -137,5 +137,10 @@ function withoutHeredocBodies(command) {
 // lookahead lo aseguran—: con dos, `>&11` repetido veinte veces tardaba medio minuto frente a una regla que no matchea.
 const SAME_COMMAND = String.raw`(?:[<>]&\d*-?(?![\d-])|(?<![<>])&>>?(?!>)|>\||[^;&|\n])`
 
-module.exports = { eachQuoted, heredocRuns, masked, SAME_COMMAND, segments, shellWord, unquoted, withoutContinuations,
-  withoutHeredocBodies }
+// La ruta que puede ir delante del nombre de un programa: `/usr/bin/terraform`, `./node_modules/.bin/cdk`,
+// `$HOME/bin/tofu`. Sin ella, una regla que ancla el programa en el principio de una palabra no lo veía, y un deploy o
+// un `mkfs` escritos así pasaban sin preguntar (caso 528). `$(which terraform)` queda afuera: no hay nombre que leer.
+const PROGRAM_PATH = String.raw`(?:[^\s;&|()<>'"\`]*\/)?`
+
+module.exports = { eachQuoted, heredocRuns, masked, PROGRAM_PATH, SAME_COMMAND, segments, shellWord, unquoted,
+  withoutContinuations, withoutHeredocBodies }

@@ -16,7 +16,7 @@ const {
   asRun, assignedValues, toplevel, realPath, rawCommandOf,
 } = require('./input')
 const { REDIRECTIONS } = require('./shell-writes')
-const { SAME_COMMAND } = require('./quoting')
+const { PROGRAM_PATH, SAME_COMMAND } = require('./quoting')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead, writes } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -183,7 +183,7 @@ function rulesOf(input) {
       DIR,
     ],
     [
-      new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
+      new RegExp(ANTES + PROGRAM_PATH + String.raw`(?:mkfs\S*|shred)\s`
         + String.raw`|\bdd\s+${SAME_COMMAND}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],

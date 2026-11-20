@@ -13,10 +13,11 @@
 
 const { configOf, opsRoot } = require('./input')
 const { ordersPull } = require('./orders')
+const { PROGRAM_PATH } = require('./quoting')
 
-// Dónde empieza un comando, y qué puede ir entre el programa y su verbo sin salir de él: banderas, con su
-// valor separado o pegado (`kubectl -n prod apply`, `terraform -chdir=infra apply`).
-const AT = String.raw`(?:^|[\s;&|('"\`])`
+// Dónde empieza un comando —con la ruta del programa, si la trae—, y qué puede ir entre el programa y su verbo sin
+// salir de él: banderas, con su valor separado o pegado (`kubectl -n prod apply`, `terraform -chdir=infra apply`).
+const AT = String.raw`(?:^|[\s;&|('"\`])` + PROGRAM_PATH
 const FLAGS = String.raw`(?:\s+-{1,2}[^\s;&|]+(?:\s+[^-\s;&|][^\s;&|]*)?)*`
 const ENDS = String.raw`(?=$|[\s;&|)'"\`])`
 const SAME = String.raw`[^;&|\n]`
@@ -112,7 +113,8 @@ const NAMED = [new RegExp(String.raw`\s(?:--repo|-R)(?:[\s=]|$)`),
 // Lo que va entre comillas es un valor —un `--body`, un mensaje— y no nombra nada; pero se blanquea recién al buscar
 // el repositorio, porque un `gh` entre comillas, como en `bash -c "gh pr merge 5"`, sigue siendo una llamada.
 const unvalued = (call) => call.replace(/"[^"]*"|'[^']*'/g, '""')
-const namesRepo = (text) => text.split(/&&|\|\||[;|&\n]/).filter((call) => /(?:^|[\s('"`])gh\s/.test(call))
+const CALLS_GH = new RegExp(String.raw`(?:^|[\s('"\`])${PROGRAM_PATH}gh\s`)
+const namesRepo = (text) => text.split(/&&|\|\||[;|&\n]/).filter((call) => CALLS_GH.test(call))
   .every((call) => NAMED.some((one) => one.test(unvalued(call))))
 
 // Los comandos de deploy que el proyecto declara, como se escriben al principio de un comando.

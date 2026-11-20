@@ -320,3 +320,30 @@ test('el bloqueo de publicar dice que el «dale» vale para su turno, y lo autor
     assert.deepEqual(lines.map((one) => [one.item.split(' @ ')[0], one.via]), [[apply, 'orden']])
   } finally { chat.close() }
 })
+
+// Caso 528.
+test('lo que publica frena también con el binario escrito por ruta', () => {
+  const root = pushRoot('cauce-delivery-ruta-')
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush: false }, deployCommands: ['make ship'] }))
+  for (const command of [
+    '/usr/bin/terraform apply', '/usr/local/bin/kubectl apply -f k8s/', '~/.local/bin/helm upgrade api ./chart',
+    './node_modules/.bin/cdk deploy', 'node_modules/.bin/pulumi up', '$HOME/bin/tofu destroy',
+    '/usr/bin/gh pr merge 69 --repo o/api', '/usr/bin/gh workflow run deploy.yml --repo o/api',
+    '/usr/bin/gh release create v1 --repo o/api', '/usr/bin/gh pr create --fill', '/usr/bin/make ship',
+    'cd infra && /opt/tf/terraform apply',
+  ]) blocked('destructive', run(root, command), /R10|--repo/)
+  for (const command of [
+    'cat infra/terraform/main.tf', 'ls ./kubectl/', 'cd infra/terraform && terraform plan',
+    'vim infra/terraform/apply.tf', 'git log -- infra/terraform',
+  ]) assert.doesNotThrow(() => execute('destructive', run(root, command)), command)
+  // Un `gh` con ruta y sin `--repo` tampoco tiene línea que valga sólo para él: pegarla no lo aprueba.
+  const loose = '/usr/bin/gh workflow run deploy.yml'
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `${loose}\ngh workflow run deploy.yml\n`)
+  blocked('destructive', run(root, loose), /Por archivo no hay línea que pegar/)
+  fs.rmSync(path.join(root, 'planning', '.ops-approval'))
+  // Y la orden por número sigue leyendo el PR: el ítem es el mismo con la ruta o sin ella.
+  const chat = chatSession()
+  try { assert.equal(merges(root, chat, 'mergeá el #69', NO_DIALOG)('/usr/bin/gh pr merge 69 --repo o/api'), 'pasa') }
+  finally { chat.close() }
+})
