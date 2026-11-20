@@ -349,6 +349,11 @@
     "branches": 96,
     "functions": 100
   },
+  "engine/hooks/orders.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/hooks/project-guards.js": {
     "lines": 100,
     "branches": 97,

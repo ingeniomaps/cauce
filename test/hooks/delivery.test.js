@@ -128,7 +128,7 @@ test('el guard frena la dirección segura: lo que niega, pregunta, frena o nombr
       ['pará, mergeá el #54 después', 'gh pr merge 54 --repo acme/app'],
       ['corré los e2e y mergeá el #56', 'gh pr merge 2 --repo acme/app'],
       ['/autobuild', 'gh pr merge 57 --repo acme/app'],
-      ['mergeá el #58', 'gh pr close 58 --repo acme/app'],
+      ['mergeá el #58', 'gh pr review 58 --approve --repo acme/app'],
       ['mergeá el #59', 'gh pr merge 59 --repo acme/app && gh pr comment 59 --body listo'],
       ['mergeá el #60', 'gh pr merge 60 --repo acme/app --admin && git push origin main'],
     ]) assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), 'frena', `${prompt} → ${command}`)
@@ -165,9 +165,80 @@ test('la confirmación de un merge cubre el PR y no la línea de comando', () =>
   assert.deepEqual(by.items("gh pr merge 9 --repo=acme/app -b 'va' ; gh pr merge 9 -R acme/app"),
     ['gh pr merge 9 --repo acme/app'])
   assert.deepEqual(by.items('gh pr merge && gh pr merge 9 --repo'), ['gh pr merge', 'gh pr merge 9'])
-  assert.equal(by.items('gh pr merge 9 && gh pr close 8'), null)
+  assert.deepEqual(by.items('gh pr merge 9 && gh pr close 8'), ['gh pr merge 9', 'gh pr close 8'])
+  assert.equal(by.items('gh pr merge 9 && gh pr comment 8 --body ok'), null)
+  assert.equal(by.items('gh pr close 9 -d'), null)
+  // Lo que sigue a un `;` del cuerpo no se ve, así que un `--admin` ahí no puede quedar fuera del ítem.
+  assert.equal(by.items('gh pr merge 9 -b "x; y" --admin'), null)
   const message = messageOf('destructive', run(root, 'gh pr merge 2 --squash --repo acme/app'))
   assert.match(message, /\n {2}gh pr merge 2 --repo acme\/app\n/, 'lo que se pega es el PR, no la línea')
+})
+
+test('el bloqueo de un comando no dice que la persona lo nombró por su último tramo (casos 521 y 523)', () => {
+  const root = pushRoot('cauce-delivery-tramo-aviso-')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ ...config, deployCommands: ['./scripts/release.sh'] }))
+  const chat = chatSession()
+  try {
+    const held = messageOf('destructive', { ...chat.says('mirá el log, release.sh')(run(root, './scripts/release.sh')),
+      permission_mode: NO_DIALOG })
+    assert.doesNotMatch(held, /La persona nombró/)
+  } finally { chat.close() }
+})
+
+test('nombrar el último tramo de una ruta no ordena el comando que la trae (caso 523)', () => {
+  const root = pushRoot('cauce-delivery-tramo-')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ ...config, deployCommands: ['./scripts/release.sh'] }))
+  for (const [prompt, command, expected] of [
+    ['revisá la api', 'gh pr comment 69 --body ok --repo acme/api', 'frena'],
+    ['arreglá la api', 'gh pr review 69 --approve --repo acme/api', 'frena'],
+    ['revisá el deploy de la api', 'gh workflow run deploy.yml --repo acme/api', 'frena'],
+    ['revisá prod.yaml', 'kubectl apply -f k8s/prod.yaml', 'frena'],
+    ['corré gh pr close 69 --repo acme/api', 'gh pr close 69 --repo acme/api', 'pasa'],
+    // Un comando de una sola palabra tampoco: su basename no es un archivo que se pide, es el deploy.
+    ['revisá release.sh', './scripts/release.sh', 'frena'],
+    ['corré ./scripts/release.sh', './scripts/release.sh', 'pasa'],
+  ]) {
+    const chat = chatSession()
+    try { assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), expected, `${prompt} → ${command}`) } finally {
+      chat.close()
+    }
+  }
+})
+
+test('cerrar y reabrir un PR se piden como un merge, por su número (caso 520)', () => {
+  const root = pushRoot('cauce-delivery-cerrar-')
+  for (const [prompt, command, expected] of [
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api', 'pasa'],
+    ['reabrí el #69', 'gh pr reopen 69 --repo acme/api', 'pasa'],
+    ['cerrá el #69, el #64 y el #33', 'gh pr close -c "duplicado" 33 --repo acme/api', 'pasa'],
+    ['cerrá el #69', 'gh pr close 70 --repo acme/api', 'frena'],
+    ['cerralos todos menos el #69', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['¿cerramos el #69?', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['no cierres nada', 'gh pr close 69 --repo acme/api', 'frena'],
+    // Aprobar, comentar y borrar la rama al cerrar siguen pidiéndose con el comando entero.
+    ['cerrá el #69', 'gh pr review 69 --approve --repo acme/api', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 -d --repo acme/api', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 --delete-branch --repo acme/api', 'frena'],
+    // Cerrado por defecto: cualquier otra bandera, o lo que no se lee como una, vuelve al comando entero.
+    ['cerrá el #69', 'gh pr close 69 --delete-branch=true --repo acme/api', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 -dc chau --repo acme/api', 'frena'],
+    ['cerrá el #69', 'bash -c "gh pr close 69 --repo acme/api -d"', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api `-d`', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api -c "dup; ver #70" -d', 'frena'],
+    ['cerrá el #69', "gh pr reopen 69 --repo acme/api -c 'a|b' --delete-branch", 'frena'],
+    ['cerrá el #69', 'gh pr close 69 -c "uso -d" --repo=acme/api', 'pasa'],
+    ['cerrá el #69', 'gh pr close 69 --comment=duplicado -R acme/api', 'pasa'],
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api && gh pr comment 69 --body chau --repo acme/api', 'frena'],
+  ]) {
+    const chat = chatSession()
+    try { assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), expected, `${prompt} → ${command}`) } finally {
+      chat.close()
+    }
+  }
 })
 
 // Caso 281, del lado de publicar. Una orden que se cumple después —«cuando el CI quede verde…»— tiene que
@@ -195,4 +266,105 @@ test('una orden de mergear o de publicar sobrevive al aviso de una tarea de fond
     assert.equal(told('git push origin main'), 'frena')
     assert.equal(after('no mergees el #11 todavía', notice())('gh pr merge 11 --repo acme/app'), 'frena')
   } finally { chat.close() }
+})
+
+// Casos 524 y 527.
+test('publicar no se hereda al mensaje siguiente, y frenar revoca lo concedido', () => {
+  const root = pushRoot('cauce-delivery-hereda-')
+  const turns = (...steps) => {
+    const chat = chatSession()
+    const seen = []
+    try {
+      let turn = null
+      for (const step of steps) {
+        if (step.startsWith('m:')) turn = merges(root, chat, step.slice(2), NO_DIALOG)
+        else seen.push(turn(step.slice(2)))
+      }
+    } finally { chat.close() }
+    return seen.join(' ')
+  }
+  const merge = 'gh pr merge 69 --repo acme/api'
+  const apply = 'terraform apply'
+  const workflow = 'gh workflow run deploy.yml --repo acme/api'
+  const release = 'gh release create v1 --repo acme/api'
+  const down = 'docker compose down'
+  // Dentro del turno de la orden, el reintento pasa; con el mensaje siguiente, sea cual sea, vuelve a pedirse.
+  // Una pregunta y no un «gracias»: un mensaje que no nombra PR ni niega ordena todos los merges (caso 280).
+  assert.equal(turns('m:mergeá el #69', `c:${merge}`, `c:${merge}`, 'm:¿cómo va el CI?', `c:${merge}`),
+    'pasa pasa frena')
+  assert.equal(turns('m:mergeá el #69', `c:${merge}`, 'm:no mergees el #69', `c:${merge}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${apply}`, `c:${apply}`, `c:${apply}`, 'm:pará', `c:${apply}`), 'pasa pasa frena')
+  assert.equal(turns(`m:corré ${apply}`, `c:${apply}`, 'm:no despliegues nada', `c:${apply}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${workflow}`, `c:${workflow}`, 'm:gracias', `c:${workflow}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${release}`, `c:${release}`, 'm:no publiques nada', `c:${release}`), 'pasa frena')
+  assert.equal(turns('m:hola', `c:${apply}`, 'm:dale', `c:${apply}`, `c:${apply}`, 'm:gracias', `c:${apply}`),
+    'frena pasa pasa frena')
+  // Lo que no publica se sigue heredando, salvo que un mensaje arranque frenando.
+  assert.equal(turns(`m:corré ${down}`, `c:${down}`, 'm:gracias', `c:${down}`), 'pasa pasa')
+  assert.equal(turns(`m:corré ${down}`, `c:${down}`, 'm:pará', `c:${down}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${down}`, `c:${down}`, 'm:esperá, eso no', `c:${down}`), 'pasa frena')
+})
+
+// Lo que dice el bloqueo de cuánto dura un «dale», y el rastro de quién autorizó: sin conceder, `grant` ya no lo anota.
+test('el bloqueo de publicar dice que el «dale» vale para su turno, y lo autorizado queda en el rastro', () => {
+  const root = pushRoot('cauce-delivery-rastro-')
+  const chat = chatSession()
+  const apply = 'terraform apply'
+  try {
+    const message = messageOf('destructive', chat.says('hola')(run(root, apply, { permission_mode: NO_DIALOG })))
+    assert.match(message, /vale para este turno/)
+    assert.doesNotMatch(message, /sigue valiendo en los mensajes siguientes/)
+    assert.equal(merges(root, chat, `corré ${apply}`, NO_DIALOG)(apply), 'pasa')
+    const log = path.join(root, 'planning', '.grant-log')
+    const lines = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line))
+    assert.deepEqual(lines.map((one) => [one.item.split(' @ ')[0], one.via]), [[apply, 'orden']])
+  } finally { chat.close() }
+})
+
+// Caso 528.
+test('lo que publica frena también con el binario escrito por ruta', () => {
+  const root = pushRoot('cauce-delivery-ruta-')
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush: false }, deployCommands: ['make ship'] }))
+  for (const command of [
+    '/usr/bin/terraform apply', '/usr/local/bin/kubectl apply -f k8s/', '~/.local/bin/helm upgrade api ./chart',
+    './node_modules/.bin/cdk deploy', 'node_modules/.bin/pulumi up', '$HOME/bin/tofu destroy',
+    '/usr/bin/gh pr merge 69 --repo o/api', '/usr/bin/gh workflow run deploy.yml --repo o/api',
+    '/usr/bin/gh release create v1 --repo o/api', '/usr/bin/gh pr create --fill', '/usr/bin/make ship',
+    'cd infra && /opt/tf/terraform apply',
+  ]) blocked('destructive', run(root, command), /R10|--repo/)
+  for (const command of [
+    'cat infra/terraform/main.tf', 'ls ./kubectl/', 'cd infra/terraform && terraform plan',
+    'vim infra/terraform/apply.tf', 'git log -- infra/terraform',
+  ]) assert.doesNotThrow(() => execute('destructive', run(root, command)), command)
+  // Un `gh` con ruta y sin `--repo` tampoco tiene línea que valga sólo para él: pegarla no lo aprueba.
+  const loose = '/usr/bin/gh workflow run deploy.yml'
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `${loose}\ngh workflow run deploy.yml\n`)
+  blocked('destructive', run(root, loose), /Por archivo no hay línea que pegar/)
+  fs.rmSync(path.join(root, 'planning', '.ops-approval'))
+  // Y la orden por número sigue leyendo el PR: el ítem es el mismo con la ruta o sin ella.
+  const chat = chatSession()
+  try { assert.equal(merges(root, chat, 'mergeá el #69', NO_DIALOG)('/usr/bin/gh pr merge 69 --repo o/api'), 'pasa') }
+  finally { chat.close() }
+})
+
+// Caso 520.
+test('check avisa la línea de un PR escrita con el comando entero, que ya no aprueba nada', () => {
+  const root = pushRoot('cauce-delivery-linea-vieja-')
+  const AP = require('../../engine/hooks/approval')
+  const old = ['gh pr close 69 -c "duplicado" --repo acme/api', 'gh pr merge 12 --squash --repo acme/api']
+  // La última es la que ofrece hoy el bloqueo del deploy cuando un merge va en el mismo comando.
+  const current = ['gh pr close 70 --repo acme/api', 'gh pr close 71 -d --repo acme/api',
+    `terraform apply @ ${root}`, `terraform apply && gh pr merge 12 --squash --repo acme/api @ ${root}`]
+  // Sin `--repo` la avisa el aviso del lugar, una sola vez.
+  const unplaced = 'gh pr close 72 -c "x"'
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `${[...old, ...current, unplaced].join('\n')}\n`)
+  const said = AP.warnings(root).join('\n')
+  assert.match(said, /2 línea\(s\) de un PR escritas con el comando entero, que ya no aprueban nada/)
+  assert.match(said, /gh pr close 69 -c "duplicado" --repo acme\/api → gh pr close 69 --repo acme\/api/)
+  assert.match(said, /gh pr merge 12 --squash --repo acme\/api → gh pr merge 12 --repo acme\/api/)
+  assert.match(said, /4 ruta\(s\) aprobadas y sin borrar/, 'las vigentes se siguen contando aparte')
+  assert.match(said, /1 línea\(s\) sin el lugar donde valen, que ya no aprueban nada: gh pr close 72 -c "x"\./)
+  blocked('destructive', run(root, old[0]), /R10/)
+  assert.doesNotThrow(() => execute('destructive', run(root, current[1])), 'la de `-d` se aprueba entera, como antes')
 })

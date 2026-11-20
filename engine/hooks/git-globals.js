@@ -75,13 +75,35 @@ function skipSpace(text, start) {
   return at
 }
 
-// Desde justo después de `git`: las opciones que siguen, cada una con dónde está su valor, y dónde terminan.
+// Una redirección no es de git: el shell la saca antes, esté donde esté, así que `git 2>&1 push` es un push y ninguna
+// regla lo reconocía (caso 526). Va con su destino, salvo cuando duplica o cierra un descriptor —`2>&1`, `>&-`—.
+const REDIRECT = /(?:\d+|&)?(?:>\||>>?|<>|<)(&(?:\d+|-)(?=[\s;&|)]|$)|&)?/y
+const REDIRECTED = '>'
+
+// Desde justo después de `git`: las opciones que siguen, cada una con dónde está su valor, y dónde terminan. Una
+// redirección se cuenta como una más, con `flag` REDIRECTED y el texto entero como valor.
 function scanGlobals(text, from, whole = true) {
   const globals = []
   let end = from
   while (true) {
     const start = skipSpace(text, end)
     if (start === end) break
+    REDIRECT.lastIndex = start
+    // Sólo con `git` encabezando su comando: en `rm -rf .git 2>/dev/null ~` es un argumento, y arrastrar la
+    // redirección dejaba el `~` como argumento de un `git` suelto.
+    const redirect = whole && REDIRECT.exec(text)
+    if (redirect) {
+      let next = start + redirect[0].length
+      if (!redirect[1] || redirect[1] === '&') {
+        const target = skipSpace(text, next)
+        next = wordEnd(text, target)
+        // Sin destino no es una redirección que se pueda leer —un heredoc, `git > ;`—: queda como estaba.
+        if (next === target) break
+      }
+      globals.push({ flag: REDIRECTED, value: { start, end: next } })
+      end = next
+      continue
+    }
     FLAG.lastIndex = start
     const found = FLAG.exec(text)
     if (!found) break
@@ -164,7 +186,10 @@ const withoutGitGlobals = (command) => {
     if (start <= copied) continue
     const { globals, end } = scanGlobals(text, start, isHead(found.index))
     if (globals.length) {
-      const runs = configRuns(text, globals, end)
+      // La redirección queda delante, como lo que corre un `-c`: `git > /dev/sda push` escribe en el disco igual.
+      const redirects = globals.filter(({ flag }) => flag === REDIRECTED)
+        .map(({ value }) => text.slice(value.start, value.end))
+      const runs = [...redirects, ...configRuns(text, globals, end)]
       out += text.slice(copied, found.index) + runs.map((one) => `${one} ; `).join('') + text.slice(found.index, start)
       copied = end
     }
@@ -180,7 +205,7 @@ function directoryFlag(text) {
   for (const found of text.matchAll(/(?:^|\s)git(?=\s)/g)) {
     const gitAt = found.index + found[0].length - 3
     const head = isHead(gitAt)
-    const { globals } = scanGlobals(text, gitAt + 3, head)
+    const globals = scanGlobals(text, gitAt + 3, head).globals.filter(({ flag }) => flag !== REDIRECTED)
     if (globals.length) {
       const directory = globals.find(({ flag }) => flag === '-C')
       if (!directory) return null

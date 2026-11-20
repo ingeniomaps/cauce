@@ -6,17 +6,18 @@
 // mismo guard por su cuenta; una de ellas, después de dos merges que nadie había autorizado.
 //
 // Son reglas «con salida» de `destructive`: frenan y se destraban como el resto —el diálogo de Claude Code,
-// una orden en el chat, o la línea exacta en `.ops-approval`—. La orden nombra el comando, salvo para un
-// merge, que se pide con sus palabras (`ordersMerge`). Lo que se gobierna es una lista, no todo lo que
-// pudiera desplegar: un deploy hecho con un script propio no tiene forma hasta que el proyecto la declara en
+// una orden en el chat, o la línea exacta en `.ops-approval`—. La orden nombra el comando, salvo para mergear,
+// cerrar o reabrir un PR, que se piden con sus palabras (`ordersPull`). Lo que se gobierna es una lista, no todo lo
+// que pudiera desplegar: un deploy hecho con un script propio no tiene forma hasta que el proyecto la declara en
 // `deployCommands`.
 
 const { configOf, opsRoot } = require('./input')
-const CHAT = require('./chat')
+const { ordersPull } = require('./orders')
+const { PROGRAM_PATH } = require('./quoting')
 
-// Dónde empieza un comando, y qué puede ir entre el programa y su verbo sin salir de él: banderas, con su
-// valor separado o pegado (`kubectl -n prod apply`, `terraform -chdir=infra apply`).
-const AT = String.raw`(?:^|[\s;&|('"\`])`
+// Dónde empieza un comando —con la ruta del programa, si la trae—, y qué puede ir entre el programa y su verbo sin
+// salir de él: banderas, con su valor separado o pegado (`kubectl -n prod apply`, `terraform -chdir=infra apply`).
+const AT = String.raw`(?:^|[\s;&|('"\`])` + PROGRAM_PATH
 const FLAGS = String.raw`(?:\s+-{1,2}[^\s;&|]+(?:\s+[^-\s;&|][^\s;&|]*)?)*`
 const ENDS = String.raw`(?=$|[\s;&|)'"\`])`
 const SAME = String.raw`[^;&|\n]`
@@ -30,33 +31,55 @@ const DEPLOY = 'es un deploy: cambia un ambiente que otros usan, y R10 lo deja a
 // Un merge se aprueba por lo que mergea y no por cómo quedó escrita la línea: con el comando entero como
 // ítem, el sí a un PR no alcanzaba al mismo PR con las banderas en otro orden, ni una orden de la persona
 // podía nombrarlo (caso 280). El ítem es el PR y su repositorio; `--admin` queda adentro porque saltea la
-// protección de la rama, que es otro acto. Con otro verbo de `gh pr` en el mismo comando no hay lectura
-// por partes, y vale el comando entero como en el resto de las reglas.
+// protección de la rama, que es otro acto. Aprobar —firma por la persona— y comentar no se leen por partes: con uno
+// de ellos en el comando vale el comando entero, como en el resto de las reglas.
+//
+// Cerrar y reabrir sí (caso 520), porque son reversibles, y por eso sólo con lo que no lo cambia: el número, el
+// repositorio y el comentario con que se cierra (`-c`), que viaja con el cierre como el cuerpo de un merge. Cualquier
+// otra palabra vuelve al comando entero, en vez de una lista de las que se frenan: `-d` borra la rama, y
+// `--delete-branch=true`, `-dc` o un `-d"` dentro de un `bash -c` se escribían sin pasar por esa lista.
+//
+// Y para los tres, un tramo que termina con una comilla abierta: `ACTS` lo cortó en un `;`, `&` o `|` del comentario o
+// del cuerpo, y lo que seguía —un `-d`, un `--admin`— no se leyó.
 const VALUED = new Set(['-b', '--body', '-F', '--body-file', '-t', '--subject', '-A', '--author-email',
   '--match-head-commit'])
+const COMMENT = new Set(['-c', '--comment'])
+const unclosed = (args) => (args.replace(/"[^"]*"|'[^']*'/g, '').match(/["']/) || []).length > 0
 const ACTS = new RegExp(AT + String.raw`gh\s+pr\s+(merge|review|close|reopen|comment)\b(${SAME}*)`, 'g')
-function mergeItem(args) {
+const PARTED = new Set(['merge', 'close', 'reopen'])
+function mergeItem(act, args) {
   const words = (args.match(/"[^"]*"|'[^']*'|\S+/g) || []).map((word) => word.replace(/^(["'])(.*)\1$/, '$2'))
+  const closing = act !== 'merge'
+  if (unclosed(args)) return null
   let target = ''
   let repo = ''
   for (let at = 0; at < words.length; at += 1) {
     const word = words[at]
     if (word === '--repo' || word === '-R') repo = words[at += 1] || ''
     else if (word.startsWith('--repo=')) repo = word.slice('--repo='.length)
-    else if (VALUED.has(word)) at += 1
+    else if ((closing ? COMMENT : VALUED).has(word)) at += 1
     else if (!word.startsWith('-') && !target) target = word
+    else if (closing && !word.startsWith('--comment=')) return null
   }
   const url = /github\.com\/([^/\s]+\/[^/\s]+)\/pull\/(\d+)/.exec(target)
   if (url) [, repo, target] = url
-  return ['gh pr merge', target, repo && `--repo ${repo}`, words.includes('--admin') && '--admin']
+  return [`gh pr ${act}`, target, repo && `--repo ${repo}`, words.includes('--admin') && '--admin']
     .filter(Boolean).join(' ')
 }
 function mergeItems(command) {
   const acts = [...command.matchAll(ACTS)]
-  if (!acts.length || acts.some((act) => act[1] !== 'merge')) return null
-  return [...new Set(acts.map((act) => mergeItem(act[2])))]
+  if (!acts.length || acts.some((act) => !PARTED.has(act[1]))) return null
+  const items = acts.map((act) => mergeItem(act[1], act[2]))
+  return items.includes(null) ? null : [...new Set(items)]
 }
-const MERGE = { items: mergeItems, asked: (text, item, how) => CHAT.ordersMerge(text, item, how) }
+const MERGE = { items: mergeItems, asked: (text, item, how) => ordersPull(text, item, how) }
+// Cómo se escribe hoy una línea de `.ops-approval` que nombra un merge, un cierre o una reapertura con el comando
+// entero: el ítem se lee por partes (casos 280 y 520), así que esa línea ya no aprueba nada. `null` si la línea ya
+// está en esa forma, o si el comando no se lee por partes y se sigue aprobando entero.
+function rewrittenPull(line) {
+  const items = mergeItems(line)
+  return items && !items.includes(line.trim()) ? items.join(' y ') : null
+}
 
 // Dónde vale cada aprobación, en el quinto lugar de cada regla (caso 446). Un `gh` sin destino lo resuelve solo,
 // por lo que dice la regla de `pr create`, así que por archivo se aprueba sólo nombrándolo: con `--repo`, o con
@@ -97,7 +120,8 @@ const NAMED = [new RegExp(String.raw`\s(?:--repo|-R)(?:[\s=]|$)`),
 // Lo que va entre comillas es un valor —un `--body`, un mensaje— y no nombra nada; pero se blanquea recién al buscar
 // el repositorio, porque un `gh` entre comillas, como en `bash -c "gh pr merge 5"`, sigue siendo una llamada.
 const unvalued = (call) => call.replace(/"[^"]*"|'[^']*'/g, '""')
-const namesRepo = (text) => text.split(/&&|\|\||[;|&\n]/).filter((call) => /(?:^|[\s('"`])gh\s/.test(call))
+const CALLS_GH = new RegExp(String.raw`(?:^|[\s('"\`])${PROGRAM_PATH}gh\s`)
+const namesRepo = (text) => text.split(/&&|\|\||[;|&\n]/).filter((call) => CALLS_GH.test(call))
   .every((call) => NAMED.some((one) => one.test(unvalued(call))))
 
 // Los comandos de deploy que el proyecto declara, como se escriben al principio de un comando.
@@ -109,10 +133,10 @@ function declared(input) {
       `'${one.trim()}' está declarado en deployCommands de ops.config.json: ${DEPLOY}`, null, DIR])
 }
 
-// En la forma de la tabla de `destructive`: patrón, mensaje, si tiene salida —todas la tienen—, cuando el ítem
-// no es el comando entero cómo se lee, y dónde vale.
+// En la forma de la tabla de `destructive`, que describe `rulesOf` (`shell.js`): todas tienen salida y todas publican.
 function deliveryRules(input) {
-  return [...RULES, ...declared(input)].map(([pattern, message, by, place]) => [pattern, message, true, by, place])
+  return [...RULES, ...declared(input)]
+    .map(([pattern, message, by, place]) => [pattern, message, true, by, place, true])
 }
 
-module.exports = { deliveryRules, namesRepo, GH, DIR }
+module.exports = { deliveryRules, namesRepo, rewrittenPull, GH, DIR }

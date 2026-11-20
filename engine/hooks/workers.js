@@ -215,13 +215,13 @@ function testWorkers(input) {
     if (CAPPED[tool].test(args) || NO_RUN.test(args)) continue
     if ((declared.length && bounded(outer, declared)) || cappedContainer(outer)) continue
     const item = command.trim()
-    if (!AP.pending(root, [item], input).length) return
+    if (!AP.pending(root, [item], input, AP.namedCommand).length) return
     block(`'${tool}' sin cota de workers lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. `
       + `Agregale ${tool === 'jest' ? '--maxWorkers=2 (o --runInBand)' : '--maxWorkers=2 (o --no-file-parallelism)'}. `
       + 'En un contenedor alcanza con lanzarlo con --memory y --cpus antes de la imagen. '
       + 'Si este comando ya corre con tope de recursos, una persona lo declara en boundedCommands de '
       + 'ops.config.json y el guard deja de opinar sobre él.'
-      + `\n${AP.HOW(null, [item], input, [item], { fixable: true })}`)
+      + `\n${AP.HOW(null, [item], input, [item], { fixable: true, command: true })}`)
   }
 }
 

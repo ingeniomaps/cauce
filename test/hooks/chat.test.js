@@ -455,3 +455,45 @@ test('el trabajo delegado ofrece preguntar, y lo que la persona confirma le lleg
     assert.doesNotMatch(stopped, /que lo pida en el chat/)
   } finally { denies.close() }
 })
+
+test('el último tramo pide una ruta, aunque traiga espacios o su verbo, y no un comando (caso 523)', () => {
+  for (const [prompt, item, expected] of [
+    ['leé .env.prod', '/w/mi proyecto/.env.prod', 'orden'],
+    ['abrí credentials.json', 'config/credentials.json', 'orden'],
+    ['editá guard-files.sh', 'escribe /w/automatization/hooks/guard-files.sh', 'orden'],
+    ['revisá la api', 'gh pr close 69 --repo acme/api', ''],
+  ]) {
+    const chat = chatSession()
+    try {
+      const [found] = authorized(chat.says(prompt)({}), [item])
+      assert.equal(found ? found.via : '', expected, `${prompt} → ${item}`)
+    } finally { chat.close() }
+  }
+})
+
+test('el bloqueo dice que la persona nombró lo frenado fuera de la frase que lo pide (caso 521)', () => {
+  const root = planFirstRoot('ops-hook-chat-enumera-', WIP_CON_PLAN)
+  const reads = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    const turn = chat.says('leé .env, .env.local y .env.prod')
+    assert.doesNotThrow(() => execute('secrets-read', reads(turn, '.env')))
+    assert.match(messageOf('secrets-read', reads(turn, '.env.local')),
+      /La persona nombró \S*\.env\.local en su mensaje, pero el guard no leyó un pedido/)
+    // Lo que no nombró no se le atribuye.
+    const other = messageOf('secrets-read', reads(chat.says('revisá la config'), '.env.prod'))
+    assert.doesNotMatch(other, /La persona nombró/)
+    // Tampoco lo que pidió en su frase y frena por otra cosa: acá, la pregunta.
+    const asked = chat.says('¿podés correr gh pr close 69 --repo acme/api?')
+    const close = { cwd: root, tool_input: { command: 'gh pr close 69 --repo acme/api' } }
+    const held = messageOf('destructive', asked(close))
+    assert.doesNotMatch(held, /La persona nombró/)
+    // Ni el último tramo de un comando, que no pide desde el 523: «la api» no nombra el cierre del PR.
+    assert.doesNotMatch(messageOf('destructive', chat.says('¿la api quedó bien?')(close)), /La persona nombró/)
+    // Ni lo que la persona negó en el mismo mensaje.
+    const both = { cwd: root, tool_input: { command: 'cat .env.local .env.prod' } }
+    const denied = messageOf('secrets-shell', chat.says('leé .env, .env.local y no .env.prod')(both))
+    assert.match(denied, /La persona nombró \S*\.env\.local en su mensaje/)
+    assert.doesNotMatch(denied.split('La persona nombró')[1].split(' en su mensaje')[0], /\.env\.prod/)
+  } finally { chat.close() }
+})

@@ -9,7 +9,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot } = require('./input')
 const AP = require('./approval')
-const { run, MISMO } = require('./shell')
+const { run } = require('./shell')
+const { SAME_COMMAND } = require('./quoting')
 
 // Un `package.json` cambia sin tocar nada de lo que su lockfile registra: un script, una descripción, la
 // configuración de una herramienta. Frenar eso por la sola presencia del archivo en el índice obligaba a
@@ -54,7 +55,7 @@ function dependencies(input) {
   if (process.env.OPS_DEPENDENCIES_OVERRIDE === '1') return
   const command = commandOf(input)
   const unsafePackageCommand = /\b(?:npm|pnpm|yarn|bun)\s+publish\b/.test(command)
-    || new RegExp(String.raw`\b(?:npm|pnpm|yarn)\s+(?:install|add)\b${MISMO}*(?:\s-g\b|\s--global\b)`)
+    || new RegExp(String.raw`\b(?:npm|pnpm|yarn)\s+(?:install|add)\b${SAME_COMMAND}*(?:\s-g\b|\s--global\b)`)
       .test(command)
   if (unsafePackageCommand) {
     block('Publicar paquetes o instalar dependencias globales requiere una acción humana explícita.')

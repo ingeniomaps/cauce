@@ -16,6 +16,7 @@ const {
   asRun, assignedValues, toplevel, realPath, rawCommandOf,
 } = require('./input')
 const { REDIRECTIONS } = require('./shell-writes')
+const { PROGRAM_PATH, SAME_COMMAND } = require('./quoting')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead, writes } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -43,13 +44,6 @@ const { deliveryRules, namesRepo, GH, DIR } = require('./delivery')
 const ANTES = String.raw`(?:^|[\s;&|('"\`])`
 const PALABRA = String.raw`$|[\s;&|)'"\`]`
 const COMANDO = String.raw`$|[;&|)'"\`]`
-// Lo que puede haber **entre** un comando y su bandera sin salir de ese comando. El salto de línea va
-// adentro de lo excluido porque también separa comandos, exactamente igual que `;`, `&` y `|`: sin él,
-// una bandera escrita en una línea posterior se leía como parte del primer comando. Es la causa de los
-// falsos positivos del caso 067, en siete reglas a la vez — `git push origin main` seguido de
-// `rm -f /tmp/x` se bloqueaba anunciando «`git push --force` reescribe historia publicada», que además
-// de frenar trabajo legítimo nombraba una violación que no estaba.
-const MISMO = String.raw`[^;&|\n]`
 
 // Si algún remoto alcanza al commit que está en HEAD. Lectura local e inocua: `branch -r` mira lo que ya
 // está en `refs/remotes/`, no habla con ningún servidor. Un `fetch` que nadie corrió deja la respuesta
@@ -129,7 +123,8 @@ const UNSURE = 'el comando no deja saber dónde corre —dos destinos distintos,
   + 'una línea valdría en otro lugar. Corré cada parte por separado, con la ruta escrita, y el bloqueo va a decir qué '
   + 'pegar.'
 
-// Las reglas de `destructive`, en la forma `[patrón, mensaje, si tiene salida, cómo se lee el ítem, dónde vale]`.
+// Las reglas de `destructive`, en la forma `[patrón, mensaje, si tiene salida, cómo se lee el ítem, dónde vale,
+// si publica]`.
 // Viven aparte porque `check` las necesita también: una línea de `.ops-approval` sin el lugar que su regla pide ya
 // no aprueba nada, y para saberlo hay que saber qué regla la habría frenado (caso 446).
 function rulesOf(input) {
@@ -148,14 +143,14 @@ function rulesOf(input) {
     // Y no lleva salida por chat ni publicado ni sin publicar: sin publicar no la necesita, y publicado es
     // la misma reescritura que el force-push, que tampoco la tiene.
     ...(publishedHead(input) ? [[
-      new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
+      new RegExp(String.raw`\bgit\s+commit\b${SAME_COMMAND}*\s--amend\b`),
       "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
         + 'prohíbe: hacé otro commit encima.',
     ]] : []),
     // Fuerza en cualquiera de sus opciones, y no simula: mirando sólo la primera, `-d -f` borraba sin preguntar y
     // `-fdn`, que no borra nada, se frenaba (caso 452).
-    [new RegExp(String.raw`\bgit\s+clean\b(?=${MISMO}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
-      + String.raw`(?!${MISMO}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
+    [new RegExp(String.raw`\bgit\s+clean\b(?=${SAME_COMMAND}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
+      + String.raw`(?!${SAME_COMMAND}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
     "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
@@ -167,7 +162,7 @@ function rulesOf(input) {
     [
       // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
       // que restaura el working tree por defecto y toma el pathspec sin separador.
-      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${MISMO}*?\s)?`
+      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${SAME_COMMAND}*?\s)?`
         + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
@@ -188,8 +183,8 @@ function rulesOf(input) {
       DIR,
     ],
     [
-      new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
-        + String.raw`|\bdd\s+${MISMO}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
+      new RegExp(ANTES + PROGRAM_PATH + String.raw`(?:mkfs\S*|shred)\s`
+        + String.raw`|\bdd\s+${SAME_COMMAND}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],
     [
@@ -231,8 +226,8 @@ function destructive(input) {
   //
   // El `+` delante de una rama es el mismo force escrito en el refspec —`git push origin +main`—, y
   // pasaba como un push normal: la regla miraba sólo las banderas (caso 103).
-  if (new RegExp(String.raw`\bgit\s+push\b${MISMO}*\s(?:(?:-f|--force(?:-with-lease|-if-includes)?)\b|\+\S)`)
-    .test(command)) {
+  const force = String.raw`\s(?:(?:-f|--force(?:-with-lease|-if-includes)?)\b|\+\S)`
+  if (new RegExp(String.raw`\bgit\s+push\b${SAME_COMMAND}*${force}`).test(command)) {
     block("'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allowPush no lo "
       + 'habilita: publicá con un push normal, o registrá una acción humana.')
   }
@@ -250,7 +245,7 @@ function destructive(input) {
   // operación (caso 446).
   const spotOf = placesOf(raw, input)
   const root = opsRoot(input)
-  for (const [pattern, message, open, by, kind] of rulesOf(input)) {
+  for (const [pattern, message, open, by, kind, publishes] of rulesOf(input)) {
     if (!pattern.test(command)) continue
     const parts = by && by.items(command)
     const texts = parts || [stretchOf(raw, pattern)]
@@ -264,11 +259,16 @@ function destructive(input) {
     // La línea que se escribió antes del 451, con el comando entero, sigue aprobando ese mismo comando.
     const whole = parts ? [] : [AP.placed(String(raw).trim(), spots[0].where)]
     const asked = items.filter((one) => loose.has(one) || !(filed.has(one) || whole.some((line) => filed.has(line))))
-    const held = open ? AP.pending('', asked, input, parts ? by.asked : undefined) : items
+    // Publicar vale para el turno de la orden o del «dale» y no se concede, como el push y por lo mismo (`push.js`).
+    // Concedido, sobrevivía a un «pará» o a «no despliegues nada» (casos 524 y 527).
+    const reads = parts ? by.asked : AP.namedCommand
+    const held = !open ? items
+      : publishes ? AP.pendingNow('', asked, input, reads, { logged: true }) : AP.pending('', asked, input, reads)
     if (!held.length) continue
     const pasteable = held.filter((one) => !loose.has(one))
     const why = unnamed.size ? UNNAMED : UNSURE
-    const how = () => AP.HOW(null, held, input, pasteable, { unpasteable: loose.size ? why : '' })
+    const how = () => AP.HOW(null, held, input, pasteable,
+      { unpasteable: loose.size ? why : '', command: true, turn: Boolean(publishes) })
     block(open ? `${message}\n${how()}` : message)
   }
   const tree = removesTheTree(input, command)
@@ -303,14 +303,14 @@ function gitAdd(input) {
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
   // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
   // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
-  if (new RegExp(String.raw`\bgit\s+add\s+(?:${MISMO}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
+  if (new RegExp(String.raw`\bgit\s+add\s+(?:${SAME_COMMAND}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
     .test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
   }
   // La misma regla con otra ortografía: `-a` stagea todo lo seguido sin nombrar una ruta, y encima lo
   // hace al commitear —después de este hook—, así que los guards que leen el índice tampoco lo ven.
   // `--amend` queda afuera: empieza con dos guiones y lo frena `destructive`, por otra razón.
-  if (new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s(?:-[a-z]*a[a-zA-Z]*|--all)\b`).test(command)) {
+  if (new RegExp(String.raw`\bgit\s+commit\b${SAME_COMMAND}*\s(?:-[a-z]*a[a-zA-Z]*|--all)\b`).test(command)) {
     block("'git commit -a' stagea al commitear, después de este guard: nadie llega a revisar el diff "
       + 'staged, ni vos ni los guards que lo miran. Stageá las rutas por nombre y commiteá aparte.')
   }
@@ -416,4 +416,13 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = { destructive, gitAdd, shellBoundary, run, MISMO, unplaced }
+// Si la línea la toma entera una regla sin lector por partes: entonces sigue aprobando ese tramo, y `rewrittenPull` no
+// puede darla por muerta.
+function takenWhole(root, line) {
+  let rules
+  try { rules = rulesOf({ cwd: root }) } catch { return false }
+  const command = withoutGitGlobals(asRun(AP.spokenOf(line)))
+  return rules.some(([pattern, , open, by]) => open && !by && pattern.test(command))
+}
+
+module.exports = { destructive, gitAdd, shellBoundary, run, takenWhole, unplaced }

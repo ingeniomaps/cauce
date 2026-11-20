@@ -144,6 +144,21 @@ function competingSections(dir) {
   return warnings
 }
 
+// Una viñeta de «Historias» con otra casilla que `[ ]` o `[x]` —`[~]` para una cancelada— no abre historia: el parser
+// la pega como texto a la de arriba, que hereda sus `(→ CN)`, y una épica cerrada pasa sin pedir su evidencia (caso
+// 519). La casilla no significa nada en la gramática, así que esto dice cuál se lee en vez de leer otra. Recorre las
+// épicas como `readEpics` —también la graduada, por su `spec.md`, y sin la plantilla— para no avisar de otras.
+function unreadStories(dir) {
+  return P.epicFiles(dir).flatMap(({ name, file }) => {
+    const text = P.read(file)
+    const field = P.frontmatter(text)
+    if (field('status') === 'template' || field('epic') === '000') return []
+    return [...P.section(text, /Historias/i).matchAll(/^[-*]\s+\[(?![ xX]\])[^\]\n]*\]\s+\*\*([^*]+)\*\*/gm)]
+      .map((hit) => `roadmap/${name}: «${hit[0]}» parece una historia y no se lee; la casilla es [ ] o [x], y `
+        + `\`${hit[1].trim()}\` no cuenta hasta que la tenga`)
+  })
+}
+
 // Un encabezado que numera una regla y no tiene la forma `## <letra><número> —` no existe para `check`: ni
 // cuenta como definida ni choca con otra, así que una propia escrita `## Regla 8` contradecía a R8 en silencio
 // (caso 224). Detectar la contradicción misma pide juicio; esto dice que la regla no se está leyendo.
@@ -257,6 +272,7 @@ module.exports = {
   validateRoadmapStructure,
   validateBacklogStructure,
   competingSections,
+  unreadStories,
   retiredByOverride,
   validateRules,
   validateAdr,

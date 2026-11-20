@@ -119,10 +119,13 @@ const isPush = (item) => /^push\s+\S+\s+\S+$/.test(spokenOf(item))
 
 // Cada aparición del nombre en el texto: si va negada y si su frase pide algo. Un nombre tiene que estar
 // entero: `.env` no aparece en «el .env.example», y un punto sólo lo cierra si termina la frase.
-function mentions(text, given) {
+function mentions(text, given, { command = false } = {}) {
   const item = spokenOf(given)
   const lower = String(text).toLowerCase()
   const found = []
+  // El basename pide sólo si el ítem es una ruta, sola o tras su verbo (`escribe <ruta>`): el de un comando es su
+  // último tramo —`api` en `gh pr comment 69 --repo o/api`—, y «revisá la api» lo ordenaba (caso 523). Negar sí cuenta.
+  const file = !command && (!/\s/.test(item) || path.isAbsolute(item) || /^\S+\s+\//.test(item))
   for (const name of new Set([item, path.basename(item)].map((one) => one.toLowerCase()))) {
     if (name.length < 3) continue
     for (let at = lower.indexOf(name); at !== -1; at = lower.indexOf(name, at + 1)) {
@@ -132,9 +135,11 @@ function mentions(text, given) {
       if (rest && !/^(?:[\s'"`),;:!?]|\.(?:\s|$)|$)/.test(rest)) continue
       const clause = lower.slice(0, at).split(CLAUSE).pop()
       const phrase = `${clause} ${rest.split(CLAUSE)[0]}`
+      const whole = file || name === item.toLowerCase()
       found.push({
         denied: NEGATION.test(clause),
-        asked: asks(phrase),
+        whole,
+        asked: whole && asks(phrase),
         // El alcance se lee de la misma frase que decide si la ruta fue pedida, y no del mensaje entero:
         // un «mientras dure la tarea t-014» que hable de otra cosa, en otra oración, no acota a ésta.
         scope: (phrase.match(SCOPE) || [])[1] || '',
@@ -144,38 +149,10 @@ function mentions(text, given) {
   const asked = found.filter((one) => one.asked && !one.denied)
   return {
     named: asked.length > 0,
+    seen: found.some((one) => one.whole),
     denied: found.some((one) => one.denied),
     scope: (asked.find((one) => one.scope) || {}).scope || '',
   }
-}
-
-// Una orden de publicar se lee aparte, porque `mentions` compara también el basename: para el ítem
-// `push origin feat/login` eso es `login`, y «arreglá el login y no subas nada» publicaba (caso 103). Acá
-// el remoto y la rama tienen que aparecer tal cual, como palabras enteras, en una frase que pida publicar
-// —un verbo de publicar, no cualquiera: «revisá feat/x en origin» no pide un push— y sin una negación
-// antes del último de los dos.
-// Con las formas de una prohibición —«no subas», «no publiques»—, que es como se niega un push.
-const PUSHES = new Set(('subi sube subir subas pushea pushear pushees push publica publicar publiques publish '
-  + 'empuja empujar empujes').split(' '))
-const pushVerb = (clause) => (clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  .match(/[a-z]+/g) || []).some((word) => PUSHES.has(word) || PUSHES.has(word.replace(ENCLITIC, '')))
-
-// Un push no se nombra como un archivo: «no hagas push todavía» lo prohíbe sin decir remoto ni rama. Basta una
-// cláusula con un verbo de publicar y una negación.
-const refusesPush = (text) => String(text).split(CLAUSE)
-  .some((clause) => pushVerb(clause) && NEGATION.test(clause))
-function ordersPush(text, item) {
-  const [verb, remote, branch] = item.split(' ')
-  if (verb !== 'push' || !remote || !branch) return false
-  return String(text).split(CLAUSE).some((clause) => {
-    // La comilla simple se saca de los bordes y no se corta en ella: partida, «don't» dejaba de ser una
-    // negación.
-    const words = clause.split(/[\s"`()]+/)
-      .map((word) => word.replace(/^'+/, '').replace(/\.$/, '').replace(/'+$/, ''))
-    const last = Math.max(words.indexOf(remote), words.indexOf(branch))
-    if (words.indexOf(remote) < 0 || words.indexOf(branch) < 0) return false
-    return pushVerb(clause) && !NEGATION.test(words.slice(0, last + 1).join(' '))
-  })
 }
 
 // Quien contesta a un bloqueo que quedó pendiente lo confirma con sus palabras, y juzgar si lo que dijo
@@ -188,47 +165,13 @@ function ordersPush(text, item) {
 const HALT = /^\s*(?:par[aá]|deten\p{L}*|esper[aá]|cancel\p{L}*|stop|wait|hold on)(?![\p{L}])/iu
 const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test(text)
 
-// Un merge tampoco se nombra como un archivo: su ítem es `gh pr merge <PR> --repo <repo>` (`delivery.js`), y
-// nadie lo escribe así al pedirlo (caso 280). Si la persona lo pidió lo juzga el agente, que es quien lee
-// intención; acá no hay lista de verbos que lo ordenen. La primera versión la tenía y frenaba «hacé el merge
-// del #12», «integralo» y «dale con todos»: nueve de doce formas de pedir lo mismo.
-//
-// El guard decide sólo la dirección segura, como con la confirmación. No pasa si el mensaje pregunta,
-// arranca frenando o trae una negación que no dice sobre qué PR; ni el PR que niega o exceptúa —«no el #3»,
-// «todos menos el #3»—. Y si el mensaje nombra PRs —`#12`, «PR 12»—, pasan ésos y ningún otro. Un número
-// suelto no cuenta: «corré los e2e» nombraría el 2.
-const EXCEPT = /(?<![\p{L}])(?:menos|excepto|salvo|except)(?![\p{L}])/iu
-const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+(\d+)/giu)]
-  .map((one) => one[1] || one[2])
-//
-// Después de un aviso del runner pasa sólo lo nombrado. «Los merges de este turno» es una lectura del turno en
-// que la persona habló, y lo que el agente hace tras el aviso puede venir de lo que el aviso decía (caso 281).
-function ordersMerge(text, item, { relayed = false } = {}) {
-  const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(spokenOf(item))
-  if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
-  const named = []
-  const denied = []
-  for (const clause of String(text).split(CLAUSE)) {
-    if (NEGATION.test(clause)) {
-      if (!pullsIn(clause).length) return false
-      denied.push(...pullsIn(clause))
-      continue
-    }
-    const cut = clause.search(EXCEPT)
-    named.push(...pullsIn(cut < 0 ? clause : clause.slice(0, cut)))
-    if (cut >= 0) denied.push(...pullsIn(clause.slice(cut)))
-  }
-  if (denied.includes(found[1])) return false
-  return named.length ? named.includes(found[1]) : !relayed
-}
-
 // El hook de mensaje. Nunca frena: un mensaje de la persona no se bloquea, y sin registro los guards
 // deciden como antes. Un texto que empieza con una etiqueta no lo escribió una persona —Claude avisa así
 // que terminó un subagente, con `<task-notification>`—, y en CI no hay persona.
 //
 // Lo concedido es lo único que cruza de un mensaje al siguiente, y se hereda aunque este mensaje no lo
 // haya escrito una persona: un aviso del runner en el medio no le quita a nadie lo que ya autorizó. La
-// negación se aplica venga de donde venga, porque revocar es la dirección segura.
+// negación que nombra el ítem se aplica venga de donde venga, porque revocar es la dirección segura.
 function record(input) {
   try {
     if (!input.session_id) return
@@ -245,7 +188,10 @@ function record(input) {
     // reintenta mientras ella no escribe nada (caso 186). A la sesión principal no le cambia nada: su
     // lectura, `said`, exige un mensaje de la persona.
     const approved = human || !previous ? answered : previous.approved || []
-    const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
+    // Un mensaje que arranca frenando se lleva todo lo concedido, que lo nombre o no: «pará» no dice qué seguía
+    // valiendo, y lo que queda en pie se vuelve a pedir (caso 527).
+    const halted = HALT.test(text)
+    const granted = previous && !halted ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
     // El acote viaja con lo concedido: lo que se negó pierde las dos cosas a la vez, y nada queda con un
     // alcance que ya no acota a nadie.
     const scopes = {}
@@ -301,6 +247,16 @@ function said(input) {
   return spoken && !flowCommand(spoken) ? saved : null
 }
 const wordsOf = (saved) => (saved.human ? saved.text : String(saved.spoken || ''))
+// Lo que el último mensaje nombró sin que la frase que lo nombra lo pida: «leé .env, .env.local» pide el primero
+// (caso 521). Un último tramo que no pide —`api` en un comando, desde el 523— tampoco nombra.
+function namedUnasked(input, items, { command = false } = {}) {
+  const saved = said(input)
+  if (!saved) return []
+  return items.filter((item) => {
+    const read = mentions(wordsOf(saved), item, { command })
+    return read.seen && !read.named
+  })
+}
 
 // Hay una persona en esta sesión a quien preguntarle, que no es lo mismo que «este mensaje lo escribió
 // ella». `said` contesta la segunda porque de ella depende **conceder**; ésta contesta la primera, que es
@@ -324,6 +280,9 @@ function present(input) {
 // había quedado frenado, o se lo concedieron antes en esta sesión. Qué cuenta como pedirlo depende de qué
 // se frena: un archivo se nombra, un push se ordena con su remoto y su rama.
 const named = (text, item) => mentions(text, item).named
+// Lo que el guard sabe que es un comando se pide nombrándolo entero: por la forma, `./deploy.sh` parece una ruta y su
+// basename lo ordenaba (caso 523).
+const namedCommand = (text, item) => mentions(text, item, { command: true }).named
 
 // Si el acote que la persona puso sigue en pie. Sin alcance no hay nada que comprobar y vale lo de
 // siempre —la sesión—, que es lo que decidió el 116; con alcance, vale mientras esa tarea sea la del WIP,
@@ -381,10 +340,11 @@ function grant(input, saved, entries) {
   } catch { /* sin anotarlo, se vuelve a pedir */ }
   // Y queda el rastro, que es lo que el registro de la sesión no puede dar: muere con ella, y lo que una
   // auditoría pregunta es quién concedió qué y con qué alcance, meses después (caso 127).
-  TRAIL.append(saved.root, LOG, added.map((one) => ({
-    grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null,
-  })))
+  trail(saved.root, input, added, grantedAt)
 }
+
+const trail = (root, input, entries, grantedAt = new Date().toISOString()) => TRAIL.append(root, LOG, entries.map(
+  (one) => ({ grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null })))
 
 // Con qué autorización pasa cada uno de los que pasan. Lo pregunta quien necesita el porqué y no sólo el
 // qué —el rastro de un push lo anota (caso 112)—, y no concede nada: preguntar no cambia qué va a valer
@@ -436,9 +396,12 @@ function unauthorized(input, items, asked = named) {
 }
 
 // Lo mismo sin conceder y sin heredar: lo que no está en el mensaje en curso queda pendiente aunque la
-// sesión lo haya dejado pasar antes.
-function unauthorizedNow(input, items, asked = named) {
-  const cleared = new Set(authorized(input, items, { asked, inherit: false }).map((one) => one.item))
+// sesión lo haya dejado pasar antes. Con `logged`, lo que pasa por la persona va al rastro de las concesiones, que
+// es donde lo buscaba el 127: lo que publica dejó de concederse (caso 527).
+function unauthorizedNow(input, items, asked = named, { logged = false } = {}) {
+  const passed = authorized(input, items, { asked, inherit: false })
+  if (logged) trail((load(input.session_id) || {}).root || opsRoot(input), input, passed)
+  const cleared = new Set(passed.map((one) => one.item))
   return items.filter((item) => !cleared.has(item))
 }
 
@@ -466,7 +429,7 @@ function hold(input, items) {
     const dropped = NEGATION.test(head) || HALT.test(head)
       ? items
       : items.filter((item) => mentions(spoken, item).denied
-        || (item.startsWith('push ') && refusesPush(spoken)))
+        || (item.startsWith('push ') && require('./orders').refusesPush(spoken)))
     const open = items.filter((item) => !dropped.includes(item))
     saved.pending = [...new Set([...saved.pending, ...open])]
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
@@ -495,4 +458,4 @@ function grantedIn(root) {
 }
 
 module.exports = { DIR, record, recordPath, delegated, said, wordsOf, authorized, unauthorized, unauthorizedNow, hold,
-  ordersPush, ordersMerge, grantedIn, placed, spokenOf, isPush, refuses }
+  grantedIn, placed, spokenOf, isPush, refuses, namedUnasked, namedCommand, CLAUSE, ENCLITIC, HALT, NEGATION }

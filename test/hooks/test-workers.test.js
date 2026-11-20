@@ -4,7 +4,7 @@
 // llamarlos sin cota frene, que cada cota que su documentación acepta deje pasar, que lo que no corre pruebas
 // no se frene, y que se apruebe como el resto.
 
-const { blocked, messageOf, pushRoot, pasteApproval } = require('../support/hooks-harness')
+const { blocked, chatSession, messageOf, pushRoot, pasteApproval } = require('../support/hooks-harness')
 const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
@@ -39,6 +39,27 @@ test('se aprueba como el resto, con la línea exacta en .ops-approval', () => {
   assert.match(message, /--maxWorkers=2 \(o --runInBand\)/)
   pasteApproval(root, message)
   assert.doesNotThrow(() => execute('test-workers', call))
+})
+
+// Caso 523: el ítem es el comando, y `jest /ruta/x.test.js` tiene la forma de un verbo con su ruta; nombrar sólo el
+// archivo no pide correrlo sin cota.
+test('nombrar el archivo de pruebas no ordena el runner sin cota', () => {
+  const root = pushRoot('cauce-workers-chat-')
+  const command = `jest ${path.join(root, 'login.test.js')}`
+  // Y el bloqueo no dice que la persona lo nombró por ese tramo.
+  const named = chatSession()
+  try {
+    const call = named.says('mirá el log, login.test.js')({ cwd: root, tool_input: { command } })
+    assert.doesNotMatch(messageOf('test-workers', call), /La persona nombró/)
+  } finally { named.close() }
+  for (const [prompt, expected] of [['revisá login.test.js', false], [`corré ${command}`, true]]) {
+    const chat = chatSession()
+    try {
+      const call = chat.says(prompt)({ cwd: root, tool_input: { command } })
+      if (expected) assert.doesNotThrow(() => execute('test-workers', call), prompt)
+      else blocked('test-workers', call, /sin cota de workers/)
+    } finally { chat.close() }
+  }
 })
 
 // Caso 286. La comilla contaba como posición de comando, así que el patrón de un `grep` y lo que seguía a la

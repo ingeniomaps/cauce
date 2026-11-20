@@ -222,6 +222,7 @@ function check(dir, cli) {
 
   errors.push(...OW.ownWorkflowErrors(path.resolve(root, '..')))
   warnings.push(...SR.competingSections(root))
+  warnings.push(...SR.unreadStories(root))
   warnings.push(...SR.looseRuleHeadings(root))
   // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que
   // ocurra en silencio, porque esa entrada deja de recibir las mejoras del toolkit.

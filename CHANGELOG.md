@@ -14,6 +14,82 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.123.1] - 2026-11-19
+
+### Corregido
+
+- **Nombrar el último tramo de una ruta ya no ordena el comando que la trae** (caso 523). Un comando frenado con salida
+  —aprobar o comentar un PR, disparar un workflow, una release, un deploy— se autorizaba por chat con cualquier frase
+  que nombrara lo que sigue a su última `/` y trajera un verbo: «revisá la api» pasaba
+  `gh pr comment 69 --body ok --repo o/api`, y «revisá prod.yaml» pasaba `kubectl apply -f k8s/prod.yaml`. Mergear,
+  cerrar y reabrir se piden por número y no por nombre (casos 280 y 520), así que no cambian. Lo mismo valía para
+  escribir esa línea en `.ops-approval`: «agregá la api a .ops-approval» alcanzaba. Un comando de una sola palabra
+  declarado en `deployCommands`, como `./deploy.sh`, se ordenaba con «revisá deploy.sh». Ahora el comando se pide
+  nombrándolo, o con un «dale» después del bloqueo. Para un archivo nada cambia: «leé el .env» sigue alcanzando.
+
+- **La orden de push por chat ya no publica lo que la persona exceptuó, y no exige un verbo de una lista** (caso 522).
+  «subí a origin todo menos feat/x», «subí main a origin y feat/x no» y «pará, subí feat/x a origin después»
+  autorizaban el push de `feat/x`; ahora lo frenan. Y como con el merge, ordena la frase que nombra el remoto y la rama:
+  «mandá feat/x a origin» pasa. Si la persona quiso publicar lo juzga el agente, así que una frase que nombra los dos
+  sin pedir el push —«revisá feat/x en origin»— también pasa. Lo que frena de más: una negación en cualquier parte del
+  mensaje, como «subí feat/x a origin, no main», que antes pasaba; se repite la orden sin la negación. La línea de push
+  que el agente se escribe en `.ops-approval` sigue pidiendo el verbo de publicar, porque llega hasta la rama viva, y
+  lo mismo un push a una rama viva que habilitaste en `runner.pushToLiveBranches`: «main está detrás de origin» no lo
+  ordena.
+
+- **Cerrar y reabrir un PR se piden por chat como un merge, por su número** (caso 520). «cerrá el #69» frenaba
+  `gh pr close 69`: había que escribir el comando entero. Ahora pasan los PR que el mensaje nombra, ninguno si pregunta,
+  frena o niega, y todos si no nombra ninguno, como con el merge; el guard lee el número y no el verbo, así que
+  «mergeá el #69» también deja cerrar el 69. El comentario con que se cierra (`-c`) va con el cierre; cualquier otra
+  bandera —`-d`, que borra la rama, entre ellas— vuelve a pedir el comando entero, igual que aprobar o comentar
+  suelto. Una línea de
+  `.ops-approval` con el comando entero y su `-c` —`gh pr close 69 -c "duplicado" --repo <repo>`, y lo mismo con
+  `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`, y `check` avisa la
+  línea vieja con la forma nueva. Y un merge cuyo
+  cuerpo trae un `;` —`-b "listo; va"`— pide el comando entero: detrás del `;` podía ir un `--admin` que la línea
+  aprobada no nombraba.
+
+- **Una redirección en el push ya no se lee como otra rama** (caso 525). En `git push origin feat/x 2>&1`, el `2>` salía
+  como una segunda rama, así que la orden «subí feat/x a origin» no alcanzaba y el bloqueo ofrecía pegar
+  `push origin 2> @ …`. Los agentes agregan `2>&1` casi siempre, y en una sesión real la orden de push por chat casi
+  nunca funcionaba. Ahora una redirección al final del push (`2>&1`, `> log`, `2>/dev/null`, `&> log`) no cuenta. Si
+  después de una redirección viene otra cosa —una rama, `--all`, `--force`—, el push frena entero, también con
+  `allowPush`: no se puede leer a dónde publica. Se corrige escribiendo la redirección al final.
+
+- **Una redirección ya no esconde un `--force`, un `--amend` ni el propio `git push`** (caso 526). Las reglas que
+  frenan reescribir historia publicada cortaban el comando en el `&` de `2>&1`, así que `git commit -m x 2>&1 --amend`
+  pasaba sobre un commit publicado, y lo mismo `git clean 2>&1 -fd` o `git checkout 2>&1 -- .`. Y con la redirección
+  entre `git` y su subcomando, `git 2>&1 push origin main` no era un push para ningún guard: publicaba sin aprobación,
+  también en la rama viva y con `allowPush` apagado. Ahora las dos formas se leen como el comando que son. Lo que va
+  después de un separador real (`&&`, `|`, `;`, `&` de fondo) sigue siendo otro comando.
+
+- **Lo que publica vale para el turno en que lo pediste, y «pará» revoca lo concedido** (casos 524 y 527). Una orden
+  por chat —«mergeá el #69», «corré terraform apply»— o un «dale» dejaba el acto concedido para el resto de la sesión, y
+  ni «no mergees el #69», ni «pará», ni «no despliegues nada» lo quitaban: si el agente reintentaba más tarde, pasaba.
+  Ahora mergear, cerrar o comentar un PR, disparar un workflow, una release o un deploy vale mientras tu último mensaje
+  sea la orden o el «dale», como ya pasaba con el push; con el mensaje siguiente se vuelve a pedir. El merge, el cierre y
+  la reapertura por número se leen de nuevo en cada mensaje, y uno que no nombra ningún PR ni pregunta, frena o niega
+  —un «gracias»— sigue autorizándolos (caso 280); lo que cambia es que uno que pregunta o niega ya no los deja pasar. Y un mensaje que
+  arranca frenando —«pará», «esperá», «cancelá»— se lleva todo lo concedido en la sesión, también la lectura de un
+  archivo o un comando: lo que haga falta después se pide de nuevo.
+
+- **Un deploy, un acto sobre un PR o un `mkfs` escritos con la ruta del binario ya no pasan sin preguntar** (caso 528).
+  `/usr/bin/terraform apply`, `./node_modules/.bin/cdk deploy`, `/usr/bin/gh pr merge 69 …` o `/sbin/mkfs.ext4
+  /dev/sdb` no los reconocía ninguna regla, y un agente que desconfiaba del binario del `PATH` lo escribió así por su
+  cuenta. Ahora frenan como sin la ruta. Para autorizarlos por chat se nombra el comando con su ruta, o se contesta
+  «dale» al bloqueo; el merge por número no cambia. Frena de más una ruta en posición de argumento que termina como el
+  programa y sigue con su verbo (`ls infra/terraform apply`), como ya pasaba con la palabra suelta.
+
+- **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
+  —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus
+  `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para
+  marcar una historia descartada, sacala de «Historias» y dejala en las notas de la épica.
+
+- **El bloqueo dice cuándo la persona nombró lo frenado sin pedirlo en esa frase** (caso 521). En «leé .env,
+  .env.local y .env.prod» el verbo vale para el primero, y los otros se frenaban con el mensaje de siempre, como si
+  nadie los hubiera nombrado. Ahora el bloqueo lo dice, para que el agente pida el sí en vez de leerlo como un no. Lo
+  que la frase autoriza no cambió: sigue siendo el primero, y un «dale» aprueba el resto.
+
 ## [0.123.0] - 2026-11-15
 
 ### Cambiado

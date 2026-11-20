@@ -88,8 +88,8 @@ function pending(root, files, input, asked) {
 // dice nada del siguiente, porque el índice ya es otro. Nadie lo había decidido para los gates —heredaban
 // por venir todos de `pending`—, y se midió: con otro mensaje en curso, un commit de gobernanza pasaba
 // (caso 119).
-function pendingNow(root, files, input, asked) {
-  return CHAT.unauthorizedNow(input, left(root, files), asked)
+function pendingNow(root, files, input, asked, options) {
+  return CHAT.unauthorizedNow(input, left(root, files), asked, options)
 }
 
 // El archivo que el guard va a leer, nombrado desde la carpeta en la que está la sesión. En sidecar la
@@ -129,11 +129,11 @@ function REFUSED(items, input = {}) {
 // `pasteable` es lo que se puede aprobar por archivo, y por defecto es todo: un guard lo angosta cuando lo
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
-// `turn` lo pasa el guard que no hereda —los de límites y el de la configuración—: decirle a la persona que su
-// confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación falsa en
-// el bloqueo, vista en una sesión real de Gemini (caso 370).
+// `turn` lo pasa el guard que no hereda —los de límites, el de la configuración y lo que publica—: decirle a la
+// persona que su confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación
+// falsa en el bloqueo, vista en una sesión real de Gemini (caso 370).
 function HOW(variable, lines, input, pasteable = lines,
-  { durable = false, fixable = false, turn = false, unpasteable = '' } = {}) {
+  { durable = false, fixable = false, turn = false, unpasteable = '', command = false } = {}) {
   // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el
   // diálogo, y un pendiente que sobreviviera lo podría aprobar un mensaje sobre otra cosa (caso 221).
   // Sin nada que aprobar no hay diálogo: `plan-first` con un plan a la vista pide escribir el plan, no un sí.
@@ -174,8 +174,12 @@ function HOW(variable, lines, input, pasteable = lines,
       + 'alcanza, pero no hace falta esa palabra. Si lo que contesta es un sí, reintentá el mismo cambio y '
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
       + 'respuesta que niega, frena o pregunta. '
+  // Sin esto, frenar lo que ella acababa de nombrar se leía como que el guard la había ignorado (caso 521).
+  const unasked = chat ? CHAT.namedUnasked(input, lines.filter((one) => !dropped.includes(one)), { command }) : []
+  const named = unasked.length ? `La persona nombró ${unasked.map(CHAT.spokenOf).join(', ')} en su mensaje, pero el `
+    + 'guard no leyó un pedido en la frase que lo nombra —en «leé a, b y c» sólo se pide a—; tampoco es un no. ' : ''
   const ask = native ? CF.LEAD : chat
-    ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y '
+    ? named + lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y '
       + (turn ? 'vale para este turno: en el mensaje siguiente vuelve a preguntarse. '
         : 'sigue valiendo en los mensajes siguientes hasta que ella lo niegue. ')
     : (fixable ? fix : '')
@@ -258,7 +262,11 @@ function warnings(root) {
   // Lo mismo para un comando cuyo efecto depende de dónde corre y que se aprobó sin lugar (caso 446).
   const { unplaced } = require('./shell')
   const placeless = unplaced(root, approved.filter((line) => /\s/.test(line)))
-  const old = [...stale, ...placeless]
+  const { rewrittenPull } = require('./delivery')
+  const { takenWhole } = require('./shell')
+  const reshaped = approved
+    .filter((line) => !placeless.includes(line) && rewrittenPull(line) && !takenWhole(root, line))
+  const old = [...stale, ...placeless, ...reshaped]
   const secret = approved.filter((line) => !old.includes(line) && credential({ cwd: root }, line))
   const rest = approved.filter((line) => !old.includes(line) && !secret.includes(line))
   if (stale.length) {
@@ -270,6 +278,11 @@ function warnings(root) {
     out.push(`planning/${APPROVAL}: ${placeless.length} línea(s) sin el lugar donde valen, que ya no aprueban nada: `
       + `${placeless.join(', ')}. Un comando que depende de dónde corre se aprueba con el repositorio o la carpeta `
       + 'que nombra el bloqueo, y uno de `gh` nombrando --repo')
+  }
+  if (reshaped.length) {
+    out.push(`planning/${APPROVAL}: ${reshaped.length} línea(s) de un PR escritas con el comando entero, que ya no `
+      + `aprueban nada: ${reshaped.map((line) => `${line} → ${rewrittenPull(line)}`).join('; ')}. Se escriben como `
+      + 'las muestra el bloqueo, una por línea')
   }
   if (secret.length) {
     out.push(`planning/${APPROVAL}: ${secret.length} credencial(es) aprobadas hasta que se borre su línea: `
@@ -288,5 +301,6 @@ function warnings(root) {
 
 module.exports = {
   APPROVAL, at, inRepo, locate, placed: CHAT.placed, spokenOf: CHAT.spokenOf, isPush: CHAT.isPush, lines, read,
+  namedCommand: CHAT.namedCommand,
   pending, pendingNow, where, HOW, REFUSED, warnings,
 }

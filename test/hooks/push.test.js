@@ -24,16 +24,27 @@ test('un push que la persona ordena con su remoto y su rama pasa, y ningún otro
     blocked('destructive', push(asked, 'git push origin feat/x feat/y'), WORK)
     const withFlag = push(chat.says('subí feat/x a origin'), 'git push -u origin feat/x')
     assert.doesNotThrow(() => execute('destructive', withFlag))
-    // Nombrar no es ordenar: sin verbo de publicar, con otro verbo, negado, o un nombre dentro de otro. Y el
-    // basename no cuenta, que es por lo que esto no pasa por `mentions`.
+    // El verbo no decide (caso 522): ordena la frase que nombra remoto y rama.
+    for (const message of ['mandá feat/x a origin', 'llevá feat/x a origin', 'dale con feat/x en origin']) {
+      const alone = chatSession()
+      try { assert.doesNotThrow(() => execute('destructive', push(alone.says(message), 'git push origin feat/x')),
+        message) } finally { alone.close() }
+    }
+    // Lo que frena: el basename, una negación en cualquier lugar del mensaje o la rama exceptuada, la pregunta, el
+    // mensaje que arranca frenando, y un nombre dentro de otro.
     for (const [message, command] of [
       ['Arreglá el login y no subas nada', 'git push origin feat/login'],
-      ['revisá feat/x en origin', 'git push origin feat/x'],
       ['no subas feat/x a origin', 'git push origin feat/x'],
-      // Con el verbo presente, lo único que frena es la negación.
       ['no hay que subir feat/x a origin', 'git push origin feat/x'],
       ["don't push feat/x to origin", 'git push origin feat/x'],
+      ['subí main a origin y feat/x no', 'git push origin feat/x'],
+      ['subí a origin todo menos feat/x', 'git push origin feat/x'],
+      ['subí main y feat/x a origin, pero no feat/x', 'git push origin feat/x'],
+      ['feat/x a origin, no lo subas', 'git push origin feat/x'],
+      ['feat/x a origin: no', 'git push origin feat/x'],
+      ['subí feat/x a origin, no main', 'git push origin feat/x'],
       ['¿qué tiene origin feat/x?', 'git push origin feat/x'],
+      ['pará, subí feat/x a origin después', 'git push origin feat/x'],
       ['subí feat/xy a origin2', 'git push origin feat/x'],
     ]) {
       // Cada frase en su sesión: lo que se mide es si la frase ordena, y con una sesión compartida el bloqueo
@@ -187,6 +198,46 @@ test('un rastro que no se puede escribir no frena el push que ya estaba autoriza
   } finally { chat.close() }
 })
 
+test('una redirección en el push no es otra rama (caso 525)', () => {
+  const root = pushRoot('ops-hook-push-redireccion-')
+  for (const command of ['git push origin feat/x 2>&1', 'git push -u origin feat/x 2>&1; echo "exit=$?"',
+    'git push origin feat/x > /tmp/push.log', 'git push origin feat/x 2>/dev/null',
+    'git push origin feat/x 2> err.log', 'git push origin feat/x &> push.log',
+    'git push origin feat/x >> push.log 2>&1', 'git push origin feat/x >& push.log',
+  ]) {
+    const chat = chatSession()
+    try {
+      assert.doesNotThrow(() => execute('destructive',
+        chat.says('subí feat/x a origin')({ cwd: root, tool_input: { command } })), command)
+    } finally { chat.close() }
+  }
+  // Sólo al final: lo que sigue a una redirección y no es otra no se lee —una rama, un `--force`, un `+`—, así que el
+  // push frena entero en vez de aprobarse por una rama que no es la que se publica.
+  for (const command of ['git push 2>&1 origin feat/y', 'git push &> push.log origin feat/y',
+    'git push origin feat/x 2>&1 --force', 'git push origin feat/x 2>&1 -f', 'git push origin 2>&1 +feat/x',
+    'git push origin >& feat/x', 'git push origin feat/x >|log main', "git push origin feat/x '>x:main'"]) {
+    const chat = chatSession()
+    try {
+      const call = chat.says('subí feat/x a origin')({ cwd: root, tool_input: { command } })
+      assert.doesNotMatch(messageOf('destructive', call), /\n {2}push origin (?:2>|feat\/x @)/, command)
+    } finally { chat.close() }
+  }
+})
+
+test('lo que no se puede leer detrás de una redirección no lo destraba ni allowPush ni un «dale» (caso 525)', () => {
+  const root = pushRoot('ops-hook-push-ilegible-', { allowPush: true })
+  for (const command of ['git push origin feat/x 2>/dev/null main', 'git push origin feat/x > log --all',
+    'git push origin feat/x 2>&1 --tags']) {
+    blocked('destructive', { cwd: root, tool_input: { command } }, /no se puede leer a dónde publica/)
+  }
+  const chat = chatSession()
+  try {
+    const call = { cwd: root, tool_input: { command: 'git push origin feat/x 2>/dev/null main' } }
+    blocked('destructive', chat.says('subí feat/x a origin')(call), /no se puede leer a dónde publica/)
+    blocked('destructive', chat.says('dale')(call), /no se puede leer a dónde publica/)
+  } finally { chat.close() }
+})
+
 test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ningún permiso', () => {
   const root = pushRoot('ops-hook-push-viva-', { allowPush: true })
   const push = (command, extra = {}) => ({ cwd: root, tool_input: { command }, ...extra })
@@ -219,6 +270,11 @@ test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ni
     blocked('destructive', chat.says('subí main a origin')(push('git push origin main')), LIVE)
     declare({ allowPush: false, pushToLiveBranches: ['main'] })
     assert.doesNotThrow(() => execute('destructive', chat.says('subí main a origin')(push('git push origin main'))))
+    // Caso 522.
+    for (const message of ['main está detrás de origin', 'revisá main en origin']) {
+      const alone = chatSession()
+      try { blocked('destructive', alone.says(message)(push('git push origin main')), WORK) } finally { alone.close() }
+    }
   } finally { chat.close() }
 })
 

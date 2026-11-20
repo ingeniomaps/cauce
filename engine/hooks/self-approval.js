@@ -21,6 +21,7 @@ const { contentOf, carriesContent, opsRoot, configOf } = require('./input')
 const { withTaskTrees } = require('../core/task-trees')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const { ordersPush } = require('./orders')
 const CF = require('./confirm')
 
 const CHAT_RECORD = (file) => `${file} es el registro de lo que la persona dijo en el chat: lo escribe el `
@@ -203,7 +204,8 @@ const AMBIGUOUS = (file, lines) => `${file} es la aprobación de una persona, y 
 // hasta la rama viva, así que tiene que ser la que la persona dijo en el mensaje en curso.
 function unasked(input, root, file) {
   const lines = added(input, root)
-  const pushes = CHAT.authorized(input, lines.filter(isPush), { asked: CHAT.ordersPush, inherit: false })
+  const asked = (text, item) => ordersPush(text, item, { publish: true })
+  const pushes = CHAT.authorized(input, lines.filter(isPush), { asked, inherit: false })
   const paths = CHAT.authorized(input, lines.filter((line) => !isPush(line)), { inherit: false })
   const byName = paths.filter((one) => one.via === 'orden').map((one) => one.item)
   const vague = new Set(blurred(input, root, lines, byName))

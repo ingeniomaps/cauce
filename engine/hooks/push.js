@@ -22,13 +22,17 @@
 const { spawnSync } = require('node:child_process')
 const { block, commandOf, opsRoot, configOf, toplevel } = require('./input')
 const AP = require('./approval')
+const { SAME_COMMAND } = require('./quoting')
 const CHAT = require('./chat')
+const { ordersPush } = require('./orders')
 const CF = require('./confirm')
 const TRAIL = require('./trail')
 
-// Lo que va entre `git push` y el fin del comando. El salto de línea corta igual que `;`, por lo que
-// `destructive` explica en MISMO.
-const PUSH = /\bgit\s+push\b([^;&|\n]*)/g
+// Lo que va entre `git push` y el fin del comando.
+const PUSH = new RegExp(String.raw`\bgit\s+push\b(${SAME_COMMAND}*)`, 'g')
+// Una redirección no es un refspec: `2>` salía como una rama más y la orden del chat no la nombraba nunca. Con el
+// operador solo —también `>&` sin descriptor—, su destino es la palabra siguiente.
+const REDIRECT = /^(?:\d*|&)(?:>\||>>?|<)(&\d*-?)?(.*)$/
 // Las banderas que llevan su valor en la palabra siguiente: sin saltearlo, el valor se leía como remoto.
 const VALUED = new Set(['-o', '--push-option', '--repo', '--receive-pack', '--exec'])
 // Publican todas las ramas, así que entre ellas la viva: no hay una rama que nombrar ni que aprobar.
@@ -70,11 +74,20 @@ function pushTarget(dir, current) {
 // El que no se puede resolver lleva por ítem el comando mismo, que no nombra ninguna rama: lo aprueba un
 // «dale» a ese bloqueo y nada en `.ops-approval`.
 function destinationsOf(args, dir) {
-  const words = args.trim().split(/\s+/).filter(Boolean).map((word) => word.replace(/^['"]|['"]$/g, ''))
+  const raw = args.trim().split(/\s+/).filter(Boolean)
+  const words = raw.map((word) => word.replace(/^['"]|['"]$/g, ''))
   const positional = []
   const found = []
+  // Las redirecciones se aceptan sólo al final, que es como las escribe un agente (`… 2>&1`). Algo que no lo es detrás
+  // de una —otra rama, un `--all`, un `--force`— no se adivina: el push queda ilegible y `publish` lo frena entero.
+  let redirected = false
   for (let at = 0; at < words.length; at += 1) {
-    if (!words[at].startsWith('-')) positional.push(words[at])
+    const redirect = /^['"]/.test(raw[at]) ? null : REDIRECT.exec(words[at])
+    if (redirect) {
+      redirected = true
+      if (!redirect[2] && (!redirect[1] || redirect[1] === '&')) at += 1
+    } else if (redirected) return [{ unreadable: true }]
+    else if (!words[at].startsWith('-')) positional.push(words[at])
     else if (EVERY.has(words[at])) found.push({ every: true })
     else if (VALUED.has(words[at])) at += 1
     else if (words[at] === '--tags') found.push({ tags: true })
@@ -94,6 +107,12 @@ function destinationsOf(args, dir) {
   if (remote) return [one(remote, target && target.remote === remote ? target.branch : current)]
   return [target ? one(target.remote, target.branch) : unknown]
 }
+
+// Sin salida por el chat ni por `allowPush`: lo que no se leyó puede ser la rama viva o todas, y corregirlo es del
+// agente.
+const UNREADABLE = "'git push' trae algo después de una redirección, así que no se puede leer a dónde publica: puede "
+  + 'ser la rama viva, todas las ramas o un force. Escribí el push con la redirección al final —`git push origin '
+  + '<rama> 2>&1`— y reintentá; no hace falta preguntarle a nadie.'
 
 const SUBAGENT = "'git push' desde un subagente no se publica, con ningún permiso: publicar lo decide una "
   + 'persona (R10), y un subagente es trabajo que el agente delegó. Devolvé el resultado a la sesión '
@@ -172,6 +191,7 @@ function publish(input, command) {
   const filed = new Set(root ? AP.read(root) : [])
   const live = liveBranches(dir)
   const destinations = pushes.flatMap((match) => destinationsOf(match[1], dir))
+  if (destinations.some((to) => to.unreadable)) block(UNREADABLE)
   const byFile = sure ? destinations.filter((to) => to.item && to.item.startsWith('push ')
     && filed.has(filedAs(to, topOf()))) : []
   const left = destinations.filter((to) => !byFile.includes(to))
@@ -185,7 +205,11 @@ function publish(input, command) {
   // Se pregunta sin conceder, a diferencia de lo que pasa por `AP.pending`: volver a leer lo que ya se
   // leyó no agrega consecuencia y volver a publicar sí, así que la autorización de un push vale para esa
   // operación y no para el mensaje siguiente (R10).
-  const cleared = CHAT.authorized(input, items, { asked: CHAT.ordersPush })
+  // Una rama viva habilitada sigue siendo la que otros usan: ahí la frase tiene que pedir publicar, porque sin verbo
+  // «main está detrás de origin» la alcanzaba (caso 522).
+  const lives = new Set(left.filter((to) => live.has(to.branch)).map((to) => filedAs(to, topOf())))
+  const asked = (text, item) => ordersPush(text, item, { publish: lives.has(item) })
+  const cleared = CHAT.authorized(input, items, { asked })
   const unordered = items.filter((item) => !cleared.some((one) => one.item === item))
   if (unordered.length) block(workMessage(unordered, input, sure))
   const destination = new Map(destinations.map((to) => [filedAs(to, topOf()), to]))
