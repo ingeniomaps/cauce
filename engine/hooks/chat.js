@@ -396,8 +396,8 @@ function unauthorized(input, items, asked = named) {
 }
 
 // Lo mismo sin conceder y sin heredar: lo que no está en el mensaje en curso queda pendiente aunque la
-// sesión lo haya dejado pasar antes. Con `logged`, lo que pasa por la persona queda en el rastro igual que una
-// concesión: lo que publica ya no se concede, y sin esto no quedaba constancia de quién lo autorizó (caso 527).
+// sesión lo haya dejado pasar antes. Con `logged`, lo que pasa por la persona va al rastro de las concesiones, que
+// es donde lo buscaba el 127: lo que publica dejó de concederse (caso 527).
 function unauthorizedNow(input, items, asked = named, { logged = false } = {}) {
   const passed = authorized(input, items, { asked, inherit: false })
   if (logged) trail((load(input.session_id) || {}).root || opsRoot(input), input, passed)
