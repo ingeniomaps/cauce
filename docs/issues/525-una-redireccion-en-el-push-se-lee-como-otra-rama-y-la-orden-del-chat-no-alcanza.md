@@ -82,6 +82,13 @@ con `2>&1`. El arnés de las pruebas nunca agrega redirecciones, por eso no lo h
 
 ## Cierre
 
+**El 526 cambió parte de esto antes de publicarse.** En la misma versión, `PUSH` pasó a leer el tramo con
+`SAME_COMMAND` (`engine/hooks/quoting.js`) en vez de su propia alternancia, y hoy está en `push.js:32`; las citas de
+abajo son de `b1594b1b`, y las mutaciones del punto 4 corrieron sobre la alternancia de entonces. Y dos cosas que este
+cierre deja como pendientes las cerró el 526: un `--force` o un `+rama` detrás de `2>&1` frenan por la regla del force,
+y `git 2>&1 push …` se lee como un push. Las dos tablas de abajo dan igual con el código de hoy: el contraste del cierre
+las repitió con `1c47404e`.
+
 `PUSH` (`engine/hooks/push.js:33`) ya no corta el tramo en el `&` o el `|` de una redirección (`>&N`, `&>`, `>|`), y
 `destinationsOf` (`push.js:77`) saltea cada redirección (`REDIRECT`, `push.js:36`) con su destino, si va en la palabra
 siguiente. Las redirecciones se aceptan **sólo al final** del push, que es como las escribe un agente: si detrás de una

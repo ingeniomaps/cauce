@@ -190,7 +190,9 @@ instalado del banco de `main`, pasó sin ninguna aprobación, y por el de esta r
 11. hecho: dos pasadas independientes. La primera encontró `namesRepo` sin la ruta —un `gh` con ruta y sin `--repo`
     quedaba aprobable por archivo en cualquier repositorio— y se arregló; la segunda, sobre esa corrección, nada que
     impida entregar, y anotó dos frenos de más, escritos en el tradeoff.
-12. hecho: uno por uno sobre el diff; ninguno pasa de 0,22 con el tokenizador de la puerta.
+12. hecho: uno por uno sobre el diff; los encabezados de las dos pruebas repetían la razón de `quoting.js` y quedaron en
+    «Caso 528.». La medición con el tokenizador a 0,22 que se citaba acá había corrido sobre el diff de otro commit (el
+    script comparaba `HEAD~1..HEAD`); la rehizo el contraste del cierre sobre `a1f0caaa`, y ninguno pasa de 0,22.
 13. hecho: `npm run ci` con el cambio y el caso stageados, `exit 0`.
 14. hecho: recorrido arriba contra el Fix y los Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».

@@ -155,7 +155,7 @@ Contra el caso:
   en `main`— y hay que repetir la orden sin la negación. Medido por la revisión con el arnés; el CHANGELOG lo dice.
 - **Tradeoff, `self-approval.js`:** se hizo distinto. Sin el verbo, la revisión midió que «revisá main en origin y
   agregalo a .ops-approval» le dejaba al agente escribirse `push origin main`, una línea que llega hasta la rama viva,
-  adonde ni la orden del chat llega (`push.js:113`). Ese camino sigue pidiendo el verbo de publicar en la frase
+  adonde ni la orden del chat llega (`push.js:113` de `40936526`). Ese camino sigue pidiendo el verbo de publicar en la frase
   (`publish`), igual que en `main`.
 
 Lo que el caso no preveía: el `HALT` que faltaba, arriba. Y la rama viva habilitada: el code review del conjunto
@@ -206,7 +206,7 @@ antes pasa   | después frena  «pará, subí feat/x a origin después»
 antes pasa   | después frena  «subí a origin todo menos feat/x»
 antes pasa   | después frena  «subí main a origin y feat/x no»
 antes pasa   | después frena  «subí main y feat/x a origin, pero no feat/x»
-antes pasa   | después pasa   «subí feat/x a origin, no main»
+antes pasa   | después frena  «subí feat/x a origin, no main»
 antes frena  | después frena  «Arreglá el login y no subas nada»
 ```
 
@@ -244,14 +244,18 @@ stubs que anotan lo que corre, y el push iba a un remoto local:
 
 1. hecho: la reproducción y la entrada real con el motor de `origin/main`, arriba.
 2. hecho: en la rama `fix/519-523-chat-y-historias`.
-3. hecho: las de `push.test.js` y `chat-effects.test.js`, rojas con el `ordersPush` anterior y con la primera versión
-   de éste («feat/x a origin, no lo subas» pasaba), y verdes con el final.
+3. hecho: las de `push.test.js`, rojas con el `ordersPush` anterior y con la primera versión de éste («feat/x a origin,
+   no lo subas» pasaba), y verdes con el final. La de `chat-effects.test.js` es una guarda de regresión: verde también
+   con el anterior, que ya pedía el verbo, y roja con la mutación sin `publish`.
 4. hecho: ocho mutaciones en una copia, todas rojas; ninguna sobrevivió.
 5. hecho: lo que se quita es el verbo obligatorio; la salida de antes y la de después están lado a lado arriba.
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
 8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y `self-approval`. Corrió una sesión
-   real de Claude Code por mensaje (abajo). La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
+   real de Claude Code por mensaje (abajo). La entrada real se repitió el 2026-11-20 con `40936526` y dio lo mismo. Los
+   casos 525–528 cambiaron después código que esto atraviesa (`push.js`, `shell.js`, `chat.js`): el contraste del cierre
+   repitió la entrada real con `1c47404e` y dio lo mismo. Las sesiones reales corrieron sobre `40936526` y no se
+   repitieron; lo que esos casos cambiaron lo probaron sus propias sesiones.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: los dos consumidores (`push.js`, `self-approval.js`), la prueba del 103 que se cambió y las dos reglas que
     describen la orden (`template/AGENTS.md:300`, `commits.md:59`), que no hablan del verbo y siguen ciertas.

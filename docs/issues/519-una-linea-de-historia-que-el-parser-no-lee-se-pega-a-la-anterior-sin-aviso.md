@@ -165,7 +165,7 @@ dejó en «Notas».
 `unreadStories` (`engine/planning/structure.js`), junto a `competingSections` y cableado en `check`
 (`engine/cli/validate.js`), avisa cada viñeta de «Historias» con forma de historia y otra casilla que `[ ]`/`[x]`,
 nombrando la línea y el slug que no cuenta. Recorre las épicas con el mismo `epicFiles` que el parser —también la
-graduada, `roadmap/epic-NNN-slug/spec.md`— y sin la plantilla, igual que `readEpics`. El parser no cambió.
+graduada, `roadmap/epic-NNN-slug/spec.md`— y sin la plantilla, igual que `readEpics`. La lectura del parser no cambió: sólo exporta `epicFiles`.
 
 Línea de base: la reproducción de arriba, en el banco `suelto`, con el motor de antes del cambio.
 
@@ -224,7 +224,7 @@ entero y no sólo «Historias»; sacar el aviso de `check`; recorrer `roadmap/` 
 5. no aplica: no quita ni reemplaza nada; suma un aviso.
 6. hecho: `ops check` en un banco, sin dobles.
 7. no aplica: no depende de un modelo ni de un runner.
-8. hecho: corrieron las pruebas de `contracts`, `check` en el banco con `[~]` y con `[ ]`, y `init` + `check --json`. La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
+8. hecho: corrieron las pruebas de `contracts`, `check` en el banco con `[~]` y con `[ ]`, y `init` + `check --json`. La entrada real se repitió el 2026-11-20 con `40936526` y dio lo mismo; ningún commit posterior de la rama toca `structure.js`, `validate.js` ni `parser.js`, y el contraste del cierre la volvió a correr con `1c47404e`, igual.
 9. no aplica: no coordina nada.
 10. hecho: el parser y sus lectores no cambian; `check` suma un aviso, que `--json` ya devuelve en `warnings`.
 11. hecho: tres pasadas independientes. La primera encontró que no veía las épicas graduadas; la segunda, dos líneas

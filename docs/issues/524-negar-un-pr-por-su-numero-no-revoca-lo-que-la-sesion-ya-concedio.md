@@ -82,11 +82,13 @@ reabrir.
 
 **Reemplazado por el 527, antes de publicarse.** En la misma versión, el 527 decidió que lo que publica no se hereda
 al mensaje siguiente, y con eso `revokesPull` quedó muerto y se quitó: lo que este cierre describe de él ya no está en
-el código. Las pruebas y la conducta medidas abajo siguen en pie con el mecanismo del 527.
+el código. La prueba del 524 también se reemplazó, por la del 527: de sus filas siguen cubiertas «no mergees el #69» y
+«pará» (ésta con terraform). La conducta medida abajo sí sigue en pie: el contraste del cierre repitió la tabla con
+`1c47404e` y dio igual, fila por fila. Los puntos 3, 4 y 12 hablan del código que el 527 reemplazó.
 
 `revokesPull` (`engine/hooks/orders.js:76`) dice si un mensaje le quita a un PR lo que su orden le había concedido: lo
 niega o lo exceptúa por número, niega sin nombrar ninguno, o arranca frenando (`HALT`). Comparte con `ordersPull` la
-lectura de los PR, que pasó a `pullsOf` (`orders.js:86`). `record` (`engine/hooks/chat.js:194`) la consulta junto a
+lectura de los PR, que pasó a `pullsOf` (`orders.js:86` de `fd4fcc50`; hoy `:76`). `record` (`engine/hooks/chat.js:194`) la consulta junto a
 `mentions` para filtrar lo concedido, sólo con un mensaje de la persona: un aviso del runner no revoca por esta vía,
 como tampoco ordena.
 
@@ -150,8 +152,8 @@ usuario) en un banco instalado, con un `gh` falso en el `PATH` que contesta `pr 
 `["gh pr merge 69 --repo o/api"]`. Segundo mensaje, con `--resume` en la misma sesión: «no, pará: no mergees el #69
 todavía». Después, el reintento por el hook instalado (`guard-shell.sh`) con esa sesión:
 
-- Motor de `main` (`f4cf6438`): lo concedido siguió igual y el reintento pasó.
-- Esta rama (`df723a13`): lo concedido quedó `[]` y el reintento frenó con el bloqueo de R10.
+- Motor de `main` (sesión `f4cf6438`): lo concedido siguió igual y el reintento pasó.
+- Esta rama, `ceaa5dc9` con `chat.js` y `orders.js` sin commitear (sesión `df723a13`): lo concedido quedó `[]` y el reintento frenó con el bloqueo de R10.
 
 Un primer intento con `main` no midió nada: el `gh` falso contestaba lo mismo a todo y el agente, desconfiado, consultó
 el `gh` real contra `o/api` (lectura, no resolvió) y no mergeó. Se rehízo con un `gh` falso creíble. Seis sesiones,
@@ -177,8 +179,9 @@ unos USD 0,1.
     (que deja de listar el PR revocado) y `scopes`, que se filtra con él.
 11. hecho: una pasada independiente sin nada que impida entregar. Señaló el encabezado de `record`, que quedó a medias
     falso y se corrigió; la frecuencia real de las revocaciones de más, escrita arriba; y el hueco del 527.
-12. hecho: uno por uno sobre el diff; ninguno pasa de 0,22 con el tokenizador de la puerta. La razón de que un aviso no
-    revoque estaba en el código y en la prueba, y se dejó sólo en el código.
+12. hecho: uno por uno sobre el diff. La razón de que un aviso no revoque estaba en el código y en la prueba, y se dejó
+    sólo en el código. La medición con el tokenizador a 0,22 que se citaba acá había corrido sobre el diff de otro commit
+    (el script comparaba `HEAD~1..HEAD`); la rehizo el contraste del cierre sobre `fd4fcc50`, y ninguno pasa de 0,22.
 13. hecho: `npm run ci` con el cambio, este caso y el 527 stageados, `exit 0`.
 14. hecho: recorrido arriba contra el Fix y los Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».

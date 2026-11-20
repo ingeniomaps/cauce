@@ -235,7 +235,10 @@ stubs que anotan lo que corre, y el push iba a un remoto local:
     (2026-11-20), hasta una sin nada que impida entregar. La primera midió dos formas de pedir un archivo que la primera versión
     quitaba, y se reescribió la condición; la segunda, sobre la versión final y el commit del refactor, nada que impida
     entregar. Lo que anotó está arriba, en «Lo que el caso no preveía».
-12. hecho: uno por uno sobre los tres comentarios del diff, y ninguno pasa de 0,22 con el tokenizador de la puerta.
+12. hecho: uno por uno sobre los comentarios que agregaron `6e24dc1b` y `40936526`; ninguno del 523 pasa de 0,22 con
+    el tokenizador de la puerta. La primera pasada había mirado sólo los tres de `6e24dc1b`; la rehizo el contraste del
+    cierre, con un script que lee cada commit, y los dos pares de `40936526` sobre 0,22 son del 522: uno anterior a la
+    rama (el de `orders.js`, que ya estaba en `chat.js`) y otro de vocabulario.
 13. hecho: `npm run ci` con el cambio y este caso stageados, `exit 0`.
 14. hecho: recorrido arriba contra Fix y Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».

@@ -90,7 +90,7 @@ rama.
 ## Cierre
 
 La persona eligió la recomendación, las dos formas juntas (2026-11-20). Las reglas de publicar de `delivery.js` llevan
-un sexto campo en la tabla (`deliveryRules`, `engine/hooks/delivery.js:129`), y `destructive` las pregunta con
+un sexto campo en la tabla (`deliveryRules`, `engine/hooks/delivery.js:129` de `4275b4a8`), y `destructive` las pregunta con
 `AP.pendingNow` en vez de `AP.pending` (`engine/hooks/shell.js:266`): valen para el turno de la orden o del «dale» y no
 se conceden, igual que el push. Lo que pasa por la persona queda igual en `planning/.grant-log` (`unauthorizedNow` con
 `logged`, `engine/hooks/chat.js:401`), y el bloqueo dice que el «dale» vale para su turno (`turn` en `AP.HOW`). Y
@@ -169,14 +169,15 @@ usuario) en un banco instalado, con un `gh`, un `docker` y un `terraform` falsos
 - «corré docker compose down en este proyecto» y después «pará, no hagas nada más». Con `main` (`e02575ca`) el
   reintento pasó; con la rama (`edb71ba8`), frenó.
 - Con terraform no se pudo medir lo concedido: los agentes agregaron banderas (`-input=false`, `-no-color`) y el comando
-  ya no era el que nombraba la orden, así que frenó en el primer turno con los dos motores. Uno, desconfiando del falso,
-  corrió el `terraform` real por ruta (`init` bajó el proveedor del registro público; `apply` creó un `null_resource`
-  local en el banco), que es lo que abrió el 528.
+  ya no era el que nombraba la orden, así que frenó en el primer turno con los dos motores. En tres sesiones, con los
+  dos motores (`e7538ef3`, `3b3602fd`, `dc115314`), el agente desconfió del falso y corrió el `terraform` real por ruta
+  (`init` bajó el proveedor del registro público; `apply` creó un `null_resource` local en el banco), que es lo que
+  abrió el 528.
 
 Después de las correcciones de la revisión se repitieron con la versión final: el merge pasó en su turno, quedó en
 `.grant-log` como `orden`, no se concedió nada y el reintento después de la pregunta frenó (`1b73ddcb`); y el
-`docker compose down` frenó después de «pará» (`371f04e1`). Unas veinticinco sesiones en total, contando las que no
-midieron, unos USD 0,45.
+`docker compose down` frenó después de «pará» (`371f04e1`). En total, 14 sesiones (28 invocaciones de `claude -p`,
+contando las que no midieron), USD 0,44.
 
 **Sin probar:** un terraform concedido en una sesión real de Claude Code, por lo de arriba. Pasa por la misma tabla y
 la misma rama de `destructive` que el merge, que sí se ejerció en sesión real, y la entrada real de los hooks lo
@@ -205,9 +206,13 @@ cubrió (las cinco primeras filas).
 11. hecho: dos pasadas independientes. La primera encontró las dos quitas de arriba —el texto del bloqueo y el
     rastro— y se arreglaron; la segunda, sobre lo que cambió, nada que impida entregar, y anotó la línea doble con dos
     reglas, la preposición «para» y un comentario viejo de `approval.js`, que se corrigió.
-12. hecho: uno por uno sobre el diff final; ninguno pasa de 0,22 con el tokenizador de la puerta. La razón de no
-    heredar lo que publica estaba escrita en `shell.js` y ya vivía en `push.js`, y quedó sólo la referencia; el
-    encabezado de la prueba repetía su nombre y se acortó.
+12. hecho: uno por uno sobre el diff final. La razón de no heredar lo que publica estaba escrita en `shell.js` y ya
+    vivía en `push.js`, y quedó sólo la referencia; el encabezado de la prueba repetía su nombre y se acortó. La medición
+    con el tokenizador a 0,22 que se citaba acá había corrido sobre el diff de otro commit (el script comparaba
+    `HEAD~1..HEAD`); la rehizo el contraste del cierre sobre `4275b4a8`. Dos pares pasan de 0,22: la forma de la tabla de
+    reglas, descrita en `delivery.js` y en `shell.js` (0,226, anterior a la rama, y el 527 había ampliado las dos copias),
+    que se dejó sólo en `shell.js`; y el rastro de `unauthorizedNow` frente al de `grants.test.js` (0,242), que comparten
+    vocabulario y no razón.
 13. hecho: `npm run ci` con el cambio y los casos stageados, `exit 0`.
 14. hecho: recorrido arriba contra el Fix, la recomendación y los Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».

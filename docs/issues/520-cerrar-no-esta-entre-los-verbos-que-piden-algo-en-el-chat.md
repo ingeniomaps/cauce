@@ -145,9 +145,9 @@ pegó las líneas en `.ops-approval`. Costó varias vueltas y no salió nunca po
 ## Cierre
 
 Decidido por la persona el 2026-11-19, entre las tres salidas del tradeoff: el modelo del 280 sólo para `close` y
-`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-70`) arma un ítem por PR y repositorio para
+`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-70` de `40936526`) arma un ítem por PR y repositorio para
 `merge`, `close` y `reopen`, con el acto adentro, y la lectura que era `ordersMerge` se llama `ordersPull`
-(`engine/hooks/orders.js:65`) y lee los tres. `review` y `comment` siguen con el comando entero, y un comando que
+(`engine/hooks/orders.js:65` de `40936526`) y lee los tres. `review` y `comment` siguen con el comando entero, y un comando que
 mezcla uno de ellos también. Un `close` o `reopen` se lee por número sólo si cada palabra es el número, el repositorio o
 el comentario con que se cierra (`-c`, que viaja con el cierre como el cuerpo de un merge); cualquier otra vuelve al
 comando entero. Así `-d`/`--delete-branch`, que borra la rama local y la remota, frena escrito como se escriba.
@@ -193,9 +193,9 @@ separador (`-c "a\";b" -d`), `$'…'` con un `;` adentro, y un `$(…; …)` sin
 comentario de cierre. Y, como en `main`, `gh pr "close" 69 -d` no lo reconoce ninguna regla.
 
 Quedan como en `main`, anotados por la revisión: lo concedido no se revoca negando el PR por número —«cerrá el #69» y
-después «no cierres el #69» deja pasar el cierre, porque `chat.js:188` revoca con `mentions`, que no lee números; con el
-merge pasaba igual y sale como caso propio, el 524—; un número tras un `|`, `;` o `&` dentro de un valor entrecomillado
-se pierde del ítem (`SAME`, `delivery.js:22`), y `-R=<repo>` no se lee como repositorio; los dos frenan. Y una línea de `.ops-approval` escrita con el comando entero y
+después «no cierres el #69» deja pasar el cierre, porque `chat.js:188` (de `40936526`) revocaba con `mentions`, que no lee números; con el
+merge pasaba igual y sale como caso propio, el 524, que en esta misma versión lo resolvió junto con el 527—; un número tras un `|`, `;` o `&` dentro de un valor entrecomillado
+se pierde del ítem (`SAME`, `delivery.js:22` de `40936526`), y `-R=<repo>` no se lee como repositorio; los dos frenan. Y una línea de `.ops-approval` escrita con el comando entero y
 banderas deja de aprobar, como pasó con el merge en el 280: se escribe en la forma que muestra el bloqueo.
 
 ### Qué se corrió
@@ -258,7 +258,11 @@ stubs que anotan lo que corre, y el push iba a un remoto local:
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
 8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y la línea de `.ops-approval`. Corrió
-   una sesión real de Claude Code por mensaje (abajo). La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
+   una sesión real de Claude Code por mensaje (abajo). La entrada real se repitió el 2026-11-20 con `40936526` y dio lo
+   mismo. Los casos 524–528 cambiaron después código que esto atraviesa (`chat.js`, `orders.js`, `delivery.js`,
+   `shell.js`): el contraste del cierre repitió la entrada real con `1c47404e` y dio lo mismo, salvo «no cierres el #69»,
+   que ahora frena (arriba). Las sesiones reales corrieron sobre `40936526` y no se repitieron; lo que esos casos
+   cambiaron lo probaron sus propias sesiones.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: `delivery.js` es el único que usa la lectura; las pruebas del 280 y del 523 que fijaban lo de antes se
     cambiaron a sabiendas, y `ordersMerge` no queda nombrado en ningún lado.

@@ -19,9 +19,10 @@ diseño — eso vive en el commit y en el código.
 ### Corregido
 
 - **Nombrar el último tramo de una ruta ya no ordena el comando que la trae** (caso 523). Un comando frenado con salida
-  —cerrar, aprobar o comentar un PR, disparar un workflow, una release, un deploy— se autorizaba por chat con
-  cualquier frase que nombrara lo que sigue a su última `/` y trajera un verbo: «revisá la api» pasaba
-  `gh pr close 69 --repo o/api`, y «revisá prod.yaml» pasaba `kubectl apply -f k8s/prod.yaml`. Lo mismo valía para
+  —aprobar o comentar un PR, disparar un workflow, una release, un deploy— se autorizaba por chat con cualquier frase
+  que nombrara lo que sigue a su última `/` y trajera un verbo: «revisá la api» pasaba
+  `gh pr comment 69 --body ok --repo o/api`, y «revisá prod.yaml» pasaba `kubectl apply -f k8s/prod.yaml`. Mergear,
+  cerrar y reabrir se piden por número y no por nombre (casos 280 y 520), así que no cambian. Lo mismo valía para
   escribir esa línea en `.ops-approval`: «agregá la api a .ops-approval» alcanzaba. Un comando de una sola palabra
   declarado en `deployCommands`, como `./deploy.sh`, se ordenaba con «revisá deploy.sh». Ahora el comando se pide
   nombrándolo, o con un «dale» después del bloqueo. Para un archivo nada cambia: «leé el .env» sigue alcanzando.
@@ -65,7 +66,9 @@ diseño — eso vive en el commit y en el código.
   por chat —«mergeá el #69», «corré terraform apply»— o un «dale» dejaba el acto concedido para el resto de la sesión, y
   ni «no mergees el #69», ni «pará», ni «no despliegues nada» lo quitaban: si el agente reintentaba más tarde, pasaba.
   Ahora mergear, cerrar o comentar un PR, disparar un workflow, una release o un deploy vale mientras tu último mensaje
-  sea la orden o el «dale», como ya pasaba con el push; con el mensaje siguiente se vuelve a pedir. Y un mensaje que
+  sea la orden o el «dale», como ya pasaba con el push; con el mensaje siguiente se vuelve a pedir. El merge, el cierre y
+  la reapertura por número se leen de nuevo en cada mensaje, y uno que no nombra ningún PR ni pregunta, frena o niega
+  —un «gracias»— sigue autorizándolos (caso 280); lo que cambia es que uno que pregunta o niega ya no los deja pasar. Y un mensaje que
   arranca frenando —«pará», «esperá», «cancelá»— se lleva todo lo concedido en la sesión, también la lectura de un
   archivo o un comando: lo que haga falta después se pide de nuevo.
 

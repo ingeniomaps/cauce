@@ -101,8 +101,8 @@ la regla del force seguía cortando en ella.
 `MISMO` pasa a ser `SAME_COMMAND` (`engine/hooks/quoting.js:138`), en un lugar que pueden importar `shell.js`,
 `dependencies.js` y `push.js` sin ciclo: no corta en el `&` ni en el `|` de una redirección (`>&N`, `>&-`, `&>`, `&>>`,
 `>|`), y cada redirección se lee de una sola forma. `PUSH` (`push.js:32`) lo usa en vez de su copia del 525. Y
-`scanGlobals` (`git-globals.js:94`) lee una redirección entre `git` y su subcomando como una opción global más, con su
-destino, sólo cuando ese `git` encabeza su comando; `withoutGitGlobals` (`git-globals.js:190`) la deja delante como un
+`scanGlobals` (`git-globals.js:85`; la rama de la redirección, `:94`) lee una redirección entre `git` y su subcomando como una opción global más, con su
+destino, sólo cuando ese `git` encabeza su comando; `withoutGitGlobals` (`git-globals.js:179`; donde la deja delante, `:190`) la deja delante como un
 comando aparte (`2>&1 ; git push …`), igual que lo que corre un `-c`, así que las reglas ven el subcomando y la regla de
 disco sigue viendo un `git > /dev/sda push`.
 
