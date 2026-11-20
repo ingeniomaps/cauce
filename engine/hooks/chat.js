@@ -123,6 +123,9 @@ function mentions(text, given) {
   const item = spokenOf(given)
   const lower = String(text).toLowerCase()
   const found = []
+  // El basename pide sólo si el ítem es una ruta, sola o tras su verbo (`escribe <ruta>`): el de un comando es su
+  // último tramo —`api` en `gh pr close 69 --repo o/api`—, y «revisá la api» lo ordenaba (caso 523). Negar sí cuenta.
+  const file = !/\s/.test(item) || path.isAbsolute(item) || /^\S+\s+\//.test(item)
   for (const name of new Set([item, path.basename(item)].map((one) => one.toLowerCase()))) {
     if (name.length < 3) continue
     for (let at = lower.indexOf(name); at !== -1; at = lower.indexOf(name, at + 1)) {
@@ -134,7 +137,7 @@ function mentions(text, given) {
       const phrase = `${clause} ${rest.split(CLAUSE)[0]}`
       found.push({
         denied: NEGATION.test(clause),
-        asked: asks(phrase),
+        asked: (file || name === item.toLowerCase()) && asks(phrase),
         // El alcance se lee de la misma frase que decide si la ruta fue pedida, y no del mensaje entero:
         // un «mientras dure la tarea t-014» que hable de otra cosa, en otra oración, no acota a ésta.
         scope: (phrase.match(SCOPE) || [])[1] || '',

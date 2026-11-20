@@ -6,7 +6,7 @@
 
 const { CLAUSE, ENCLITIC, HALT, NEGATION, spokenOf } = require('./chat')
 
-// Una orden de publicar se lee aparte, porque `mentions` compara también el basename: para el ítem
+// Una orden de publicar se lee aparte, porque `mentions` comparaba también el basename: para el ítem
 // `push origin feat/login` eso es `login`, y «arreglá el login y no subas nada» publicaba (caso 103). Acá
 // el remoto y la rama tienen que aparecer tal cual, como palabras enteras, en una frase que pida publicar
 // —un verbo de publicar, no cualquiera: «revisá feat/x en origin» no pide un push— y sin una negación

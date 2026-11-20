@@ -170,6 +170,22 @@ test('la confirmación de un merge cubre el PR y no la línea de comando', () =>
   assert.match(message, /\n {2}gh pr merge 2 --repo acme\/app\n/, 'lo que se pega es el PR, no la línea')
 })
 
+test('nombrar el último tramo de una ruta no ordena el comando que la trae (caso 523)', () => {
+  const root = pushRoot('cauce-delivery-tramo-')
+  for (const [prompt, command, expected] of [
+    ['revisá la api', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['arreglá la api', 'gh pr review 69 --approve --repo acme/api', 'frena'],
+    ['revisá el deploy de la api', 'gh workflow run deploy.yml --repo acme/api', 'frena'],
+    ['revisá prod.yaml', 'kubectl apply -f k8s/prod.yaml', 'frena'],
+    ['corré gh pr close 69 --repo acme/api', 'gh pr close 69 --repo acme/api', 'pasa'],
+  ]) {
+    const chat = chatSession()
+    try { assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), expected, `${prompt} → ${command}`) } finally {
+      chat.close()
+    }
+  }
+})
+
 // Caso 281, del lado de publicar. Una orden que se cumple después —«cuando el CI quede verde…»— tiene que
 // seguir valiendo tras el aviso de la tarea que esperaba. Pasa lo que la persona nombró; «los merges de este
 // turno», que vale sin nombrar ninguno, no cruza el aviso.

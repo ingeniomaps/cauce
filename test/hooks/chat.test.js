@@ -455,3 +455,18 @@ test('el trabajo delegado ofrece preguntar, y lo que la persona confirma le lleg
     assert.doesNotMatch(stopped, /que lo pida en el chat/)
   } finally { denies.close() }
 })
+
+test('el último tramo pide una ruta, aunque traiga espacios o su verbo, y no un comando (caso 523)', () => {
+  for (const [prompt, item, expected] of [
+    ['leé .env.prod', '/w/mi proyecto/.env.prod', 'orden'],
+    ['abrí credentials.json', 'config/credentials.json', 'orden'],
+    ['editá guard-files.sh', 'escribe /w/automatization/hooks/guard-files.sh', 'orden'],
+    ['revisá la api', 'gh pr close 69 --repo acme/api', ''],
+  ]) {
+    const chat = chatSession()
+    try {
+      const [found] = authorized(chat.says(prompt)({}), [item])
+      assert.equal(found ? found.via : '', expected, `${prompt} → ${item}`)
+    } finally { chat.close() }
+  }
+})

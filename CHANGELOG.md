@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.123.1] - 2026-11-19
+
+### Corregido
+
+- **Nombrar el último tramo de una ruta ya no ordena el comando que la trae** (caso 523). Un comando frenado con salida
+  —cerrar, aprobar o comentar un PR, disparar un workflow, una release, un deploy— se autorizaba por chat con
+  cualquier frase que nombrara lo que sigue a su última `/` y trajera un verbo: «revisá la api» pasaba
+  `gh pr close 69 --repo o/api`, y «revisá prod.yaml» pasaba `kubectl apply -f k8s/prod.yaml`. Lo mismo valía para
+  escribir esa línea en `.ops-approval`: «agregá la api a .ops-approval» alcanzaba. Ahora el comando se pide
+  nombrándolo, o con un «dale» después del bloqueo. Para un archivo nada cambia: «leé el .env» sigue alcanzando.
+
 ## [0.123.0] - 2026-11-15
 
 ### Cambiado
