@@ -245,6 +245,22 @@ stubs que anotan lo que corre, y el push iba a un remoto local:
 - «cerrá el #69» → `gh pr close 69 --repo o/api` corrió (el stub lo anotó), y `gh pr close 69 -d --repo o/api` frenó
   (`f5138ef3`).
 
+**Después del contraste de los cierres (2026-11-20): `check` no avisaba la línea vieja.** Antes de empujar se probó
+en un banco qué le pasa a una instancia que tiene en `.ops-approval` la línea que ofrecía 0.123.0 para un cierre con
+comentario, `gh pr close 69 -c "duplicado" --repo o/api`: con el motor de `main` aprobaba el cierre; con esta rama
+frena, y `check planning` la seguía contando entre las vigentes («el archivo sigue autorizándolas»). Una empresa la
+habría perdido en el `upgrade` sin aviso. Ahora `check` la avisa y dice cómo se escribe: `rewrittenPull`
+(`engine/hooks/delivery.js:79`) arma el ítem por partes, `warnings` (`engine/hooks/approval.js:268`) marca las líneas
+de un merge, un cierre o una reapertura que no coinciden con su ítem, y `takenWhole` (`engine/hooks/shell.js:421`)
+deja afuera la que otra regla aprueba entera —`terraform apply && gh pr merge 12 --squash … @ <lugar>`, que el
+bloqueo del deploy ofrece hoy—. Atrapa también las líneas de merge anteriores al 280. Prueba en
+`test/hooks/delivery.test.js`, roja antes; seis mutaciones, todas rojas; dos pasadas independientes, la primera con el
+falso positivo de `terraform` que se arregló con `takenWhole`, la segunda sin nada que impida entregar. Quedan
+anotados: una línea que junta otro comando con un PR conserva la parte viva y no se avisa que perdió la del PR; un
+cierre con `@ lugar` (forma que el bloqueo nunca ofreció) y un mensaje de commit que nombra `gh pr review` no se
+avisan; y, como antes, el aviso del lugar sobre `docker compose down && gh pr close 3 --repo o/api` revive sólo el
+tramo de Docker.
+
 **Sin probar:** nada.
 
 ### Lista de cierre

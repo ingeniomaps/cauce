@@ -416,4 +416,13 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = { destructive, gitAdd, shellBoundary, run, unplaced }
+// Si una regla que aprueba el comando entero —no por partes, como un merge— toma la línea: entonces la línea sigue
+// aprobando, aunque traiga además un acto sobre un PR que hoy se aprueba por partes (caso 520).
+function takenWhole(root, line) {
+  let rules
+  try { rules = rulesOf({ cwd: root }) } catch { return false }
+  const command = withoutGitGlobals(asRun(AP.spokenOf(line)))
+  return rules.some(([pattern, , open, by]) => open && !by && pattern.test(command))
+}
+
+module.exports = { destructive, gitAdd, shellBoundary, run, takenWhole, unplaced }

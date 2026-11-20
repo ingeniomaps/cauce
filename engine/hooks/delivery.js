@@ -73,6 +73,13 @@ function mergeItems(command) {
   return items.includes(null) ? null : [...new Set(items)]
 }
 const MERGE = { items: mergeItems, asked: (text, item, how) => ordersPull(text, item, how) }
+// Cómo se escribe hoy una línea de `.ops-approval` que nombra un merge, un cierre o una reapertura con el comando
+// entero: el ítem se lee por partes (casos 280 y 520), así que esa línea ya no aprueba nada. `null` si la línea ya
+// está en esa forma, o si el comando no se lee por partes y se sigue aprobando entero.
+function rewrittenPull(line) {
+  const items = mergeItems(line)
+  return items && !items.includes(line.trim()) ? items.join(' y ') : null
+}
 
 // Dónde vale cada aprobación, en el quinto lugar de cada regla (caso 446). Un `gh` sin destino lo resuelve solo,
 // por lo que dice la regla de `pr create`, así que por archivo se aprueba sólo nombrándolo: con `--repo`, o con
@@ -132,4 +139,4 @@ function deliveryRules(input) {
     .map(([pattern, message, by, place]) => [pattern, message, true, by, place, true])
 }
 
-module.exports = { deliveryRules, namesRepo, GH, DIR }
+module.exports = { deliveryRules, namesRepo, rewrittenPull, GH, DIR }

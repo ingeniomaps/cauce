@@ -44,7 +44,8 @@ diseño — eso vive en el commit y en el código.
   bandera —`-d`, que borra la rama, entre ellas— vuelve a pedir el comando entero, igual que aprobar o comentar
   suelto. Una línea de
   `.ops-approval` con el comando entero y su `-c` —`gh pr close 69 -c "duplicado" --repo <repo>`, y lo mismo con
-  `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`. Y un merge cuyo
+  `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`, y `check` avisa la
+  línea vieja con la forma nueva. Y un merge cuyo
   cuerpo trae un `;` —`-b "listo; va"`— pide el comando entero: detrás del `;` podía ir un `--admin` que la línea
   aprobada no nombraba.
 

@@ -262,7 +262,11 @@ function warnings(root) {
   // Lo mismo para un comando cuyo efecto depende de dónde corre y que se aprobó sin lugar (caso 446).
   const { unplaced } = require('./shell')
   const placeless = unplaced(root, approved.filter((line) => /\s/.test(line)))
-  const old = [...stale, ...placeless]
+  const { rewrittenPull } = require('./delivery')
+  const { takenWhole } = require('./shell')
+  const reshaped = approved
+    .filter((line) => !placeless.includes(line) && rewrittenPull(line) && !takenWhole(root, line))
+  const old = [...stale, ...placeless, ...reshaped]
   const secret = approved.filter((line) => !old.includes(line) && credential({ cwd: root }, line))
   const rest = approved.filter((line) => !old.includes(line) && !secret.includes(line))
   if (stale.length) {
@@ -274,6 +278,11 @@ function warnings(root) {
     out.push(`planning/${APPROVAL}: ${placeless.length} línea(s) sin el lugar donde valen, que ya no aprueban nada: `
       + `${placeless.join(', ')}. Un comando que depende de dónde corre se aprueba con el repositorio o la carpeta `
       + 'que nombra el bloqueo, y uno de `gh` nombrando --repo')
+  }
+  if (reshaped.length) {
+    out.push(`planning/${APPROVAL}: ${reshaped.length} línea(s) de un PR escritas con el comando entero, que ya no `
+      + `aprueban nada: ${reshaped.map((line) => `${line} → ${rewrittenPull(line)}`).join('; ')}. Se escriben como `
+      + 'las muestra el bloqueo, una por línea')
   }
   if (secret.length) {
     out.push(`planning/${APPROVAL}: ${secret.length} credencial(es) aprobadas hasta que se borre su línea: `

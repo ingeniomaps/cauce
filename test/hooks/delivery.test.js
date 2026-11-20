@@ -347,3 +347,24 @@ test('lo que publica frena también con el binario escrito por ruta', () => {
   try { assert.equal(merges(root, chat, 'mergeá el #69', NO_DIALOG)('/usr/bin/gh pr merge 69 --repo o/api'), 'pasa') }
   finally { chat.close() }
 })
+
+// Caso 520.
+test('check avisa la línea de un PR escrita con el comando entero, que ya no aprueba nada', () => {
+  const root = pushRoot('cauce-delivery-linea-vieja-')
+  const AP = require('../../engine/hooks/approval')
+  const old = ['gh pr close 69 -c "duplicado" --repo acme/api', 'gh pr merge 12 --squash --repo acme/api']
+  // La última la toma entera la regla de deploy, que no se aprueba por partes: sigue aprobando.
+  const current = ['gh pr close 70 --repo acme/api', 'gh pr close 71 -d --repo acme/api',
+    `terraform apply @ ${root}`, `terraform apply && gh pr merge 12 --squash --repo acme/api @ ${root}`]
+  // Sin `--repo` la avisa el aviso del lugar, una sola vez.
+  const unplaced = 'gh pr close 72 -c "x"'
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), `${[...old, ...current, unplaced].join('\n')}\n`)
+  const said = AP.warnings(root).join('\n')
+  assert.match(said, /2 línea\(s\) de un PR escritas con el comando entero, que ya no aprueban nada/)
+  assert.match(said, /gh pr close 69 -c "duplicado" --repo acme\/api → gh pr close 69 --repo acme\/api/)
+  assert.match(said, /gh pr merge 12 --squash --repo acme\/api → gh pr merge 12 --repo acme\/api/)
+  assert.match(said, /4 ruta\(s\) aprobadas y sin borrar/, 'las vigentes se siguen contando aparte')
+  assert.match(said, /1 línea\(s\) sin el lugar donde valen, que ya no aprueban nada: gh pr close 72 -c "x"\./)
+  blocked('destructive', run(root, old[0]), /R10/)
+  assert.doesNotThrow(() => execute('destructive', run(root, current[1])), 'la de `-d` se aprueba entera, como antes')
+})
