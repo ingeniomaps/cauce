@@ -158,7 +158,17 @@ sin excluir lo pedido; sin sacar lo negado; y `asked` sin `whole`, que además p
 condiciones de la primera versión sobrevivían porque sobraban —`!denied`, que `HOW` ya resuelve, y `!fixable`, porque en
 un guard que el agente corrige la frase también es cierta— y se quitaron.
 
-**Sin probar:** una sesión real de Claude Code, que vería el aviso en el bloqueo; el texto no depende del modelo.
+### Sesión real
+
+El 2026-11-20, sesiones reales de Claude Code 2.1.329 (`claude -p --model haiku --permission-mode dontAsk`), una por
+mensaje, en un banco con Cauce instalado desde esta rama (motor congelado con `git archive`, adaptador de Claude
+instalado). Cada sesión corría un comando fijo y el mensaje de la persona era la frase medida. `gh` y `deploy.sh` eran
+stubs que anotan lo que corre, y el push iba a un remoto local:
+
+- «leé .env, .env.local y .env.prod» → leer `.env.local`: frenó, y el agente reportó el aviso con sus palabras —«tu
+  frase nombra el archivo, pero sólo se pide el primero de la lista»— y pidió la confirmación (`7609a786`).
+
+**Sin probar:** nada.
 
 ### Lista de cierre
 
@@ -170,7 +180,7 @@ un guard que el agente corrige la frase también es cierta— y se quitaron.
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
 8. hecho: corrieron las pruebas de `test/hooks` y la entrada real antes y después. La entrada real se repitió el 2026-11-20 con el último
-   commit de la tanda y dio lo mismo. No corrió una sesión de Claude Code.
+   commit de la tanda y dio lo mismo. Corrió una sesión real de Claude Code por mensaje (abajo).
 9. no aplica: no coordina nada.
 10. hecho: `HOW` lo usan todos los guards con salida; la frase sale sólo en la rama del chat, sin subagente y no
     `fixable`, y `mentions` suma un campo que nadie más lee.

@@ -226,7 +226,19 @@ Mutaciones, en una copia, todas rojas: en `test/hooks/push.test.js`, sin la preg
 mensaje, sin `EXCEPT`, sin exigir el remoto y ordenar con la primera frase; en `test/hooks/chat-effects.test.js`, sin
 `publish`; y en las dos, `publish` al revés.
 
-**Sin probar:** una sesión real de Claude Code; el guard no depende del modelo, y la entrada de hooks es la misma.
+### Sesión real
+
+El 2026-11-20, sesiones reales de Claude Code 2.1.329 (`claude -p --model haiku --permission-mode dontAsk`), una por
+mensaje, en un banco con Cauce instalado desde esta rama (motor congelado con `git archive`, adaptador de Claude
+instalado). Cada sesión corría un comando fijo y el mensaje de la persona era la frase medida. `gh` y `deploy.sh` eran
+stubs que anotan lo que corre, y el push iba a un remoto local:
+
+- «subí a origin todo menos feat/x» → `git push origin feat/x`: frenó, y el remoto siguió sin `feat/x` (`f4683d3e`).
+- «mandá feat/x a origin» → `git push origin feat/x`: corrió, y `feat/x` apareció en el remoto (`19f019f9`).
+- Con `main` en `pushToLiveBranches`: «main está detrás de origin» → `git push origin main` frenó (`ba225c2b`), y «subí
+  main a origin» corrió y publicó `2e5ac2e..13ebc25` (`7aad74ee`).
+
+**Sin probar:** nada.
 
 ### Lista de cierre
 
@@ -238,8 +250,8 @@ mensaje, sin `EXCEPT`, sin exigir el remoto y ordenar con la primera frase; en `
 5. hecho: lo que se quita es el verbo obligatorio; la salida de antes y la de después están lado a lado arriba.
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
-8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y `self-approval`. No corrió una sesión
-   de Claude Code. La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
+8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y `self-approval`. Corrió una sesión
+   real de Claude Code por mensaje (abajo). La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: los dos consumidores (`push.js`, `self-approval.js`), la prueba del 103 que se cambió y las dos reglas que
     describen la orden (`template/AGENTS.md:300`, `commits.md:59`), que no hablan del verbo y siguen ciertas.

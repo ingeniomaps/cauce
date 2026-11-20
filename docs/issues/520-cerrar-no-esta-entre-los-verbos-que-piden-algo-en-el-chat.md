@@ -235,7 +235,17 @@ Mutaciones, en una copia, todas rojas en `test/hooks/delivery.test.js`: `PARTED`
 sólo `merge`; el ítem siempre `gh pr merge`; `PARTED` con los cinco actos; y de la lectura cerrada, dejarla abierta,
 sin `--comment=`, sin `-c`, ignorar el `null` de un acto, leer el cierre como un merge y no mirar la comilla abierta.
 
-**Sin probar:** una sesión real de Claude Code; el guard no depende del modelo, y la entrada de hooks es la misma.
+### Sesión real
+
+El 2026-11-20, sesiones reales de Claude Code 2.1.329 (`claude -p --model haiku --permission-mode dontAsk`), una por
+mensaje, en un banco con Cauce instalado desde esta rama (motor congelado con `git archive`, adaptador de Claude
+instalado). Cada sesión corría un comando fijo y el mensaje de la persona era la frase medida. `gh` y `deploy.sh` eran
+stubs que anotan lo que corre, y el push iba a un remoto local:
+
+- «cerrá el #69» → `gh pr close 69 --repo o/api` corrió (el stub lo anotó), y `gh pr close 69 -d --repo o/api` frenó
+  (`f5138ef3`).
+
+**Sin probar:** nada.
 
 ### Lista de cierre
 
@@ -247,8 +257,8 @@ sin `--comment=`, sin `-c`, ignorar el `null` de un acto, leer el cierre como un
 5. hecho: lo que se quita es la línea de `.ops-approval` con banderas; la salida de antes y después está arriba.
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
-8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y la línea de `.ops-approval`. No
-   corrió una sesión de Claude Code. La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
+8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y la línea de `.ops-approval`. Corrió
+   una sesión real de Claude Code por mensaje (abajo). La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: `delivery.js` es el único que usa la lectura; las pruebas del 280 y del 523 que fijaban lo de antes se
     cambiaron a sabiendas, y `ordersMerge` no queda nombrado en ningún lado.

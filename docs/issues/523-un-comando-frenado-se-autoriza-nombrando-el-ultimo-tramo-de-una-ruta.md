@@ -203,7 +203,17 @@ Mutaciones, en una copia: el basename pide siempre (roja la de `delivery` y la d
 `chat`, la ruta relativa); sin la ruta absoluta (roja `chat`, la de espacios); sin el verbo delante (rojas `chat` y
 `runtime`).
 
-**Sin probar:** una sesión real de Claude Code; el guard no depende del modelo, y la entrada de hooks es la misma.
+### Sesión real
+
+El 2026-11-20, sesiones reales de Claude Code 2.1.329 (`claude -p --model haiku --permission-mode dontAsk`), una por
+mensaje, en un banco con Cauce instalado desde esta rama (motor congelado con `git archive`, adaptador de Claude
+instalado). Cada sesión corría un comando fijo y el mensaje de la persona era la frase medida. `gh` y `deploy.sh` eran
+stubs que anotan lo que corre, y el push iba a un remoto local:
+
+- «revisá la api» → `gh pr review 69 --approve --repo o/api`: frenó (`a5e132f3`).
+- «revisá deploy.sh» → `./deploy.sh`, declarado en `deployCommands`: frenó (`497fcc39`).
+
+**Sin probar:** nada.
 
 ### Lista de cierre
 
@@ -216,8 +226,8 @@ Mutaciones, en una copia: el basename pide siempre (roja la de `delivery` y la d
 6. hecho: por la entrada real de los hooks en un banco, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner; `mentions` es la misma en todos.
 8. hecho: corrieron las dos pruebas, todas las de `test/hooks`, la entrada real antes y después, el «dale» y
-   `self-approval`, y la entrada real se repitió con el último commit de la tanda (arriba). No corrió una sesión de
-   Claude Code.
+   `self-approval`, y la entrada real se repitió con el último commit de la tanda (arriba). Corrió una sesión real de
+   Claude Code por mensaje (abajo).
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: se recorrieron todos los que leen con `named` (los llamadores de `AP.pending`, `pendingNow` y
     `CHAT.authorized`) y la forma de sus ítems; el comentario de `orders.js` que afirmaba el basename se corrigió.
