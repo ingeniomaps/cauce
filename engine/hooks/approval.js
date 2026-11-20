@@ -174,8 +174,12 @@ function HOW(variable, lines, input, pasteable = lines,
       + 'alcanza, pero no hace falta esa palabra. Si lo que contesta es un sí, reintentá el mismo cambio y '
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
       + 'respuesta que niega, frena o pregunta. '
+  // Sin esto, frenar lo que ella acababa de nombrar se leía como que el guard la había ignorado (caso 521).
+  const unasked = chat ? CHAT.namedUnasked(input, lines.filter((one) => !dropped.includes(one))) : []
+  const named = unasked.length ? `La persona nombró ${unasked.map(CHAT.spokenOf).join(', ')} en su mensaje, pero el `
+    + 'guard no leyó un pedido en la frase que lo nombra —en «leé a, b y c» sólo se pide a—; tampoco es un no. ' : ''
   const ask = native ? CF.LEAD : chat
-    ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y '
+    ? named + lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y '
       + (turn ? 'vale para este turno: en el mensaje siguiente vuelve a preguntarse. '
         : 'sigue valiendo en los mensajes siguientes hasta que ella lo niegue. ')
     : (fixable ? fix : '')

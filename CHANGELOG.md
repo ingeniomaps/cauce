@@ -47,6 +47,11 @@ diseño — eso vive en el commit y en el código.
   `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para
   marcar una historia descartada, sacala de «Historias» y dejala en las notas de la épica.
 
+- **El bloqueo dice cuándo la persona nombró lo frenado sin pedirlo en esa frase** (caso 521). En «leé .env,
+  .env.local y .env.prod» el verbo vale para el primero, y los otros se frenaban con el mensaje de siempre, como si
+  nadie los hubiera nombrado. Ahora el bloqueo lo dice, para que el agente pida el sí en vez de leerlo como un no. Lo
+  que la frase autoriza no cambió: sigue siendo el primero, y un «dale» aprueba el resto.
+
 ## [0.123.0] - 2026-11-15
 
 ### Cambiado

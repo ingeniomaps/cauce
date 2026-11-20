@@ -135,9 +135,11 @@ function mentions(text, given) {
       if (rest && !/^(?:[\s'"`),;:!?]|\.(?:\s|$)|$)/.test(rest)) continue
       const clause = lower.slice(0, at).split(CLAUSE).pop()
       const phrase = `${clause} ${rest.split(CLAUSE)[0]}`
+      const whole = file || name === item.toLowerCase()
       found.push({
         denied: NEGATION.test(clause),
-        asked: (file || name === item.toLowerCase()) && asks(phrase),
+        whole,
+        asked: whole && asks(phrase),
         // El alcance se lee de la misma frase que decide si la ruta fue pedida, y no del mensaje entero:
         // un «mientras dure la tarea t-014» que hable de otra cosa, en otra oración, no acota a ésta.
         scope: (phrase.match(SCOPE) || [])[1] || '',
@@ -147,6 +149,7 @@ function mentions(text, given) {
   const asked = found.filter((one) => one.asked && !one.denied)
   return {
     named: asked.length > 0,
+    seen: found.some((one) => one.whole),
     denied: found.some((one) => one.denied),
     scope: (asked.find((one) => one.scope) || {}).scope || '',
   }
@@ -241,6 +244,16 @@ function said(input) {
   return spoken && !flowCommand(spoken) ? saved : null
 }
 const wordsOf = (saved) => (saved.human ? saved.text : String(saved.spoken || ''))
+// Lo que el último mensaje nombró sin que la frase que lo nombra lo pida: «leé .env, .env.local» pide el primero
+// (caso 521). Un último tramo que no pide —`api` en un comando, desde el 523— tampoco nombra.
+function namedUnasked(input, items) {
+  const saved = said(input)
+  if (!saved) return []
+  return items.filter((item) => {
+    const read = mentions(wordsOf(saved), item)
+    return read.seen && !read.named
+  })
+}
 
 // Hay una persona en esta sesión a quien preguntarle, que no es lo mismo que «este mensaje lo escribió
 // ella». `said` contesta la segunda porque de ella depende **conceder**; ésta contesta la primera, que es
@@ -435,4 +448,4 @@ function grantedIn(root) {
 }
 
 module.exports = { DIR, record, recordPath, delegated, said, wordsOf, authorized, unauthorized, unauthorizedNow, hold,
-  grantedIn, placed, spokenOf, isPush, refuses, CLAUSE, ENCLITIC, HALT, NEGATION }
+  grantedIn, placed, spokenOf, isPush, refuses, namedUnasked, CLAUSE, ENCLITIC, HALT, NEGATION }
