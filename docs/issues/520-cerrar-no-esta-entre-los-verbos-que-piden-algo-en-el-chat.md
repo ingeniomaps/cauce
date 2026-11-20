@@ -145,9 +145,9 @@ pegó las líneas en `.ops-approval`. Costó varias vueltas y no salió nunca po
 ## Cierre
 
 Decidido por la persona el 2026-11-19, entre las tres salidas del tradeoff: el modelo del 280 sólo para `close` y
-`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-70` de `40936526`) arma un ítem por PR y repositorio para
+`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-70` de `15d609f8`) arma un ítem por PR y repositorio para
 `merge`, `close` y `reopen`, con el acto adentro, y la lectura que era `ordersMerge` se llama `ordersPull`
-(`engine/hooks/orders.js:65` de `40936526`) y lee los tres. `review` y `comment` siguen con el comando entero, y un comando que
+(`engine/hooks/orders.js:65` de `15d609f8`) y lee los tres. `review` y `comment` siguen con el comando entero, y un comando que
 mezcla uno de ellos también. Un `close` o `reopen` se lee por número sólo si cada palabra es el número, el repositorio o
 el comentario con que se cierra (`-c`, que viaja con el cierre como el cuerpo de un merge); cualquier otra vuelve al
 comando entero. Así `-d`/`--delete-branch`, que borra la rama local y la remota, frena escrito como se escriba.
@@ -193,7 +193,7 @@ separador (`-c "a\";b" -d`), `$'…'` con un `;` adentro, y un `$(…; …)` sin
 comentario de cierre. Y, como en `main`, `gh pr "close" 69 -d` no lo reconoce ninguna regla.
 
 Quedan como en `main`, anotados por la revisión: lo concedido no se revoca negando el PR por número —«cerrá el #69» y
-después «no cierres el #69» deja pasar el cierre, porque `chat.js:188` (de `40936526`) revocaba con `mentions`, que no lee números; con el
+después «no cierres el #69» deja pasar el cierre, porque `chat.js:188` (de `15d609f8`) revocaba con `mentions`, que no lee números; con el
 merge pasaba igual y sale como caso propio, el 524, que en esta misma versión lo resolvió junto con el 527—; un número tras un `|`, `;` o `&` dentro de un valor entrecomillado
 se pierde del ítem (`SAME`, `delivery.js:22` de `40936526`), y `-R=<repo>` no se lee como repositorio; los dos frenan. Y una línea de `.ops-approval` escrita con el comando entero y
 banderas deja de aprobar, como pasó con el merge en el 280: se escribe en la forma que muestra el bloqueo.

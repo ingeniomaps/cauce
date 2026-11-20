@@ -238,7 +238,8 @@ stubs que anotan lo que corre, y el push iba a un remoto local:
 12. hecho: uno por uno sobre los comentarios que agregaron `6e24dc1b` y `40936526`; ninguno del 523 pasa de 0,22 con
     el tokenizador de la puerta. La primera pasada había mirado sólo los tres de `6e24dc1b`; la rehizo el contraste del
     cierre, con un script que lee cada commit, y los dos pares de `40936526` sobre 0,22 son del 522: uno anterior a la
-    rama (el de `orders.js`, que ya estaba en `chat.js`) y otro de vocabulario.
+    rama (el de `orders.js`, que ya estaba en `chat.js`) y otro que repetía en la prueba la razón de `push.js` sobre la
+    rama viva, que se quitó de la prueba en `e3fa4bc5`.
 13. hecho: `npm run ci` con el cambio y este caso stageados, `exit 0`.
 14. hecho: recorrido arriba contra Fix y Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».

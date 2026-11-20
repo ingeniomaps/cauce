@@ -211,8 +211,9 @@ cubrió (las cinco primeras filas).
     con el tokenizador a 0,22 que se citaba acá había corrido sobre el diff de otro commit (el script comparaba
     `HEAD~1..HEAD`); la rehizo el contraste del cierre sobre `4275b4a8`. Dos pares pasan de 0,22: la forma de la tabla de
     reglas, descrita en `delivery.js` y en `shell.js` (0,226, anterior a la rama, y el 527 había ampliado las dos copias),
-    que se dejó sólo en `shell.js`; y el rastro de `unauthorizedNow` frente al de `grants.test.js` (0,242), que comparten
-    vocabulario y no razón.
+    que se dejó sólo en `shell.js` (`9c6db775`); y el rastro de `unauthorizedNow` frente al de `grants.test.js` (0,242),
+    que repetía su porqué —sin rastro no queda quién autorizó— y pasó a remitir al 127 (`e3fa4bc5`); medido otra vez,
+    ninguno pasa de 0,22.
 13. hecho: `npm run ci` con el cambio y los casos stageados, `exit 0`.
 14. hecho: recorrido arriba contra el Fix, la recomendación y los Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».
