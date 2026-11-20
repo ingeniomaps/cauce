@@ -83,7 +83,6 @@ test('la redirección entre git y su subcomando queda a la vista, delante', () =
   assert.equal(I.gitDirectory('git 2>/dev/null status; git -C /otro push origin x', '/sesion'), '/otro')
 })
 
-// Un `git` que no encabeza su comando es un argumento, y la redirección que lo sigue es del comando entero.
 test('la redirección detrás de un git que es argumento no esconde el resto del comando', () => {
   for (const command of ['rm -rf git 2>/dev/null ~', 'rm -rf build.git 2>/dev/null ~']) {
     blocked('destructive', { cwd: '/tmp', tool_input: { command } }, /carpeta personal/)

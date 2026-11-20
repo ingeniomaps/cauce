@@ -212,8 +212,12 @@ el push de `feat/x` por el `2>` del 525 (`89056c29`), y el arreglo publicó `fea
     fuzz de 299.584 entradas y la comparación con y sin el lookbehind sobre formas válidas de bash, nada que impida
     entregar. Anotó un costo cuadrático preexistente: `git add` seguido de miles de espacios (123 ms con 8000, 50 ms con
     el `MISMO` de antes), que ningún comando real alcanza.
-12. hecho: uno por uno sobre el diff final; ninguno propio pasa de 0,22 con el tokenizador de la puerta, salvo el
-    comentario movido tal cual desde `shell.js`, que ya tenía su par.
+12. hecho: uno por uno sobre el diff final, con el tokenizador de la puerta a 0,22. La primera pasada se hizo antes de
+    las correcciones de la revisión y no se repitió; repetida después, encontró la razón del `git` argumento escrita en
+    `git-globals.js` y en la prueba (0,333), y el comentario de la prueba se quitó. Quedan sobre 0,22 el comentario
+    movido tal cual desde `shell.js`, con el mismo par de antes (0,364); uno de `shell.js` que el cambio no toca
+    (0,263); y el encabezado de `scanGlobals` contra `runtime.js` (0,227), que comparten vocabulario y no razón: uno
+    dice qué devuelve el recorrido, el otro qué opciones llevan valor.
 13. hecho: `npm run ci` con el cambio y la prueba nueva stageados, `exit 0` (1848 pruebas, 0 fallas).
 14. hecho: recorrido arriba contra el Fix y los Tradeoffs.
 15. hecho: lo corrido y lo no previsto, arriba, con su línea «Sin probar».
