@@ -64,13 +64,32 @@ const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+
 // que la persona habló, y lo que el agente hace tras el aviso puede venir de lo que el aviso decía (caso 281).
 // Cerrar y reabrir se leen igual (caso 520): lo que mira es el número, no el verbo.
 function ordersPull(text, item, { relayed = false } = {}) {
-  const found = /^gh pr (?:merge|close|reopen)(?: (?!--)(\S+))?/.exec(spokenOf(item))
+  const found = PULL.exec(spokenOf(item))
   if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
+  const { named, denied, vague } = pullsOf(text)
+  if (vague || denied.includes(found[1])) return false
+  return named.length ? named.includes(found[1]) : !relayed
+}
+
+// Si el mensaje le quita al PR lo que su orden ya le había concedido: lo niega o lo exceptúa, niega sin decir cuál, o
+// frena (caso 524).
+function revokesPull(text, item) {
+  const found = PULL.exec(spokenOf(item))
+  if (!found) return false
+  if (HALT.test(text)) return true
+  const { denied, vague } = pullsOf(text)
+  return vague || denied.includes(found[1])
+}
+
+const PULL = /^gh pr (?:merge|close|reopen)(?: (?!--)(\S+))?/
+// Lo que un mensaje dice de los PR: los que nombra, los que niega o exceptúa, y si niega sin decir cuál.
+function pullsOf(text) {
   const named = []
   const denied = []
+  let vague = false
   for (const clause of String(text).split(CLAUSE)) {
     if (NEGATION.test(clause)) {
-      if (!pullsIn(clause).length) return false
+      if (!pullsIn(clause).length) vague = true
       denied.push(...pullsIn(clause))
       continue
     }
@@ -78,8 +97,7 @@ function ordersPull(text, item, { relayed = false } = {}) {
     named.push(...pullsIn(cut < 0 ? clause : clause.slice(0, cut)))
     if (cut >= 0) denied.push(...pullsIn(clause.slice(cut)))
   }
-  if (denied.includes(found[1])) return false
-  return named.length ? named.includes(found[1]) : !relayed
+  return { named, denied, vague }
 }
 
-module.exports = { ordersPull, ordersPush, refusesPush }
+module.exports = { ordersPull, ordersPush, refusesPush, revokesPull }

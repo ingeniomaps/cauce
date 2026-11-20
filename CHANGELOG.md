@@ -61,6 +61,12 @@ diseño — eso vive en el commit y en el código.
   también en la rama viva y con `allowPush` apagado. Ahora las dos formas se leen como el comando que son. Lo que va
   después de un separador real (`&&`, `|`, `;`, `&` de fondo) sigue siendo otro comando.
 
+- **Arrepentirse de un merge ordenado por chat ahora lo revoca** (caso 524). «mergeá el #69» deja el merge concedido
+  para el resto de la sesión, y «no mergees el #69», «no, pará» o «no mergees nada» no lo quitaban: si el agente
+  reintentaba, pasaba. Ahora un mensaje tuyo que niega ese número, niega sin nombrar ninguno o arranca frenando revoca
+  lo concedido, para mergear, cerrar o reabrir. Revoca también una negación sobre otra cosa —«no toques el .env»—: si
+  después hace falta reintentar el merge, se repite la orden.
+
 - **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
   —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus
   `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para

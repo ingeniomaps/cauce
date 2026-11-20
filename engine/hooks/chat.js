@@ -171,7 +171,8 @@ const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test
 //
 // Lo concedido es lo único que cruza de un mensaje al siguiente, y se hereda aunque este mensaje no lo
 // haya escrito una persona: un aviso del runner en el medio no le quita a nadie lo que ya autorizó. La
-// negación se aplica venga de donde venga, porque revocar es la dirección segura.
+// negación que nombra el ítem se aplica venga de donde venga, porque revocar es la dirección segura; la de un PR
+// por su número, sólo la de la persona.
 function record(input) {
   try {
     if (!input.session_id) return
@@ -188,7 +189,11 @@ function record(input) {
     // reintenta mientras ella no escribe nada (caso 186). A la sesión principal no le cambia nada: su
     // lectura, `said`, exige un mensaje de la persona.
     const approved = human || !previous ? answered : previous.approved || []
-    const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
+    // Un PR se concede por su número, así que por su número se revoca: nombrar el ítem entero no lo hace nadie (caso
+    // 524). Esa lectura es la de la persona; la de un aviso del runner no revoca, como tampoco ordena.
+    const revokesPull = human ? require('./orders').revokesPull : () => false
+    const granted = previous ? (previous.granted || [])
+      .filter((one) => !mentions(text, one).denied && !revokesPull(text, one)) : []
     // El acote viaja con lo concedido: lo que se negó pierde las dos cosas a la vez, y nada queda con un
     // alcance que ya no acota a nadie.
     const scopes = {}

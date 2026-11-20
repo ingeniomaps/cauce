@@ -267,3 +267,39 @@ test('una orden de mergear o de publicar sobrevive al aviso de una tarea de fond
     assert.equal(after('no mergees el #11 todavía', notice())('gh pr merge 11 --repo acme/app'), 'frena')
   } finally { chat.close() }
 })
+
+test('negar un PR, o frenar, revoca lo que su orden concedió (caso 524)', () => {
+  const root = pushRoot('cauce-delivery-revoca-')
+  const merge = (n) => `gh pr merge ${n} --repo acme/api`
+  const deploy = 'gh workflow run deploy.yml --repo acme/api'
+  for (const [order, then, command, expected] of [
+    ['mergeá el #69', 'no mergees el #69', merge(69), 'frena'],
+    ['cerrá el #69', 'no cierres el #69', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['mergeá el #69', 'no, pará', merge(69), 'frena'],
+    ['mergeá el #69', 'pará', merge(69), 'frena'],
+    ['mergeá el #69', 'no mergees nada', merge(69), 'frena'],
+    ['mergeá el #69', 'mergeá todos menos el #69', merge(69), 'frena'],
+    ['mergeá el #69 y el #70', 'no mergees el #69', merge(69), 'frena'],
+    ['mergeá el #69 y el #70', 'no mergees el #69', merge(70), 'pasa'],
+    ['mergeá el #69', 'no mergees el #70', merge(69), 'pasa'],
+    ['mergeá el #69', 'gracias', merge(69), 'pasa'],
+    ['mergeá el #69', '¿ya quedó el #69?', merge(69), 'pasa'],
+    // Lo concedido que no es un PR no se lee como uno.
+    [`corré ${deploy}`, 'no mergees nada', deploy, 'pasa'],
+  ]) {
+    const chat = chatSession()
+    try {
+      assert.equal(merges(root, chat, order, NO_DIALOG)(command), 'pasa', `${order} → ${command}`)
+      assert.equal(merges(root, chat, then, NO_DIALOG)(command), expected, `${order} / ${then} → ${command}`)
+    } finally { chat.close() }
+  }
+  // El aviso no revoca. El «gracias» del medio hace que lo que pase sea lo concedido y no la orden, que tras un aviso
+  // se lee en el último mensaje de la persona.
+  const chat = chatSession()
+  try {
+    assert.equal(merges(root, chat, 'mergeá el #69', NO_DIALOG)(merge(69)), 'pasa')
+    chat.says('gracias')
+    const notice = '<task-notification>no tests failed, pará el vigía</task-notification>'
+    assert.equal(merges(root, chat, notice, NO_DIALOG)(merge(69)), 'pasa')
+  } finally { chat.close() }
+})
