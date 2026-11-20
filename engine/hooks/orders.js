@@ -71,16 +71,6 @@ function ordersPull(text, item, { relayed = false } = {}) {
   return named.length ? named.includes(found[1]) : !relayed
 }
 
-// Si el mensaje le quita al PR lo que su orden ya le había concedido: lo niega o lo exceptúa, niega sin decir cuál, o
-// frena (caso 524).
-function revokesPull(text, item) {
-  const found = PULL.exec(spokenOf(item))
-  if (!found) return false
-  if (HALT.test(text)) return true
-  const { denied, vague } = pullsOf(text)
-  return vague || denied.includes(found[1])
-}
-
 const PULL = /^gh pr (?:merge|close|reopen)(?: (?!--)(\S+))?/
 // Lo que un mensaje dice de los PR: los que nombra, los que niega o exceptúa, y si niega sin decir cuál.
 function pullsOf(text) {
@@ -100,4 +90,4 @@ function pullsOf(text) {
   return { named, denied, vague }
 }
 
-module.exports = { ordersPull, ordersPush, refusesPush, revokesPull }
+module.exports = { ordersPull, ordersPush, refusesPush }

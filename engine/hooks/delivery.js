@@ -125,9 +125,10 @@ function declared(input) {
 }
 
 // En la forma de la tabla de `destructive`: patrón, mensaje, si tiene salida —todas la tienen—, cuando el ítem
-// no es el comando entero cómo se lee, y dónde vale.
+// no es el comando entero cómo se lee, dónde vale, y que publica.
 function deliveryRules(input) {
-  return [...RULES, ...declared(input)].map(([pattern, message, by, place]) => [pattern, message, true, by, place])
+  return [...RULES, ...declared(input)]
+    .map(([pattern, message, by, place]) => [pattern, message, true, by, place, true])
 }
 
 module.exports = { deliveryRules, namesRepo, GH, DIR }

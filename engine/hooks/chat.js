@@ -171,8 +171,7 @@ const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test
 //
 // Lo concedido es lo único que cruza de un mensaje al siguiente, y se hereda aunque este mensaje no lo
 // haya escrito una persona: un aviso del runner en el medio no le quita a nadie lo que ya autorizó. La
-// negación que nombra el ítem se aplica venga de donde venga, porque revocar es la dirección segura; la de un PR
-// por su número, sólo la de la persona.
+// negación que nombra el ítem se aplica venga de donde venga, porque revocar es la dirección segura.
 function record(input) {
   try {
     if (!input.session_id) return
@@ -189,11 +188,10 @@ function record(input) {
     // reintenta mientras ella no escribe nada (caso 186). A la sesión principal no le cambia nada: su
     // lectura, `said`, exige un mensaje de la persona.
     const approved = human || !previous ? answered : previous.approved || []
-    // Un PR se concede por su número, así que por su número se revoca: nombrar el ítem entero no lo hace nadie (caso
-    // 524). Esa lectura es la de la persona; la de un aviso del runner no revoca, como tampoco ordena.
-    const revokesPull = human ? require('./orders').revokesPull : () => false
-    const granted = previous ? (previous.granted || [])
-      .filter((one) => !mentions(text, one).denied && !revokesPull(text, one)) : []
+    // Un mensaje que arranca frenando se lleva todo lo concedido, que lo nombre o no: «pará» no dice qué seguía
+    // valiendo, y lo que queda en pie se vuelve a pedir (caso 527).
+    const halted = HALT.test(text)
+    const granted = previous && !halted ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
     // El acote viaja con lo concedido: lo que se negó pierde las dos cosas a la vez, y nada queda con un
     // alcance que ya no acota a nadie.
     const scopes = {}
@@ -342,10 +340,11 @@ function grant(input, saved, entries) {
   } catch { /* sin anotarlo, se vuelve a pedir */ }
   // Y queda el rastro, que es lo que el registro de la sesión no puede dar: muere con ella, y lo que una
   // auditoría pregunta es quién concedió qué y con qué alcance, meses después (caso 127).
-  TRAIL.append(saved.root, LOG, added.map((one) => ({
-    grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null,
-  })))
+  trail(saved.root, input, added, grantedAt)
 }
+
+const trail = (root, input, entries, grantedAt = new Date().toISOString()) => TRAIL.append(root, LOG, entries.map(
+  (one) => ({ grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null })))
 
 // Con qué autorización pasa cada uno de los que pasan. Lo pregunta quien necesita el porqué y no sólo el
 // qué —el rastro de un push lo anota (caso 112)—, y no concede nada: preguntar no cambia qué va a valer
@@ -397,9 +396,12 @@ function unauthorized(input, items, asked = named) {
 }
 
 // Lo mismo sin conceder y sin heredar: lo que no está en el mensaje en curso queda pendiente aunque la
-// sesión lo haya dejado pasar antes.
-function unauthorizedNow(input, items, asked = named) {
-  const cleared = new Set(authorized(input, items, { asked, inherit: false }).map((one) => one.item))
+// sesión lo haya dejado pasar antes. Con `logged`, lo que pasa por la persona queda en el rastro igual que una
+// concesión: lo que publica ya no se concede, y sin esto no quedaba constancia de quién lo autorizó (caso 527).
+function unauthorizedNow(input, items, asked = named, { logged = false } = {}) {
+  const passed = authorized(input, items, { asked, inherit: false })
+  if (logged) trail((load(input.session_id) || {}).root || opsRoot(input), input, passed)
+  const cleared = new Set(passed.map((one) => one.item))
   return items.filter((item) => !cleared.has(item))
 }
 

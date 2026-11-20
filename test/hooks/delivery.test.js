@@ -268,38 +268,55 @@ test('una orden de mergear o de publicar sobrevive al aviso de una tarea de fond
   } finally { chat.close() }
 })
 
-test('negar un PR, o frenar, revoca lo que su orden concedió (caso 524)', () => {
-  const root = pushRoot('cauce-delivery-revoca-')
-  const merge = (n) => `gh pr merge ${n} --repo acme/api`
-  const deploy = 'gh workflow run deploy.yml --repo acme/api'
-  for (const [order, then, command, expected] of [
-    ['mergeá el #69', 'no mergees el #69', merge(69), 'frena'],
-    ['cerrá el #69', 'no cierres el #69', 'gh pr close 69 --repo acme/api', 'frena'],
-    ['mergeá el #69', 'no, pará', merge(69), 'frena'],
-    ['mergeá el #69', 'pará', merge(69), 'frena'],
-    ['mergeá el #69', 'no mergees nada', merge(69), 'frena'],
-    ['mergeá el #69', 'mergeá todos menos el #69', merge(69), 'frena'],
-    ['mergeá el #69 y el #70', 'no mergees el #69', merge(69), 'frena'],
-    ['mergeá el #69 y el #70', 'no mergees el #69', merge(70), 'pasa'],
-    ['mergeá el #69', 'no mergees el #70', merge(69), 'pasa'],
-    ['mergeá el #69', 'gracias', merge(69), 'pasa'],
-    ['mergeá el #69', '¿ya quedó el #69?', merge(69), 'pasa'],
-    // Lo concedido que no es un PR no se lee como uno.
-    [`corré ${deploy}`, 'no mergees nada', deploy, 'pasa'],
-  ]) {
+// Casos 524 y 527.
+test('publicar no se hereda al mensaje siguiente, y frenar revoca lo concedido', () => {
+  const root = pushRoot('cauce-delivery-hereda-')
+  const turns = (...steps) => {
     const chat = chatSession()
+    const seen = []
     try {
-      assert.equal(merges(root, chat, order, NO_DIALOG)(command), 'pasa', `${order} → ${command}`)
-      assert.equal(merges(root, chat, then, NO_DIALOG)(command), expected, `${order} / ${then} → ${command}`)
+      let turn = null
+      for (const step of steps) {
+        if (step.startsWith('m:')) turn = merges(root, chat, step.slice(2), NO_DIALOG)
+        else seen.push(turn(step.slice(2)))
+      }
     } finally { chat.close() }
+    return seen.join(' ')
   }
-  // El aviso no revoca. El «gracias» del medio hace que lo que pase sea lo concedido y no la orden, que tras un aviso
-  // se lee en el último mensaje de la persona.
+  const merge = 'gh pr merge 69 --repo acme/api'
+  const apply = 'terraform apply'
+  const workflow = 'gh workflow run deploy.yml --repo acme/api'
+  const release = 'gh release create v1 --repo acme/api'
+  const down = 'docker compose down'
+  // Dentro del turno de la orden, el reintento pasa; con el mensaje siguiente, sea cual sea, vuelve a pedirse.
+  // Una pregunta y no un «gracias»: un mensaje que no nombra PR ni niega ordena todos los merges (caso 280).
+  assert.equal(turns('m:mergeá el #69', `c:${merge}`, `c:${merge}`, 'm:¿cómo va el CI?', `c:${merge}`),
+    'pasa pasa frena')
+  assert.equal(turns('m:mergeá el #69', `c:${merge}`, 'm:no mergees el #69', `c:${merge}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${apply}`, `c:${apply}`, `c:${apply}`, 'm:pará', `c:${apply}`), 'pasa pasa frena')
+  assert.equal(turns(`m:corré ${apply}`, `c:${apply}`, 'm:no despliegues nada', `c:${apply}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${workflow}`, `c:${workflow}`, 'm:gracias', `c:${workflow}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${release}`, `c:${release}`, 'm:no publiques nada', `c:${release}`), 'pasa frena')
+  assert.equal(turns('m:hola', `c:${apply}`, 'm:dale', `c:${apply}`, `c:${apply}`, 'm:gracias', `c:${apply}`),
+    'frena pasa pasa frena')
+  // Lo que no publica se sigue heredando, salvo que un mensaje arranque frenando.
+  assert.equal(turns(`m:corré ${down}`, `c:${down}`, 'm:gracias', `c:${down}`), 'pasa pasa')
+  assert.equal(turns(`m:corré ${down}`, `c:${down}`, 'm:pará', `c:${down}`), 'pasa frena')
+  assert.equal(turns(`m:corré ${down}`, `c:${down}`, 'm:esperá, eso no', `c:${down}`), 'pasa frena')
+})
+
+// Lo que dice el bloqueo de cuánto dura un «dale», y el rastro de quién autorizó: sin conceder, `grant` ya no lo anota.
+test('el bloqueo de publicar dice que el «dale» vale para su turno, y lo autorizado queda en el rastro', () => {
+  const root = pushRoot('cauce-delivery-rastro-')
   const chat = chatSession()
+  const apply = 'terraform apply'
   try {
-    assert.equal(merges(root, chat, 'mergeá el #69', NO_DIALOG)(merge(69)), 'pasa')
-    chat.says('gracias')
-    const notice = '<task-notification>no tests failed, pará el vigía</task-notification>'
-    assert.equal(merges(root, chat, notice, NO_DIALOG)(merge(69)), 'pasa')
+    const message = messageOf('destructive', chat.says('hola')(run(root, apply, { permission_mode: NO_DIALOG })))
+    assert.match(message, /vale para este turno/)
+    assert.doesNotMatch(message, /sigue valiendo en los mensajes siguientes/)
+    assert.equal(merges(root, chat, `corré ${apply}`, NO_DIALOG)(apply), 'pasa')
+    const log = path.join(root, 'planning', '.grant-log')
+    const lines = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line))
+    assert.deepEqual(lines.map((one) => [one.item.split(' @ ')[0], one.via]), [[apply, 'orden']])
   } finally { chat.close() }
 })

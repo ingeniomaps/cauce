@@ -88,8 +88,8 @@ function pending(root, files, input, asked) {
 // dice nada del siguiente, porque el índice ya es otro. Nadie lo había decidido para los gates —heredaban
 // por venir todos de `pending`—, y se midió: con otro mensaje en curso, un commit de gobernanza pasaba
 // (caso 119).
-function pendingNow(root, files, input, asked) {
-  return CHAT.unauthorizedNow(input, left(root, files), asked)
+function pendingNow(root, files, input, asked, options) {
+  return CHAT.unauthorizedNow(input, left(root, files), asked, options)
 }
 
 // El archivo que el guard va a leer, nombrado desde la carpeta en la que está la sesión. En sidecar la
@@ -129,9 +129,9 @@ function REFUSED(items, input = {}) {
 // `pasteable` es lo que se puede aprobar por archivo, y por defecto es todo: un guard lo angosta cuando lo
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
-// `turn` lo pasa el guard que no hereda —los de límites y el de la configuración—: decirle a la persona que su
-// confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación falsa en
-// el bloqueo, vista en una sesión real de Gemini (caso 370).
+// `turn` lo pasa el guard que no hereda —los de límites, el de la configuración y lo que publica—: decirle a la
+// persona que su confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación
+// falsa en el bloqueo, vista en una sesión real de Gemini (caso 370).
 function HOW(variable, lines, input, pasteable = lines,
   { durable = false, fixable = false, turn = false, unpasteable = '', command = false } = {}) {
   // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el

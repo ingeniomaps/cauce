@@ -80,6 +80,10 @@ reabrir.
 
 ## Cierre
 
+**Reemplazado por el 527, antes de publicarse.** En la misma versión, el 527 decidió que lo que publica no se hereda
+al mensaje siguiente, y con eso `revokesPull` quedó muerto y se quitó: lo que este cierre describe de él ya no está en
+el código. Las pruebas y la conducta medidas abajo siguen en pie con el mecanismo del 527.
+
 `revokesPull` (`engine/hooks/orders.js:76`) dice si un mensaje le quita a un PR lo que su orden le había concedido: lo
 niega o lo exceptúa por número, niega sin nombrar ninguno, o arranca frenando (`HALT`). Comparte con `ordersPull` la
 lectura de los PR, que pasó a `pullsOf` (`orders.js:86`). `record` (`engine/hooks/chat.js:194`) la consulta junto a

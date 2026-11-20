@@ -123,7 +123,8 @@ const UNSURE = 'el comando no deja saber dónde corre —dos destinos distintos,
   + 'una línea valdría en otro lugar. Corré cada parte por separado, con la ruta escrita, y el bloqueo va a decir qué '
   + 'pegar.'
 
-// Las reglas de `destructive`, en la forma `[patrón, mensaje, si tiene salida, cómo se lee el ítem, dónde vale]`.
+// Las reglas de `destructive`, en la forma `[patrón, mensaje, si tiene salida, cómo se lee el ítem, dónde vale,
+// si publica]`.
 // Viven aparte porque `check` las necesita también: una línea de `.ops-approval` sin el lugar que su regla pide ya
 // no aprueba nada, y para saberlo hay que saber qué regla la habría frenado (caso 446).
 function rulesOf(input) {
@@ -244,7 +245,7 @@ function destructive(input) {
   // operación (caso 446).
   const spotOf = placesOf(raw, input)
   const root = opsRoot(input)
-  for (const [pattern, message, open, by, kind] of rulesOf(input)) {
+  for (const [pattern, message, open, by, kind, publishes] of rulesOf(input)) {
     if (!pattern.test(command)) continue
     const parts = by && by.items(command)
     const texts = parts || [stretchOf(raw, pattern)]
@@ -258,11 +259,16 @@ function destructive(input) {
     // La línea que se escribió antes del 451, con el comando entero, sigue aprobando ese mismo comando.
     const whole = parts ? [] : [AP.placed(String(raw).trim(), spots[0].where)]
     const asked = items.filter((one) => loose.has(one) || !(filed.has(one) || whole.some((line) => filed.has(line))))
-    const held = open ? AP.pending('', asked, input, parts ? by.asked : AP.namedCommand) : items
+    // Publicar vale para el turno de la orden o del «dale» y no se concede, como el push y por lo mismo (`push.js`).
+    // Concedido, sobrevivía a un «pará» o a «no despliegues nada» (casos 524 y 527).
+    const reads = parts ? by.asked : AP.namedCommand
+    const held = !open ? items
+      : publishes ? AP.pendingNow('', asked, input, reads, { logged: true }) : AP.pending('', asked, input, reads)
     if (!held.length) continue
     const pasteable = held.filter((one) => !loose.has(one))
     const why = unnamed.size ? UNNAMED : UNSURE
-    const how = () => AP.HOW(null, held, input, pasteable, { unpasteable: loose.size ? why : '', command: true })
+    const how = () => AP.HOW(null, held, input, pasteable,
+      { unpasteable: loose.size ? why : '', command: true, turn: Boolean(publishes) })
     block(open ? `${message}\n${how()}` : message)
   }
   const tree = removesTheTree(input, command)
