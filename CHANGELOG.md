@@ -54,6 +54,13 @@ diseño — eso vive en el commit y en el código.
   después de una redirección viene otra cosa —una rama, `--all`, `--force`—, el push frena entero, también con
   `allowPush`: no se puede leer a dónde publica. Se corrige escribiendo la redirección al final.
 
+- **Una redirección ya no esconde un `--force`, un `--amend` ni el propio `git push`** (caso 526). Las reglas que
+  frenan reescribir historia publicada cortaban el comando en el `&` de `2>&1`, así que `git commit -m x 2>&1 --amend`
+  pasaba sobre un commit publicado, y lo mismo `git clean 2>&1 -fd` o `git checkout 2>&1 -- .`. Y con la redirección
+  entre `git` y su subcomando, `git 2>&1 push origin main` no era un push para ningún guard: publicaba sin aprobación,
+  también en la rama viva y con `allowPush` apagado. Ahora las dos formas se leen como el comando que son. Lo que va
+  después de un separador real (`&&`, `|`, `;`, `&` de fondo) sigue siendo otro comando.
+
 - **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
   —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus
   `(→ CN)`, y una épica `closed` pasaba sin pedir su evidencia. Ahora sale un aviso que la nombra. Si la usabas para

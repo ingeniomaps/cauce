@@ -125,5 +125,17 @@ function withoutHeredocBodies(command) {
   return out + command.slice(copied)
 }
 
-module.exports = { eachQuoted, heredocRuns, masked, segments, shellWord, unquoted, withoutContinuations,
+// Lo que puede haber **entre** un comando y su bandera sin salir de ese comando. El salto de línea va
+// adentro de lo excluido porque también separa comandos, exactamente igual que `;`, `&` y `|`: sin él,
+// una bandera escrita en una línea posterior se leía como parte del primer comando. Es la causa de los
+// falsos positivos del caso 067, en siete reglas a la vez — `git push origin main` seguido de
+// `rm -f /tmp/x` se bloqueaba anunciando «`git push --force` reescribe historia publicada», que además
+// de frenar trabajo legítimo nombraba una violación que no estaba.
+//
+// El `&` o el `|` de una redirección —`2>&1`, `&>`, `>|`— no separa: cortaba ahí, y una bandera escrita después
+// quedaba afuera de la regla que la prohíbe (casos 525 y 526). Cada redirección se lee de una sola forma —los
+// lookahead lo aseguran—: con dos, `>&11` repetido veinte veces tardaba medio minuto frente a una regla que no matchea.
+const SAME_COMMAND = String.raw`(?:[<>]&\d*-?(?![\d-])|(?<![<>])&>>?(?!>)|>\||[^;&|\n])`
+
+module.exports = { eachQuoted, heredocRuns, masked, SAME_COMMAND, segments, shellWord, unquoted, withoutContinuations,
   withoutHeredocBodies }

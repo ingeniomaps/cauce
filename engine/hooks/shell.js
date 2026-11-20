@@ -16,6 +16,7 @@ const {
   asRun, assignedValues, toplevel, realPath, rawCommandOf,
 } = require('./input')
 const { REDIRECTIONS } = require('./shell-writes')
+const { SAME_COMMAND } = require('./quoting')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead, writes } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -43,13 +44,6 @@ const { deliveryRules, namesRepo, GH, DIR } = require('./delivery')
 const ANTES = String.raw`(?:^|[\s;&|('"\`])`
 const PALABRA = String.raw`$|[\s;&|)'"\`]`
 const COMANDO = String.raw`$|[;&|)'"\`]`
-// Lo que puede haber **entre** un comando y su bandera sin salir de ese comando. El salto de línea va
-// adentro de lo excluido porque también separa comandos, exactamente igual que `;`, `&` y `|`: sin él,
-// una bandera escrita en una línea posterior se leía como parte del primer comando. Es la causa de los
-// falsos positivos del caso 067, en siete reglas a la vez — `git push origin main` seguido de
-// `rm -f /tmp/x` se bloqueaba anunciando «`git push --force` reescribe historia publicada», que además
-// de frenar trabajo legítimo nombraba una violación que no estaba.
-const MISMO = String.raw`[^;&|\n]`
 
 // Si algún remoto alcanza al commit que está en HEAD. Lectura local e inocua: `branch -r` mira lo que ya
 // está en `refs/remotes/`, no habla con ningún servidor. Un `fetch` que nadie corrió deja la respuesta
@@ -148,14 +142,14 @@ function rulesOf(input) {
     // Y no lleva salida por chat ni publicado ni sin publicar: sin publicar no la necesita, y publicado es
     // la misma reescritura que el force-push, que tampoco la tiene.
     ...(publishedHead(input) ? [[
-      new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
+      new RegExp(String.raw`\bgit\s+commit\b${SAME_COMMAND}*\s--amend\b`),
       "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
         + 'prohíbe: hacé otro commit encima.',
     ]] : []),
     // Fuerza en cualquiera de sus opciones, y no simula: mirando sólo la primera, `-d -f` borraba sin preguntar y
     // `-fdn`, que no borra nada, se frenaba (caso 452).
-    [new RegExp(String.raw`\bgit\s+clean\b(?=${MISMO}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
-      + String.raw`(?!${MISMO}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
+    [new RegExp(String.raw`\bgit\s+clean\b(?=${SAME_COMMAND}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
+      + String.raw`(?!${SAME_COMMAND}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
     "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
@@ -167,7 +161,7 @@ function rulesOf(input) {
     [
       // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
       // que restaura el working tree por defecto y toma el pathspec sin separador.
-      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${MISMO}*?\s)?`
+      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${SAME_COMMAND}*?\s)?`
         + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
@@ -189,7 +183,7 @@ function rulesOf(input) {
     ],
     [
       new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
-        + String.raw`|\bdd\s+${MISMO}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
+        + String.raw`|\bdd\s+${SAME_COMMAND}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],
     [
@@ -231,8 +225,8 @@ function destructive(input) {
   //
   // El `+` delante de una rama es el mismo force escrito en el refspec —`git push origin +main`—, y
   // pasaba como un push normal: la regla miraba sólo las banderas (caso 103).
-  if (new RegExp(String.raw`\bgit\s+push\b${MISMO}*\s(?:(?:-f|--force(?:-with-lease|-if-includes)?)\b|\+\S)`)
-    .test(command)) {
+  const force = String.raw`\s(?:(?:-f|--force(?:-with-lease|-if-includes)?)\b|\+\S)`
+  if (new RegExp(String.raw`\bgit\s+push\b${SAME_COMMAND}*${force}`).test(command)) {
     block("'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allowPush no lo "
       + 'habilita: publicá con un push normal, o registrá una acción humana.')
   }
@@ -303,14 +297,14 @@ function gitAdd(input) {
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
   // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
   // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
-  if (new RegExp(String.raw`\bgit\s+add\s+(?:${MISMO}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
+  if (new RegExp(String.raw`\bgit\s+add\s+(?:${SAME_COMMAND}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
     .test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
   }
   // La misma regla con otra ortografía: `-a` stagea todo lo seguido sin nombrar una ruta, y encima lo
   // hace al commitear —después de este hook—, así que los guards que leen el índice tampoco lo ven.
   // `--amend` queda afuera: empieza con dos guiones y lo frena `destructive`, por otra razón.
-  if (new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s(?:-[a-z]*a[a-zA-Z]*|--all)\b`).test(command)) {
+  if (new RegExp(String.raw`\bgit\s+commit\b${SAME_COMMAND}*\s(?:-[a-z]*a[a-zA-Z]*|--all)\b`).test(command)) {
     block("'git commit -a' stagea al commitear, después de este guard: nadie llega a revisar el diff "
       + 'staged, ni vos ni los guards que lo miran. Stageá las rutas por nombre y commiteá aparte.')
   }
@@ -416,4 +410,4 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = { destructive, gitAdd, shellBoundary, run, MISMO, unplaced }
+module.exports = { destructive, gitAdd, shellBoundary, run, unplaced }

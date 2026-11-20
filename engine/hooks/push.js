@@ -22,15 +22,14 @@
 const { spawnSync } = require('node:child_process')
 const { block, commandOf, opsRoot, configOf, toplevel } = require('./input')
 const AP = require('./approval')
+const { SAME_COMMAND } = require('./quoting')
 const CHAT = require('./chat')
 const { ordersPush } = require('./orders')
 const CF = require('./confirm')
 const TRAIL = require('./trail')
 
-// Lo que va entre `git push` y el fin del comando. El salto de línea corta igual que `;`, por lo que
-// `destructive` explica en MISMO. El `&` o el `|` de una redirección —`2>&1`, `&>`, `>|`— no corta: cortaba ahí, y
-// lo que seguía quedaba afuera (caso 525).
-const PUSH = /\bgit\s+push\b((?:[<>]&\d*-?|&>>?|>\||[^;&|\n])*)/g
+// Lo que va entre `git push` y el fin del comando.
+const PUSH = new RegExp(String.raw`\bgit\s+push\b(${SAME_COMMAND}*)`, 'g')
 // Una redirección no es un refspec: `2>` salía como una rama más y la orden del chat no la nombraba nunca. Con el
 // operador solo —también `>&` sin descriptor—, su destino es la palabra siguiente.
 const REDIRECT = /^(?:\d*|&)(?:>\||>>?|<)(&\d*-?)?(.*)$/

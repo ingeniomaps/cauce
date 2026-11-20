@@ -227,7 +227,7 @@ test('una redirección en el push no es otra rama (caso 525)', () => {
 test('lo que no se puede leer detrás de una redirección no lo destraba ni allowPush ni un «dale» (caso 525)', () => {
   const root = pushRoot('ops-hook-push-ilegible-', { allowPush: true })
   for (const command of ['git push origin feat/x 2>/dev/null main', 'git push origin feat/x > log --all',
-    'git push origin feat/x 2>&1 --force']) {
+    'git push origin feat/x 2>&1 --tags']) {
     blocked('destructive', { cwd: root, tool_input: { command } }, /no se puede leer a dónde publica/)
   }
   const chat = chatSession()
