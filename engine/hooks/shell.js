@@ -416,8 +416,8 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-// Si una regla que aprueba el comando entero —no por partes, como un merge— toma la línea: entonces la línea sigue
-// aprobando, aunque traiga además un acto sobre un PR que hoy se aprueba por partes (caso 520).
+// Si la línea la toma entera una regla sin lector por partes: entonces sigue aprobando ese tramo, y `rewrittenPull` no
+// puede darla por muerta.
 function takenWhole(root, line) {
   let rules
   try { rules = rulesOf({ cwd: root }) } catch { return false }
