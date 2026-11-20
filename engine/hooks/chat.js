@@ -124,7 +124,7 @@ function mentions(text, given) {
   const lower = String(text).toLowerCase()
   const found = []
   // El basename pide sólo si el ítem es una ruta, sola o tras su verbo (`escribe <ruta>`): el de un comando es su
-  // último tramo —`api` en `gh pr close 69 --repo o/api`—, y «revisá la api» lo ordenaba (caso 523). Negar sí cuenta.
+  // último tramo —`api` en `gh pr comment 69 --repo o/api`—, y «revisá la api» lo ordenaba (caso 523). Negar sí cuenta.
   const file = !/\s/.test(item) || path.isAbsolute(item) || /^\S+\s+\//.test(item)
   for (const name of new Set([item, path.basename(item)].map((one) => one.toLowerCase()))) {
     if (name.length < 3) continue

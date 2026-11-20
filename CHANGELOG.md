@@ -33,6 +33,15 @@ diseño — eso vive en el commit y en el código.
   mensaje, como «subí feat/x a origin, no main», que antes pasaba; se repite la orden sin la negación. La línea de push
   que el agente se escribe en `.ops-approval` sigue pidiendo el verbo de publicar, porque llega hasta la rama viva.
 
+- **Cerrar y reabrir un PR se piden por chat como un merge, por su número** (caso 520). «cerrá el #69» frenaba
+  `gh pr close 69`: había que escribir el comando entero. Ahora pasan los PR que el mensaje nombra, ninguno si pregunta,
+  frena o niega, y todos si no nombra ninguno, como con el merge; el guard lee el número y no el verbo, así que
+  «mergeá el #69» también deja cerrar el 69. El comentario con que se cierra (`-c`) va con el cierre; cualquier otra
+  bandera —`-d`, que borra la rama, entre ellas— vuelve a pedir el comando entero, igual que aprobar o comentar
+  suelto. Una línea de
+  `.ops-approval` con el comando entero y su `-c` —`gh pr close 69 -c "duplicado" --repo <repo>`, y lo mismo con
+  `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`.
+
 ## [0.123.0] - 2026-11-15
 
 ### Cambiado

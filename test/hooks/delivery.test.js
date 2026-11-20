@@ -128,7 +128,7 @@ test('el guard frena la dirección segura: lo que niega, pregunta, frena o nombr
       ['pará, mergeá el #54 después', 'gh pr merge 54 --repo acme/app'],
       ['corré los e2e y mergeá el #56', 'gh pr merge 2 --repo acme/app'],
       ['/autobuild', 'gh pr merge 57 --repo acme/app'],
-      ['mergeá el #58', 'gh pr close 58 --repo acme/app'],
+      ['mergeá el #58', 'gh pr review 58 --approve --repo acme/app'],
       ['mergeá el #59', 'gh pr merge 59 --repo acme/app && gh pr comment 59 --body listo'],
       ['mergeá el #60', 'gh pr merge 60 --repo acme/app --admin && git push origin main'],
     ]) assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), 'frena', `${prompt} → ${command}`)
@@ -165,7 +165,9 @@ test('la confirmación de un merge cubre el PR y no la línea de comando', () =>
   assert.deepEqual(by.items("gh pr merge 9 --repo=acme/app -b 'va' ; gh pr merge 9 -R acme/app"),
     ['gh pr merge 9 --repo acme/app'])
   assert.deepEqual(by.items('gh pr merge && gh pr merge 9 --repo'), ['gh pr merge', 'gh pr merge 9'])
-  assert.equal(by.items('gh pr merge 9 && gh pr close 8'), null)
+  assert.deepEqual(by.items('gh pr merge 9 && gh pr close 8'), ['gh pr merge 9', 'gh pr close 8'])
+  assert.equal(by.items('gh pr merge 9 && gh pr comment 8 --body ok'), null)
+  assert.equal(by.items('gh pr close 9 -d'), null)
   const message = messageOf('destructive', run(root, 'gh pr merge 2 --squash --repo acme/app'))
   assert.match(message, /\n {2}gh pr merge 2 --repo acme\/app\n/, 'lo que se pega es el PR, no la línea')
 })
@@ -173,11 +175,43 @@ test('la confirmación de un merge cubre el PR y no la línea de comando', () =>
 test('nombrar el último tramo de una ruta no ordena el comando que la trae (caso 523)', () => {
   const root = pushRoot('cauce-delivery-tramo-')
   for (const [prompt, command, expected] of [
-    ['revisá la api', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['revisá la api', 'gh pr comment 69 --body ok --repo acme/api', 'frena'],
     ['arreglá la api', 'gh pr review 69 --approve --repo acme/api', 'frena'],
     ['revisá el deploy de la api', 'gh workflow run deploy.yml --repo acme/api', 'frena'],
     ['revisá prod.yaml', 'kubectl apply -f k8s/prod.yaml', 'frena'],
     ['corré gh pr close 69 --repo acme/api', 'gh pr close 69 --repo acme/api', 'pasa'],
+  ]) {
+    const chat = chatSession()
+    try { assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), expected, `${prompt} → ${command}`) } finally {
+      chat.close()
+    }
+  }
+})
+
+test('cerrar y reabrir un PR se piden como un merge, por su número (caso 520)', () => {
+  const root = pushRoot('cauce-delivery-cerrar-')
+  for (const [prompt, command, expected] of [
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api', 'pasa'],
+    ['reabrí el #69', 'gh pr reopen 69 --repo acme/api', 'pasa'],
+    ['cerrá el #69, el #64 y el #33', 'gh pr close -c "duplicado" 33 --repo acme/api', 'pasa'],
+    ['cerrá el #69', 'gh pr close 70 --repo acme/api', 'frena'],
+    ['cerralos todos menos el #69', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['¿cerramos el #69?', 'gh pr close 69 --repo acme/api', 'frena'],
+    ['no cierres nada', 'gh pr close 69 --repo acme/api', 'frena'],
+    // Aprobar, comentar y borrar la rama al cerrar siguen pidiéndose con el comando entero.
+    ['cerrá el #69', 'gh pr review 69 --approve --repo acme/api', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 -d --repo acme/api', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 --delete-branch --repo acme/api', 'frena'],
+    // Cerrado por defecto: cualquier otra bandera, o lo que no se lee como una, vuelve al comando entero.
+    ['cerrá el #69', 'gh pr close 69 --delete-branch=true --repo acme/api', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 -dc chau --repo acme/api', 'frena'],
+    ['cerrá el #69', 'bash -c "gh pr close 69 --repo acme/api -d"', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api `-d`', 'frena'],
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api -c "dup; ver #70" -d', 'frena'],
+    ['cerrá el #69', "gh pr reopen 69 --repo acme/api -c 'a|b' --delete-branch", 'frena'],
+    ['cerrá el #69', 'gh pr close 69 -c "uso -d" --repo=acme/api', 'pasa'],
+    ['cerrá el #69', 'gh pr close 69 --comment=duplicado -R acme/api', 'pasa'],
+    ['cerrá el #69', 'gh pr close 69 --repo acme/api && gh pr comment 69 --body chau --repo acme/api', 'frena'],
   ]) {
     const chat = chatSession()
     try { assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), expected, `${prompt} → ${command}`) } finally {

@@ -1,8 +1,8 @@
 'use strict'
 
-// Las órdenes de publicar que la persona da en el chat: un push y un merge. Lo que comparten con el resto del chat —qué
-// corta una frase, qué niega, qué frena— vive en `chat.js`, que pide este archivo recién al usarlo: cargarlo al
-// arrancar cerraría el ciclo con uno de los dos a medio exportar.
+// Las órdenes de publicar que la persona da en el chat: un push y un acto sobre un PR. Lo que comparten con el resto
+// del chat —qué corta una frase, qué niega, qué frena— vive en `chat.js`, que pide este archivo recién al usarlo:
+// cargarlo al arrancar cerraría el ciclo con uno de los dos a medio exportar.
 
 const { CLAUSE, ENCLITIC, HALT, NEGATION, spokenOf } = require('./chat')
 const EXCEPT = /(?<![\p{L}])(?:menos|excepto|salvo|except)(?![\p{L}])/iu
@@ -47,7 +47,7 @@ function ordersPush(text, item, { publish = false } = {}) {
   return ordered
 }
 
-// Un merge tampoco se nombra como un archivo: su ítem es `gh pr merge <PR> --repo <repo>` (`delivery.js`), y
+// Un merge tampoco se nombra como un archivo: su ítem es `gh pr <acto> <PR> --repo <repo>` (`delivery.js`), y
 // nadie lo escribe así al pedirlo (caso 280). Si la persona lo pidió lo juzga el agente, que es quien lee
 // intención; acá no hay lista de verbos que lo ordenen. La primera versión la tenía y frenaba «hacé el merge
 // del #12», «integralo» y «dale con todos»: nueve de doce formas de pedir lo mismo.
@@ -61,8 +61,9 @@ const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+
 //
 // Después de un aviso del runner pasa sólo lo nombrado. «Los merges de este turno» es una lectura del turno en
 // que la persona habló, y lo que el agente hace tras el aviso puede venir de lo que el aviso decía (caso 281).
-function ordersMerge(text, item, { relayed = false } = {}) {
-  const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(spokenOf(item))
+// Cerrar y reabrir se leen igual (caso 520): lo que mira es el número, no el verbo.
+function ordersPull(text, item, { relayed = false } = {}) {
+  const found = /^gh pr (?:merge|close|reopen)(?: (?!--)(\S+))?/.exec(spokenOf(item))
   if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
   const named = []
   const denied = []
@@ -80,4 +81,4 @@ function ordersMerge(text, item, { relayed = false } = {}) {
   return named.length ? named.includes(found[1]) : !relayed
 }
 
-module.exports = { ordersMerge, ordersPush, refusesPush }
+module.exports = { ordersPull, ordersPush, refusesPush }
