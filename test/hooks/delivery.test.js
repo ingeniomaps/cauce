@@ -353,7 +353,7 @@ test('check avisa la línea de un PR escrita con el comando entero, que ya no ap
   const root = pushRoot('cauce-delivery-linea-vieja-')
   const AP = require('../../engine/hooks/approval')
   const old = ['gh pr close 69 -c "duplicado" --repo acme/api', 'gh pr merge 12 --squash --repo acme/api']
-  // La última la toma entera la regla de deploy, que no se aprueba por partes: sigue aprobando.
+  // La última es la que ofrece hoy el bloqueo del deploy cuando un merge va en el mismo comando.
   const current = ['gh pr close 70 --repo acme/api', 'gh pr close 71 -d --repo acme/api',
     `terraform apply @ ${root}`, `terraform apply && gh pr merge 12 --squash --repo acme/api @ ${root}`]
   // Sin `--repo` la avisa el aviso del lugar, una sola vez.

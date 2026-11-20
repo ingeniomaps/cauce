@@ -255,7 +255,9 @@ de un merge, un cierre o una reapertura que no coinciden con su ítem, y `takenW
 deja afuera la que otra regla aprueba entera —`terraform apply && gh pr merge 12 --squash … @ <lugar>`, que el
 bloqueo del deploy ofrece hoy—. Atrapa también las líneas de merge anteriores al 280. Prueba en
 `test/hooks/delivery.test.js`, roja antes; seis mutaciones, todas rojas; dos pasadas independientes, la primera con el
-falso positivo de `terraform` que se arregló con `takenWhole`, la segunda sin nada que impida entregar. Quedan
+falso positivo de `terraform` que se arregló con `takenWhole`, la segunda sin nada que impida entregar. La pasada de comentarios, con
+el tokenizador a 0,22 sobre `c0ad307d`, encontró la razón de `rewrittenPull` repetida en `takenWhole` y en la prueba,
+y quedó en un solo lugar (`cac6f72e` y el commit siguiente). Quedan
 anotados: una línea que junta otro comando con un PR conserva la parte viva y no se avisa que perdió la del PR; un
 cierre con `@ lugar` (forma que el bloqueo nunca ofreció) y un mensaje de commit que nombra `gh pr review` no se
 avisan; y, como antes, el aviso del lugar sobre `docker compose down && gh pr close 3 --repo o/api` revive sólo el
