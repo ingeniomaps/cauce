@@ -133,7 +133,7 @@ function REFUSED(items, input = {}) {
 // confirmación «sigue valiendo en los mensajes siguientes» cuando vale el turno era una afirmación falsa en
 // el bloqueo, vista en una sesión real de Gemini (caso 370).
 function HOW(variable, lines, input, pasteable = lines,
-  { durable = false, fixable = false, turn = false, unpasteable = '' } = {}) {
+  { durable = false, fixable = false, turn = false, unpasteable = '', command = false } = {}) {
   // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el
   // diálogo, y un pendiente que sobreviviera lo podría aprobar un mensaje sobre otra cosa (caso 221).
   // Sin nada que aprobar no hay diálogo: `plan-first` con un plan a la vista pide escribir el plan, no un sí.
@@ -175,7 +175,7 @@ function HOW(variable, lines, input, pasteable = lines,
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
       + 'respuesta que niega, frena o pregunta. '
   // Sin esto, frenar lo que ella acababa de nombrar se leía como que el guard la había ignorado (caso 521).
-  const unasked = chat ? CHAT.namedUnasked(input, lines.filter((one) => !dropped.includes(one))) : []
+  const unasked = chat ? CHAT.namedUnasked(input, lines.filter((one) => !dropped.includes(one)), { command }) : []
   const named = unasked.length ? `La persona nombró ${unasked.map(CHAT.spokenOf).join(', ')} en su mensaje, pero el `
     + 'guard no leyó un pedido en la frase que lo nombra —en «leé a, b y c» sólo se pide a—; tampoco es un no. ' : ''
   const ask = native ? CF.LEAD : chat
@@ -292,5 +292,6 @@ function warnings(root) {
 
 module.exports = {
   APPROVAL, at, inRepo, locate, placed: CHAT.placed, spokenOf: CHAT.spokenOf, isPush: CHAT.isPush, lines, read,
+  namedCommand: CHAT.namedCommand,
   pending, pendingNow, where, HOW, REFUSED, warnings,
 }

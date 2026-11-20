@@ -68,6 +68,8 @@ la lista.
 
 ## Causa raíz
 
+Las citas de esta sección son a 0.123.0 (`27bbf5e5`), donde se detectó; los commits del arreglo movieron algunas líneas.
+
 - `engine/hooks/chat.js:126`: `for (const name of new Set([item, path.basename(item)]…))` — el basename entra siempre
   como segundo nombre, sea el ítem una ruta o un comando.
 - `engine/hooks/shell.js:255-267`: sin `by.items` (todas las reglas salvo el merge), el ítem es el tramo del comando y
@@ -139,12 +141,14 @@ Contra el caso:
 - **Tradeoff, `self-approval.js`:** medido, y el caso estaba mal: decía que ahí no filtraba. Con el mensaje que nombra
   el archivo —«agregá la api a .ops-approval»— `main` dejaba escribir la línea de `gh pr close`; ahora frena.
 
-Lo que el caso no preveía: un comando de dos palabras con la última absoluta (`bash /srv/deploy.sh`) o una sola palabra
-(`./deploy.sh`) se siguen pidiendo por su basename. Ahí el basename es el archivo que el comando corre, y no un
-repositorio, y no hay ninguna regla con salida que arme hoy un tramo con esa forma. Tampoco un comando cuya segunda
-palabra es absoluta, con más detrás (`cp /a/x /b/api`), que la forma `escribe <ruta>` admite para no perder una ruta con
-espacios. Y una ruta relativa con carpeta y con espacios ya no se pide por su basename: llega sólo de `secrets-shell`
-tras un `cd` que no se resuelve, donde el bloqueo ya pide la ruta absoluta. Las tres quedan así.
+Lo que el caso no preveía: la forma del ítem no alcanza para saber si es una ruta. Este cierre decía que un comando de
+una sola palabra (`./deploy.sh`) seguía pidiéndose por su basename porque ninguna regla con salida armaba un ítem así, y
+el code review del conjunto (2026-11-20) mostró que `deployCommands` sí lo arma: «revisá deploy.sh» ordenaba el deploy,
+en `main` y en esta rama. Ahora los guards que arman ítems de comando —`shell.js` para `destructive` y `workers.js`—
+piden con `namedCommand`, que nunca usa el basename; la forma del ítem decide sólo para los demás. Quedan por la forma,
+sin un guard que lo diga: un comando cuya segunda palabra es absoluta con más detrás (`cp /a/x /b/api`), y una ruta
+relativa con carpeta y con espacios, que ya no se pide por su basename y llega sólo de `secrets-shell` tras un `cd` que
+no se resuelve, donde el bloqueo ya pide la ruta absoluta.
 
 ### Qué se corrió
 
@@ -168,6 +172,33 @@ Tras el bloqueo de «revisá la api», un «dale» lo aprueba (`frena` → `pasa
 `gh pr close 69 --repo o/api` en `.ops-approval`: «agregá la api a .ops-approval», `exit 0` en `main` y `exit 2` en la
 rama; «agregá gh pr close 69 --repo o/api a .ops-approval», `exit 0` en las dos.
 
+Con `deployCommands: ["./deploy.sh", "/opt/ci/deploy"]` en un banco propio, `main` → después:
+
+```
+pasa  | frena  «revisá deploy.sh» → ./deploy.sh
+pasa  | frena  «revisá el deploy» → /opt/ci/deploy
+pasa  | pasa   «corré ./deploy.sh» → ./deploy.sh
+pasa  | pasa   «corré /opt/ci/deploy» → /opt/ci/deploy
+frena | frena  «contame de deploy.sh» → ./deploy.sh
+```
+
+Y `test-workers` con `jest <ruta>/login.test.js`: «revisá login.test.js» lo dejaba correr sin cota; ahora frena.
+
+Lo que se paga, y se decidió así: un comando se ordena nombrándolo como está declarado. «corré scripts/release.sh»
+frente a `./scripts/release.sh`, o «corré deploy» frente a `/opt/ci/deploy`, pasaban por el basename y ahora frenan; el
+«dale» los destraba. El aviso del 521 lee estos ítems con el mismo criterio (`HOW` recibe `command` desde `shell.js` y
+`workers.js`), así
+que el bloqueo de un comando no dice que la persona lo nombró por su último tramo. Quedan como estaban, anotados por la
+revisión: la línea de un deploy se puede escribir en `.ops-approval` nombrándola por su basename (`self-approval.js`
+lee con `named`; ahí el basename es el script que la persona nombró), y el alcance «mientras dure la tarea X» se lee de
+cualquier aparición del nombre, lo que sólo puede angostar una concesión.
+
+**Repetido el 2026-11-20 con el último commit de la tanda**, después del 520 y del 521, que tocaron estas mismas
+lecturas. Da lo mismo salvo las dos filas de `gh pr close`, que ahora **pasan**: desde el 520, cerrar un PR se pide por
+número, y un mensaje que no nombra ninguno y no pregunta, frena ni niega los deja pasar, como el merge desde el 280. Es
+lo que el tradeoff de arriba anticipaba, y por eso la prueba del 523 lo mide con `comment`, que sigue con el comando
+entero. El «dale» de arriba se midió antes del 520. La escritura de `.ops-approval` sigue igual (`exit 2` y `exit 0`).
+
 Mutaciones, en una copia: el basename pide siempre (roja la de `delivery` y la de `chat`); sin la palabra sola (roja
 `chat`, la ruta relativa); sin la ruta absoluta (roja `chat`, la de espacios); sin el verbo delante (rojas `chat` y
 `runtime`).
@@ -185,11 +216,13 @@ Mutaciones, en una copia: el basename pide siempre (roja la de `delivery` y la d
 6. hecho: por la entrada real de los hooks en un banco, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner; `mentions` es la misma en todos.
 8. hecho: corrieron las dos pruebas, todas las de `test/hooks`, la entrada real antes y después, el «dale» y
-   `self-approval`. No corrió una sesión de Claude Code.
+   `self-approval`, y la entrada real se repitió con el último commit de la tanda (arriba). No corrió una sesión de
+   Claude Code.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: se recorrieron todos los que leen con `named` (los llamadores de `AP.pending`, `pendingNow` y
     `CHAT.authorized`) y la forma de sus ítems; el comentario de `orders.js` que afirmaba el basename se corrigió.
-11. hecho: dos pasadas independientes. La primera midió dos formas de pedir un archivo que la primera versión
+11. hecho: dos pasadas independientes sobre la tanda, y tres más sobre los arreglos del code review del conjunto
+    (2026-11-20), hasta una sin nada que impida entregar. La primera midió dos formas de pedir un archivo que la primera versión
     quitaba, y se reescribió la condición; la segunda, sobre la versión final y el commit del refactor, nada que impida
     entregar. Lo que anotó está arriba, en «Lo que el caso no preveía».
 12. hecho: uno por uno sobre los tres comentarios del diff, y ninguno pasa de 0,22 con el tokenizador de la puerta.

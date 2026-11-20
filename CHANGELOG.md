@@ -22,7 +22,8 @@ diseño — eso vive en el commit y en el código.
   —cerrar, aprobar o comentar un PR, disparar un workflow, una release, un deploy— se autorizaba por chat con
   cualquier frase que nombrara lo que sigue a su última `/` y trajera un verbo: «revisá la api» pasaba
   `gh pr close 69 --repo o/api`, y «revisá prod.yaml» pasaba `kubectl apply -f k8s/prod.yaml`. Lo mismo valía para
-  escribir esa línea en `.ops-approval`: «agregá la api a .ops-approval» alcanzaba. Ahora el comando se pide
+  escribir esa línea en `.ops-approval`: «agregá la api a .ops-approval» alcanzaba. Un comando de una sola palabra
+  declarado en `deployCommands`, como `./deploy.sh`, se ordenaba con «revisá deploy.sh». Ahora el comando se pide
   nombrándolo, o con un «dale» después del bloqueo. Para un archivo nada cambia: «leé el .env» sigue alcanzando.
 
 - **La orden de push por chat ya no publica lo que la persona exceptuó, y no exige un verbo de una lista** (caso 522).
@@ -31,7 +32,9 @@ diseño — eso vive en el commit y en el código.
   «mandá feat/x a origin» pasa. Si la persona quiso publicar lo juzga el agente, así que una frase que nombra los dos
   sin pedir el push —«revisá feat/x en origin»— también pasa. Lo que frena de más: una negación en cualquier parte del
   mensaje, como «subí feat/x a origin, no main», que antes pasaba; se repite la orden sin la negación. La línea de push
-  que el agente se escribe en `.ops-approval` sigue pidiendo el verbo de publicar, porque llega hasta la rama viva.
+  que el agente se escribe en `.ops-approval` sigue pidiendo el verbo de publicar, porque llega hasta la rama viva, y
+  lo mismo un push a una rama viva que habilitaste en `runner.pushToLiveBranches`: «main está detrás de origin» no lo
+  ordena.
 
 - **Cerrar y reabrir un PR se piden por chat como un merge, por su número** (caso 520). «cerrá el #69» frenaba
   `gh pr close 69`: había que escribir el comando entero. Ahora pasan los PR que el mensaje nombra, ninguno si pregunta,
@@ -40,7 +43,9 @@ diseño — eso vive en el commit y en el código.
   bandera —`-d`, que borra la rama, entre ellas— vuelve a pedir el comando entero, igual que aprobar o comentar
   suelto. Una línea de
   `.ops-approval` con el comando entero y su `-c` —`gh pr close 69 -c "duplicado" --repo <repo>`, y lo mismo con
-  `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`.
+  `reopen`— ya no lo aprueba: se escribe como la muestra el bloqueo, `gh pr close 69 --repo <repo>`. Y un merge cuyo
+  cuerpo trae un `;` —`-b "listo; va"`— pide el comando entero: detrás del `;` podía ir un `--admin` que la línea
+  aprobada no nombraba.
 
 - **`check` avisa una línea de «Historias» que no se lee** (caso 519). Una viñeta con otra casilla que `[ ]` o `[x]`
   —`[~]` para una cancelada, `[-]`, `[ x]`— no abría historia: se pegaba como texto a la de arriba, que heredaba sus

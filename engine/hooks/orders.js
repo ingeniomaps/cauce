@@ -17,8 +17,9 @@ const EXCEPT = /(?<![\p{L}])(?:menos|excepto|salvo|except)(?![\p{L}])/iu
 // rama va exceptuada —«todo menos feat/x»—. Negar otra cosa frena de más: se repite la orden sin la negación, y un
 // «dale» alcanza sólo con la negación en otra frase que el verbo: `hold` descarta lo que `refusesPush` niega.
 //
-// `publish` pide además el verbo en la frase que ordena. Lo usa la línea que el agente se escribe en `.ops-approval`,
-// que llega hasta la rama viva: ahí «revisá main en origin» no alcanza.
+// `publish` pide además el verbo en la frase que ordena, para lo que llega a la rama viva: la línea que el agente se
+// escribe en `.ops-approval` y el push a una rama viva habilitada (`push.js`). Ahí «revisá main en origin» no
+// alcanza, y la lista de verbos es una excepción deliberada a no decidir con palabras: arriesga la rama de todos.
 //
 // La lista de verbos queda para negar y para `publish`, con las formas de una prohibición —«no subas», «no publiques»—.
 const PUSHES = new Set(('subi sube subir subas pushea pushear pushees push publica publicar publiques publish '

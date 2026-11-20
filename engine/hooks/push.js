@@ -186,7 +186,11 @@ function publish(input, command) {
   // Se pregunta sin conceder, a diferencia de lo que pasa por `AP.pending`: volver a leer lo que ya se
   // leyó no agrega consecuencia y volver a publicar sí, así que la autorización de un push vale para esa
   // operación y no para el mensaje siguiente (R10).
-  const cleared = CHAT.authorized(input, items, { asked: ordersPush })
+  // Una rama viva habilitada sigue siendo la que otros usan: ahí la frase tiene que pedir publicar, porque sin verbo
+  // «main está detrás de origin» la alcanzaba (caso 522).
+  const lives = new Set(left.filter((to) => live.has(to.branch)).map((to) => filedAs(to, topOf())))
+  const asked = (text, item) => ordersPush(text, item, { publish: lives.has(item) })
+  const cleared = CHAT.authorized(input, items, { asked })
   const unordered = items.filter((item) => !cleared.some((one) => one.item === item))
   if (unordered.length) block(workMessage(unordered, input, sure))
   const destination = new Map(destinations.map((to) => [filedAs(to, topOf()), to]))

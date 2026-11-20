@@ -68,14 +68,14 @@ frena mandá feat/x a origin
 
 ## Causa raíz
 
-- `engine/hooks/chat.js:158-161` (0.123.0, contrastado; hoy `orders.js:20-23`): `PUSHES` y `pushVerb` son la lista de verbos de publicar (`subi`,
+- `engine/hooks/chat.js:158-161` (0.123.0, contrastado; hoy `orders.js:24-27`): `PUSHES` y `pushVerb` son la lista de verbos de publicar (`subi`,
   `pushea`, `publica`, `empuja`, `push`, `publish` y sus formas).
-- `engine/hooks/chat.js:167-179`, `ordersPush` (hoy `orders.js:29-45`): devuelve `pushVerb(clause) && !NEGATION.test(words.slice(0, last +
+- `engine/hooks/chat.js:167-179`, `ordersPush` (hoy `orders.js:33-47`): devuelve `pushVerb(clause) && !NEGATION.test(words.slice(0, last +
   1)…)` (línea 177). Sin un verbo de la lista la frase no cuenta (defecto 1), y lo que viene después de la rama no se
   mira ni hay `EXCEPT` (defecto 2).
 - Dos consumidores: `engine/hooks/push.js:188` lo usa como `asked` del push, y `engine/hooks/self-approval.js:206`
   como `asked` de una línea `push <remoto> <rama>` que el agente escribe en `.ops-approval` (hoy `push.js:189` y
-  `self-approval.js:207`). El fix cambia los dos.
+  `self-approval.js:207-208`). El fix cambia los dos.
 
 ## Fix propuesto
 
@@ -158,7 +158,26 @@ Contra el caso:
   adonde ni la orden del chat llega (`push.js:113`). Ese camino sigue pidiendo el verbo de publicar en la frase
   (`publish`), igual que en `main`.
 
-Lo que el caso no preveía: el `HALT` que faltaba, arriba. Y quedan como en `main`, anotados por la revisión: el apóstrofo
+Lo que el caso no preveía: el `HALT` que faltaba, arriba. Y la rama viva habilitada: el code review del conjunto
+(2026-11-20) midió que, con `main` en `runner.pushToLiveBranches`, «main está detrás de origin» y «revisá main en
+origin» publicaban en `main`, porque sin verbo nada separaba la frase de un pedido. `push.js` ahora pide el verbo de
+publicar (`publish`) para los destinos que son rama viva, como ya hacía `.ops-approval`. Por la entrada real, sobre un
+banco propio con `main` habilitada (`main` → después):
+
+```
+frena | frena  «main está detrás de origin» → git push origin main
+frena | frena  «revisá main en origin» → git push origin main
+pasa  | pasa   «subí main a origin» → git push origin main
+frena | frena  «mandá main a origin» → git push origin main
+frena | pasa   «revisá feat/x en origin» → git push origin feat/x
+frena | pasa   «mandá feat/x a origin» → git push origin feat/x
+```
+
+En la rama viva queda como en `main`; en una de trabajo, como decidió este caso. Que en la rama viva vuelva a contar la
+lista `PUSHES` es una excepción deliberada a la línea de `AGENTS.md` que dice que un guard no decide con palabras: lo
+que se arriesga es la rama de todos, y el comentario de `orders.js` lo dice. También quedan, como pasaba antes en
+parte, una rama con `no` en el nombre (`fix/no-cache`) o un `--no-verify` en el mensaje, que no se ordenan por chat
+porque la negación se lee en todo el mensaje: se contesta «dale». Y quedan como en `main`, anotados por la revisión: el apóstrofo
 tipográfico (`don’t`) y `haven't`, `hasn't`, `couldn't`, `mustn't` no son negación para `NEGATION` (`chat.js:59-61`);
 `EXCEPT` no conoce `but`, `besides` ni «fuera de»; y `HALT` mira sólo el arranque —«subí feat/x a origin. pará» pasa—,
 igual que en el merge. Y una prohibición escrita sin palabra de negación —«hold off on pushing feat/x to origin», «dejá
@@ -169,8 +188,10 @@ feat/x en origin no pide un push» se reescribió: era el mismo hecho que se rev
 
 ### Qué se corrió
 
-Por la entrada real de los hooks (`run.js prompt` y `run.js destructive`), con `git push origin feat/x` sobre una raíz
-con remoto, una sesión por mensaje; el «antes» con el motor de `origin/main`:
+Por la entrada real de los hooks (`run.js prompt` y `run.js destructive`), con `git push origin feat/x`, una sesión por
+mensaje; el «antes» con el motor de `origin/main`. La primera vez el banco se armaba con el `tempRoot` del arnés, que se
+borra al terminar el proceso que lo crea, así que los hooks corrieron sin `ops.config.json`; el 2026-11-20 se repitió
+sobre un banco propio, con `runner.allowPush: false`, y dio la misma tabla:
 
 ```
 antes pasa   | después pasa   «subí feat/x a origin»
@@ -218,11 +239,12 @@ mensaje, sin `EXCEPT`, sin exigir el remoto y ordenar con la primera frase; en `
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
 8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y `self-approval`. No corrió una sesión
-   de Claude Code.
+   de Claude Code. La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: los dos consumidores (`push.js`, `self-approval.js`), la prueba del 103 que se cambió y las dos reglas que
     describen la orden (`template/AGENTS.md:300`, `commits.md:59`), que no hablan del verbo y siguen ciertas.
-11. hecho: dos pasadas independientes. La primera encontró una prohibición que autorizaba el push y el camino de
+11. hecho: dos pasadas independientes sobre el caso, y tres más sobre los arreglos del code review del
+    conjunto (2026-11-20), hasta una sin nada que impida entregar. La primera encontró una prohibición que autorizaba el push y el camino de
     `self-approval` a la rama viva, y el código se reescribió; la segunda, nada que impida entregar: corrigió el
     comentario del «dale», y lo demás está anotado arriba.
 12. hecho: uno por uno sobre el diff final; tres se corrigieron (el del «dale», el de la lista de verbos y el de la

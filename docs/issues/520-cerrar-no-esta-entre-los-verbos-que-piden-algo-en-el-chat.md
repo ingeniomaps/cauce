@@ -78,6 +78,8 @@ Pasó uno sólo cuando la persona escribió «autorizo cerrar …», porque `aut
 
 ## Causa raíz
 
+Las citas de esta sección son a 0.123.0 (`27bbf5e5`), donde se detectó; los commits del arreglo movieron algunas líneas.
+
 - `engine/hooks/delivery.js:56-59` (contrastado): `mergeItems` devuelve `null` si algún acto de `gh pr` no es
   `merge`, así que para `close|reopen|review|comment` no hay ítem por PR ni `asked` propio.
 - `engine/hooks/shell.js:255-267`: sin `parts`, el ítem es el tramo entero del comando (`stretchOf`, caso 451) y
@@ -143,7 +145,7 @@ pegó las líneas en `.ops-approval`. Costó varias vueltas y no salió nunca po
 ## Cierre
 
 Decidido por la persona el 2026-11-19, entre las tres salidas del tradeoff: el modelo del 280 sólo para `close` y
-`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:39-60`) arma un ítem por PR y repositorio para
+`reopen`, que son reversibles. `mergeItems` (`engine/hooks/delivery.js:46-70`) arma un ítem por PR y repositorio para
 `merge`, `close` y `reopen`, con el acto adentro, y la lectura que era `ordersMerge` se llama `ordersPull`
 (`engine/hooks/orders.js:65`) y lee los tres. `review` y `comment` siguen con el comando entero, y un comando que
 mezcla uno de ellos también. Un `close` o `reopen` se lee por número sólo si cada palabra es el número, el repositorio o
@@ -179,6 +181,12 @@ tramo que termina con una comilla abierta tampoco se lee por número.
 Frenan de más, en la dirección segura, y quedan así: un comentario de cierre con `;`, `|`, `&` o un salto de línea, y un
 `close` con una redirección (`2>&1`, `> /dev/null`), que se lee como un segundo posicional. Con la línea exacta en
 `.ops-approval`, o con el comando entero en el chat, pasan.
+
+El code review del conjunto (2026-11-20) encontró la misma fuga en el merge, desde el 280: `gh pr merge 9 -b "x; y"
+--admin` daba el ítem `gh pr merge 9`, y la línea `gh pr merge 9 --repo …` lo aprobaba. La comilla abierta ahora vale
+también para el merge (`main` → después: el merge con `-b "listo; va" --admin` pasa → frena; con `-b "listo; va"` sin
+`--admin` también frena, que es lo que se paga; con `-b "listo, va"` pasa en los dos). Sigue como en `main` que la orden
+por número deje pasar un `--admin` escrito a la vista: la lectura del 280 mira el número, no las banderas.
 
 Y quedan, anotados por la cuarta pasada, tres formas armadas de colar un `-d`: comillas escapadas impares antes de un
 separador (`-c "a\";b" -d`), `$'…'` con un `;` adentro, y un `$(…; …)` sin comillas. Ninguna sale escribiendo un
@@ -240,11 +248,12 @@ sin `--comment=`, sin `-c`, ignorar el `null` de un acto, leer el cierre como un
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
 8. hecho: corrieron las pruebas de `test/hooks`, la entrada real antes y después y la línea de `.ops-approval`. No
-   corrió una sesión de Claude Code.
+   corrió una sesión de Claude Code. La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
 9. no aplica: no coordina nada entre runners, raíces ni ramas.
 10. hecho: `delivery.js` es el único que usa la lectura; las pruebas del 280 y del 523 que fijaban lo de antes se
     cambiaron a sabiendas, y `ordersMerge` no queda nombrado en ningún lado.
-11. hecho: cuatro pasadas independientes. La primera encontró el `-d` que pasaba; la segunda, que el regex que lo
+11. hecho: cuatro pasadas independientes sobre el caso, y tres más sobre los arreglos del code review del
+    conjunto (2026-11-20), hasta una sin nada que impida entregar. La primera encontró el `-d` que pasaba; la segunda, que el regex que lo
     frenaba se escapaba de cinco formas; la tercera, el `-d` detrás de un comentario con `;`; y cada vez se reescribió. La
     cuarta, nada que impida entregar: lo que señaló son comandos armados, anotados arriba.
 12. hecho: uno por uno sobre el diff final; cuatro desfasados se corrigieron (`delivery.js:9-11`, `orders.js:3`,

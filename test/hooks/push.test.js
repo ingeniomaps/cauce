@@ -230,6 +230,11 @@ test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ni
     blocked('destructive', chat.says('subí main a origin')(push('git push origin main')), LIVE)
     declare({ allowPush: false, pushToLiveBranches: ['main'] })
     assert.doesNotThrow(() => execute('destructive', chat.says('subí main a origin')(push('git push origin main'))))
+    // Habilitada sigue siendo la rama viva: una frase que la nombra sin pedir publicar no la alcanza (caso 522).
+    for (const message of ['main está detrás de origin', 'revisá main en origin']) {
+      const alone = chatSession()
+      try { blocked('destructive', alone.says(message)(push('git push origin main')), WORK) } finally { alone.close() }
+    }
   } finally { chat.close() }
 })
 

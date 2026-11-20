@@ -119,13 +119,13 @@ const isPush = (item) => /^push\s+\S+\s+\S+$/.test(spokenOf(item))
 
 // Cada aparición del nombre en el texto: si va negada y si su frase pide algo. Un nombre tiene que estar
 // entero: `.env` no aparece en «el .env.example», y un punto sólo lo cierra si termina la frase.
-function mentions(text, given) {
+function mentions(text, given, { command = false } = {}) {
   const item = spokenOf(given)
   const lower = String(text).toLowerCase()
   const found = []
   // El basename pide sólo si el ítem es una ruta, sola o tras su verbo (`escribe <ruta>`): el de un comando es su
   // último tramo —`api` en `gh pr comment 69 --repo o/api`—, y «revisá la api» lo ordenaba (caso 523). Negar sí cuenta.
-  const file = !/\s/.test(item) || path.isAbsolute(item) || /^\S+\s+\//.test(item)
+  const file = !command && (!/\s/.test(item) || path.isAbsolute(item) || /^\S+\s+\//.test(item))
   for (const name of new Set([item, path.basename(item)].map((one) => one.toLowerCase()))) {
     if (name.length < 3) continue
     for (let at = lower.indexOf(name); at !== -1; at = lower.indexOf(name, at + 1)) {
@@ -246,11 +246,11 @@ function said(input) {
 const wordsOf = (saved) => (saved.human ? saved.text : String(saved.spoken || ''))
 // Lo que el último mensaje nombró sin que la frase que lo nombra lo pida: «leé .env, .env.local» pide el primero
 // (caso 521). Un último tramo que no pide —`api` en un comando, desde el 523— tampoco nombra.
-function namedUnasked(input, items) {
+function namedUnasked(input, items, { command = false } = {}) {
   const saved = said(input)
   if (!saved) return []
   return items.filter((item) => {
-    const read = mentions(wordsOf(saved), item)
+    const read = mentions(wordsOf(saved), item, { command })
     return read.seen && !read.named
   })
 }
@@ -277,6 +277,9 @@ function present(input) {
 // había quedado frenado, o se lo concedieron antes en esta sesión. Qué cuenta como pedirlo depende de qué
 // se frena: un archivo se nombra, un push se ordena con su remoto y su rama.
 const named = (text, item) => mentions(text, item).named
+// Lo que el guard sabe que es un comando se pide nombrándolo entero: por la forma, `./deploy.sh` parece una ruta y su
+// basename lo ordenaba (caso 523).
+const namedCommand = (text, item) => mentions(text, item, { command: true }).named
 
 // Si el acote que la persona puso sigue en pie. Sin alcance no hay nada que comprobar y vale lo de
 // siempre —la sesión—, que es lo que decidió el 116; con alcance, vale mientras esa tarea sea la del WIP,
@@ -448,4 +451,4 @@ function grantedIn(root) {
 }
 
 module.exports = { DIR, record, recordPath, delegated, said, wordsOf, authorized, unauthorized, unauthorizedNow, hold,
-  grantedIn, placed, spokenOf, isPush, refuses, namedUnasked, CLAUSE, ENCLITIC, HALT, NEGATION }
+  grantedIn, placed, spokenOf, isPush, refuses, namedUnasked, namedCommand, CLAUSE, ENCLITIC, HALT, NEGATION }

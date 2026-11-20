@@ -168,18 +168,39 @@ test('la confirmación de un merge cubre el PR y no la línea de comando', () =>
   assert.deepEqual(by.items('gh pr merge 9 && gh pr close 8'), ['gh pr merge 9', 'gh pr close 8'])
   assert.equal(by.items('gh pr merge 9 && gh pr comment 8 --body ok'), null)
   assert.equal(by.items('gh pr close 9 -d'), null)
+  // Lo que sigue a un `;` del cuerpo no se ve, así que un `--admin` ahí no puede quedar fuera del ítem.
+  assert.equal(by.items('gh pr merge 9 -b "x; y" --admin'), null)
   const message = messageOf('destructive', run(root, 'gh pr merge 2 --squash --repo acme/app'))
   assert.match(message, /\n {2}gh pr merge 2 --repo acme\/app\n/, 'lo que se pega es el PR, no la línea')
 })
 
+test('el bloqueo de un comando no dice que la persona lo nombró por su último tramo (casos 521 y 523)', () => {
+  const root = pushRoot('cauce-delivery-tramo-aviso-')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ ...config, deployCommands: ['./scripts/release.sh'] }))
+  const chat = chatSession()
+  try {
+    const held = messageOf('destructive', { ...chat.says('mirá el log, release.sh')(run(root, './scripts/release.sh')),
+      permission_mode: NO_DIALOG })
+    assert.doesNotMatch(held, /La persona nombró/)
+  } finally { chat.close() }
+})
+
 test('nombrar el último tramo de una ruta no ordena el comando que la trae (caso 523)', () => {
   const root = pushRoot('cauce-delivery-tramo-')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ ...config, deployCommands: ['./scripts/release.sh'] }))
   for (const [prompt, command, expected] of [
     ['revisá la api', 'gh pr comment 69 --body ok --repo acme/api', 'frena'],
     ['arreglá la api', 'gh pr review 69 --approve --repo acme/api', 'frena'],
     ['revisá el deploy de la api', 'gh workflow run deploy.yml --repo acme/api', 'frena'],
     ['revisá prod.yaml', 'kubectl apply -f k8s/prod.yaml', 'frena'],
     ['corré gh pr close 69 --repo acme/api', 'gh pr close 69 --repo acme/api', 'pasa'],
+    // Un comando de una sola palabra tampoco: su basename no es un archivo que se pide, es el deploy.
+    ['revisá release.sh', './scripts/release.sh', 'frena'],
+    ['corré ./scripts/release.sh', './scripts/release.sh', 'pasa'],
   ]) {
     const chat = chatSession()
     try { assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), expected, `${prompt} → ${command}`) } finally {

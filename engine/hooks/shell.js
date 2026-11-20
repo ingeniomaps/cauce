@@ -264,11 +264,11 @@ function destructive(input) {
     // La línea que se escribió antes del 451, con el comando entero, sigue aprobando ese mismo comando.
     const whole = parts ? [] : [AP.placed(String(raw).trim(), spots[0].where)]
     const asked = items.filter((one) => loose.has(one) || !(filed.has(one) || whole.some((line) => filed.has(line))))
-    const held = open ? AP.pending('', asked, input, parts ? by.asked : undefined) : items
+    const held = open ? AP.pending('', asked, input, parts ? by.asked : AP.namedCommand) : items
     if (!held.length) continue
     const pasteable = held.filter((one) => !loose.has(one))
     const why = unnamed.size ? UNNAMED : UNSURE
-    const how = () => AP.HOW(null, held, input, pasteable, { unpasteable: loose.size ? why : '' })
+    const how = () => AP.HOW(null, held, input, pasteable, { unpasteable: loose.size ? why : '', command: true })
     block(open ? `${message}\n${how()}` : message)
   }
   const tree = removesTheTree(input, command)

@@ -36,8 +36,10 @@ const DEPLOY = 'es un deploy: cambia un ambiente que otros usan, y R10 lo deja a
 // Cerrar y reabrir sí (caso 520), porque son reversibles, y por eso sólo con lo que no lo cambia: el número, el
 // repositorio y el comentario con que se cierra (`-c`), que viaja con el cierre como el cuerpo de un merge. Cualquier
 // otra palabra vuelve al comando entero, en vez de una lista de las que se frenan: `-d` borra la rama, y
-// `--delete-branch=true`, `-dc` o un `-d"` dentro de un `bash -c` se escribían sin pasar por esa lista. Y también un
-// tramo que termina con una comilla abierta: `ACTS` lo cortó en un `;` del comentario, y lo que seguía no se leyó.
+// `--delete-branch=true`, `-dc` o un `-d"` dentro de un `bash -c` se escribían sin pasar por esa lista.
+//
+// Y para los tres, un tramo que termina con una comilla abierta: `ACTS` lo cortó en un `;`, `&` o `|` del comentario o
+// del cuerpo, y lo que seguía —un `-d`, un `--admin`— no se leyó.
 const VALUED = new Set(['-b', '--body', '-F', '--body-file', '-t', '--subject', '-A', '--author-email',
   '--match-head-commit'])
 const COMMENT = new Set(['-c', '--comment'])
@@ -47,7 +49,7 @@ const PARTED = new Set(['merge', 'close', 'reopen'])
 function mergeItem(act, args) {
   const words = (args.match(/"[^"]*"|'[^']*'|\S+/g) || []).map((word) => word.replace(/^(["'])(.*)\1$/, '$2'))
   const closing = act !== 'merge'
-  if (closing && unclosed(args)) return null
+  if (unclosed(args)) return null
   let target = ''
   let repo = ''
   for (let at = 0; at < words.length; at += 1) {

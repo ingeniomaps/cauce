@@ -50,6 +50,8 @@ los otros cuatro con el mensaje de siempre («Pedile la aprobación nombrando el
 
 ## Causa raíz
 
+Las citas de esta sección son a 0.123.0 (`27bbf5e5`), donde se detectó; los commits del arreglo movieron algunas líneas.
+
 - `engine/hooks/chat.js:65` (contrastado): `CLAUSE = /[,;:!?\n]|\.(?=\s|$)/` trata la coma igual que el fin de una
   oración.
 - `engine/hooks/chat.js:133-134`: `clause` es el tramo desde la última `CLAUSE` antes del nombre, y `phrase` le suma el
@@ -132,7 +134,9 @@ Contra el caso:
 Lo que el caso no preveía, y midió la revisión independiente: la primera versión contaba como «nombrado» el último tramo
 de un comando, que desde el 523 no pide, así que «¿la api quedó bien?» frente a `gh pr close 69 --repo acme/api` decía
 que la persona había nombrado el PR. Ahora sólo cuenta lo que podría pedir. Tampoco llevan el aviso lo que se pidió y
-frena por otra razón —una pregunta— ni lo que el mensaje niega. La frase ya no supone que hubo otro pedido en el mensaje
+frena por otra razón —una pregunta— ni lo que el mensaje niega. Y desde el code review del conjunto (2026-11-20), un
+ítem que el guard sabe que es un comando se lee igual que su orden, sin basename (`HOW` recibe `command` desde
+`shell.js`): «mirá el log, release.sh» frente a `./scripts/release.sh` ya no dice que la persona lo nombró. La frase ya no supone que hubo otro pedido en el mensaje
 —«el .env.local está mal» también la dispara, y ahí no se pidió nada—, y muestra el ítem sin el lugar pegado.
 
 ### Qué se corrió
@@ -165,11 +169,13 @@ un guard que el agente corrige la frase también es cierta— y se quitaron.
 5. no aplica: no quita ni reemplaza nada; suma una frase al bloqueo.
 6. hecho: por la entrada real de los hooks, sin el arnés de las pruebas.
 7. no aplica: no depende de un modelo ni de un runner.
-8. hecho: corrieron las pruebas de `test/hooks` y la entrada real antes y después. No corrió una sesión de Claude Code.
+8. hecho: corrieron las pruebas de `test/hooks` y la entrada real antes y después. La entrada real se repitió el 2026-11-20 con el último
+   commit de la tanda y dio lo mismo. No corrió una sesión de Claude Code.
 9. no aplica: no coordina nada.
 10. hecho: `HOW` lo usan todos los guards con salida; la frase sale sólo en la rama del chat, sin subagente y no
     `fixable`, y `mentions` suma un campo que nadie más lee.
-11. hecho: dos pasadas independientes. La primera encontró que el aviso salía falso para PR y comandos, y el código se
+11. hecho: dos pasadas independientes sobre el caso, y tres más sobre los arreglos del code review del
+    conjunto (2026-11-20), hasta una sin nada que impida entregar. La primera encontró que el aviso salía falso para PR y comandos, y el código se
     reescribió; la segunda, nada que impida entregar, y su nota —una aserción de ausencia que no miraba la frase— se
     corrigió y se vio roja sola con la mutación de lo negado.
 12. hecho: uno por uno sobre el diff final; los de `chat.js` y `approval.js` dicen lo que hace el código.
