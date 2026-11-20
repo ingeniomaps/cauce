@@ -186,7 +186,10 @@ cubrió (las cinco primeras filas).
 
 1. hecho: la reproducción y las diez secuencias, con el motor de `origin/main` y el de la rama.
 2. hecho: en la rama `fix/519-523-chat-y-historias`.
-3. hecho: la prueba nueva, roja antes del arreglo (`docker compose down` tras «pará» pasaba) y verde después.
+3. hecho: las dos pruebas nuevas, corridas contra el motor de antes del 527 (`1f7dc984`) en una copia, rojas: en la
+   primera cae la aserción del merge seguido de «¿cómo va el CI?» (`pasa pasa pasa` en vez de `pasa pasa frena`), y
+   `assert` corta ahí; en la segunda, el bloqueo decía «sigue valiendo en los mensajes siguientes». Verdes después.
+   Las filas de después —`docker compose down` tras «pará», entre ellas— se vieron rojas con las mutaciones del 4.
 4. hecho: ocho mutaciones, todas rojas.
 5. hecho: lo que se quita es heredar lo que publica y que lo concedido sobreviva a un «pará»; la salida de antes y
    después está arriba, con las filas que tienen que seguir pasando. `revokesPull` se quitó porque nada lo usa; lo que
