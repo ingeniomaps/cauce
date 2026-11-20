@@ -97,6 +97,8 @@ En la instancia donde apareció pasó lo mismo con una épica `closed` real, sob
 
 ## Causa raíz
 
+Las citas de esta sección son a 0.123.0 (`27bbf5e5`), donde se detectó; los commits del arreglo movieron algunas líneas.
+
 `engine/planning/parser.js:117-120` (0.123.0, contrastado):
 
 ```js
@@ -222,7 +224,7 @@ entero y no sólo «Historias»; sacar el aviso de `check`; recorrer `roadmap/` 
 5. no aplica: no quita ni reemplaza nada; suma un aviso.
 6. hecho: `ops check` en un banco, sin dobles.
 7. no aplica: no depende de un modelo ni de un runner.
-8. hecho: corrieron las pruebas de `contracts`, `check` en el banco con `[~]` y con `[ ]`, y `init` + `check --json`.
+8. hecho: corrieron las pruebas de `contracts`, `check` en el banco con `[~]` y con `[ ]`, y `init` + `check --json`. La entrada real se repitió el 2026-11-20 con el último commit de la tanda y dio lo mismo.
 9. no aplica: no coordina nada.
 10. hecho: el parser y sus lectores no cambian; `check` suma un aviso, que `--json` ya devuelve en `warnings`.
 11. hecho: tres pasadas independientes. La primera encontró que no veía las épicas graduadas; la segunda, dos líneas
