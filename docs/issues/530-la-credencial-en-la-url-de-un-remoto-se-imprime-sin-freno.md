@@ -1,14 +1,15 @@
 ---
 caso: 530
 titulo: la credencial embebida en la URL de un remoto se imprime con `git remote -v` sin que ningún guard frene
-estado: abierto
+estado: resuelto
+resuelto-en: 0.124.0
 prioridad: alta
 version-detectada: 0.123.1
 ---
 
 # 530 — la credencial embebida en la URL de un remoto se imprime con `git remote -v` sin que ningún guard frene
 
-**🔴 abierto** · detectado en 0.123.1 · prioridad **alta**: lo que se filtra es una credencial a la transcripción, y en
+**🟢 resuelto en 0.124.0** · detectado en 0.123.1 · prioridad **alta**: lo que se filtra es una credencial a la transcripción, y en
 una instancia real ya obligó a rotarla. El arreglo es acotado y no pide decisión de producto.
 
 ## Resumen
@@ -96,3 +97,59 @@ rutas.
 
 - 092 y 104: el guard de secretos nació mirando escrituras y después lecturas por shell; éste es un archivo que ninguna
   de las dos listas nombra.
+
+## Cierre
+
+Se recorrió el caso entero:
+
+- **Fix propuesto, el guard decide por el hecho**: se hizo en `engine/hooks/secrets-shell.js` (`SHOWS_URL`, `remoteShown`,
+  `remoteIn`) con `engine/core/remote-credentials.js`. Frena `git remote -v|--verbose|show|get-url`, `git config` que lee
+  `remote.*`, `url` o lista todo, `git ls-remote --get-url` y un lector de `.git/config`, **sólo** si alguna URL de ese
+  repositorio trae credencial. Se hizo distinto en un punto: también cuenta un token suelto como usuario (`ghp_…`,
+  `github_pat_…`, `glpat-…` o 30 caracteres o más), no sólo usuario y clave, porque así se pega el token de GitHub. El
+  repositorio es el que nombra el `-C`, o el de la ruta del `.git/config` que se lee. El mensaje nombra remoto y carpeta,
+  nunca el valor, y da el `git remote set-url` con la URL limpia, también para `pushurl`. Se destraba con la línea en
+  `.ops-approval`, como el resto de `secrets-shell`.
+- **Fix propuesto, aviso en `check`**: se hizo, en `remoteWarnings`; recorre la instancia y las raíces declaradas.
+- **Tradeoffs, sin falsos frenos**: hecho y probado. Un remoto SSH, uno HTTPS limpio y uno con usuario solo leen como
+  siempre, y `git remote`, `git config user.name` y comandos encadenados con `-v` de otro programa pasan.
+- **Tradeoffs, es lectura de comandos**: queda como decía el caso. Siguen pasando `g=remote; git $g -v`, `--git-dir` o
+  `GIT_DIR` en vez de `-C`, un `-C` adentro de `bash -c`, `(cd x; git remote -v)`, `cd .git && cat config`, `insteadOf`,
+  `git var -l` y `git config --get-regexp origin`. Frenan de más, sólo con credencial: `echo 'git config -l'` y
+  `git config user.name "remote team"`. Con `/usr/bin/git -C <otro> remote -v` mira el repositorio de la sesión, porque
+  `directoryFlag` sólo reconoce `git` a secas. No se pulió más: la memoria del proyecto lo pide, y la defensa que no
+  depende de esto es el aviso de `check`.
+- **Tradeoffs, el error de un push que falla**: no lo cubre el guard, como decía el caso. El aviso de `check` lo dice y
+  manda a sacar la credencial de la URL.
+- **Lo que el enunciado no preveía**: la primera versión tenía retroceso exponencial con muchos `-C` y colgaba el guard.
+  Se cambió por `withoutGitGlobals`, y una prueba mide que 22 pares `-C -C` terminen en menos de 2 s.
+
+Lo que se corrió:
+
+- Línea de base, en «Síntoma»: `git remote -v` imprimía la URL con el token y nada frenaba.
+- Después, `repro-530.sh` por el hook instalado en un banco (`repro-530-final.log` del scratchpad): `git remote -v`,
+  `get-url`, `config --get remote.origin.url` y `cat .git/config` salen con exit 2 sin mostrar el token (0 apariciones);
+  `git remote` y `git status` salen con 0; `check` avisa el remoto; con la URL limpia, `git remote -v` sale con 0.
+- `test/hooks/remote-credentials.test.js`, 5 pruebas, en rojo contra HEAD y en verde después.
+- 21 mutaciones en una copia, las 21 en rojo: 19 por `sed` y 2 por reemplazo literal.
+
+**Sin probar:** un git con otra salida de `config --get-regexp`, y Windows.
+
+### Lista de cierre
+
+1. hecho: la reproducción de «Reproducción» en un banco, antes en «Síntoma» y después en `repro-530-final.log`.
+2. hecho: rama `fix/cases-from-an-instance-audit`.
+3. hecho: las pruebas nuevas en rojo contra HEAD y en verde después.
+4. hecho: 21 mutaciones en una copia, las 21 rojas.
+5. hecho: no quita nada; lo que deja pasar se asierta en la prueba de remotos limpios.
+6. hecho: banco con el hook instalado, sin dobles; se midió que el token ya no sale y que lo limpio sigue pasando.
+7. no aplica: el guard no depende de un modelo ni de un runner; el hook es el que instala `automation install`.
+8. hecho: la reproducción y las mutaciones se repitieron sobre la versión final.
+9. hecho: dos remotos en un repositorio, uno con credencial y otro sin ella; un `-C` y un `.git/config` de otro repositorio; instancia y raíz declarada.
+10. hecho: dependían `secretsShell`, `check` (`validate.js`) y el mensaje de aprobación; los tres se tocaron y se probaron.
+11. hecho: seis pasadas de revisión independiente sobre la tanda (530, 531, 533, 534, 535 y 536); ninguna halló nada que impida entregar, sus hallazgos baratos se arreglaron, y cada arreglo se revisó en la pasada siguiente. El último, que tapa los `span` al buscar comentarios en `links.js`, se cerró con su prueba y su mutación en rojo, sin otra pasada.
+12. hecho: pasada de comentarios sobre el diff entero en la cuarta revisión; se quitaron los ocho que repetían o sobraban.
+13. hecho: `npm run ci` con los archivos nuevos stageados, 1926 de 1926, exit 0.
+14. hecho: este cierre recorre el Fix propuesto y los Tradeoffs.
+15. hecho: nombra lo corrido con su salida, lo que el enunciado no preveía, y lleva su línea `**Sin probar:**`.
+16. hecho: `resuelto` con `resuelto-en: 0.124.0` en el frontmatter y en el encabezado; entrada en el CHANGELOG de 0.124.0.

@@ -94,3 +94,50 @@ retomar y reconstruir») después de cerrar tareas fuera del recorrido.
 
 - 463 (aplazado): cerrar una tarea con otro slug hace que la cola la vuelva a ofrecer; mismo costo por otro camino.
 - 529: una épica `open` terminada que no pide cerrar; otra mitad de cierre que `check` no ve.
+
+## Cierre
+
+Se recorrió el caso entero:
+
+- **Fix propuesto, aviso en `check`**: se hizo en `engine/planning/contracts.js` (`staleWips`). Nombra el WIP y la tarea,
+  y manda a dejarlo en `status: IDLE` citando el punto 4 de los gates de arranque del PROTOCOL; el caso decía «paso 4 de
+  Triage», y lo que el PROTOCOL numera así es ese gate.
+- **Fix propuesto, `context`**: se hizo en `engine/planning/state.js` (`ownWip`) y `engine/cli/planning.js`. Con el WIP
+  sobre una tarea hecha, `context` no la ofrece ni manda a reclamarla, imprime una línea `STALE`, y su JSON trae
+  `wip: null` con `staleWip`. Con trabajo en la cola ofrece ése, y con un reclamo propio, el reclamado.
+- **La reparación es escribir `status: IDLE`**: así lo dicen el aviso y la línea `STALE`; nada borra el archivo.
+- **Tradeoffs, que se repare solo**: no, como decía el caso. Queda en avisar y decir qué hacer.
+- **Tradeoffs, la prueba de `/autobuild` tiene que mirar que no la retome**: falta. Lo que se probó es la mitad
+  determinista: el JSON que lee `/autobuild` trae `wip: null`. Que el agente derive de eso `wipActive: false` y no
+  reanude (`autobuild.js:968`) depende del modelo, y no se corrió.
+- **Lo que el enunciado no preveía**: los guards `planFirst` y `scopeAlive` siguen leyendo el WIP rancio como activo. Eso
+  es anterior a este cambio y queda anotado. Además, la línea `WIP idle` sigue saliendo debajo de `STALE`.
+
+Lo que se corrió:
+
+- Línea de base, en «Síntoma»: `context` ofrecía la tarea cerrada y mandaba a reclamarla.
+- Después, `repro-535.sh` en un banco (`repro-535-final.log`): `check` avisa con exit 0, `context` imprime `STALE` y
+  `(sin tarea disponible)`, y `--json` da `{"task":null,"wip":null,"staleWip":"alta-de-cliente"}`.
+- `test/planning/stale-wip.test.js`, 2 pruebas, en rojo contra HEAD y en verde después.
+- 7 mutaciones en una copia, las 7 rojas.
+
+**Sin probar:** una corrida real de `/autobuild` sobre el WIP rancio; sigue pendiente, en el punto 7.
+
+### Lista de cierre
+
+1. hecho: la reproducción de «Reproducción» en un banco, antes en «Síntoma» y después en `repro-535-final.log`.
+2. hecho: rama `fix/cases-from-an-instance-audit`.
+3. hecho: las pruebas en rojo contra HEAD y en verde después.
+4. hecho: 7 mutaciones en una copia, las 7 rojas.
+5. hecho: quita la tarea ofrecida y el `claim`; la prueba asierta su ausencia (`doesNotMatch`) y se vio en rojo contra HEAD.
+6. hecho: banco con la CLI real, sin dobles, para `check` y `context`.
+7. pendiente: la corrida real de `/autobuild` que el caso pide; necesita gastar modelo y se pregunta antes.
+8. hecho: la reproducción y las mutaciones se repitieron sobre la versión final.
+9. hecho: WIP rancio solo, con cola y con un reclamo propio; WIP en IDLE y WIP sobre una tarea abierta.
+10. hecho: dependían `context`, su JSON y `check`; `planFirst` y `scopeAlive` se revisaron y quedan anotados arriba.
+11. hecho: seis pasadas de revisión independiente sobre la tanda (530, 531, 533, 534, 535 y 536); ninguna halló nada que impida entregar, sus hallazgos baratos se arreglaron, y cada arreglo se revisó en la pasada siguiente. El último, que tapa los `span` al buscar comentarios en `links.js`, se cerró con su prueba y su mutación en rojo, sin otra pasada.
+12. hecho: pasada de comentarios sobre el diff entero en la cuarta revisión; se quitaron los ocho que repetían o sobraban.
+13. hecho: `npm run ci` con los archivos nuevos stageados, 1926 de 1926, exit 0.
+14. hecho: este cierre recorre el Fix propuesto y los Tradeoffs.
+15. hecho: nombra lo corrido con su salida, lo que el enunciado no preveía, y lleva su línea `**Sin probar:**`.
+16. pendiente: el estado pasa a `resuelto` cuando se cierre el punto 7; la entrada del CHANGELOG ya está.
