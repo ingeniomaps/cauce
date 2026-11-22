@@ -1,14 +1,15 @@
 ---
 caso: 535
 titulo: un WIP que apunta a una tarea ya en done/ pasa `check` y `ops context` la ofrece como la tarea en curso
-estado: abierto
+estado: resuelto
+resuelto-en: 0.124.0
 prioridad: media
 version-detectada: 0.123.1
 ---
 
 # 535 — un WIP que apunta a una tarea ya en done/ pasa `check` y `ops context` la ofrece como la tarea en curso
 
-**🔴 abierto** · detectado en 0.123.1 · prioridad **media**: el costo es una vuelta perdida o reconstruir lo hecho. No
+**🟢 resuelto en 0.124.0** · detectado en 0.123.1 · prioridad **media**: el costo es una vuelta perdida o reconstruir lo hecho. No
 hay incidente medido por este camino; el del 463, que llega al mismo lugar por otro, costó 594k tokens en una instancia.
 
 ## Resumen
@@ -107,9 +108,9 @@ Se recorrió el caso entero:
   `wip: null` con `staleWip`. Con trabajo en la cola ofrece ése, y con un reclamo propio, el reclamado.
 - **La reparación es escribir `status: IDLE`**: así lo dicen el aviso y la línea `STALE`; nada borra el archivo.
 - **Tradeoffs, que se repare solo**: no, como decía el caso. Queda en avisar y decir qué hacer.
-- **Tradeoffs, la prueba de `/autobuild` tiene que mirar que no la retome**: falta. Lo que se probó es la mitad
-  determinista: el JSON que lee `/autobuild` trae `wip: null`. Que el agente derive de eso `wipActive: false` y no
-  reanude (`autobuild.js:968`) depende del modelo, y no se corrió.
+- **Tradeoffs, la prueba de `/autobuild` tiene que mirar que no la retome**: hecho, con una corrida real (abajo). El
+  registro del workflow muestra las tres lecturas de planning de antes de construir con `wipActive: false` sobre el WIP
+  rancio; el recorrido tomó la tarea de la cola, escribió su WIP encima del rancio y la cerró.
 - **Lo que el enunciado no preveía**: los guards `planFirst` y `scopeAlive` siguen leyendo el WIP rancio como activo. Eso
   es anterior a este cambio y queda anotado. Además, la línea `WIP idle` sigue saliendo debajo de `STALE`.
 
@@ -120,8 +121,19 @@ Lo que se corrió:
   `(sin tarea disponible)`, y `--json` da `{"task":null,"wip":null,"staleWip":"alta-de-cliente"}`.
 - `test/planning/stale-wip.test.js`, 2 pruebas, en rojo contra HEAD y en verde después.
 - 7 mutaciones en una copia, las 7 rojas.
+- **Corrida real de `/autobuild`**, 2026-11-22, Claude Code 2.1.330 por `claude -p`, sobre un banco `sidecar` fuera del
+  árbol con el motor congelado en `69d16fa6`. El banco traía `alta-de-cliente` en `done/`, un WIP en `phase: Build`
+  apuntándola para cada forma del runner (la sesión, `ops/` y `app/`) y `sumar-dos-numeros` en cola. USD 8,37, unos
+  13 minutos.
+  - El registro del workflow (`journal.jsonl`) da `hasTask: true, wipActive: false` en las lecturas de Triage, sobre
+    `wip/var-tmp-cauce-run-535-ops.md`, que era uno de los rancios.
+  - No retomó `alta-de-cliente`: construyó y cerró `sumar-dos-numeros`, con commit `c4cb7f4` en `app`. Su WIP quedó
+    en `status: IDLE`.
+  - El informe final nombró los dos WIP rancios que quedaban, los de las otras dos formas del runner, y propuso
+    dejarlos en IDLE sin hacerlo, como pide el caso.
+  - Una primera corrida con `bypassPermissions` y sin tope de espera se paró a los dos minutos; no cuenta.
 
-**Sin probar:** una corrida real de `/autobuild` sobre el WIP rancio; sigue pendiente, en el punto 7.
+**Sin probar:** nada más.
 
 ### Lista de cierre
 
@@ -131,7 +143,7 @@ Lo que se corrió:
 4. hecho: 7 mutaciones en una copia, las 7 rojas.
 5. hecho: quita la tarea ofrecida y el `claim`; la prueba asierta su ausencia (`doesNotMatch`) y se vio en rojo contra HEAD.
 6. hecho: banco con la CLI real, sin dobles, para `check` y `context`.
-7. pendiente: la corrida real de `/autobuild` que el caso pide; necesita gastar modelo y se pregunta antes.
+7. hecho: la corrida real de `/autobuild` que el caso pide, autorizada por la persona; no retomó la tarea cerrada.
 8. hecho: la reproducción y las mutaciones se repitieron sobre la versión final.
 9. hecho: WIP rancio solo, con cola y con un reclamo propio; WIP en IDLE y WIP sobre una tarea abierta.
 10. hecho: dependían `context`, su JSON y `check`; `planFirst` y `scopeAlive` se revisaron y quedan anotados arriba.
@@ -140,4 +152,4 @@ Lo que se corrió:
 13. hecho: `npm run ci` con los archivos nuevos stageados, 1926 de 1926, exit 0.
 14. hecho: este cierre recorre el Fix propuesto y los Tradeoffs.
 15. hecho: nombra lo corrido con su salida, lo que el enunciado no preveía, y lleva su línea `**Sin probar:**`.
-16. pendiente: el estado pasa a `resuelto` cuando se cierre el punto 7; la entrada del CHANGELOG ya está.
+16. hecho: `resuelto` con `resuelto-en: 0.124.0` en el frontmatter y en el encabezado; entrada en el CHANGELOG de 0.124.0.
