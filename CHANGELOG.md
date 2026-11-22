@@ -47,6 +47,15 @@ diseño — eso vive en el commit y en el código.
   `guard-mcp.sh` y suma `guard-mcp-granted.sh` en `PostToolUse`. Si usás un navegador por MCP sobre un ambiente de prueba, declaralo en
   `mcpSandbox`.
 
+- **El árbol de una línea puede traer el `.env` del checkout de siempre** (caso 543). Un worktree no trae lo que git
+  ignora, y ahí suele estar el `.env`: la línea arrancaba sin la configuración de sus servicios, y nada lo decía.
+  - `ops line` nombra los `.env*` ignorados que el checkout de siempre tiene y el árbol no, sin leerlos.
+  - `ops line … --env` los copia sin pisar ninguno, y si hay compose deja el `COMPOSE_PROJECT_NAME` de la línea.
+  - `ops lines env <ops-root> <línea>` dice qué clave envejeció, sin mostrar valores, y con `--apply` copia el original
+    y guarda el anterior en `lines/<línea>/.env-prev/`.
+  - El retiro en seco (`ops lines join`) avisa lo que la línea deja del lado del producto: el proyecto de compose, con
+    cómo bajarlo si es propio, y los `.env*` que el retiro se lleva (caso 544).
+
 ### Corregido
 
 - **Un `gh pr create --repo` que nombra un repositorio que no es el `origin` frena** (caso 540). R10 dice
