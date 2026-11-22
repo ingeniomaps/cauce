@@ -18,6 +18,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`ops copy <repo> [destino]` arma la copia que R23 pide para mutar** (caso 536). Cada agente la armaba a mano, y las
+  dos formas que salían solas fallaban sin avisar: `git ls-files` dejaba afuera la prueba recién escrita y la mutación
+  corría sin ella; `cp -r` arrastraba lo ignorado, y una caché de 11 GB dejó sin memoria a una máquina. Copia lo
+  trackeado y lo nuevo no ignorado, sin el `.git`; mide antes y se niega pasado un tope (500 MB, o `--max-mb`, y un
+  cuarto de la memoria si el destino es un tmpfs); nunca borra el destino ni copia adentro del repositorio; avisa lo que
+  no copia —submódulos, repos anidados— y los enlaces que apuntan afuera de la copia; imprime la ruta sola por `stdout`.
+
 - **`ops done <planning> <tarea> --fields <archivo>` cierra una tarea en una llamada** (caso 537). Hace el paso 13 del
   PROTOCOL, que fuera de `/autobuild` era una lista en prosa:
   - El archivo de campos lleva lo que juzga quien cierra: `done`, `qa`, `tests`, `commit`, `review`, `critique` y
@@ -65,6 +72,35 @@ diseño — eso vive en el commit y en el código.
   referencia», declaralas en `adopta:` y reinstalá el runner.
 
 ### Corregido
+
+- **`check` avisa un enlace relativo roto en `planning/` u `organization/`** (caso 531). Una regla que enlazaba un
+  archivo movido o partido pasaba en verde. Ahora se avisa el archivo que no existe y el ancla que el destino no tiene.
+  No mira `done/`, `archive/`, los bloques de código ni los placeholders de plantilla (`NNN-slug.md`, `{{…}}`). Es aviso,
+  no error: una instancia con enlaces viejos no pasa a rojo de golpe, y el ancla depende de cómo slugifica el visor.
+
+- **Una instancia con GitFlow puede declarar sus otras ramas vivas** (caso 533). Cauce contaba como vivas `main`,
+  `master` y la rama por defecto de cada remoto, así que con `allowPush` un agente empujaba y commiteaba directo en
+  `develop` o `production`. `runner.liveBranches` suma las que el proyecto nombra: un commit que cae en ellas frena, y
+  publicar en ellas pide nombrarlas en `pushToLiveBranches`, como con `main`. El agente no se la escribe, como
+  `allowPush`. **Qué hacer:** si trabajás con GitFlow, declará `develop` y las ramas de ambiente.
+
+- **Un WIP que quedó apuntando a una tarea ya cerrada ya no se ofrece como la tarea en curso** (caso 535). Si una
+  sesión se cortaba entre escribir `done/<tarea>.md` y dejar el WIP en IDLE, `ops context` presentaba esa tarea y
+  mandaba a reclamarla, `claim` la rechazaba, y `/autobuild` la retomaba como reanudación. Ahora `context` lo dice en una
+  línea `STALE`, no la ofrece y su JSON la trae sin WIP; `check` lo avisa. La reparación sigue siendo dejar el WIP en
+  `status: IDLE`.
+- **`check` avisa la entrada de `done/` que no pega el resultado de verificar** (caso 534). El PROTOCOL pedía exit codes
+  y nada lo comprobaba: «verifiqué que las pruebas pasan» pasaba igual que `npm test → exit 0, 41 passed`. Ahora una
+  entrada cuyo `done:` y `qa:` no traen un exit code, un `N/M` o un número de pruebas, ni lo justifican con `n/a —
+  razón`, se avisa por su nombre. Rige desde la primera entrada de la instancia que pega uno: lo anterior se cuenta y
+  queda como está, y lo adoptado no cuenta. Es aviso, no error.
+
+- **Una credencial en la URL de un remoto ya no se imprime sin freno** (caso 530). `git remote -v`, `git remote
+  get-url`, `git config --get remote.origin.url` o `cat .git/config` mostraban entero un
+  `https://usuario:<token>@host/…`, y ningún guard lo veía porque esos comandos no nombran un archivo de credenciales.
+  Ahora `secrets-shell` lee las URLs del repositorio y frena sólo si alguna trae usuario y clave, o un token suelto.
+  El mensaje nombra el remoto, nunca el valor, y da el `git remote set-url` con la URL limpia. Un remoto sin
+  credencial se lee como siempre. `check` avisa además cada remoto así, en la instancia y en sus raíces.
 
 - **Un `gh pr create --repo` que nombra un repositorio que no es el `origin` frena** (caso 540). R10 dice
   que lo que se publica va al repositorio en el que se trabaja, y en un fork eso es el fork. Hasta ahora sólo se
