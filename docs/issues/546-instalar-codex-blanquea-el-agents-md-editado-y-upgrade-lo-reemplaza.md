@@ -1,15 +1,16 @@
 ---
 caso: 546
 titulo: instalar Codex blanquea la edición del AGENTS.md de la empresa, y el upgrade siguiente lo reemplaza entero
-estado: abierto
+estado: resuelto
+resuelto-en: 0.124.0
 prioridad: alta
 version-detectada: 0.124.0
 ---
 
 # 546 — instalar Codex blanquea la edición del AGENTS.md de la empresa, y el upgrade siguiente lo reemplaza entero
 
-**🔴 abierto** · detectado en 0.124.0 · prioridad **alta**: se pierde texto de la empresa sin aviso. El `upgrade` lo
-reporta como un reemplazo más, y lo que se pierde es lo único del archivo que no se puede regenerar.
+**🟢 resuelto en 0.124.0** · detectado en 0.124.0 · prioridad **alta**: se pierde texto de la empresa. El `upgrade` lo reporta como
+el reemplazo de un bloque de runner, y lo que se pierde es lo único del archivo que no se puede regenerar.
 
 ## Resumen
 
@@ -75,3 +76,66 @@ dueña de `AGENTS.md`, después de `install codex` su contenido se contaba como 
 ## Relacionados
 
 - 532: cuenta lo de la empresa como de Cauce en este mismo estado. Se arregla solo con este caso.
+
+## Cierre
+
+Se recorrió el caso entero:
+
+- **Fix propuesto, volver a anotar sólo si no estaba editado**: se hizo como decía el caso, en
+  `engine/automation/index.js`. `install` mira si el archivo estaba editado antes de fusionar el bloque, y si lo
+  estaba, deja el digest anotado como está. El comentario que daba por cierta la premisa («lo que la empresa escriba
+  alrededor cambia el digest igual») se corrigió.
+- **Tradeoffs, es una quita y se sostiene lado a lado**: hecho, abajo.
+- **Tradeoffs, el caso inverso tiene que seguir anotándose**: hecho. La prueba que ya existía («el bloque que install
+  escribe en AGENTS.md no queda como edición de la empresa») sigue en verde, y la mutación que nunca anota la pone roja.
+- **Tradeoffs, instancias que ya perdieron el texto**: el CHANGELOG lo dice y manda al historial de git.
+- **Lo que el enunciado no preveía**:
+  - Con el arreglo, el `upgrade` conserva el archivo, pero seguía diciendo que se había llevado el bloque del runner.
+    El aviso recorría todos los `SYSTEM_FILES`, también los conservados. Ahora salta los conservados
+    (`engine/cli/instance.js`). Con `--force` no hay conservados, y el aviso sale como debe.
+  - **Anotado sin caso propio**, porque falla hacia el lado seguro (conserva, no borra):
+    - Si la empresa devuelve su archivo al texto exacto del molde más el bloque, queda editado para siempre, y el
+      `upgrade` lo conserva hasta un `--force`.
+    - `automation uninstall` quita el bloque y no vuelve a anotar el archivo. Así un `AGENTS.md` sin editar queda como
+      editado después de desinstalar Codex. Esto ya pasaba antes de este cambio.
+
+Lo que se corrió:
+
+- `repro-546.js` en un banco, antes y después, lado a lado:
+
+  ```
+  antes:   tras install codex: empresa=true editado=0
+           upgrade: − AGENTS.md: se reemplazó entero y con él las instrucciones de codex
+           tras upgrade: empresa=false editado=0
+  después: tras install codex: empresa=true editado=1
+           upgrade: = conservado AGENTS.md (editado localmente)
+           tras upgrade: empresa=true editado=1
+  ```
+- La prueba nueva en `test/wiring/ownership.test.js`, en rojo contra el código de antes («sigue editado») y en verde
+  después.
+- 3 mutaciones en una copia, las 3 rojas: anotar aunque estuviera editado, no anotar nunca, y avisar el bloque de un
+  archivo conservado.
+- La revisión corrió ocho bancos: sin editar y editado, con dos instalaciones, Claude después de Codex, `uninstall` y
+  `upgrade --force`.
+
+**Sin probar:** fuera del modo embebido (en sidecar el `AGENTS.md` de la instancia no es el que lleva el bloque de un
+runner).
+
+### Lista de cierre
+
+1. hecho: la reproducción en un banco, antes en «Síntoma» y después en `repro-546-after.log`.
+2. hecho: rama `fix/cases-from-an-instance-audit`.
+3. hecho: la prueba nueva en rojo contra el código de antes y en verde después.
+4. hecho: 3 mutaciones en una copia, las 3 rojas.
+5. hecho: deja de anotar en un caso; la salida de antes y la de después van lado a lado arriba, y la prueba asierta que el `upgrade` ya no dice «se reemplazó entero».
+6. hecho: banco con la CLI real, sin dobles; se midió que el texto de la empresa ya no se pierde.
+7. no aplica: no depende de un modelo ni de un runner en vivo; `install` es el del motor.
+8. hecho: la reproducción y las mutaciones se repitieron sobre la versión final.
+9. hecho: dos runners (Claude y Codex), dos estados del archivo (editado y sin editar) y dos `upgrade` seguidos.
+10. hecho: dependían el aviso del bloque en `upgrade`, que se corrigió, y los demás `recordPaths`, que la revisión recorrió sin hallar otro blanqueo.
+11. hecho: una pasada de revisión independiente sobre la versión final, sin nada que impida entregar.
+12. hecho: pasada de comentarios: el de `install` se reescribió porque afirmaba una premisa falsa, y el de `instance.js` es nuevo.
+13. hecho: `npm run ci` con los archivos nuevos stageados, 1936 de 1936, exit 0.
+14. hecho: este cierre recorre el Fix propuesto y los Tradeoffs.
+15. hecho: nombra lo corrido con su salida, lo que el enunciado no preveía, y lleva su línea `**Sin probar:**`.
+16. hecho: `resuelto` con `resuelto-en: 0.124.0` en el frontmatter y en el encabezado; entrada en el CHANGELOG de 0.124.0.

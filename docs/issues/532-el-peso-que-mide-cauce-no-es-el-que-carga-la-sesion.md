@@ -138,8 +138,7 @@ Lo que se corrió:
   deduplicar por la ruta y no por la real, no cambian el resultado y se descartaron como equivalentes. La que mostraba
   que `doctor` podía no pasar la raíz ops sumó su caso.
 
-**Sin probar:** con un `AGENTS.md` de la empresa conservado por `init --force` y Codex instalado, lo de la empresa
-cuenta como de Cauce, porque `install` blanquea su edición en el manifiesto (caso 546, que lo arregla); la política de la organización en macOS y Windows, que viven en otra ruta; el `AGENTS.md` que Claude
+**Sin probar:** la política de la organización en macOS y Windows, que viven en otra ruta; el `AGENTS.md` que Claude
 Code lee cuando no hay ningún `CLAUDE.md`, que con el runner de Claude no pasa porque `install` siempre deja uno;
 `claudeMdExcludes`; si Claude Code sigue un `@` dentro de una regla de `.claude/rules/` o dentro de un comentario HTML
 (el código los sigue); y un `~/.claude/CLAUDE.md` que es un enlace, que se clasificaría por su destino.
@@ -156,7 +155,7 @@ Code lee cuando no hay ningún `CLAUDE.md`, que con el runner de Claude no pasa 
 8. hecho: el contraste con la sesión real y las mutaciones corrieron sobre la versión final.
 9. hecho: sidecar y embebida, con un `CLAUDE.md` entregado por Cauce y otro de la empresa, y con uno y dos runners instalados.
 10. hecho: depende sólo `doctor` de Claude; `index.js` exporta `deliveryState` y nada más cambió ahí.
-11. hecho: cuatro pasadas de revisión independiente; las tres primeras hallaron cada una un bloqueante de la partición, que se arregló y se revisó en la siguiente. La cuarta no halló nada de este cambio: halló que `install` blanquea la edición de un `AGENTS.md` de la empresa, que ya pasaba antes y sale como caso 546. Su último arreglo, la prueba embebida que carga `AGENTS.md`, se cerró con su mutación en rojo.
+11. hecho: cuatro pasadas de revisión independiente; las tres primeras hallaron cada una un bloqueante de la partición, que se arregló y se revisó en la siguiente. La cuarta no halló nada de este cambio: halló que `install` blanquea la edición de un `AGENTS.md` de la empresa, que ya pasaba antes y se arregló como caso 546. Su último arreglo, la prueba embebida que carga `AGENTS.md`, se cerró con su mutación en rojo.
 12. hecho: pasada de comentarios sobre `session-load.js` y `wiring.js`; el comentario que afirmaba un bloque que `install` no escribe se corrigió.
 13. hecho: `npm run ci` con los archivos nuevos stageados, 1934 de 1934, exit 0.
 14. hecho: este cierre recorre el Fix propuesto y los Tradeoffs.
