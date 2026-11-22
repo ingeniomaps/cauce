@@ -14,6 +14,7 @@ const { spawnSync } = require('node:child_process')
 const LNP = require('../planning/lines')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
 const LT = require('../core/line-trees')
+const LE = require('./line-env')
 const LN = require('./lines')
 const C = require('../planning/claims')
 
@@ -149,6 +150,7 @@ function retire(root, name, cli) {
     return {
       repo, source, tree, branch, head, commit: at ? at.commit : '', broken: exists && !at,
       registered: !exists && at ? at.path : '', treeReached, live, has, merged, exists, dirty,
+      left: exists ? LE.leftBehind(source, tree) : null,
     }
   })
   const ST = require('../planning/state')
@@ -199,6 +201,13 @@ function retire(root, name, cli) {
     if (one.merged && one.head && one.head !== branch && branchExists(one.source, one.head)) {
       console.log(`  queda ${one.head} en ${one.repo}: no es de la línea, y el retiro no la borra`)
     }
+    if (!report.applied) for (const note of leftNotes(one)) console.log(`  ${note}`)
+  }
+  // Los respaldos que deja `ops lines env --apply` tienen claves, y el retiro no los borra: se dicen por su nombre.
+  const backups = LT.sessionOf(root) && path.join(LT.sessionOf(root), LT.DIR, name, LE.PREV)
+  if (backups && fs.existsSync(backups)) {
+    console.log(`  quedan en ${backups} los .env que reemplazó ops lines env --apply, con sus claves: el retiro no `
+      + 'los borra; borralos cuando no los necesites')
   }
   if (milestones.length) {
     console.log(`  quedan hitos de la línea sin terminar: ${milestones.join(', ')} — sin la línea no los toma `
@@ -209,6 +218,28 @@ function retire(root, name, cli) {
     if (report.leftover) console.log(`  quedó ${report.leftover} con algo que no es de la línea: miralo y borralo`)
   } else if (held.length) console.log('  todavía no se puede retirar')
   else console.log(`Para hacerlo: ops lines join <ops-root> ${name} --apply`)
+}
+
+// Lo que el retiro no toca del lado del producto, dicho antes de hacerlo (caso 544).
+function leftNotes({ repo, left }) {
+  if (!left) return []
+  const notes = []
+  if (left.project && left.project.name) {
+    notes.push(`${repo}: su compose corría como el proyecto ${left.project.name}, y el retiro no lo baja ni borra sus `
+      + `volúmenes. Si lo levantaste: docker compose -p ${left.project.name} down, antes de retirar.`)
+  } else if (left.project && left.project.unknown) {
+    notes.push(`${repo}: no se sabe con qué proyecto corre su compose —el nombre sale de una variable, del name: del `
+      + 'compose o no es uno que Compose acepte—, ni si es el del checkout de siempre; el retiro no toca lo que haya '
+      + 'levantado.')
+  } else if (left.project) {
+    notes.push(`${repo}: su compose, desde este árbol, es el mismo proyecto que el del checkout de siempre; lo que `
+      + 'levantó lo comparte con él, y el retiro no lo toca.')
+  }
+  if (left.envFiles.length) {
+    notes.push(`${repo}: el retiro se lleva ${left.envFiles.join(' y ')} del árbol, que git ignora; si los editaste `
+      + 'ahí, guardalos antes.')
+  }
+  return notes
 }
 
 const heldWhy = (one, named = true) => `${named ? `${one.repo}: ` : ''}${one.merged

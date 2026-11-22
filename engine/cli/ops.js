@@ -11,6 +11,7 @@ const IN = require('./instance')
 const PL = require('./planning')
 const LN = require('./lines')
 const LJ = require('./lines-join')
+const LE = require('./line-env')
 const PR = require('./promote')
 const CT = require('./contract')
 const BN = require('./bench')
@@ -177,10 +178,11 @@ function usage() {
   ops split-backlog <planning-dir>
   ops promote <planning-dir> <epic-NNN-slug>
   ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>
-  ops line <ops-root> <nombre> [<repo>...] [--json]
+  ops line <ops-root> <nombre> [<repo>...] [--env] [--json]
   ops lines <ops-root> [--json]
   ops lines join <ops-root> <nombre> [--apply] [--json]
   ops lines migrate <ops-root> <nombre> <repo>... [--apply] [--json]
+  ops lines env <ops-root> <nombre> [--apply] [--json]
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea> [--line <nombre>]
   ops release <planning-dir> <tarea> [--line <nombre>]
@@ -268,6 +270,7 @@ async function run(cli) {
   else if (command === 'line') LN.line(arg[1], arg[2], arg.slice(3), cli)
   else if (command === 'lines' && arg[1] === 'join') LJ.join(arg[2], arg[3], cli)
   else if (command === 'lines' && arg[1] === 'migrate') LJ.migrate(arg[2], arg[3], arg.slice(4), cli)
+  else if (command === 'lines' && arg[1] === 'env') LE.env(arg[2], arg[3], cli)
   else if (command === 'lines') LN.lines(arg[1], cli)
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)

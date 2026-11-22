@@ -164,6 +164,11 @@
     "branches": 44,
     "functions": 100
   },
+  "engine/cli/line-env.js": {
+    "lines": 100,
+    "branches": 81,
+    "functions": 100
+  },
   "engine/cli/lines.js": {
     "lines": 97,
     "branches": 86,

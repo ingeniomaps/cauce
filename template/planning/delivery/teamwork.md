@@ -147,6 +147,12 @@ un `container_name`, una IP, un puerto— choca además con cualquier nombre de 
 lado del producto: `COMPOSE_PROJECT_NAME` en el `.env` del árbol para lo primero, y el nombre de la línea en lo fijo
 para lo segundo. Cauce no reescribe el compose.
 
+Lo que git ignora tampoco llega al árbol, y ahí suele estar el `.env`. `ops line` nombra los `.env*` que el checkout de
+siempre tiene y el árbol no; `ops line … --env` los copia sin pisar ninguno y deja el `COMPOSE_PROJECT_NAME` de la
+línea; `ops lines env <ops-root> <línea>` dice qué clave envejeció, sin mostrar valores, y con `--apply` copia el
+original y guarda el anterior en `lines/<línea>/.env-prev/`. Al retirar la línea, lo que levantó del lado del
+producto —contenedores, volúmenes, una base— no lo baja Cauce: el retiro en seco lo avisa antes.
+
 ```
 acme/                         la carpeta de sesión: una sola, con un solo CLAUDE.md y un solo .claude/
 ├── acme-ops/                 la instancia, una sola: un planning, un staging
