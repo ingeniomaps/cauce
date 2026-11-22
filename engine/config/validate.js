@@ -58,7 +58,8 @@ const exemptsAll = (pattern) => {
 // Las llaves que acepta `ops.config.json`. `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión
 // salió la instancia. `test/hooks/ops-config-keys.test.js` exige que cada una diga si afloja un guard (caso 498).
 const CONFIG_KEYS = ['$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-  'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards', 'reviewExempt']
+  'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards', 'reviewExempt',
+  'mcpSandbox', 'mcpReads']
 const RUNNER_BOOLEANS = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
 const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
   'allowAiSignature', ...RUNNER_BOOLEANS]
@@ -91,6 +92,13 @@ function validateOpsConfig(config) {
   if (bounded !== undefined && (!Array.isArray(bounded)
     || bounded.some((one) => typeof one !== 'string' || !one.trim()))) {
     errors.push('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben')
+  }
+  const names = (key) => config[key] !== undefined && (!Array.isArray(config[key])
+    || config[key].some((one) => typeof one !== 'string' || !one.trim()))
+  if (names('mcpSandbox')) errors.push('ops.config.json: mcpSandbox debe ser una lista de nombres de servidor MCP')
+  if (names('mcpReads')) {
+    errors.push('ops.config.json: mcpReads debe ser una lista de herramientas MCP, con o sin '
+      + 'su prefijo mcp__<servidor>__')
   }
   // Un patrón vacío casaría con cualquier ruta.
   const exempt = config.reviewExempt

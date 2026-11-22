@@ -87,6 +87,22 @@
         "minLength": 1
       }
     },
+    "mcpSandbox": {
+      "type": "array",
+      "description": "Los servidores MCP que son un sandbox, por su nombre tal como aparece en mcp__<servidor>__<herramienta>. El guard mcp-writes no los frena; los demás se tratan como reales y lo que escriben lo aprueba una persona (R12).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mcpReads": {
+      "type": "array",
+      "description": "Las herramientas MCP que sólo leen y cuyo nombre no empieza con un verbo de lectura (get, list, search…). Con el prefijo mcp__<servidor>__ valen para ese servidor; sin él, para cualquiera.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "timeZone": {
       "type": "string",
       "minLength": 1,

@@ -54,7 +54,9 @@ test('un guard del proyecto frena con su mensaje y deja pasar lo demás, con la 
 test('los guards del proyecto corren una vez por evento, lo llame el runner por el grupo o por su único guard', () => {
   assert.deepEqual(PG.eventsOf(['secrets-read'], hookGroups), ['pre-read'])
   assert.deepEqual(PG.eventsOf(['pre-read'], hookGroups), ['pre-read'])
-  assert.deepEqual(PG.eventsOf(['jira-adf'], hookGroups), ['pre-mcp'])
+  // Desde el caso 541 `pre-mcp` tiene dos guards, así que `jira-adf` solo ya no es el evento.
+  assert.deepEqual(PG.eventsOf(['jira-adf'], hookGroups), [])
+  assert.deepEqual(PG.eventsOf(['pre-mcp'], hookGroups), ['pre-mcp'])
   assert.deepEqual(PG.eventsOf(['planning-drift'], hookGroups), ['stop'])
   assert.deepEqual(PG.eventsOf(['pre-shell', 'pre-shell'], hookGroups), ['pre-shell'])
   assert.deepEqual(PG.eventsOf(['destructive'], hookGroups), [])
@@ -232,8 +234,9 @@ test('guards sólo acepta eventos que juzgan y rutas relativas a la raíz ops', 
 })
 
 test('cada grupo del motor está clasificado: admite guards del proyecto o está exento con su razón', () => {
-  // Los dos de `prompt` registran el mensaje y le nombran las reglas a la sesión: ninguno frena nunca.
-  const exempt = ['prompt', 'prompt-notice']
+  // Los dos de `prompt` registran el mensaje y le nombran las reglas a la sesión, y `post-mcp` anota lo que ya corrió:
+  // ninguno frena nunca.
+  const exempt = ['prompt', 'prompt-notice', 'post-mcp']
   assert.deepEqual([...GUARD_EVENTS, ...exempt].sort(), Object.keys(hookGroups).sort())
   const schema = require('../../engine/schemas/ops-config.schema.json')
   assert.deepEqual(Object.keys(schema.properties.guards.properties).sort(), [...GUARD_EVENTS].sort())

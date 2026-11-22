@@ -108,7 +108,7 @@ mensaje —por shell, ninguna: un comando no dice con qué va a quedar el archiv
 ```text
 Claude / Codex / Antigravity / Gemini
         ↓ evento del runner
-automatization/hooks/guard-shell.sh · guard-files.sh   (grupo)
+automatization/hooks/guard-shell.sh · guard-files.sh · guard-mcp.sh   (grupo)
 o automatization/hooks/guard-<nombre>.sh               (guard suelto)
         ↓ nombre del grupo o del guard
 automatization/hooks/run-hook.sh
@@ -129,13 +129,16 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 | `pre-shell` | destructive, git-add, dependencies, governance, live-commit, ai-signature, comments, verify, shell-boundary, secrets-shell, test-evidence-shell, ops-config-shell, runtime-shell, test-workers | `guard-shell.sh` |
 | `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence, plan-first, ops-config, runtime | `guard-files.sh` |
 | `pre-read` | secrets-read | `guard-secrets-read.sh` |
-| `pre-mcp` | jira-adf | `guard-jira-adf.sh` |
+| `pre-mcp` | jira-adf, mcp-writes | `guard-mcp.sh` |
+| `post-mcp` | mcp-granted | `guard-mcp-granted.sh` |
 | `prompt` | chat | `guard-chat.sh` |
 | `prompt-notice` | rules-notice | `guard-rules-notice.sh` |
 | `stop` | planning-drift | `guard-planning-drift.sh` |
 
-`pre-mcp` corre sólo en Claude Code, sobre las herramientas de un servidor MCP que nombra su matcher
-(`mcp__.*__editJiraIssue`): Codex y Gemini no instalan ese hook.
+`pre-mcp` y `post-mcp` corren sólo en Claude Code, sobre toda herramienta MCP (`mcp__.*`): Codex, Gemini y
+Antigravity no instalan esos hooks, así que ahí lo que un agente escribe por MCP no lo frena ningún guard. `post-mcp`
+corre después de la herramienta y no frena: anota como concedida la que se aprobó, para que el diálogo no la vuelva a
+preguntar en la misma sesión.
 
 `prompt` corre sobre el mensaje de la persona —`UserPromptSubmit` en Claude y Codex, `BeforeAgent` en
 Gemini— y no sobre una herramienta, y su shim sale siempre con 0.

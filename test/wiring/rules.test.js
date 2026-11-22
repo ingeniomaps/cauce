@@ -221,8 +221,9 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // nombrar en vez de cargar la doctrina de cómo se prueba, R29 (caso 440), 45,9 al llevar al README el relato de
   // los incidentes (caso 441), 46,3 al devolverle a R9 las tres exigencias de R29 que no admiten excepción, 45,6
   // al llevar también el relato de `process.md` (caso 443), 45,7 al sumarle a R9 el antes y el después de cambiar
-  // quién hace algo, 45,9 al sumarle que una confirmación que estorba está cuidando algo, y 46,0 al decir en R10
-  // que la API de GitHub y el destino de un PR también se comprueban (casos 539 y 540)— y la ventana se deja
+  // quién hace algo, 45,9 al sumarle que una confirmación que estorba está cuidando algo, 46,0 al decir en R10
+  // que la API de GitHub y el destino de un PR también se comprueban (casos 539 y 540), y 46,3 al decir en R12
+  // dónde se frena lo que se escribe por MCP (caso 541)— y la ventana se deja
   // angosta a propósito: que esta prueba falle en cada edición de una regla **es** la función, y es lo único que
   // obliga a medir lo que cada agente paga antes de moverla.
   //

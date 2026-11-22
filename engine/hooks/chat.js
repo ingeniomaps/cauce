@@ -343,6 +343,13 @@ function grant(input, saved, entries) {
   trail(saved.root, input, added, grantedAt)
 }
 
+// Lo que corrió después de que un guard lo pidiera queda concedido el resto de la sesión: si corrió, alguien lo aprobó
+// —el diálogo, que no le avisa al guard, el chat o `.ops-approval`—. Lo usa un `PostToolUse` (caso 541).
+function grantRan(input, items, via) {
+  const saved = input.session_id && load(input.session_id)
+  if (saved) grant(input, saved, items.map((item) => ({ item, via })))
+}
+
 const trail = (root, input, entries, grantedAt = new Date().toISOString()) => TRAIL.append(root, LOG, entries.map(
   (one) => ({ grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null })))
 
@@ -458,4 +465,5 @@ function grantedIn(root) {
 }
 
 module.exports = { DIR, record, recordPath, delegated, said, wordsOf, authorized, unauthorized, unauthorizedNow, hold,
-  grantedIn, placed, spokenOf, isPush, refuses, namedUnasked, namedCommand, CLAUSE, ENCLITIC, HALT, NEGATION }
+  grantedIn, grantRan, placed, spokenOf, isPush, refuses, namedUnasked, namedCommand, CLAUSE, ENCLITIC, HALT,
+  NEGATION }

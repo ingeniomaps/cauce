@@ -37,6 +37,8 @@ const CASES = {
   reviewExempt: [{}, { reviewExempt: ['**/*.lock'] }, '+**/*.lock', { reviewExempt: ['**/*.lock'] }, {}],
   lines: [{ lines: { a: ['../x'] } }, { lines: { a: ['../x', '../y'] } }, 'a +../y', { lines: { a: ['../x'] } }, {}],
   deployCommands: [{ deployCommands: ['make deploy'] }, {}, '-make deploy', {}, { deployCommands: ['make deploy'] }],
+  mcpSandbox: [{}, { mcpSandbox: ['jira-pruebas'] }, '+jira-pruebas', { mcpSandbox: ['jira-pruebas'] }, {}],
+  mcpReads: [{}, { mcpReads: ['sync_metrics'] }, '+sync_metrics', { mcpReads: ['sync_metrics'] }, {}],
   guards: [{ guards: { 'pre-shell': ['g/a.sh'] } }, { guards: { 'pre-shell': ['g/b.sh'] } }, 'pre-shell -g/a.sh',
     { guards: { 'pre-shell': ['g/a.sh'] } }, { guards: { 'pre-shell': ['g/a.sh', 'g/b.sh'] } }],
   comments: [{ comments: { inlineMax: 3 } }, { comments: { inlineMax: 9 } }, 'inlineMax 9',

@@ -57,6 +57,8 @@ const KEYS = {
   reviewExempt: added, // autobuild: los archivos que la revisión tiene que abrir (caso 485)
   lines: byGroup(added), // cada repositorio de una línea es una raíz escribible
   deployCommands: removed, // delivery
+  mcpSandbox: added, // mcp-writes: un servidor que deja de frenarse
+  mcpReads: added, // mcp-writes: una herramienta que pasa como lectura
   guards: byGroup(removed), // los guards propios del proyecto, por evento
   comments, // comments: quitarlo apaga el guard; subir `inlineMax` lo afloja
   migrations: uncovered, // migrations

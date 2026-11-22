@@ -14,6 +14,11 @@ Las excepciones se documentan en la sección «Integraciones y ambientes» de
 `organization/workspace.md`, nombrando el entorno concreto: ese archivo es del proyecto y
 `upgrade` no lo toca.
 
+En Claude Code, una herramienta MCP cuyo nombre no empieza con un verbo de lectura frena hasta esa
+aprobación, que vale para ella el resto de la sesión. Un servidor que es un sandbox se declara además en
+`mcpSandbox` de `ops.config.json`. En los otros runners, y por cualquier otro camino, lo sostienen esta
+regla y el review.
+
 ## R13 — Negarse no es entregar
 
 Cada límite tiene una contraparte positiva, y respetarlo no exime de ella. Negarse bien y no dejar nada

@@ -2,7 +2,7 @@
 
 // Editar la descripción de una tarjeta de Jira por MCP en markdown la reemplaza entera, y el markdown no
 // lleva lo que el ADF sí: menciones, tablas, casillas, paneles (caso 229). Cauce no escribe en Jira, pero un
-// agente sí puede, con la herramienta `editJiraIssue` del MCP de Atlassian; en una instancia real eso aplanó
+// agente sí puede, con la herramienta de edición del MCP de Atlassian; en una instancia real eso aplanó
 // las filas de una tarjeta de release.
 //
 // Se frena sólo la edición de una descripción existente que no viene en ADF. Crear una tarjeta, editar otro
