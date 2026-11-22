@@ -367,6 +367,8 @@ function install(root, name, output = console, options = {}) {
     const ownFile = runner.instructions.includes(resolved.item)
     if (!ownFile) landed.add(path.dirname(resolved.target))
     if (ownFile && isSharedFile(root, resolved.target)) {
+      const own = path.relative(root, resolved.target).split(path.sep).join('/')
+      const edited = O.SYSTEM_FILES.includes(own) && M.editedPaths(root, [own]).length > 0
       const content = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
       if (blockUpToDate(resolved.target, name, content)) {
         output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
@@ -375,13 +377,10 @@ function install(root, name, output = console, options = {}) {
         output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
       }
       deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digestRelocatable(resolved, OPS_ROOT)
-      // Y en la otra sección, porque este archivo está en las dos: `AGENTS.md` es del sistema y es
-      // donde este runner deja su bloque. Anotarlo sólo acá dejaba a `localChanges` comparando contra
-      // el digest previo al bloque, así que el `upgrade` siguiente se detenía echándole a la empresa
-      // una edición que había hecho el comando de al lado. Lo que la empresa escriba alrededor cambia
-      // el digest igual, así que se sigue viendo.
-      const own = path.relative(root, resolved.target).split(path.sep).join('/')
-      if (O.SYSTEM_FILES.includes(own)) M.write(root, M.recordPaths(root, [own], M.read(root)))
+      // Y en la otra sección, porque `AGENTS.md` es del sistema y es donde este runner deja su bloque: sin anotarlo, el
+      // `upgrade` siguiente le echaba a la empresa la edición del comando de al lado. Sólo si no estaba editado: anotar
+      // uno que la empresa ya había editado blanqueaba la edición, y el `upgrade` lo reemplazaba entero (caso 546).
+      if (O.SYSTEM_FILES.includes(own) && !edited) M.write(root, M.recordPaths(root, [own], M.read(root)))
       continue
     }
     if (status === 'ajeno' && ownFile) {

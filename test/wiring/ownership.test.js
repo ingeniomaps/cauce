@@ -144,6 +144,27 @@ test('el bloque que install escribe en AGENTS.md no queda como edición de la em
   assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/)
 })
 
+// Caso 546: el `AGENTS.md` que la empresa ya tenía, conservado por `init --force`, está editado. Meterle el bloque
+// de un runner no lo vuelve del molde: si se anotara, el `upgrade` siguiente lo reemplazaría entero, y su texto.
+test('el bloque que install escribe en un AGENTS.md de la empresa no blanquea su edición', () => {
+  const base = tempRoot('cauce-bloque-ajeno-')
+  const target = path.join(base, 'acme')
+  fs.mkdirSync(target, { recursive: true })
+  fs.writeFileSync(path.join(target, 'AGENTS.md'), '# Nuestro AGENTS.md\n\nTEXTO-DE-LA-EMPRESA\n')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'embedded', '--no-install', '--force']).status, 0)
+  linkEngine(target)
+  assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/, 'la precondición')
+
+  assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
+  assert.match(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /<!-- cauce:codex inicio/)
+  assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/, 'sigue editado')
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.doesNotMatch(upgraded.stdout, /AGENTS\.md: se reemplazó entero/)
+  const body = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')
+  assert.match(body, /TEXTO-DE-LA-EMPRESA/, 'y su texto queda')
+})
+
 // `list` es el comando que informa si un runner está instalado, y componía la ruta contra la instancia
 // en vez de resolverla como sus tres hermanos —`install`, `doctor` y `uninstall` usan `runnerPaths`—.
 // En `sidecar`, que es el modo por defecto, el wiring vive en el padre: los cuatro adaptadores salían

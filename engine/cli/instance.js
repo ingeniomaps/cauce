@@ -287,7 +287,8 @@ function upgrade(dir, cli) {
     // archivo de instrucciones —hoy `AGENTS.md`—, nunca dentro de un directorio del sistema.
     for (const relative of O.SYSTEM_FILES) {
       const file = path.join(root, relative)
-      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue
+      // El que se conserva por editado se queda con su bloque: avisar que se lo llevó era falso (caso 546).
+      if (keptFiles.has(relative) || !fs.existsSync(file) || !fs.statSync(file).isFile()) continue
       if (fs.readFileSync(file, 'utf8').includes(A.blockStart(runner))) droppedBlocks.push({ runner, relative })
     }
   }
