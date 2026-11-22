@@ -169,6 +169,7 @@ function check(dir, cli) {
   // corre en los cuatro carriles, incluidos los que saltean Ready (caso 140).
   warnings.push(...PC.unverifiableAcceptance(milestones))
   warnings.push(...PC.staleWips(wips, done))
+  warnings.push(...require('../planning/links').linkWarnings(path.resolve(root, '..')))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   errors.push(...DE.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
   const ops = path.resolve(root, '..')

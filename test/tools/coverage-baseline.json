@@ -729,6 +729,11 @@
     "branches": 57,
     "functions": 100
   },
+  "engine/planning/links.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/core/remote-credentials.js": {
     "lines": 100,
     "branches": 96,
