@@ -11,6 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const P = require('./parser')
 const BK = require('./backlog')
+const AD = require('./adopted')
 
 const EPIC_AUXILIARY_FILES = new Set(['notes.md', 'plan.md', 'research.md', 'spec.md'])
 
@@ -179,7 +180,9 @@ function retiredByOverride(dir, name) {
   const system = path.join(rules, 'system', name)
   if (!fs.existsSync(system)) return []
   const redefined = ruleIds(path.join(rules, name))
-  return ruleIds(system).filter((id) => !redefined.includes(id))
+  // Las que adopta siguen rigiendo, desde `rules/adopted/` (caso 545).
+  const adopted = AD.adoptedIds(rules, name)
+  return ruleIds(system).filter((id) => !redefined.includes(id) && !adopted.includes(id))
 }
 
 function validateRules(dir) {
@@ -212,6 +215,7 @@ function validateRules(dir) {
         : `rules/${name}: ${id} ya lo define ${definedBy}`)
     }
   }
+  errors.push(...AD.errorsOf(rules))
   return errors
 }
 

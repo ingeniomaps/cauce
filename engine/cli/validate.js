@@ -23,6 +23,7 @@ const IB = require('../planning/inbox')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const AD = require('../planning/adoption')
+const ADOPTED = require('../planning/adopted')
 const AP = require('../hooks/approval')
 const I = require('../integrations/registry')
 const O = require('../core/ownership')
@@ -237,6 +238,8 @@ function check(dir, cli) {
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
       + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)
   }
+  // Lo que se adopta de un archivo sobrescrito, contra lo que el sistema dice hoy (caso 545).
+  warnings.push(...ADOPTED.staleOf(path.join(root, 'rules')))
   // Y lo que instaló cada runner, contra esas mismas reglas (caso 099).
   warnings.push(...RL.staleLines(path.resolve(root, '..')))
   // Y cuánto pesa lo que ese bloque carga, cuando ya se pasó del umbral. Es la contracara de la línea que

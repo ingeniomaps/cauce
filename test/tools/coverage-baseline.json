@@ -469,6 +469,11 @@
     "branches": 73,
     "functions": 100
   },
+  "engine/planning/adopted.js": {
+    "lines": 100,
+    "branches": 91,
+    "functions": 100
+  },
   "engine/planning/checkpoints.js": {
     "lines": 100,
     "branches": 100,

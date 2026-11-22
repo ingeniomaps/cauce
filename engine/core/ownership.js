@@ -230,9 +230,15 @@ function effectiveRules(root) {
   }
   const replaced = new Set(overrides(root).filter((one) => one.collection === 'planning/rules')
     .map((one) => one.system))
+  // Lo que un override adopta del sistema, generado aparte (caso 545). Se nombra aunque falte en disco: así el bloque
+  // de un runner que no lo tiene se lee viejo, y `check` avisa que hay que rehacerlo.
+  const AD = require('../planning/adopted')
+  const adopted = AD.declared(dir).filter((one) => one.system !== null)
+    .map((one) => `planning/rules/${AD.DIR}/${one.name}`)
   return [
     ...markdown('system').filter((name) => !replaced.has(name)).map((name) => `planning/rules/system/${name}`),
     ...markdown('').map((name) => `planning/rules/${name}`),
+    ...adopted,
   ]
 }
 

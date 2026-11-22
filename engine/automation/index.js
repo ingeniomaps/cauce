@@ -285,6 +285,7 @@ function install(root, name, output = console, options = {}) {
   if (O.mode(root) === 'toolkit') {
     throw new Error('Acá se fabrica Cauce, no se lo consume.')
   }
+  require('../planning/adopted').write(path.join(root, 'planning', 'rules')) // el bloque lo nombra (caso 545)
   const runner = runnerManifest(root, name)
   const errors = check(root)
   if (errors.length) throw new Error(`La automatización no es instalable:\n- ${errors.join('\n- ')}`)
