@@ -160,7 +160,7 @@ test('cada gh de un comando se juzga por si nombra su repositorio', () => {
     // Los marcadores que `gh` completa desde la carpeta no nombran nada.
     const api = 'gh api -X PUT repos/:owner/:repo/pulls/3/merge'
     ws.approve(api)
-    blocked('destructive', runs(ws.repos.api, api), /pull request/)
+    blocked('destructive', runs(ws.repos.api, api), /API de GitHub/)
     // Lo que va entre comillas es un valor, y una llamada separada con `&` es otra llamada.
     for (const loose of ['gh pr comment 5 --body "pasá --repo la próxima"',
       'gh pr view 1 --repo o/r & gh api -X PUT repos/{owner}/{repo}/pulls/2/merge',

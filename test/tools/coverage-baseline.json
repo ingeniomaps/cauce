@@ -689,6 +689,11 @@
     "branches": 98,
     "functions": 100
   },
+  "engine/hooks/github-api.js": {
+    "lines": 100,
+    "branches": 93,
+    "functions": 100
+  },
   "engine/automation/subfolder-hooks.js": {
     "lines": 95,
     "branches": 78,

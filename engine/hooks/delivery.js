@@ -11,7 +11,10 @@
 // que pudiera desplegar: un deploy hecho con un script propio no tiene forma hasta que el proyecto la declara en
 // `deployCommands`.
 
-const { configOf, opsRoot } = require('./input')
+const { execFileSync } = require('node:child_process')
+const { configOf, cwdOf, gitDirectory, opsRoot } = require('./input')
+const { apiActs } = require('./github-api')
+const { namedCommand } = require('./chat')
 const { ordersPull } = require('./orders')
 const { PROGRAM_PATH } = require('./quoting')
 
@@ -22,6 +25,9 @@ const FLAGS = String.raw`(?:\s+-{1,2}[^\s;&|]+(?:\s+[^-\s;&|][^\s;&|]*)?)*`
 const ENDS = String.raw`(?=$|[\s;&|)'"\`])`
 const SAME = String.raw`[^;&|\n]`
 const verb = (program, verbs) => `${program}${FLAGS}\\s+(?:${verbs})\\b`
+// `gh` acepta el repositorio antes del subcomando —`gh -R acme/app pr merge 5`, `-Racme/app`—, y escrito ahí no se
+// veía el acto; repetido, vale el último. `gh api` no lo acepta (`unknown shorthand flag: 'R'`, gh 2.86.0).
+const GH_REPO = String.raw`gh(?:\s+(?:-R\s*|--repo(?:=|\s+))([^\s;&|]+))*`
 
 const PR = "actúa sobre un pull request —mergear, aprobar, cerrar o comentar es publicar en el repositorio de "
   + 'otra gente— y R10 lo deja a una persona. Si son varios, van en un mismo comando: la confirmación cubre '
@@ -45,7 +51,7 @@ const VALUED = new Set(['-b', '--body', '-F', '--body-file', '-t', '--subject', 
   '--match-head-commit'])
 const COMMENT = new Set(['-c', '--comment'])
 const unclosed = (args) => (args.replace(/"[^"]*"|'[^']*'/g, '').match(/["']/) || []).length > 0
-const ACTS = new RegExp(AT + String.raw`gh\s+pr\s+(merge|review|close|reopen|comment)\b(${SAME}*)`, 'g')
+const ACTS = new RegExp(AT + String.raw`${GH_REPO}\s+pr\s+(merge|review|close|reopen|comment)\b(${SAME}*)`, 'g')
 const PARTED = new Set(['merge', 'close', 'reopen'])
 function mergeItem(act, args) {
   const words = (args.match(/"[^"]*"|'[^']*'|\S+/g) || []).map((word) => word.replace(/^(["'])(.*)\1$/, '$2'))
@@ -68,8 +74,8 @@ function mergeItem(act, args) {
 }
 function mergeItems(command) {
   const acts = [...command.matchAll(ACTS)]
-  if (!acts.length || acts.some((act) => !PARTED.has(act[1]))) return null
-  const items = acts.map((act) => mergeItem(act[1], act[2]))
+  if (!acts.length || acts.some((act) => !PARTED.has(act[2]))) return null
+  const items = acts.map((act) => mergeItem(act[2], act[1] ? `--repo ${act[1]} ${act[3]}` : act[3]))
   return items.includes(null) ? null : [...new Set(items)]
 }
 const MERGE = { items: mergeItems, asked: (text, item, how) => ordersPull(text, item, how) }
@@ -81,6 +87,11 @@ function rewrittenPull(line) {
   return items && !items.includes(line.trim()) ? items.join(' y ') : null
 }
 
+// Lo mismo, pedido a la API (caso 539).
+const API = { items: (command) => [...new Set(apiActs(command).map((one) => one.text))], asked: namedCommand }
+const API_ACT = 'pide a la API de GitHub un acto que R10 deja a una persona —mergear, aprobar, cerrar o comentar un '
+  + 'PR, disparar un workflow, publicar una release o mover una rama—, igual que su subcomando de `gh`.'
+
 // Dónde vale cada aprobación, en el quinto lugar de cada regla (caso 446). Un `gh` sin destino lo resuelve solo,
 // por lo que dice la regla de `pr create`, así que por archivo se aprueba sólo nombrándolo: con `--repo`, o con
 // la ruta de la API escrita entera. Un deploy vale para la carpeta donde corre, porque ahí lee su configuración.
@@ -90,15 +101,14 @@ const GH = 'gh'
 const DIR = 'dir'
 
 const RULES = [
-  [new RegExp(AT + String.raw`gh\s+pr\s+(?:merge|review|close|reopen|comment)\b`), `'gh pr' ${PR}`, MERGE, GH],
-  [new RegExp(AT + String.raw`gh\s+api\b${SAME}*\/pulls\/\d+\/(?:merge|reviews)\b`), `'gh api' ${PR}`, null, GH],
+  [new RegExp(AT + String.raw`${GH_REPO}\s+pr\s+(?:merge|review|close|reopen|comment)\b`), `'gh pr' ${PR}`, MERGE, GH],
+  [new RegExp(AT + String.raw`(?:gh\s+api|curl|wget|https?|xh)\s`), `el comando ${API_ACT}`, API, GH],
   // Sin `--repo`, `gh` elige el destino solo, y en un fork lo resuelve al original: es la forma en que un PR
-  // termina en el repositorio de otro equipo. Con el destino nombrado no se frena (R10: a dónde se publica
-  // se decide y se comprueba).
-  [new RegExp(AT + String.raw`gh\s+pr\s+create\b(?!${SAME}*\s(?:--repo|-R)(?:[\s=]|$))`),
+  // termina en el repositorio de otro equipo. Con el destino nombrado, lo compara `destination`. `new` es el alias.
+  [new RegExp(AT + String.raw`gh\s+pr\s+(?:create|new)\b(?!${SAME}*\s(?:--repo|-R))`),
     "'gh pr create' sin --repo abre el PR donde gh resuelva el repositorio, y en un fork puede ser el "
       + 'original. Nombrá el destino con --repo.', null, GH],
-  [new RegExp(AT + String.raw`gh\s+(?:workflow\s+run|run\s+rerun|release\s+(?:create|delete|upload|edit))\b`),
+  [new RegExp(AT + String.raw`${GH_REPO}\s+(?:workflow\s+run|run\s+rerun|release\s+(?:create|delete|upload|edit))\b`),
     "'gh' dispara o publica fuera de la máquina —un workflow, una release— y R10 lo deja a una persona.", null, GH],
   [new RegExp(AT + `(?:${[
     verb('(?:terraform|tofu)', 'apply|destroy|import'),
@@ -133,9 +143,58 @@ function declared(input) {
       `'${one.trim()}' está declarado en deployCommands de ops.config.json: ${DEPLOY}`, null, DIR])
 }
 
+// `dueño/nombre` de una URL de remoto o de un `--repo` —`git@host:o/r.git`, `ssh://git@host:443/o/r`,
+// `https://cred@host/o/r`, `host/o/r`, `o/r`—: los dos últimos tramos. Sin mirar el host, porque GitHub Enterprise es
+// otro host y el mismo `gh`.
+function slugOf(text) {
+  const parts = String(text).trim().replace(/^["']|["']$/g, '').replace(/\.git\/?$|\/+$/i, '').split(/[/:]/)
+    .filter(Boolean)
+  return parts.length >= 2 ? parts.slice(-2).join('/').toLowerCase() : ''
+}
+
+// El repositorio del `origin` de un checkout. La URL puede traer una credencial (caso 530): se usa para comparar y no
+// sale de acá.
+function originOf(dir) {
+  try {
+    return slugOf(execFileSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: 'pipe' }))
+  } catch { return '' }
+}
+
+// Con el destino nombrado, que sea el repositorio en el que se trabaja (caso 540): R10 dice que se comprueba, y la
+// regla de arriba sólo comprobaba que estuviera escrito. Es el `origin` del checkout donde se corre, que es lo que
+// R10 llama el repositorio en el que se trabaja; en un fork, el fork. Sin `origin` no hay contra qué comparar, y frena.
+const CREATES = new RegExp(AT + String.raw`${GH_REPO}\s+pr\s+(?:create|new)\b(${SAME}*)`, 'g')
+// Como `gh`, vale el último `--repo`, también si el primero iba antes del subcomando.
+function namedTarget(before, args) {
+  const words = args.match(/"[^"]*"|'[^']*'|\S+/g) || []
+  let target = before || ''
+  for (let at = 0; at < words.length; at += 1) {
+    const flag = /^(?:--repo=|-R)(.+)$/.exec(words[at])
+    if (flag) target = flag[1]
+    else if (words[at] === '--repo' || words[at] === '-R') target = words[at += 1] || ''
+  }
+  return target
+}
+function destination(input) {
+  const raw = String((input.tool_input || {}).command || '')
+  if (!/\bpr\s+(?:create|new)\b/.test(raw)) return []
+  const dir = gitDirectory(raw, cwdOf(input), input)
+  const origin = originOf(dir)
+  const items = (command) => [...command.matchAll(CREATES)]
+    .map((call) => namedTarget(call[1], call[2]).replace(/^["']|["']$/g, ''))
+    .filter((repo) => repo && (!slugOf(repo) || slugOf(repo) !== origin))
+    .map((repo) => `gh pr create --repo ${repo}`)
+  const what = origin ? `abre el PR en un repositorio que no es el origin del checkout, que en ${dir} es ${origin}`
+    : `nombra un destino que no se puede comprobar: ${dir} no tiene origin`
+  return [[new RegExp(AT + String.raw`${GH_REPO}\s+pr\s+(?:create|new)\b`),
+    `'gh pr create' ${what}. R10 dice que lo que se publica va al repositorio en el que se trabaja —en un fork, el `
+      + 'fork—, y saltar al original se pide.',
+    { items: (command) => [...new Set(items(command))], asked: namedCommand }, GH]]
+}
+
 // En la forma de la tabla de `destructive`, que describe `rulesOf` (`shell.js`): todas tienen salida y todas publican.
 function deliveryRules(input) {
-  return [...RULES, ...declared(input)]
+  return [...RULES, ...destination(input), ...declared(input)]
     .map(([pattern, message, by, place]) => [pattern, message, true, by, place, true])
 }
 
