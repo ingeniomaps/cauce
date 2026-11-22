@@ -171,7 +171,10 @@ function validateState({
       if (!story.service) errors.push(`${at}: ${story.slug} no declara (service: <ruta>)`)
     }
     const missing = epic.stories.filter((story) => !done.set.has(story.slug))
-    if (epic.status === 'active' && !missing.length) errors.push(`${at}: active sin historias pendientes; debe cerrar`)
+    // `open` también: es el estado en que se queda la épica cuando el recorrido no pasa por promote (caso 529).
+    if (['open', 'active'].includes(epic.status) && epic.stories.length && !missing.length) {
+      errors.push(`${at}: ${epic.status} sin historias pendientes; debe cerrar`)
+    }
   }
 
   const milestoneSlugs = new Set()

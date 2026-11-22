@@ -282,10 +282,18 @@ test('validateState juzga el estado ya leído, sin tocar disco', () => {
   assert.match(storyErrors({ criteria: ['C9'] }).join('|'), /cita C9, que no existe/)
   assert.match(storyErrors({ service: '' }).join('|'), /no declara \(service/)
 
-  // Una épica activa sin nada pendiente tiene que cerrar.
-  assert.match(errors({
-    epics: [sampleEpic({ status: 'active' })], done: { entries: [], set: new Set(['h-uno']), duplicates: [] },
-  }).join('|'), /active sin historias pendientes/)
+  // Una épica sin nada pendiente tiene que cerrar, esté `active` u `open` (caso 529); `closed` ya cerró.
+  const allDone = { entries: [], set: new Set(['h-uno']), duplicates: [] }
+  assert.match(errors({ epics: [sampleEpic({ status: 'active' })], done: allDone }).join('|'),
+    /active sin historias pendientes/)
+  assert.match(errors({ epics: [sampleEpic({ status: 'open' })], done: allDone }).join('|'),
+    /open sin historias pendientes; debe cerrar/)
+  assert.doesNotMatch(errors({ epics: [sampleEpic({ status: 'closed' })], done: allDone }).join('|'),
+    /sin historias pendientes/)
+  for (const status of ['open', 'active']) {
+    assert.doesNotMatch(errors({ epics: [sampleEpic({ status, stories: [] })], done: allDone }).join('|'),
+      /sin historias pendientes/, `una épica ${status} sin historias no tiene nada que cerrar: ya le falta la historia`)
+  }
 
   // Hitos y tareas.
   const milestone = (extra) => errors({ milestones: [{ slug: 'h', title: 'H', tasks: [sampleTask(extra)] }] })
