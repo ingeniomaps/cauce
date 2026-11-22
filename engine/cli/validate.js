@@ -164,6 +164,7 @@ function check(dir, cli) {
     { milestones, done }))
   warnings.push(...AD.report({ done, epics, adopted }))
   warnings.push(...DE.doneCeremonyWarnings(done, new Set(adopted)))
+  warnings.push(...DE.unprovenWarnings(done, new Set(adopted)))
   // Antes de que el recorrido pague Build para descubrirlo en Verify. Cuesta un regex sobre la cola y
   // corre en los cuatro carriles, incluidos los que saltean Ready (caso 140).
   warnings.push(...PC.unverifiableAcceptance(milestones))
