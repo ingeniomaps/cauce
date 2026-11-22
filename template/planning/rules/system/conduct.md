@@ -76,7 +76,8 @@ corrida — cuesta el trabajo de alguien.
 **Dónde se prueba importa tanto como qué se prueba.** Un cambio que puede hacer fallar la herramienta que
 las pruebas invocan se ejercita en una copia, nunca en el árbol que contiene el trabajo. Y una mutación
 que apaga una defensa se corre en una copia **siempre**: es, literalmente, ejecutar el código sin lo que
-lo hace seguro.
+lo hace seguro. La copia la arma `ops copy <repo>`: lleva lo trackeado y la prueba nueva sin trackear,
+deja afuera lo ignorado y el `.git`, y se niega pasado un tope.
 
 De ahí sale la única forma que sostiene todo lo anterior cuando falla: **decidir y destruir se separan**.
 La función que decide si algo se puede borrar no borra —recibe rutas y devuelve un motivo—, así que

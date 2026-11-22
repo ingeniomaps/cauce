@@ -7,7 +7,7 @@
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
 const VALUED_FLAGS = new Set([
   '--name', '--mode', '--fixture', '--payload', '--period', '--record', '--runner', '--integration',
-  '--task', '--promote', '--hito', '--reason', '--service', '--line', '--hash', '--closed', '--fields',
+  '--task', '--promote', '--hito', '--reason', '--service', '--line', '--hash', '--closed', '--fields', '--max-mb',
 ])
 
 // Qué acepta cada comando, y a la vez qué comandos existen. Una bandera desconocida se rechaza en vez
@@ -22,6 +22,7 @@ const FLAGS = {
   context: ['--json', '--hito', '--line'],
   contract: ['--json'],
   bench: ['--force'],
+  copy: ['--max-mb'],
   recurring: ['--json', '--promote'],
   lessons: ['--json'],
   inbox: ['--json'],

@@ -171,6 +171,7 @@ function usage() {
   ops context <planning-dir> [--hito <slug>] [--line <nombre>] [--json]
   ops contract <ops-root> [--json]
   ops bench <suelto|tarea|sidecar> [--force]
+  ops copy <repo> [destino] [--max-mb N]
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops lessons <planning-dir> [--json]
   ops inbox <planning-dir> [--json]
@@ -260,6 +261,7 @@ async function run(cli) {
   else if (command === 'context') PL.context(arg[1], cli)
   else if (command === 'contract') CT.contract(arg[1], cli)
   else if (command === 'bench') BN.bench(arg[1], cli)
+  else if (command === 'copy') require('./copy').copy(arg[1], arg[2], cli)
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'lessons') PL.lessons(arg[1], cli)
   else if (command === 'inbox') PL.inbox(arg[1], cli)

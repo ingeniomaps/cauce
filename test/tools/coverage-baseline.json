@@ -724,6 +724,11 @@
     "branches": 69,
     "functions": 100
   },
+  "engine/cli/copy.js": {
+    "lines": 97,
+    "branches": 57,
+    "functions": 100
+  },
   "engine/core/remote-credentials.js": {
     "lines": 100,
     "branches": 96,
