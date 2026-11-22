@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`automation doctor . claude` dice cuánto carga de instrucciones una sesión entera** (caso 532). `install` y
+  `check` miden sólo el bloque de Cauce, en bytes; Claude Code avisa por otra cuenta, todos los archivos de
+  instrucciones en caracteres. La línea nueva da esa cuenta como la documenta Claude Code —el usuario, la carpeta y sus
+  ancestros, las reglas sin `paths:` y los `@` hasta cuatro saltos—, partida en usuario, proyecto y Cauce, contra el piso
+  de 120.000; los archivos que pasan los 40.000 de a uno se dicen aparte. Del archivo del usuario sólo mide el largo.
+
 - **`ops copy <repo> [destino]` arma la copia que R23 pide para mutar** (caso 536). Cada agente la armaba a mano, y las
   dos formas que salían solas fallaban sin avisar: `git ls-files` dejaba afuera la prueba recién escrita y la mutación
   corría sin ella; `cp -r` arrastraba lo ignorado, y una caché de 11 GB dejó sin memoria a una máquina. Copia lo
@@ -72,6 +78,13 @@ diseño — eso vive en el commit y en el código.
   referencia», declaralas en `adopta:` y reinstalá el runner.
 
 ### Corregido
+
+- **El cierre de `/autobuild` lo hace `ops done`** (caso 538). El agente de Done reimplementaba en prosa lo que `ops
+  done` hace en una llamada, y las dos versiones ya habían divergido. Ahora escribe lo que juzga en un archivo de campos
+  y corre `ops done`, que valida antes de escribir. La validación previa suma la regla que rechaza un `tests: n/a` sobre
+  un commit que toca código, y el carril sale del WIP antes que de la cola: una corrida puede subir una `express` a
+  `directo`. En la misma tarea real, el agente de Done pasó de 10 herramientas a 3, y de 1.253.124 tokens de
+  entrada a 420.109.
 
 - **`check` avisa un enlace relativo roto en `planning/` u `organization/`** (caso 531). Una regla que enlazaba un
   archivo movido o partido pasaba en verde. Ahora se avisa el archivo que no existe y el ancla que el destino no tiene.
