@@ -1,14 +1,15 @@
 ---
 caso: 540
 titulo: un `gh pr create --repo` que nombra el original desde un fork pasa, y R10 dice que el destino se comprueba
-estado: abierto
+estado: resuelto
+resuelto-en: 0.124.0
 prioridad: media
 version-detectada: 0.124.0
 ---
 
 # 540 — un `gh pr create --repo` que nombra el original desde un fork pasa, y R10 dice que el destino se comprueba
 
-**🔴 abierto** · detectado en 0.124.0 · prioridad **media**: un PR mal apuntado no tiene vuelta atrás (R10: «lo ven, les
+**🟢 resuelto en 0.124.0** · detectado en 0.124.0 · prioridad **media**: un PR mal apuntado no tiene vuelta atrás (R10: «lo ven, les
 llega la notificación, y cerrarlo no deshace nada»). Una instancia real lo frena por su cuenta. Y pasó: el 2026-09-07,
 en otro proyecto, se abrieron tres PR contra el original saltándose el fork, por suposición.
 
@@ -73,7 +74,7 @@ lecturas de `line-scope.js:185`), así que esto es código nuevo: `git -C <dir> 
   Comparar sólo el dueño lo dejaría pasar, pero también dejaría pasar un fork en la organización; se compara el
   repositorio entero.
 - **Sidecar:** el agente suele estar en la instancia y el PR es del producto. Si corre `gh pr create --repo` desde la
-  instancia, el `origin` es el de la instancia y frena. Es lo correcto (`gh` también resolvería desde ahí), pero hay que
+  instancia, el `origin` es el de la instancia y frena. Es lo seguro, aunque `gh` no resuelve desde ahí un `--repo` nombrado (ver el cierre), y hay que
   medir que el mensaje diga desde dónde comparó, para que la salida sea correr desde el producto y no aprobar a ciegas.
 - **La URL del `origin` puede traer una credencial** (caso 530). El guard la usa para comparar y no la imprime: el
   mensaje nombra sólo `<dueño>/<nombre>`.
@@ -93,3 +94,81 @@ otra instancia que construyó su propio guard de entrega sólo exige `--repo`, i
 - 446: dónde vale una aprobación de `gh`.
 - 530: la credencial en la URL de un remoto, que esta lectura no tiene que imprimir.
 - 539: el mismo guard, otro defecto (las formas por la API).
+
+## Cierre
+
+Se recorrió el caso entero:
+
+- **Fix propuesto: comparar el `--repo` con el `origin` del checkout** — se hizo, en `destination` de
+  `engine/hooks/delivery.js`. Cada viñeta:
+  - si coinciden pasa, y si no, frena con el ítem `gh pr create --repo <destino>`: hecho. La comparación es por
+    dueño y nombre, en minúsculas, y acepta el destino con el host o con la URL entera. Se hizo distinto en un punto:
+    no se mira el host. Así un `origin` de GitHub Enterprise se compara igual, que con un host fijo en `github.com`
+    frenaba todo.
+  - se aprueba como el resto: hecho, por el diálogo, por una orden en el chat que nombre el comando o con la línea en
+    `.ops-approval`, que vale para ese destino.
+  - sin `origin`, frena: hecho, y también frena el destino que no se puede leer (`--repo "$UP"`, `$(…)`), con o sin
+    `origin`.
+  - el checkout es el `cwd` o el del `cd <dir> &&` del principio: hecho, con `gitDirectory`. El motor no leía el
+    `origin` en ningún guard, así que `originOf` es código nuevo y sólo corre si el comando trae `pr create`.
+- **Tradeoffs: equipo sin fork** — hecho: con el `origin` en la organización, `--repo org/app` coincide y pasa.
+- **Tradeoffs: un PR a otro repositorio propio** — hecho, frena, y se compara el repositorio entero.
+- **Tradeoffs: sidecar** — se hizo distinto, porque el caso afirmaba algo falso. Con `--repo` nombrado, `gh` no resuelve
+  el destino desde la carpeta, así que «`gh` también resolvería desde ahí» no era cierto. Desde la instancia sin `cd`,
+  el freno salta porque el `origin` de la instancia no es el destino, y el mensaje dice desde qué carpeta comparó y cuál
+  es su `origin`. La salida es correr desde el producto. Es un freno de más, hacia el lado seguro.
+- **Tradeoffs: la credencial en la URL** — hecho: el mensaje nombra sólo `dueño/nombre` y la carpeta, y la prueba con
+  `s3cr3t` en la URL lo afirma.
+- **Tradeoffs: un freno nuevo para todas las instancias** — hecho, con su aserción: `--repo` igual al `origin` pasa. La
+  prueba de `delivery.test.js` que daba por buena `gh pr create --repo acme/app` en una carpeta sin git ahora le da un
+  `origin` `acme/app`.
+- **Lo que el enunciado no preveía:**
+  - `gh` usa el último `--repo` si se repite, y el `-R` puede ir antes del subcomando o pegado (`-Racme/app`). Las dos
+    cosas se verificaron con gh 2.86.0, y gana el último.
+  - `gh pr new` es el alias de `pr create`, y no lo miraba ninguna regla, ni la de sin `--repo`. Ahora lo miran las dos.
+  - Abrir el PR por la API nombra el destino en la ruta y no hay checkout contra el cual compararlo: frena siempre
+    (caso 539).
+  - R10 dice ahora «abrirlo sin nombrar el destino o en uno que no es el `origin`».
+
+Lo que se corrió:
+
+- Línea de base, en «Reproducción»: `--repo org/app` desde un fork pasaba.
+- `test/hooks/pr-destination.test.js`, 4 pruebas, las cuatro en rojo contra el `delivery.js` de HEAD y en verde después:
+  - remotos por SSH, HTTPS, `ssh://…:443`, con credencial y de GitHub Enterprise;
+  - `cd`, sin `origin`, remoto local, destino ilegible, `-R` repetido o pegado, alias `pr new`;
+  - la aprobación por el chat y por `.ops-approval`.
+- 15 mutaciones en una copia, las 15 rojas y la copia sin mutar verde. De las que sobrevivieron en el camino, tres
+  pidieron su caso: `--repo=`, el destino entre comillas y `pr new` sin `--repo`. Otras tres mostraron que quitar el
+  esquema, la credencial y el puerto de la URL sobraba, porque se toman los dos últimos tramos, y se quitó.
+- Banco sin modelo con el runner de Claude instalado, repetido sobre la versión final: desde un checkout con el fork
+  como `origin`, `--repo` al original dio exit 2, y al fork, exit 0.
+- Sesión real de `claude -p` 2.1.330 (sesión `5f39cb36`, USD 0,33), con un subagente que tenía que abrir el PR mientras el
+  pedido mencionaba la organización. No llegó a ejercer el freno: la sesión preguntó antes de lanzar el subagente. Por
+  dos razones. Las instrucciones globales de quien corre el banco ya dicen que el PR va al fork, y se cargan también en
+  la sesión del banco. Y el banco estaba mal armado para ese pedido: nombraba `../app`, que no existe (el producto está
+  en `./app`), y el producto no tiene rama `develop`.
+- `npm run ci` con los archivos nuevos stageados: 1883 de 1883, exit 0.
+
+**Sin probar:** el freno en una sesión real de un modelo. La única corrida no llegó a intentarlo, por la contaminación
+de las instrucciones globales, y el freno lo sostienen el banco sin modelo por el hook instalado y las pruebas. Correr
+la sesión sin esas instrucciones (`--setting-sources`) se dejó por el presupuesto aprobado. Tampoco se probó abrir el
+PR desde un `(cd app && …)` o un `cd` que no va al principio: `gitDirectory` toma sólo el primero, y frena de más.
+
+### Lista de cierre
+
+1. hecho: la reproducción de «Reproducción», con su control.
+2. hecho: rama `fix/cases-from-an-instance-audit`.
+3. hecho: las cuatro pruebas en rojo contra HEAD y en verde después.
+4. hecho: 15 mutaciones en una copia, las 15 rojas. De las que sobrevivieron en el camino, tres (`--repo=`, las comillas y `pr new` sin `--repo`) sumaron su caso, y otras tres (el esquema, la credencial y el puerto) se contestaron quitando lo que sobraba. Dos que no cambiaban nada se reescribieron contra el texto real.
+5. no aplica: agrega un freno y no quita ni reemplaza nada; la regla de sin `--repo` sigue igual, más su alias.
+6. hecho: banco sin modelo por el hook instalado del runner, sin dobles en el motor; se midió que `--repo` al original ya no pasa y que al fork sigue pasando.
+7. hecho: Manuel decidió el 2026-11-22 que el 540 se prueba con el banco sin modelo por el hook instalado. Además se corrió una sesión real, que no ejerció el freno, y lo dice «Sin probar».
+8. hecho: «Lo que se corrió» enumera los caminos; las mutaciones, la sesión y el banco sin modelo, repetido al cerrar, corrieron sobre la versión final.
+9. hecho: dos checkouts con historia distinta (fork y sin fork), dos posiciones del `-R` y dos `--repo` en un mismo comando.
+10. hecho: dependía `delivery.test.js`, que daba `--repo` por bueno sin git, y el comentario de `delivery.js` que decía «con el destino nombrado no se frena», corregido.
+11. hecho: tres pasadas de revisión independiente sobre este caso, junto con el 539 y el 541. La primera halló dos defectos que impedían entregar (`--repo` repetido y `-R` pegado), y la segunda, uno (sin `origin` y con un destino ilegible pasaba). Todos se arreglaron. La tercera no halló nada que impida entregar.
+12. hecho: pasada de comentarios; se corrigió el comentario que el propio caso señalaba como causa raíz.
+13. hecho: `npm run ci` con los archivos nuevos stageados, 1883 de 1883, exit 0.
+14. hecho: este cierre recorre el Fix propuesto, los Tradeoffs y lo que el enunciado no preveía.
+15. hecho: nombra lo corrido con su salida y lleva su línea `**Sin probar:**`.
+16. hecho: `resuelto` con `resuelto-en: 0.124.0` en el frontmatter y en el encabezado; entrada en el CHANGELOG de 0.124.0 («Corregido»).
