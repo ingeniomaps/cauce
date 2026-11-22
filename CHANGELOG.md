@@ -79,6 +79,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Instalar Codex ya no hace que el `upgrade` reemplace el `AGENTS.md` de la empresa** (caso 546). En una instancia
+  embebida, `init --force` conserva el `AGENTS.md` que la empresa ya tenía y lo marca como editado. `automation install
+  codex` metía su bloque y lo volvía a anotar como del molde, y el `upgrade` siguiente lo reemplazaba entero: avisaba
+  que se llevaba el bloque, no que con él se iba el texto de la empresa. Ahora un archivo editado sigue editado, el `upgrade` lo conserva, y ya no dice
+  que se llevó el bloque del runner de un archivo que conservó. **Qué hacer:** si una instancia perdió así su
+  `AGENTS.md`, el historial de git lo tiene.
+
 - **El cierre de `/autobuild` lo hace `ops done`** (caso 538). El agente de Done reimplementaba en prosa lo que `ops
   done` hace en una llamada, y las dos versiones ya habían divergido. Ahora escribe lo que juzga en un archivo de campos
   y corre `ops done`, que valida antes de escribir. La validación previa suma la regla que rechaza un `tests: n/a` sobre
