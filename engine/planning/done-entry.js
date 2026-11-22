@@ -79,7 +79,8 @@ function validateDoneEntry(entry, cited = []) {
   }
   if (!validDecisionTrace(entry.decisions)) {
     errors.push(`${at}: decisions debe citar [fuente: ...] o [supuesto: ...]. Con los registros de R14: lo verificado `
-      + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>].')
+      + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>]. '
+      + 'Si no hubo ninguna decisión no obvia, la línea no va.')
   }
   return errors
 }

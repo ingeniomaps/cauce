@@ -184,6 +184,7 @@ function usage() {
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea> [--line <nombre>]
   ops release <planning-dir> <tarea> [--line <nombre>]
+  ops done <planning-dir> <tarea> --fields <archivo> [--line <nombre>] [--skip-roots]
   ops governed <planning-dir> <archivo>... [--service <dir>] [--json]
   ops worktree <planning-dir> <tarea> [--line <nombre>] [--json]
   ops evidence <planning-dir> [--task <slug>] [--json]
@@ -271,6 +272,7 @@ async function run(cli) {
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2], cli)
+  else if (command === 'done') require('./done').done(arg[1], arg[2], cli)
   else if (command === 'governed') GOV.governed(arg[1], arg.slice(2), cli)
   else if (command === 'worktree') WT.worktree(arg[1], arg[2], cli)
   else if (command === 'evidence') PL.evidence(arg[1], cli)

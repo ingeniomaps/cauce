@@ -1,8 +1,8 @@
 'use strict'
 
-// Tomar y soltar una tarea, y ver quién tiene trabajo abierto. Los dos primeros son los únicos comandos
-// del motor que escriben un archivo de coordinación, y escriben **el propio**: `BACKLOG.md` no lo toca
-// ninguno, porque la cola es de lo aprobado y la escribe una persona.
+// Tomar y soltar una tarea, y ver quién tiene trabajo abierto. Los dos primeros escriben un archivo de
+// coordinación, y escriben **el propio**: la cola no la tocan, porque es de lo aprobado y la promueve una
+// persona. Lo único que la saca de ahí es cerrar la tarea, y eso es `ops done` (caso 537).
 
 const fs = require('node:fs')
 const { spawnSync } = require('node:child_process')

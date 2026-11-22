@@ -52,7 +52,8 @@ test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
   assert.deepEqual(DE.validateDoneEntry({
     source: 'DONE.md', slug: 'demo', tests: 'A → npm test', decisions: 'Hipótesis — la ventana es de 72h',
   }), ['DONE.md demo: decisions debe citar [fuente: ...] o [supuesto: ...]. Con los registros de R14: lo verificado '
-    + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>].'])
+    + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>]. '
+    + 'Si no hubo ninguna decisión no obvia, la línea no va.'])
   assert.deepEqual(DE.validateDoneEntry({
     source: 'DONE.md', slug: 'demo', tests: '', decisions: '',
   }), ['DONE.md demo: falta tests:'])
