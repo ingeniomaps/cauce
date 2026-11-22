@@ -16,7 +16,26 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.124.0] - 2026-11-21
 
+### Agregado
+
+- **`ops done <planning> <tarea> --fields <archivo>` cierra una tarea en una llamada** (caso 537). Hace el paso 13 del
+  PROTOCOL, que fuera de `/autobuild` era una lista en prosa:
+  - El archivo de campos lleva lo que juzga quien cierra: `done`, `qa`, `tests`, `commit`, `review`, `critique` y
+    `decisions` si hubo alguna.
+  - `acept`, `fecha` y `lane` salen del disco, también la aceptación heredada de los criterios y el carril que anotó
+    quien construyó.
+  - Valida la entrada entera antes de escribir. Si algo está mal, no escribe nada.
+  - Escribe la entrada con el slug de la cola y saca la tarea y sus notas, sin tocar lo comentado.
+  - Borra el hito vacío salvo que guarde borradores, cierra la épica sin historias abiertas, deja el WIP en
+    `status: IDLE`, suelta el reclamo y termina con `check --closed`.
+  - No commitea.
+
+  Dos sesiones reales de Claude lo usaron sin que el pedido lo nombrara: lo encontraron en el PROTOCOL y en la ayuda.
+
 ### Corregido
+
+- **`decisions:` es opcional en una entrada de `done/`, como dice el PROTOCOL**, y la plantilla y el rechazo de `check`
+  ahora lo dicen: si no hubo una decisión no obvia, la línea no va (caso 537).
 
 - **`check` pide cerrar una épica `open` con todas sus historias en `done/`, igual que una `active`** (caso 529). Una
   épica que nunca pasó por `ops promote` se quedaba `open` terminada y en verde, y `context` y `tree` la seguían
