@@ -12,6 +12,7 @@ const P = require('../planning/parser')
 const RC = require('../planning/recurring')
 const CL = require('../planning/claims')
 const ST = require('../planning/state')
+const PC = require('../planning/contracts')
 const SF = require('../planning/surfaces')
 const LS = require('../planning/lessons')
 const BK = require('../planning/backlog')
@@ -179,7 +180,7 @@ function context(dir, cli) {
   if (asked.error) return fail(asked.error, USAGE)
   const { line } = asked
   const from = CL.runner(asked.id, path.join(root, '..'))
-  const mio = state.wips.find((one) => one.runner === P.wipName(from)) || null
+  const { wip: mio, stale: staleWip } = ST.ownWip(state, from)
   const hito = cli.value('--hito')
   // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir
   // otro hito mientras sostenías una tarea ofrecía una segunda que `claim` después se niega a dar: el
@@ -240,7 +241,7 @@ function context(dir, cli) {
     wip: mio ? { phase: mio.phase, complete: mio.complete, pending: mio.pending } : null,
     // Dónde va su plan. Lo dice el motor porque el nombre sale del id del runner, y quien escribe el
     // plan —un workflow— no tiene por qué saber cómo se deriva.
-    wipFile: `wip/${P.wipName(from)}.md`,
+    wipFile: `wip/${P.wipName(from)}.md`, staleWip,
     queued: state.milestones.reduce((total, milestone) => total + milestone.tasks.length, 0),
     blockedTasks: skipped,
     humanActions,
@@ -279,6 +280,7 @@ function context(dir, cli) {
     surfaces: SF.criticalSurfaces(path.resolve(root, '..')),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
+  if (staleWip) console.log(`STALE  ${report.wipFile} apunta a ${staleWip}, que ya está en done/. ${PC.STALE_ADVICE}`)
   const reglas = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)
 
   if (report.blocked === 'awaiting-review') {

@@ -52,6 +52,15 @@ function unverifiableAcceptance(milestones = []) {
   return warnings
 }
 
+// Un WIP activo sobre una tarea que ya está en `done/`: la sesión se cortó entre escribir la entrada y dejarlo en IDLE
+// (caso 535). Es aviso y no error, porque el WIP no viaja por git y lo que se repara es local.
+const STALE_ADVICE = 'El cierre quedó a medias: dejá el WIP en status: IDLE (PROTOCOL, punto 4 de los gates de '
+  + 'arranque); lo que sigue es la cola.'
+function staleWips(wips = [], done = { set: new Set() }) {
+  return wips.filter((wip) => done.set.has(wip.task))
+    .map((wip) => `wip/${wip.runner}.md: ${wip.task} ya está en done/. ${STALE_ADVICE}`)
+}
+
 function duplicates(values) {
   return [...new Set(values.filter((value, index) => values.indexOf(value) !== index))]
 }
@@ -305,6 +314,7 @@ function closedErrors(slugs, { milestones, done }) {
 // deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
 // condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
 module.exports = {
+  staleWips, STALE_ADVICE,
   closedErrors,
   validateState,
   unverifiableAcceptance,
