@@ -433,7 +433,8 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   assert.match(done, /las rutas van relativas, empezando en \S*api\/, nunca la ruta absoluta de esta máquina/)
   assert.match(done, /Cada traza de tests empieza con «A →» o «C<n> →»/)
   assert.match(done, /en status IDLE —una línea «status: IDLE» en su frontmatter es lo que lee el motor—/)
-  assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+" desde \S+: si marca esta entrada, corregí/)
+  assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+ --closed T-1" desde \S+: si marca esta /)
+  assert.match(done, /si marca que T-1 no quedó cerrada, la viñeta de la entrada lleva ese slug y T-1 sale de la cola/)
   assert.match(done, /Si marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
 })
 

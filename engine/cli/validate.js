@@ -159,6 +159,8 @@ function check(dir, cli) {
     epics, milestones, done, wips, roles, adopted: new Set(adopted),
     humanActions: humanActions.filter((row) => !row.file || row.valid),
   }))
+  errors.push(...PC.closedErrors(cli.value('--closed').split(',').map((one) => one.trim()).filter(Boolean),
+    { milestones, done }))
   warnings.push(...AD.report({ done, epics, adopted }))
   warnings.push(...DE.doneCeremonyWarnings(done, new Set(adopted)))
   // Antes de que el recorrido pague Build para descubrirlo en Verify. Cuesta un regex sobre la cola y

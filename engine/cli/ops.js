@@ -165,7 +165,7 @@ function usage() {
            [--runner claude|codex|gemini|antigravity] [--integration <proveedor>] [--install|--no-install]
   ops scan [workspace] [--json]
   ops onboard [ops-root] [--json]
-  ops check <planning-dir> [--json] [--skip-roots]
+  ops check <planning-dir> [--json] [--skip-roots] [--closed <tarea>[,<tarea>]]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--hito <slug>] [--line <nombre>] [--json]
   ops contract <ops-root> [--json]

@@ -280,6 +280,15 @@ function validateState({
   return errors
 }
 
+// Lo que dice quien cerró: estas tareas salieron de la cola en su vuelta. El estado solo no distingue «salió» de «nunca
+// estuvo», así que una entrada con otro slug pasaba en verde (caso 463); con la lista, cada una se busca por su slug.
+function closedErrors(slugs, { milestones, done }) {
+  const queued = new Set(milestones.flatMap((milestone) => milestone.tasks).map((task) => task.slug))
+  return slugs.filter((slug) => !done.set.has(slug)).map((slug) => `${slug}: se dio por cerrada y no tiene entrada en `
+    + `done/ con ese slug${queued.has(slug) ? ', y sigue en la cola' : ''}. Si la entrada quedó con otro nombre, la `
+    + 'viñeta lleva el mismo slug que la cola (R25)')
+}
+
 // Los umbrales de R17, contados. La regla existía desde antes y nada la medía: una épica de veinte
 // criterios pasaba `check` sin una queja, siempre que cada uno tuviera su historia. Es la enumeración
 // que nadie contrasta de la que habla R15, y acá el que no contrastaba era el motor.
@@ -296,6 +305,7 @@ function validateState({
 // deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
 // condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
 module.exports = {
+  closedErrors,
   validateState,
   unverifiableAcceptance,
   validateEpic,

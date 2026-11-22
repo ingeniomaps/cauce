@@ -30,7 +30,8 @@ test('con check en verde el cierre no llama a nadie más, y lo que check avisa l
   assert.ok(!green.asked.includes(REPAIR), 'en verde no hay nada que reparar')
   const prompt = green.prompts.find((one) => one.key === KEY.closing)
   assert.equal(prompt.agentType, 'cauce-clerk', 'correr check y copiar su salida es un paso de oficina')
-  assert.match(prompt.prompt, /check \S+ --json" desde \S+ y copiá de su salida ok, errors y warnings tal cual/)
+  assert.match(prompt.prompt, /check \S+ --json --closed T-1" desde \S+ y copiá de su salida ok, errors y /)
+  assert.match(prompt.prompt, /ok, errors y warnings tal cual/)
   assert.match(prompt.prompt, /No arregles nada/)
   assert.ok(!green.said.some((line) => /check avisa/.test(line)), 'sin avisos no se inventa ninguno')
 
@@ -50,6 +51,8 @@ test('con check en rojo repara quien carga las reglas, y el comando dice si qued
   const repair = repaired.prompts.find((one) => one.key === REPAIR)
   assert.equal(repair.agentType, '', 'reparar es juzgar: lleva las reglas del proyecto')
   assert.match(repair.prompt, /con estos errores: done\/T-0\.md T-0: tests debe rastrear A\/CN → prueba\./)
+  assert.match(repair.prompt, /"node tools\/ops\.js check \S+ --closed T-1" salió en rojo/,
+    'el mismo check que lo marcó')
   assert.match(repair.prompt, /nunca reescribas aceptación, evidencia ni decisiones para forzar el verde/)
   // El veredicto de después es otra lectura del comando, hecha por quien no reparó.
   assert.equal(count(repaired, KEY.closing), 2)
@@ -98,6 +101,7 @@ test('lo que la reparación no deja en verde frena la corrida con lo que check d
   assert.match(row, /La fila nace con estado `pendiente`/)
   assert.match(row, /Los errores, textuales: done\/T-0\.md T-0: falta commit\./)
   assert.match(row, /El task es autobuild, nunca una tarea/)
+  assert.match(row, /"node tools\/ops\.js check \S+ --closed T-1" quedó en rojo/, 'un comando que lo reproduce')
   assert.equal(count(stuck, BLOCK), 1, 'la parada se commitea una vez')
   assert.ok(stuck.asked.indexOf(ROW) < stuck.asked.indexOf(BLOCK), 'la fila se escribe antes de commitear')
   const block = stuck.prompts.find((one) => one.key === BLOCK).prompt

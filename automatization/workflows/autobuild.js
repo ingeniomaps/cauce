@@ -2536,8 +2536,10 @@ while (rounds++ < MAX_TASKS) {
     // La entrada se valida antes de commitearla. Sin esto el formato lo descubría `closing`, con la entrada
     // ya commiteada: una traza escrita «A (condición) → prueba» dejó `check` en rojo y un arreglo suelto.
     'Cada traza de tests empieza con «A →» o «C<n> →» y sigue con la prueba; la condición, si la nombrás, va ' +
-    `después. Al terminar corré "node tools/ops.js check ${P}" desde ${ROOT}: si marca esta entrada, corregí ` +
-    'el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo. Si marca la entrada de otra ' +
+    `después. Al terminar corré "node tools/ops.js check ${P} --closed ${task.id}" desde ${ROOT}: si marca esta ` +
+    'entrada, corregí el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo; si marca que ' +
+    `${task.id} no quedó cerrada, la viñeta de la entrada lleva ese slug y ${task.id} sale de la cola. ` +
+    'Si marca la entrada de otra ' +
     // En una corrida real quien cerraba una tarea «arregló» la entrada de otra y le sacó una condición de la
     // traza: evidencia ajena editada de paso, y commiteada con el cierre de la propia (caso 310).
     'tarea, no la toques: es evidencia que no escribiste, y la mira el cierre de la corrida.'),
@@ -2610,9 +2612,11 @@ const CHECKED = {
         tasks: { type: 'array', items: { type: 'string' } }, reopened: { type: 'boolean' } } } },
   },
 }
-const checkedBy = `Corré "node tools/ops.js check ${P} --json" desde ${ROOT} y copiá de su salida ok, errors y `
-  + 'warnings tal cual, sin resumir ni reordenar. Que salga con un código distinto de 0 no es una falla tuya: es '
-  + 'lo que hay que devolver.'
+// `--closed` le dice a check qué cerró esta corrida (caso 463).
+const closedFlag = completed.length ? ` --closed ${completed.join(',')}` : ''
+const checkedBy = `Corré "node tools/ops.js check ${P} --json${closedFlag}" desde ${ROOT} y copiá de su salida ok, `
+  + 'errors y warnings tal cual, sin resumir ni reordenar. Que salga con un código distinto de 0 no es una falla tuya: '
+  + 'es lo que hay que devolver.'
 const readCheck = () => clerk(
   `${checkedBy} No arregles nada. Después corré "node tools/ops.js lessons ${P} --json" y copiá su campo ` +
   'proposals tal cual en lessons, vacío si no hay.',
@@ -2626,8 +2630,8 @@ const failures = (verdict) => (verdict.errors || []).join(' | ') || 'check sali�
 if (!closing.ok) {
   const broken = failures(closing)
   const repaired = await write(
-    `"node tools/ops.js check ${P}" salió en rojo al cerrar la corrida, con estos errores: ${broken}. Reparás ` +
-    'sólo estado derivado determinista —un formato, un campo que se deduce de otro, una referencia que quedó ' +
+    `"node tools/ops.js check ${P}${closedFlag}" salió en rojo al cerrar la corrida, con estos errores: ${broken}. ` +
+    'Reparás sólo estado derivado determinista —un formato, un campo que se deduce de otro, una referencia que quedó ' +
     'vieja—; nunca reescribas aceptación, evidencia ni decisiones para forzar el verde, y si un error pide eso ' +
     'lo dejás como está. En fixed, cada archivo que tocaste; vacío si ninguno.',
     { label: 'closing-repair', schema: {
@@ -2649,8 +2653,8 @@ if (!closing.ok) {
     const noted = await registerHuman(
       `Registrá en ${HUMAN} una fila: al cerrar la corrida` +
       `${currentMilestone ? ` del hito ${currentMilestone}` : ''}, ` +
-      `"node tools/ops.js check ${P}" quedó en rojo y repararlo pedía algo que no es estado derivado. Los ` +
-      `errores, textuales: ${left}. El task es autobuild, nunca una tarea: esto no frena ninguna en ` +
+      `"node tools/ops.js check ${P}${closedFlag}" quedó en rojo y repararlo pedía algo que no es estado derivado. ` +
+      `Los errores, textuales: ${left}. El task es autobuild, nunca una tarea: esto no frena ninguna en ` +
       'particular. Decí qué lo cierra —quien pueda aportar lo que falta, o decidir qué se hace con la entrada— ' +
       'sin inventar responsables ni fechas.',
       'closing-human',
