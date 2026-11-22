@@ -724,6 +724,11 @@
     "branches": 69,
     "functions": 100
   },
+  "engine/automation/session-load.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
+  },
   "engine/cli/copy.js": {
     "lines": 97,
     "branches": 57,

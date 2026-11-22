@@ -484,7 +484,7 @@ module.exports = {
   RUNNER_NAMES,
   check,
   doctor,
-  staleArtifacts,
+  staleArtifacts, deliveryState,
   install,
   insideSession,
   uninstall,
