@@ -1,14 +1,15 @@
 ---
 caso: 543
 titulo: el árbol de una línea arranca sin el `.env` del checkout de siempre, y `ops line` pide escribir en uno que no existe
-estado: abierto
+estado: resuelto
+resuelto-en: 0.124.0
 prioridad: media
 version-detectada: 0.124.0
 ---
 
 # 543 — el árbol de una línea arranca sin el `.env` del checkout de siempre, y `ops line` pide escribir en uno que no existe
 
-**🔴 abierto** · detectado en 0.124.0 · prioridad **media**: cada línea nueva de un producto con `.env` arranca con los
+**🟢 resuelto en 0.124.0** · detectado en 0.124.0 · prioridad **media**: cada línea nueva de un producto con `.env` arranca con los
 servicios locales sin configurar, y nada lo dice. Una instancia real construyó una herramienta propia para resolverlo
 (222 líneas). Su encabezado da la razón: con una clave rotada, el árbol con el `.env` viejo contesta 401 en cada
 llamada local.
@@ -99,3 +100,70 @@ nombres de clave. Su variante con un gestor de secretos y una plantilla es propi
 - 399: el nombre del proyecto de compose de un árbol, y la decisión de no escribir el `.env`.
 - 394: las líneas de trabajo.
 - 544: lo que una línea arma y desarma del lado del producto.
+
+## Cierre
+
+Se recorrió el caso entero:
+
+- **Fix propuesto 1, avisar sin escribir** — se hizo. `ops line` nombra los `.env*` de la raíz del checkout de siempre
+  que git ignora y el árbol no trae, sin leer su contenido. Se reconocen con `git check-ignore`, así que una plantilla
+  versionada no cuenta. El aviso de compose dice además que `--env` deja el nombre al copiar.
+- **Fix propuesto 2, copiar a pedido** — se hizo, en `engine/cli/line-env.js`:
+  - `ops line … --env` copia lo que falta y nunca pisa lo que está. Si hay compose, deja `COMPOSE_PROJECT_NAME` de la
+    línea una sola vez, aunque el original repita la clave.
+  - `ops lines env <ops-root> <línea>` compara por clave y nunca por valor. Ignora el nombre de proyecto, que es
+    distinto a propósito, lee CRLF, y sale con 1 si algo difiere.
+  - Con `--apply` copia el original y guarda el anterior en `lines/<línea>/.env-prev/<repo>/<archivo>.<hora>`, fuera
+    de los repositorios. Dos aplicaciones guardan dos respaldos.
+  - Se hizo distinto en un punto que el caso no preveía: sólo se toca un archivo regular, mirado con `lstat`, de los dos
+    lados. Un `.env` que es un enlace o una carpeta se nombra y no se sigue ni se escribe, y antes de copiar se borra el
+    destino, para no escribir a través de un hardlink. La primera versión seguía un enlace y dejaba las claves en un
+    archivo de afuera del árbol.
+- **Decisión: las dos formas** — decidido por Manuel el 2026-11-22.
+- **Tradeoffs: secretos** — hecho, y probado. Ningún camino imprime un valor: el texto, `--json` y los avisos nombran
+  archivos y claves. Las dos revisiones lo comprobaron. El guard `secrets-shell` deja correr `ops line --env` y
+  `ops lines env --apply`, y sigue frenando `cat app/.env`, con su prueba. Lo que no frena es un `cp` del `.env` a
+  mano. Eso ya era así antes y queda anotado acá.
+- **Tradeoffs: qué es un `.env*`** — se mantuvo: los ignorados de la raíz cuyo nombre empieza con `.env`. Un repositorio
+  en una subcarpeta (`grupo/app`) funciona, y lo comprobó la revisión. Otro nombre de archivo no se ve, y no se declara
+  hasta que alguien lo pida.
+- **Tradeoffs: el 399** — hecho. La copia no pisa nada. `composeNamed` compara ahora el proyecto como lo normaliza
+  Compose, así que un `"app"` entre comillas ya no apaga el aviso del 399, que era un defecto de antes de este caso.
+- **Tradeoffs: borrar la línea se lleva el `.env`** — lo trata el 544: el retiro en seco lo avisa.
+
+Lo que se corrió:
+
+- Línea de base, en «Reproducción»: el árbol con 0 `.env*` y la salida que pedía escribir en uno inexistente.
+  Antes y después lado a lado, en `repro-543-before.log` y `repro-543-after.log` del scratchpad.
+- `test/wiring/line-env.test.js`, 15 pruebas (las del 543 y las del 544), las del 543 en rojo contra el código de HEAD.
+  Las de líneas que ya había siguen en verde.
+- 26 mutaciones en una copia, las 26 rojas y la copia sin mutar verde. Dos que sobrevivieron mostraron que sobraban la
+  exclusión de la plantilla por nombre y el `chmod`, y se quitaron. Las demás que sobrevivieron sumaron su caso.
+- Banco sin modelo, sobre la versión final: un sidecar con `.env` y `.env.local` ignorados y un compose. Se corrió el
+  aviso, `--env`, `lines env` igual y con una clave rotada, `--apply` con su respaldo, y una segunda vez `--env`, que
+  no pisó nada.
+- `npm run ci` con los archivos nuevos stageados: 1898 de 1898, exit 0.
+
+**Sin probar:** un producto real con Docker levantando el proyecto `app-pagos` desde el árbol. El banco no corre
+Docker. Que `COMPOSE_PROJECT_NAME` del `.env` separa el proyecto lo verificó la revisión con Compose 2.29.2 y
+`docker compose config`, y está documentado en docs.docker.com. Un `.env` del original que es un enlace se saltea sin
+avisar; es el lado seguro.
+
+### Lista de cierre
+
+1. hecho: la reproducción de «Reproducción», antes y después en el scratchpad.
+2. hecho: rama `fix/cases-from-an-instance-audit`.
+3. hecho: las pruebas nuevas en rojo contra HEAD y en verde después.
+4. hecho: 26 mutaciones en una copia, las 26 rojas; las que sobrevivieron se contestaron con un caso o quitando lo que sobraba.
+5. hecho: cambia la salida de `ops line`, que ya no pide escribir en un `.env` que no existe; la prueba del aviso sin `--env` y el antes y después lado a lado lo muestran. Lo demás agrega y no quita.
+6. hecho: banco sin modelo con la CLI real, sin dobles; se midió que el árbol ya no queda sin `.env` cuando se pide y que lo que difiere se ve.
+7. no aplica: no depende de un modelo ni de un runner; Docker queda en «Sin probar», con la verificación que hizo la revisión.
+8. hecho: «Lo que se corrió» enumera los caminos; las mutaciones, el banco y la puerta corrieron sobre la versión final.
+9. hecho: dos lados de cada comparación (original y árbol), dos archivos (`.env` y `.env.local`), dos aplicaciones con dos respaldos.
+10. hecho: dependían el aviso de compose de `lines.js`, `teamwork.md`, `ops worktree --line` y `lines migrate`, que llaman `assemble` sin `--env` y sólo avisan; se corrigió el aviso y se documentó en `teamwork.md`.
+11. hecho: cuatro pasadas de revisión independiente sobre el 543 y el 544. La primera halló que `--apply` seguía un enlace, que no se leía el CRLF y que el retiro podía aconsejar bajar el proyecto del checkout de siempre; la segunda y la tercera, más formas de eso último y un hardlink. Todo se arregló, y la última no halló nada que impida entregar.
+12. hecho: pasada de comentarios; se movió a `line-env.js` el porqué del compose que quedaba sin su constante en `lines.js`, y se quitaron dos que justificaban código que se fue.
+13. hecho: `npm run ci` con los archivos nuevos stageados, 1898 de 1898, exit 0.
+14. hecho: este cierre recorre los dos Fix propuestos, la Decisión y los Tradeoffs.
+15. hecho: nombra lo corrido con su salida y lleva su línea `**Sin probar:**`.
+16. hecho: `resuelto` con `resuelto-en: 0.124.0` en el frontmatter y en el encabezado; entrada en el CHANGELOG de 0.124.0 («Agregado»).

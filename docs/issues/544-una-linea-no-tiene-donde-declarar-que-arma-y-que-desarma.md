@@ -1,14 +1,15 @@
 ---
 caso: 544
 titulo: una línea no tiene dónde declarar qué arma y qué desarma de su entorno, y retirarla deja contenedores, volúmenes y bases
-estado: abierto
+estado: resuelto
+resuelto-en: 0.124.0
 prioridad: baja
 version-detectada: 0.124.0
 ---
 
 # 544 — una línea no tiene dónde declarar qué arma y qué desarma de su entorno, y retirarla deja contenedores, volúmenes y bases
 
-**🔴 abierto** · detectado en 0.124.0 · prioridad **baja**: el costo es disco, memoria y una base de desarrollo que una
+**🟢 resuelto en 0.124.0** · detectado en 0.124.0 · prioridad **baja**: el costo es disco, memoria y una base de desarrollo que una
 migración de la línea puede tocar. Lo pagan los productos con un entorno local pesado. Una instancia real construyó
 cuatro herramientas propias para armarlo y desarmarlo.
 
@@ -103,3 +104,63 @@ entra acá.
 - 394 y 399: las líneas y el proyecto de compose de un árbol.
 - 543: el `.env` del árbol.
 - 498: lo que afloja un guard en `ops.config.json`.
+
+## Cierre
+
+Se recorrió el caso entero:
+
+- **Fix propuesto, los ganchos `lineSetup` y `lineTeardown`** — se decidió que no, por ahora. Lo decidió Manuel el
+  2026-11-22, con la razón del caso: con una sola instancia que los construyó, atados a su base y a su gestor de
+  contenedores, no se sabe qué forma generaliza. Si otra instancia los pide, se abren como caso propio.
+- **El aviso** — se hizo, en el retiro en seco de `ops lines join` (`leftNotes` en `engine/cli/lines-join.js` y
+  `leftBehind` en `engine/cli/line-env.js`). Por cada repositorio de la línea:
+  - si el compose del árbol corre con un proyecto propio, lo nombra y dice cómo bajarlo antes de retirar;
+  - si es el mismo que el del checkout de siempre, lo dice y no aconseja bajarlo, porque bajaría lo que no es de la
+    línea;
+  - si no se sabe con qué proyecto corre, no aconseja nada. Pasa cuando el nombre sale de una variable, viene del
+    `name:` del compose, que no se lee (caso 399), o no es uno que Compose acepte;
+  - nombra los `.env*` del árbol que el retiro se lleva, y los respaldos de `lines/<línea>/.env-prev/`, que no borra;
+  - después de `--apply` no repite lo que había que hacer antes, salvo los respaldos, que siguen en disco.
+- **Tradeoffs: ejecutar lo que declara un archivo** — no aplica, porque no hay ganchos.
+- **Tradeoffs: el aviso solo** — es lo que se hizo. Lo que más trabajo llevó fue no aconsejar bajar un proyecto
+  ajeno: la revisión encontró cinco formas de que el aviso lo hiciera. La carpeta con `_` delante, el nombre entre
+  comillas o con un comentario, el que sale de una variable, el `name:` del compose y un nombre que Compose rechaza.
+  Todas quedan con su prueba, contrastadas con Docker Compose 2.29.2 y su documentación: docs.docker.com, «Specify a
+  project name».
+- **Tradeoffs: medirlo pide Docker** — el aviso se probó sin Docker. Que el proyecto lo separa `COMPOSE_PROJECT_NAME`
+  lo verificó la revisión con `docker compose config`.
+
+Lo que se corrió:
+
+- Línea de base, en «Reproducción»: el retiro en seco hablaba sólo de git.
+- Las pruebas del 544 en `test/wiring/line-env.test.js`, en rojo contra HEAD; el antes y el después del retiro en seco,
+  en `repro-543-after.log`.
+- 13 mutaciones en una copia, las 13 rojas y la copia sin mutar verde. Las que sobrevivieron en el camino sumaron su
+  caso: el `.env` copiado a mano con el nombre del original.
+- `npm run ci` con los archivos nuevos stageados: 1898 de 1898, exit 0.
+
+**Sin probar:** un retiro con contenedores levantados de verdad, porque el banco no corre Docker; el aviso no los
+baja, así que lo que se mide es el texto. Que el aviso acierte cuando el proyecto depende de un `name:` del compose: ahí
+dice que no se sabe, a propósito. La última revisión dejó tres imprecisiones que no aconsejan bajar el proyecto del
+checkout de siempre: un nombre con mayúsculas, que Compose rechaza, se toma en minúsculas como válido; un `name:` en
+`compose.override.yaml` o en un archivo de `COMPOSE_FILE` no se ve; y un `COMPOSE_PROJECT_NAME` exportado en la shell
+le gana al `.env` y no se puede leer desde acá.
+
+### Lista de cierre
+
+1. hecho: la reproducción de «Reproducción», con el retiro en seco de antes.
+2. hecho: rama `fix/cases-from-an-instance-audit`.
+3. hecho: las pruebas del 544 en rojo contra HEAD y en verde después.
+4. hecho: 13 mutaciones en una copia, las 13 rojas; las que sobrevivieron en el camino sumaron su caso.
+5. no aplica: agrega un aviso y no quita nada del retiro.
+6. hecho: banco sin modelo con la CLI real; se midió que el retiro en seco nombra el proyecto y los `.env*`, y que no aconseja bajar el del checkout de siempre.
+7. no aplica: no depende de un modelo ni de un runner; Docker queda en «Sin probar».
+8. hecho: las mutaciones, el banco y la puerta corrieron sobre la versión final.
+9. hecho: los dos lados de cada comparación (original y árbol) en cada forma de nombrar el proyecto, y el retiro antes y después de `--apply`.
+10. hecho: dependía la salida de `ops lines join`, que se probó en seco y aplicada; `teamwork.md` lo dice.
+11. hecho: cuatro pasadas de revisión independiente sobre el 543 y el 544. Las tres primeras hallaron formas de aconsejar bajar un proyecto ajeno, arregladas; la última no halló nada que impida entregar.
+12. hecho: pasada de comentarios sobre `leftBehind`, `leftNotes`, `projectOf` y el aviso de respaldos.
+13. hecho: `npm run ci` con los archivos nuevos stageados, 1898 de 1898, exit 0.
+14. hecho: este cierre recorre el Fix propuesto, la Decisión y los Tradeoffs.
+15. hecho: nombra lo corrido con su salida y lleva su línea `**Sin probar:**`.
+16. hecho: `resuelto` con `resuelto-en: 0.124.0` en el frontmatter y en el encabezado; entrada en el CHANGELOG de 0.124.0, junto a la del 543.
