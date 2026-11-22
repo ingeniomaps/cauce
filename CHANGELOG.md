@@ -14,6 +14,15 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.124.0] - 2026-11-21
+
+### Corregido
+
+- **`check` pide cerrar una épica `open` con todas sus historias en `done/`, igual que una `active`** (caso 529). Una
+  épica que nunca pasó por `ops promote` se quedaba `open` terminada y en verde, y `context` y `tree` la seguían
+  contando entre lo que queda. Ahora sale `✗ roadmap/epic-NNN-….md: open sin historias pendientes; debe cerrar`, y se
+  arregla cerrándola. Una épica que todavía no tiene historias no recibe ese consejo: ya le falta la historia.
+
 ## [0.123.1] - 2026-11-19
 
 ### Corregido
