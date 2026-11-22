@@ -32,8 +32,40 @@ diseño — eso vive en el commit y en el código.
 
   Dos sesiones reales de Claude lo usaron sin que el pedido lo nombrara: lo encontraron en el PROTOCOL y en la ayuda.
 
+- **Lo que un agente escribe por MCP frena hasta que una persona lo apruebe** (caso 541). Es lo que R12 ya pedía:
+  crear o comentar una tarjeta, publicar una página, mandar un mensaje o mergear un PR por un servidor MCP pasaba
+  sin freno. El guard nuevo `mcp-writes` corre en Claude Code sobre toda herramienta MCP:
+  - Una herramienta cuyo nombre no empieza con un verbo de lectura (`get`, `list`, `search`, `fetch`, `read`…) frena,
+    sea del servidor que sea. Una que el servidor agregue mañana nace frenada.
+  - Aprobada una vez, por el diálogo, el chat o `.ops-approval`, vale para esa herramienta el resto de la sesión en la
+    conversación principal; un subagente la vuelve a pedir. Un «pará» la revoca.
+  - Un servidor que es un sandbox se declara en `mcpSandbox` de `ops.config.json`, y una lectura que el nombre no
+    delata, en `mcpReads`.
+  - Los adaptadores de Codex, Gemini y Antigravity no lo registran.
+
+  **Qué hacer:** reinstalá el runner (`make install-claude`), que reemplaza el hook de `guard-jira-adf.sh` por
+  `guard-mcp.sh` y suma `guard-mcp-granted.sh` en `PostToolUse`. Si usás un navegador por MCP sobre un ambiente de prueba, declaralo en
+  `mcpSandbox`.
+
 ### Corregido
 
+- **Un `gh pr create --repo` que nombra un repositorio que no es el `origin` frena** (caso 540). R10 dice
+  que lo que se publica va al repositorio en el que se trabaja, y en un fork eso es el fork. Hasta ahora sólo se
+  comprobaba que el destino estuviera escrito, así que `--repo` al original pasaba. Ahora se compara con el `origin`
+  del checkout donde corre `gh`, por dueño y nombre, también con GitHub Enterprise. Sin `origin`, o con un destino
+  que no se puede leer (una variable), frena. Abrir un PR
+  por la API frena siempre. Se aprueba como el resto, con la línea `gh pr create --repo <dueño>/<nombre>`.
+- **`delivery` frena también los actos de R10 pedidos a la API de GitHub** (caso 539). Hasta ahora, el merge, la
+  aprobación o el workflow que `gh pr merge`, `gh pr review` o `gh workflow run` frenan pasaban si se pedían de otra
+  forma. Ahora frenan también así:
+  - por `gh api` (un `dispatches`, un `PATCH` que cierra el PR) o por una mutación de GraphQL;
+  - con `curl`, `wget`, httpie o `xh` contra `api.github.com`;
+  - con el repositorio escrito antes del subcomando (`gh -R acme/app pr merge 5`).
+
+  Se lee el método, no sólo la ruta, así que leer un PR, sus reviews o si ya se mergeó pasa: la regla de antes frenaba
+  `gh api …/pulls/N/merge` también como lectura. Mover una rama o escribir un archivo por la API frena como un push.
+  Comentar o cerrar por la API de issues frena aunque el número sea de un issue, porque desde el comando no se
+  distingue de un PR. Se aprueba como el resto, con el tramo del comando tal como se escribió.
 - **`decisions:` es opcional en una entrada de `done/`, como dice el PROTOCOL**, y la plantilla y el rechazo de `check`
   ahora lo dicen: si no hubo una decisión no obvia, la línea no va (caso 537).
 
