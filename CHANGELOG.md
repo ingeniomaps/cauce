@@ -23,6 +23,12 @@ diseño — eso vive en el commit y en el código.
   contando entre lo que queda. Ahora sale `✗ roadmap/epic-NNN-….md: open sin historias pendientes; debe cerrar`, y se
   arregla cerrándola. Una épica que todavía no tiene historias no recibe ese consejo: ya le falta la historia.
 
+- **Una tarea cerrada con otro slug ya no vuelve a la cola sin que nada lo diga** (caso 463). `ops check` acepta
+  `--closed <tarea>[,<tarea>]`: quien cierra declara qué cerró, y si esa tarea no tiene entrada en `done/` con su slug
+  —o sigue en la cola— sale `✗ <tarea>: se dio por cerrada y no tiene entrada en done/ con ese slug`. `/autobuild` lo
+  pasa al cerrar cada tarea y al cerrar la corrida, así que una entrada escrita con otro nombre se corrige ahí en vez de
+  que la corrida siguiente tome de nuevo una tarea ya construida. Sin la bandera, `check` no cambia.
+
 ## [0.123.1] - 2026-11-19
 
 ### Corregido
