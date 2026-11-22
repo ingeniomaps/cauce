@@ -62,7 +62,7 @@ function liveCommit(input) {
   if (root && (configOf(root).runner || {}).commitToLiveBranch === true) return
   if (!git(dir, ['rev-parse', '--verify', '--quiet', 'HEAD'])) return
   const branch = branchAfter(command, git(dir, ['branch', '--show-current']))
-  if (!branch || !liveBranches(dir).has(branch)) return
+  if (!branch || !liveBranches(dir, root).has(branch)) return
   if (CHAT.authorized(input, [`commit ${branch}`], { asked: ordersCommit }).length) return
   block(`'git commit' cae en ${branch}, la rama viva de ${path.basename(dir)}. No hace falta preguntarle a `
     + 'nadie: cortá una rama, que se lleva lo stageado, y reintentá el commit ahí. Para el trabajo de una '

@@ -66,6 +66,7 @@ const KEYS = {
   // Los cuida este mismo guard: el permiso de push (caso 114) y las raíces (caso 373).
   'runner.allowPush': null,
   'runner.pushToLiveBranches': null,
+  'runner.liveBranches': null,
   workspaceRoots: null,
   writableOutsideRoots: null,
   // Libres. `gateTimeoutMinutes` vencido marca el gate como `cortado` y no lo deja pasar (`verify.js`); con

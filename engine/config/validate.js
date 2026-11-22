@@ -61,7 +61,7 @@ const CONFIG_KEYS = ['$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoo
   'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards', 'reviewExempt',
   'mcpSandbox', 'mcpReads']
 const RUNNER_BOOLEANS = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
-const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
+const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'liveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
   'allowAiSignature', ...RUNNER_BOOLEANS]
 
 function validateOpsConfig(config) {
@@ -327,11 +327,13 @@ function validateRunner(runner, errors) {
   }
   // Un patrón haría de un permiso por rama un permiso por familia, que es lo que el campo vino a evitar
   // (caso 108): el guard compara el nombre tal cual, y `release/*` no publicaría en ninguna.
-  const live = runner.pushToLiveBranches
-  if (live !== undefined && (!Array.isArray(live)
-    || live.some((branch) => typeof branch !== 'string' || !/^[^\s*?[]+$/.test(branch)))) {
-    errors.push('ops.config.json: runner.pushToLiveBranches debe ser una lista de nombres de rama exactos, '
-      + 'sin espacios ni patrones')
+  for (const key of ['pushToLiveBranches', 'liveBranches']) {
+    const branches = runner[key]
+    if (branches !== undefined && (!Array.isArray(branches)
+      || branches.some((branch) => typeof branch !== 'string' || !/^[^\s*?[]+$/.test(branch)))) {
+      errors.push(`ops.config.json: runner.${key} debe ser una lista de nombres de rama exactos, sin espacios ni `
+        + 'patrones')
+    }
   }
   if (runner.gateTimeoutMinutes !== undefined
     && (typeof runner.gateTimeoutMinutes !== 'number' || runner.gateTimeoutMinutes <= 0)) {

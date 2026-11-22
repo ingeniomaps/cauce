@@ -1,6 +1,7 @@
 'use strict'
 
-// Las dos llaves que deciden si un `git push` se publica —`runner.allowPush` y `runner.pushToLiveBranches`—
+// Las llaves que deciden si un `git push` se publica —`runner.allowPush`, `runner.pushToLiveBranches` y
+// `runner.liveBranches`, que además decide dónde frena un commit—
 // viven en `ops.config.json`, y hasta 0.82.0 ningún guard miraba ese archivo: el bloqueo que dice «esto lo
 // decide una persona» se levantaba escribiendo el archivo que lo levanta, por `Write` o por `sed -i`, y el
 // mensaje del bloqueo nombra el campo exacto que hay que agregar (caso 114).
@@ -34,8 +35,8 @@ const { writableOutsideRoots, resolvePath, LOCAL_CONFIG } = require('../config/p
 const { loosened } = require('./config-keys')
 
 const INSTANCE_CONFIG = 'ops.config.json'
-const PROTECTED = ['allowPush', 'pushToLiveBranches']
-const NAMES = PROTECTED.map((name) => `runner.${name}`).join(' y ')
+const PROTECTED = ['allowPush', 'pushToLiveBranches', 'liveBranches']
+const NAMES = PROTECTED.map((name) => `runner.${name}`).join(', ').replace(/, ([^,]*)$/, ' y $1')
 
 // El valor de cada llave en la forma en que se comparan. Ausente no es vacío: sacar `pushToLiveBranches`
 // cambia qué ramas alcanza el permiso y tiene que distinguirse de dejarlo en una lista sin ramas. Lo hace
@@ -52,15 +53,17 @@ const HANDS_OFF = 'Lo decide una persona (R10): decile qué se frenó y esperá.
   + 'herramienta de edición.'
 
 function changeMessage(file) {
-  return `${file} lleva las dos llaves que deciden qué push se publica, ${NAMES}, y este cambio las toca. `
+  return `${file} lleva las llaves que deciden qué push se publica y en qué rama frena un commit, ${NAMES}, y `
+    + 'este cambio las toca. '
     + `${HANDS_OFF}\nEl resto del archivo no lo frena este guard: si venías a declarar una raíz o a tocar `
-    + 'cualquier otro campo, mandá el mismo cambio sin mover esas dos llaves.'
+    + 'cualquier otro campo, mandá el mismo cambio sin mover esas llaves.'
 }
 
 // Qué cuida cada archivo, para decirlo en el bloqueo: el compartido lleva el permiso de push y las raíces;
 // el de la máquina, sólo rutas escribibles.
 const guards = (root, file) => (file === path.join(root, INSTANCE_CONFIG)
-  ? `${NAMES}, las dos llaves que deciden qué push se publica, o las raíces que el límite de escritura lee`
+  ? `${NAMES}, las llaves que deciden qué push se publica y dónde frena un commit, o las raíces que el límite de `
+    + 'escritura lee'
   : 'las rutas que el límite de escritura deja escribir fuera de las raíces')
 
 // **Un contenido que no se puede leer como JSON se frena.** Un `Edit` manda el fragmento que reemplaza y no
@@ -151,10 +154,11 @@ function widensMessage(file, held) {
     + 'que angosta no se pregunta.\n'
 }
 
-// Lo que la persona pidió nombrando el archivo pasa el juicio de las dos llaves: ahí quien decide es ella,
+// Lo que la persona pidió nombrando el archivo pasa el juicio de las llaves: ahí quien decide es ella,
 // que es lo que este guard cuida. Se pregunta cada vez —sin conceder y sin heredar—, igual que
-// `self-approval`: las dos llaves que viven acá son el permiso de push, y nombrar el archivo una vez no lo
-// deja abierto toda la sesión. El comentario decía «lo mismo» mientras el código concedía (caso 119).
+// `self-approval`: las llaves que viven acá son el permiso de push y la lista de ramas vivas, y nombrar el
+// archivo una vez no lo deja abierto toda la sesión. El comentario decía «lo mismo» mientras el código
+// concedía (caso 119).
 //
 // Vale sólo por la herramienta de edición, que trae el contenido. Por shell nombrar el archivo no abre nada
 // —hasta 0.106.1 sí, y el 119 lo había decidido así—: un comando no dice con qué queda el archivo, así que

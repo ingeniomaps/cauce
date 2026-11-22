@@ -320,7 +320,7 @@ const BASE_CONFIG = {
   workspaceRoots: [{ name: 'app', path: '.' }],
   runner: { maxTaskHours: 4, allowPush: false },
 }
-const KEYS = /runner\.allowPush y runner\.pushToLiveBranches/
+const KEYS = /runner\.allowPush, runner\.pushToLiveBranches y runner\.liveBranches/
 
 function configRoot(prefix, runner = {}) {
   const root = tempRoot(prefix)
@@ -330,12 +330,12 @@ function configRoot(prefix, runner = {}) {
   return { root, file: path.join(root, 'ops.config.json'), config }
 }
 
-test('las dos llaves del push no se escriben desde una herramienta, y el resto del archivo sí', () => {
+test('las llaves del push no se escriben desde una herramienta, y el resto del archivo sí', () => {
   const { root, file, config } = configRoot('ops-hook-config-escritura-')
   const write = (content, target = file) => ({
     cwd: root, tool_input: { file_path: target, content: JSON.stringify(content, null, 2) },
   })
-  // Lo que proteger sólo los dos campos conserva: el archivo sigue siendo la salida que el límite de
+  // Lo que proteger sólo esos campos conserva: el archivo sigue siendo la salida que el límite de
   // raíces recomienda, y frenarlo entero repondría el candado que el 090 sacó. Una raíz nueva frena (caso 373,
   // en el encabezado de `ops-config.js`); el resto del archivo pasa, y la entrada confirmada también.
   const roots = { ...config, workspaceRoots: [{ name: 'app', path: '../app' }] }
