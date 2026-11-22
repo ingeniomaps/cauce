@@ -238,6 +238,8 @@ function check(dir, cli) {
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
       + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)
   }
+  // Un remoto con la credencial en la URL, en la instancia o en una raíz (caso 530).
+  warnings.push(...require('../core/remote-credentials').remoteWarnings(path.resolve(root, '..')))
   // Lo que se adopta de un archivo sobrescrito, contra lo que el sistema dice hoy (caso 545).
   warnings.push(...ADOPTED.staleOf(path.join(root, 'rules')))
   // Y lo que instaló cada runner, contra esas mismas reglas (caso 099).

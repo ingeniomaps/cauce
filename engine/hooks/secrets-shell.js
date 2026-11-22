@@ -18,6 +18,7 @@ const { REDIRECT } = require('./shell-writes')
 const { writes } = require('./shell-changes')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const RC = require('../core/remote-credentials')
 
 // Lo que muestra el contenido de un archivo. Queda afuera lo que sólo lo nombra —`ls`, `test -f`, `rm`,
 // `git add`—, que no deja nada en la sesión, y `cp` y `mv`, cuyo último argumento es un destino: `cp
@@ -197,6 +198,36 @@ function writtenCredentials(input, command) {
   block(`${left.map((file) => `${file} ${found.get(file)}`).join('\n')}\n${AP.HOW(null, left, input)}`)
 }
 
+// Lo que muestra la URL de un remoto (caso 530): `remote -v`, `remote show`, `remote get-url`, un `config` que lee las
+// del remoto o lista todo, `ls-remote --get-url`, y un lector que nombra `.git/config`. Por sí solo no frena: frena si
+// alguna URL de ese repositorio trae credencial, y la de un remoto sin ella se lee como siempre.
+// Las opciones globales de git se sacan antes con `withoutGitGlobals`.
+const SHOWS_URL = new RegExp(String.raw`(?:^|[\s;&|('"])(?:[^\s;&|()<>'"\x60]*\/)?git\s+(?:`
+  + String.raw`remote\s+(?:[^;&|\n]*\s)?(?:-v+|--verbose|show|get-url)\b`
+  + String.raw`|config\b(?=[^;&|\n]*(?:\bremote\b|\burl\b|\s(?:-l|--list|list)\b))`
+  + String.raw`|ls-remote\b[^;&|\n]*--get-url)`)
+function remoteShown(input, command, reads) {
+  const raw = String(command)
+  // El `.git/config` que se lee es el de su ruta, que puede ser de otro repositorio que el de la carpeta.
+  const configs = reads.filter(({ token }) => /(?:^|\/)\.git\/config$/.test(token))
+    .map(({ token, base }) => path.dirname(path.dirname(path.resolve(base || cwdOf(input), token))))
+  const shows = SHOWS_URL.test(require('./input').withoutGitGlobals(raw))
+  const dirs = [...new Set([...configs, ...(shows ? [require('./input').gitDirectory(raw, cwdOf(input), input)] : [])])]
+  for (const dir of dirs) remoteIn(input, dir)
+}
+
+function remoteIn(input, dir) {
+  const remotes = RC.credentialedRemotes(dir)
+  if (!remotes.length) return
+  const items = remotes.map((one) => `remote ${one.name} @ ${dir}`)
+  const left = AP.pending(opsRoot(input), items, input)
+  if (!left.length) return
+  const named = remotes.filter((one) => left.includes(`remote ${one.name} @ ${dir}`))
+  block(`el comando imprime la URL del remoto ${named.map((one) => one.name).join(' y ')} de ${dir}, que lleva una `
+    + 'credencial: quedaría en el contexto de la sesión. Sacala de la URL y dejala en el helper de git:\n'
+    + `${named.map((one) => `  ${RC.fixOf(dir, one)}`).join('\n')}\n${AP.HOW(null, left, input)}`)
+}
+
 function secretsShell(input) {
   const raw = commandOf(input)
   writtenCredentials(input, rawCommandOf(input))
@@ -208,7 +239,9 @@ function secretsShell(input) {
   const root = opsRoot(input)
   const declared = root && fs.existsSync(path.join(root, 'organization', 'secrets.json'))
     ? require('../secrets').identityFiles(root) : []
-  const named = readTokens(command, cwdOf(input))
+  const reads = readTokens(command, cwdOf(input))
+  remoteShown(input, command, reads)
+  const named = reads
     .filter(({ token, base }) => patternNames(token).some((name) => credential(input, name))
       || (base !== null && declared.includes(path.resolve(base, token.replace(/^~(?=$|\/)/, os.homedir())))))
   // Bajo un `cd` que no se sabe no hay qué ruta aprobar; pasa si la persona lo pidió en el chat nombrándolo, como la
