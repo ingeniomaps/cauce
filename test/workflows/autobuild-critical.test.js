@@ -78,13 +78,16 @@ test('lo que Review dice de las superficies llega a done/, también cuando no to
 })
 
 // La corrida real del 2026-10-01 lo mostró: la tarea subió y pasó por Review, y `done/` decía `express`.
-test('el carril que llega al WIP y a done/ es el que corrió', async () => {
+// Desde el caso 538 el carril llega a done/ por el WIP: `ops done` lo lee de ahí antes que de la cola, y eso lo prueba
+// `test/planning/done-command.test.js` en disco. Acá se mide que el WIP lleve el que corrió.
+test('el carril que llega al WIP, y por él a done/, es el que corrió', async () => {
   const subida = await runFlow(withSurfaces({ critical: SURFACE }), { lane: 'express', vouched: true })
-  assert.match(doneFacts(subida), /Hechos: lane=directo;/)
   assert.match((subida.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=directo,/)
+  assert.match(doneFacts(subida), /Hechos: review=/, 'la prueba encontró el prompt de cierre')
+  assert.doesNotMatch(doneFacts(subida), /lane=/, 'el cierre ya no lo copia: lo saca ops done')
 
   const intacta = await runFlow(withSurfaces({ critical: '' }), { lane: 'express', vouched: true })
-  assert.match(doneFacts(intacta), /Hechos: lane=express;/)
+  assert.match((intacta.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=express,/)
 })
 
 // Lo que el prompt promete sobre una superficie crítica tiene que coincidir con lo que el código hace: un

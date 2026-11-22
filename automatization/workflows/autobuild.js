@@ -2483,20 +2483,35 @@ while (rounds++ < MAX_TASKS) {
   // La crítica corrió acá, o el carril no la corre, y entonces es un hecho. Si la corrió la sesión que construyó, está
   // en el WIP, y eso va como pedido aparte: entre los hechos, que se copian textuales, se lee como el valor a copiar.
   const critiqueFact = critiqued || (lite || mechanical ? `n/a — el carril ${lane} no corre Critique` : '')
-  // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
+  // `review` y `critique` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
   // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
   // las traía (caso 211).
+  //
+  // El agente escribe lo que juzga y `ops done` hace el resto: la cola, el hito, la épica, el WIP en IDLE, la reserva
+  // y `check --closed`, validando la entrada entera antes de escribir nada. Esa mecánica estaba acá en prosa,
+  // implementada otra vez, y ya había divergido del comando (caso 538).
+  // Con el nombre de la sesión: el temporal del sistema es de todas, y en una corrida real el agente encontró el
+  // archivo que otra instancia había dejado para la misma tarea, y lo leyó antes de pisarlo (caso 538).
+  const fieldsFile = `done-${String(planning.wipFile || '').replace(/^wip\/|\.md$/g, '') || 'sesion'}-${task.id}.md`
   await scribe(settled(
-    `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
-    `fecha: ${planning.today}, done, qa, tests, commit, lane, review y critique, en el formato de entrada que ` +
-    `trae este preámbulo—; ` +
-    `sacala junto con sus notas indentadas de ${queueFile()} —si es un archivo de ${P}/backlog/ y su hito queda ` +
-    'sin tareas, borrá ese archivo—; cerrá su épica sólo si no queda ' +
-    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE —una línea «status: IDLE» en su ` +
-    // Dicho con su forma: sin eso quien cierra la buscaba en el fuente del motor, una llamada por tarea.
-    `frontmatter es lo que lee el motor—; y soltá la reserva corriendo ` +
-    `"node tools/ops.js release ${P} ${task.id}${ON_LINE}". lane, review y critique van textuales, copiados de ` +
-    `estos hechos sin ` +
+    `Cerrá ${task.id} de forma atómica con ops done. Primero escribí, con la herramienta de archivos y en el ` +
+    `temporal —el de esta sesión si tenés uno, si no el del sistema; si ya existe de otra corrida, reemplazalo ` +
+    `entero—, un archivo ${fieldsFile} con lo que juzgás del cierre: cada campo en una sola línea «campo: valor», ` +
+    'con las trazas de tests y las entradas de decisions separadas por «; ». Los campos son ' +
+    'done, qa, tests, commit, review y critique, más decisions si corresponde; acept, fecha y lane no van, porque ' +
+    `ops done los saca del disco. Después corré "cd ${ROOT} && node tools/ops.js done ${P} ${task.id} --fields <ruta ` +
+    `de ${fieldsFile}>${ON_LINE}", tal cual y en un solo comando: escribe ${doneFile(task.id)}, saca la tarea de ` +
+    `la cola, cierra el hito y la épica si corresponde, deja ${P}/${planning.wipFile} en status IDLE, suelta la ` +
+    'reserva y ' +
+    // El WIP que deja en IDLE es el de quien lo corre, y quién es sale de la carpeta: corrido desde otra, en una
+    // corrida real cerró la tarea y dejó el WIP de esta sesión apuntándola, como de otra (caso 538).
+    `corre check --closed. Si dice que ${planning.wipFile} es de otra sesión, lo corriste desde otra carpeta: volvé ` +
+    `a correrlo desde ${ROOT}, que no reescribe la entrada y deja ese WIP en IDLE. Si dice «No se ` +
+    'escribió nada», corregí el campo que nombra, sin cambiar los hechos, y volvé a correrlo; si escribió y el ' +
+    'check del final queda en rojo, no toques la entrada y decí qué marcó, que lo mira el cierre de la corrida; si ' +
+    'se niega por otra razón —la tarea es de otra línea, o hay una entrada que no la cierra—, no lo fuerces y ' +
+    'decilo; si sale con 2, el comando quedó mal armado: revisá la tarea y la ruta de --fields. ' +
+    'review y critique van textuales, copiados de estos hechos sin ' +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
     // `done` y `qa` no van textuales, y hay que decirlo: lo que llega se escribió con la tarea abierta. Sin
     // decirlo dependía de que quien escribe lo acomodara por su cuenta, y cuando en 0.103.4 cambió quién
@@ -2512,7 +2527,7 @@ while (rounds++ < MAX_TASKS) {
       + 'tiene, n/a — no quedó registrada. ') +
     (buildNotes.length ? 'Cada entrada de notas-de-build va en decisions, con [supuesto: …]. ' : '') +
     `En decisions no nombres una fase ni un cargo ` +
-    `que no figure en estos hechos. Hechos: lane=${lane}; ` +
+    `que no figure en estos hechos. Hechos: ` +
     `review=${reviewFact}; ${critiqueFact ? `critique=${critiqueFact}; ` : ''}fases=${ran.join(' → ')}; ` +
     `build=${buildFact}; ` +
     (buildNotes.length ? `notas-de-build=${JSON.stringify(buildNotes)}; ` : '') +
@@ -2533,13 +2548,8 @@ while (rounds++ < MAX_TASKS) {
     `aclaración—` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
     (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '. ' +
-    // La entrada se valida antes de commitearla. Sin esto el formato lo descubría `closing`, con la entrada
-    // ya commiteada: una traza escrita «A (condición) → prueba» dejó `check` en rojo y un arreglo suelto.
     'Cada traza de tests empieza con «A →» o «C<n> →» y sigue con la prueba; la condición, si la nombrás, va ' +
-    `después. Al terminar corré "node tools/ops.js check ${P} --closed ${task.id}" desde ${ROOT}: si marca esta ` +
-    'entrada, corregí el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo; si marca que ' +
-    `${task.id} no quedó cerrada, la viñeta de la entrada lleva ese slug y ${task.id} sale de la cola. ` +
-    'Si marca la entrada de otra ' +
+    'después. Si ops done marca la entrada de otra ' +
     // En una corrida real quien cerraba una tarea «arregló» la entrada de otra y le sacó una condición de la
     // traza: evidencia ajena editada de paso, y commiteada con el cierre de la propia (caso 310).
     'tarea, no la toques: es evidencia que no escribiste, y la mira el cierre de la corrida.'),

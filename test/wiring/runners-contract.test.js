@@ -288,5 +288,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 75 desde el 2026-11-13: `agent-promote` corre `tools/ops.js learn --check-signature` antes de aplicar (caso 486),
   // con el mismo respaldo `signature.cli || 'tools/ops.js'` y la misma raíz que el `learn --applied` que ya dictaba.
-  assert.equal(hits, 75, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 74 desde el 2026-11-22: el cierre de `/autobuild` dicta un solo comando, `tools/ops.js done` (caso 538), en vez del
+  // `tools/ops.js release` y el `tools/ops.js check` que dictaba; misma raíz, uno menos.
+  assert.equal(hits, 74, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

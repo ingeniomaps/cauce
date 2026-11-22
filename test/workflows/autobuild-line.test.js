@@ -168,11 +168,14 @@ test('la línea sale del argumento, y los comandos que contestan por la sesión 
   for (const args of ['pagos', '--line pagos', { line: 'pagos' }]) {
     const { result, prompts } = await runFlow(declared(), { args })
     ranToEnd(result)
-    const commands = asked(prompts, /tools\/ops\.js (context|claim|release) /)
+    const commands = asked(prompts, /tools\/ops\.js (context|claim|release|done) /)
     assert.ok(commands.length > 1, JSON.stringify(args))
     for (const prompt of commands) {
-      assert.match(prompt, /tools\/ops\.js (context|claim|release) \S+( T-1)? --line pagos[" ]/, JSON.stringify(args))
+      const asks = /tools\/ops\.js (context|claim|release|done) \S+( T-1)?( --fields <[^>]+>)? --line pagos[" ]/
+      assert.match(prompt, asks, JSON.stringify(args))
     }
+    // El cierre suelta la reserva de la línea por `ops done` (caso 538).
+    assert.ok(commands.some((one) => / done \S+ T-1 --fields /.test(one)), JSON.stringify(args))
     assert.doesNotMatch(prompts.map((one) => one.prompt).join('\n'), /pidió[^»]*«pagos»/,
       'el nombre de la línea se tomó por un pedido')
   }

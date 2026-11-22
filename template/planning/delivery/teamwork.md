@@ -244,8 +244,8 @@ revisor que no fue quien la escribió. El traspaso es por los archivos de planni
 - **Quien revisa** toma la tarea por ese estado, con `/autobuild <línea> --role review`. Juzga con lo que está en
   disco —la aceptación, el WIP, el diff de la rama, los gates vueltos a correr y la mutación que la aceptación declara,
   corrida en una copia—, no con el informe de quien construyó, y revisa y hace QA con lo que pide el carril, el `lane:` del WIP. Si aprueba, hace
-  el cierre entero: `done/<tarea>.md`, la tarea fuera de la cola, el WIP limpio y `ops release` del reclamo, que
-  suelta aunque lo haya tomado otro porque la tarea ya está en DONE. Si no aprueba, anota los hallazgos en
+  el cierre entero con `ops done`: `done/<tarea>.md`, la tarea fuera de la cola, el WIP limpio y el reclamo suelto,
+  aunque lo haya tomado otro, porque la tarea ya está en DONE. Si no aprueba, anota los hallazgos en
   `## Bloqueos` del WIP y lo devuelve a `phase: Build`, sin soltar el reclamo: la tarea sigue siendo de quien la
   construye, que la retoma desde los hallazgos.
 

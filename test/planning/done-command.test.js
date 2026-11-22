@@ -155,6 +155,7 @@ test('lo que no se puede cerrar desde acá se dice, y no escribe nada', () => {
   const closed = run(['done', dir, 'sumar', '--fields', fields])
   assert.equal(closed.status, 0, closed.stderr + closed.stdout)
   assert.match(closed.stderr, /wip\/otra-sesion\.md también apunta a sumar: es de otra sesión/)
+  assert.match(closed.stderr, /Si es la tuya, quién sos sale de la carpeta: corré ops done desde la de esa sesión/)
   assert.equal(fs.readFileSync(path.join(dir, 'wip', 'otra-sesion.md'), 'utf8'), otherWip)
 })
 
@@ -222,4 +223,46 @@ test('sin decisions, que el PROTOCOL deja opcional, cierra igual y la entrada no
   assert.doesNotMatch(closed.stdout + closed.stderr, /faltan campos/)
   assert.doesNotMatch(fs.readFileSync(path.join(dir, 'done', 'sumar.md'), 'utf8'), /decisions:/)
   discard(path.dirname(dir))
+})
+
+// Caso 538: `/autobuild` cierra por `ops done`, así que lo que el recorrido sabía y la cola no dice tiene que llegar.
+test('el carril que corrió, si el WIP lo subió, le gana al de la cola', () => {
+  const { dir, fields } = instance('cauce-done-subida-')
+  writeWip(dir, '---\ntask: sumar\nphase: Build\nlane: directo\n---\n\n## Plan aprobado\n1. [x] paso\n')
+  const closed = run(['done', dir, 'sumar', '--fields', fields])
+  assert.equal(closed.status, 0, closed.stderr + closed.stdout)
+  assert.equal(P.readDone(dir).entries.find((one) => one.slug === 'sumar').lane, 'directo', 'no el lite de la cola')
+})
+
+test('un tests: n/a sobre un commit que toca código frena antes de escribir, no después', () => {
+  const { dir, fields } = instance('cauce-done-superficie-')
+  const root = path.dirname(dir)
+  const { execFileSync } = require('node:child_process')
+  const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' })
+  git('init', '-q')
+  fs.mkdirSync(path.join(root, 'api'))
+  fs.writeFileSync(path.join(root, 'api', 'sum.js'), 'module.exports = (a, b) => a + b\n')
+  git('add', 'api/sum.js')
+  git('-c', 'user.name=b', '-c', 'user.email=b@b', 'commit', '-qm', 'sum')
+  const sha = git('rev-parse', '--short', 'HEAD').trim()
+  fs.writeFileSync(fields, FIELDS.replace(/^tests: .*$/m, 'tests: C1 → n/a — no se ejecuta')
+    .replace(/^commit: .*$/m, `commit: ${sha} (main@master)`))
+  const refused = run(['done', dir, 'sumar', '--fields', fields])
+  assert.equal(refused.status, 1)
+  assert.match(refused.stderr, /No se escribió nada/)
+  assert.ok(!fs.existsSync(path.join(dir, 'done', 'sumar.md')), 'la entrada no quedó escrita')
+  assert.match(fs.readFileSync(path.join(dir, 'BACKLOG.md'), 'utf8'), /\*\*sumar\*\*/, 'y la tarea sigue en la cola')
+})
+
+test('el WIP propio le gana al de otra sesión, y un sin clasificar no le gana a la cola', () => {
+  const { dir, fields } = instance('cauce-done-dos-wip-')
+  fs.writeFileSync(path.join(dir, 'wip', '0000-ajeno.md'),
+    '---\ntask: sumar\nphase: Build\nlane: express\n---\n\n## Plan aprobado\n1. [x] paso\n')
+  assert.equal(run(['done', dir, 'sumar', '--fields', fields]).status, 0)
+  assert.equal(P.readDone(dir).entries.find((one) => one.slug === 'sumar').lane, 'lite', 'el propio, no el ajeno')
+
+  const other = instance('cauce-done-sin-clasificar-')
+  writeWip(other.dir, '---\ntask: sumar\nphase: Build\nlane: sin clasificar\n---\n\n## Plan aprobado\n1. [x] paso\n')
+  assert.equal(run(['done', other.dir, 'sumar', '--fields', other.fields]).status, 0)
+  assert.equal(P.readDone(other.dir).entries.find((one) => one.slug === 'sumar').lane, 'lite', 'el de la cola')
 })

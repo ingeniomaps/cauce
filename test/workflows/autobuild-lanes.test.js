@@ -323,19 +323,18 @@ test('el proyecto que no la declara sigue descubriéndola', async () => {
 // tarea que corría por `express`, donde Review está detrás de un `if` y nadie convoca a un revisor —y
 // esa entrada es la evidencia de aceptación que alguien lee cuando ya nadie recuerda la corrida—.
 // El carril alcanza como hecho porque es lo que decide qué fases corren.
-test('el cierre recibe el carril y el veredicto de la revisión, o que no hubo', async () => {
+// El carril ya no viaja en el prompt: `ops done` lo lee del WIP (caso 538).
+test('el cierre recibe el veredicto de la revisión, o que no hubo', async () => {
   const done = (prompts) => prompts.find((one) => one.key === 'Done|done').prompt
 
   const express = await runFlow({}, { lane: 'express' })
   ranToEnd(express.result)
   const sinRevisión = done(express.prompts)
-  assert.match(sinRevisión, /lane=express/, 'el cierre no sabe por qué carril vino la tarea')
   assert.match(sinRevisión, /review=no corrió/, 'el cierre no sabe que nadie revisó')
 
   const directo = await runFlow({}, { lane: 'directo' })
   ranToEnd(directo.result)
   const conRevisión = done(directo.prompts)
-  assert.match(conRevisión, /lane=directo/)
   assert.match(conRevisión, /review=aprobado/, 'el cierre no recibe el veredicto de quien sí revisó')
 })
 

@@ -18,7 +18,7 @@ async function reviewed(workspaceRoots, consulted, { root = ROOT, review = {}, c
   }, { root })
   ranToEnd(result)
   const done = prompts.find((one) => one.key === 'Done|done').prompt
-  assert.ok(!root || done.includes(`escribí ${root}/planning/done/`), 'el recorrido corre con esa raíz')
+  assert.ok(!root || done.includes(`escribe ${root}/planning/done/`), 'el recorrido corre con esa raíz')
   const fact = done.match(/review=([^;]*);/)[1]
   assert.match(fact, /^aprobado por \S+, sobre /, 'el veredicto y quién revisó quedan como estaban')
   return { fact, seen: fact.split(', sobre ')[1].split(' · ')[0].split(', ') }

@@ -30,19 +30,19 @@ test('el carril con el que corre la tarea viaja al WIP y al cierre', async () =>
   const wip = prompts.find((one) => one.key === KEY.wip).prompt
   assert.match(wip, /lane=lite/, 'el plan en vuelo lo conserva para quien reanude')
   const cierre = prompts.find((one) => one.key.startsWith('Done|')).prompt
-  assert.match(cierre, /tests, commit, lane, review y critique/,
-    'y el cierre lo pide como un campo más de la evidencia')
+  assert.match(cierre, /acept, fecha y lane no van, porque ops done los saca del disco/,
+    'y el cierre lo toma de ahí, sin pedírselo al agente')
 })
 
 // El cierre escribe un archivo por tarea y no agrega a uno compartido: es lo que hace que dos corridas
-// en paralelo no se pisen al terminar. Y la fecha la trae el motor —un workflow no tiene reloj, hay una
-// puerta que se lo impide— así que el prompt tiene que llevarla ya resuelta, no pedírsela al modelo.
-test('el cierre escribe el archivo de la tarea, con la fecha que dio el motor', async () => {
+// en paralelo no se pisen al terminar. Y la fecha la pone `ops done` —un workflow no tiene reloj, hay una
+// puerta que se lo impide—, así que el prompt no se la pide al modelo (caso 538).
+test('el cierre escribe el archivo de la tarea, con la fecha que pone el motor', async () => {
   const { prompts } = await runFlow()
   const cierre = prompts.find((one) => one.key.startsWith('Done|'))
   assert.ok(cierre, 'la fase Done pidió algo')
-  assert.match(cierre.prompt, /escribí \.\/planning\/done\/T-1\.md/)
-  assert.match(cierre.prompt, /fecha: 2026-09-08/)
+  assert.match(cierre.prompt, /escribe \.\/planning\/done\/T-1\.md/)
+  assert.doesNotMatch(cierre.prompt, /fecha: 2026-09-08/, 'la fecha ya no la escribe el agente')
   assert.doesNotMatch(cierre.prompt, /planning\/DONE\.md/, 'y no manda a tocar el archivo compartido')
 })
 

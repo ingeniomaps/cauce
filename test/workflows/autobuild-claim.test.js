@@ -427,15 +427,22 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   // Caso 301. `done` y `qa` se escribieron con la tarea abierta: el cierre los acomoda, y lo dice el prompt
   // en vez de depender de que quien escribe la entrada lo haga por su cuenta.
   const done = seen.get('done')
-  assert.match(done, /lane, review y critique van textuales/)
+  assert.match(done, /review y critique van textuales/)
   assert.match(done, /done y qa no van textuales/)
   assert.match(done, /sin lo que build contaba de su momento: que no había commit/)
   assert.match(done, /las rutas van relativas, empezando en \S*api\/, nunca la ruta absoluta de esta máquina/)
   assert.match(done, /Cada traza de tests empieza con «A →» o «C<n> →»/)
-  assert.match(done, /en status IDLE —una línea «status: IDLE» en su frontmatter es lo que lee el motor—/)
-  assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+ --closed T-1" desde \S+: si marca esta /)
-  assert.match(done, /si marca que T-1 no quedó cerrada, la viñeta de la entrada lleva ese slug y T-1 sale de la cola/)
-  assert.match(done, /Si marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
+  // Caso 538: la mecánica del cierre la hace `ops done`, y el prompt ya no la dicta en prosa.
+  // El archivo de campos lleva el nombre de la sesión, el del WIP: el temporal es de todas.
+  assert.match(done, /corré "cd \S+ && node tools\/ops\.js done \S+ T-1 --fields <ruta de done-w-uno-T-1\.md>"/)
+  assert.match(done, /es de otra sesión, lo corriste desde otra carpeta: volvé a correrlo desde \S+, que no reescribe/)
+  assert.match(done, /Si dice «No se escribió nada», corregí el campo que nombra, sin cambiar los hechos/)
+  assert.match(done, /si escribió y el check del final queda en rojo, no toques la entrada/)
+  assert.match(done, /Si ops done marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
+  for (const gone of [/sacala junto con sus notas/, /«status: IDLE» en su frontmatter/, /soltá la reserva corriendo/,
+    /tools\/ops\.js release/, /tools\/ops\.js check \S+ --closed/, /cerrá su épica sólo si/]) {
+    assert.doesNotMatch(done, gone)
+  }
 })
 
 // Caso 377: todo pedido que dicta un `chore(planning)` dice qué parte del asunto no es de la regla. El porqué,
