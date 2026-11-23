@@ -297,9 +297,8 @@ test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', 
 // La quita se prueba al revés que un agregado: lo que hace falta es una aserción de **ausencia**, porque
 // una que compruebe que la corrida termina pasaría igual con la expansión puesta —también terminaba—.
 //
-// Lo retirado es promover una épica del roadmap al BACKLOG. `open` es «candidata editable que aún no fue
-// promovida», así que pegarla en la cola es promoverla, y BR-OPS-002 la deja fuera hasta que la apruebe
-// una persona. `context` la nombra para que lo haga.
+// Lo retirado es promover una épica del roadmap al BACKLOG; la razón vive en `autobuild.js`, donde la
+// corrida termina sin tarea. El escenario es una cola vacía, y se comprueba que nada pide expandir.
 test('sin cola, el recorrido no promueve una épica: la nombra y para', async () => {
   const empty = {
     blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,

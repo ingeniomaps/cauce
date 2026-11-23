@@ -133,9 +133,8 @@ function lastCommit(repo, branch) {
 // registrados**, y el desglose de los que faltaban no era trabajo suelto: 69 `feat` y 51 `fix` de 173
 // (caso 082).
 //
-// Se cuenta desde una fecha y no desde el principio a propósito: contar toda la historia da una deuda que
-// nunca baja y que se termina leyendo como decorado. Desde la última tarea cerrada, en cambio, el número
-// vuelve a cero cada vez que el flujo se cierra, y lo que queda visible es la deriva de ahora.
+// Se cuenta desde la fecha que elige quien llama; por qué `check` usa la de la última tarea cerrada está
+// en `coverageWarnings`.
 //
 // Los merges quedan afuera: no son trabajo, son la forma de integrarlo.
 function unrecordedCommits(repo, since, recorded, skip = [], born = { at: 0, sha: '' }) {
@@ -191,9 +190,9 @@ function instancePaths(repo, opsRoot) {
   return [...O.TEMPLATE_PREFIXES, 'ops.config.json', '.cauce/', 'AGENTS.md']
 }
 
-// Cuánto del trabajo que entró a los repositorios quedó registrado, desde la última tarea cerrada. Avisa
-// y no falla, por lo mismo que el resto de esta familia: es un hecho del pasado que no se arregla
-// editando nada, y el único camino al verde sería escribir entradas de memoria.
+// El aviso de `check` sobre `unrecordedCommits`, contado desde la última tarea cerrada. Avisa y no falla, por lo mismo
+// que el resto de esta familia: es un hecho del pasado que no se arregla editando nada, y el único camino al verde
+// sería escribir entradas de memoria.
 //
 // La ventana arranca en la entrada más reciente y no en la primera: contar toda la historia da una deuda
 // que nunca baja y que se lee como decorado. Así el número vuelve a cero cada vez que se cierra una tarea,

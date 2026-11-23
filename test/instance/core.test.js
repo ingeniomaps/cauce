@@ -74,8 +74,6 @@ test('una raíz que declara su puerta pasa el validador', () => {
   assert.deepEqual(validateOpsConfig(config), [])
 })
 
-// Declararlo vacío es peor que no declararlo: promete una puerta y no la da, y quien verifica se queda
-// sin comando y sin el aviso de que tenía que descubrirlo.
 test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
   const config = opsConfig()
   config.workspaceRoots[0].verify = '   '

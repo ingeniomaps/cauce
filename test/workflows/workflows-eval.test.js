@@ -260,11 +260,9 @@ test('agent-promote distingue el mes cerrado sin cambios del que nadie decidió'
   assert.match(src, /const applied = NOTHING \? \{ applied: true/, 'no se aplica lo que no cambia')
   assert.match(src, /learn \$\{AGENT\} --applied/, 'pero se sella igual: es lo que cierra el período')
 
-  // Y no se manda a re-evaluar un contrato que no se movió: cuesta la corrida entera y mide varianza.
   assert.match(src, /no hace falta re-evaluar/, 'un contrato quieto no compra una re-corrida')
 })
 
-// Que la cobertura llegue al archivo. El porqué está en `shared/eval-only.js`, con el helper.
 // Que el recorte recorte, no que exista. La versión anterior de esta prueba comprobaba que los dos
 // gemelos llamaran a `stripRoot` y los dos lo llamaban — y no recortaba nada, porque partía por un `ROOT`
 // que en este repositorio vale `'.'`. El registro del 2026-08-30 salió con tres rutas absolutas y la
@@ -320,8 +318,7 @@ for (const name of ['agent-eval', 'flow-eval']) {
 
     // Determinista y no un pedido al modelo: lo que el sujeto y el juez escriben pasa por el recorte.
     assert.match(src, /const stripRoot = \(text, root\)/, 'el recorte existe')
-    // La fila entera y no campo por campo: así ninguno queda afuera. La nota lo estaba, y era el pedazo
-    // que más fácil filtra una ruta, porque lo escribe el juez mirando dónde trabajó el sujeto.
+    // Incluida la nota del juez, que la escribe mirando dónde trabajó el sujeto.
     assert.match(src, /return stripRoot\(`### \$\{one\.id\}/, 'la fila entera pasa por el recorte')
 
     // Y antes del recorte, la regla: recortar deja el hueco a la vista y nombrar bien no.

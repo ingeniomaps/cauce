@@ -308,12 +308,6 @@ test('un recorrido que se bloquea entrega igual lo que las etapas anteriores est
   assert.match(partial, /nadie estimó el esfuerzo/, 'y con qué falta para completarlo')
 })
 
-// Y sobre todo cuando el bloqueo es de la primera etapa, que es donde el recorrido no deja nada. Con
-// etapas cerradas la fila de acción humana ya resume lo establecido; sin ninguna, la fila es todo lo
-// que existe — y ahí el informe estaba detrás de un `if (settled.length)` que lo apagaba justo
-// entonces. Cuatro casos de `intake` e `incident-review` lo midieron: los tres de intake tenían a mano
-// el pedido literal, sus supuestos y el destino recomendado, y el gate bloqueado pedía procedencia,
-// que no impide ninguna de las tres.
 // El análisis completo viaja por el input de la herramienta, y pasado cierto tamaño el modelo deja de
 // emitir los campos y emite `{"raw": "<el JSON como string>", "len": N}`, que no valida. 86 de las 1550
 // llamadas con schema de tres corridas salieron así, todas menos una declarando 6274 caracteres o más,
@@ -351,6 +345,8 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   // `test/workflows/workflows.test.js`; acá se fija que el prompt diga dónde va lo que no entra.
 })
 
+// El bloqueo es de la primera etapa, sin ninguna cerrada antes. Por qué el informe parcial va igual, junto
+// a su prompt en `flow.js`.
 test('el bloqueo de la primera etapa también entrega, y entrega el pedido', async () => {
   const { result, written } = await runFlow({
     'stage:encuadre': {

@@ -71,9 +71,8 @@ test('automation sobre algo que no es una instancia lo dice en una línea', () =
   }
 })
 
-// Un guard que a veces no corre tiene que decir cuándo, o el conteo de arriba promete una cobertura que
-// no está. Se mide contra una instancia recién creada —el estado en que `plan-first` queda inerte— y
-// contra la misma con una tarea, porque decir siempre lo mismo no informa nada.
+// Se mide contra una instancia recién creada, sin tareas, y contra la misma con una: el aviso sale en la
+// primera y no en la segunda, porque un aviso que sale siempre no informa nada.
 test('automation check avisa cuando plan-first está inerte', () => {
   const target = path.join(tempRoot('cauce-inerte-'), 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)

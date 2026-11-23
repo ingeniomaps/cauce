@@ -274,7 +274,8 @@ function validateWorkspaces(workspaces, errors) {
       }
     }
     // Opcional: la raíz que no lo declara deja que quien verifica descubra la puerta, como siempre.
-    // Declararlo vacío es peor que no declararlo —promete una puerta y no la da—, así que se rechaza.
+    // Declararlo vacío es peor que no declararlo —promete una puerta y no la da, y quien verifica se queda
+    // sin comando y sin el aviso de que tenía que descubrirlo—, así que se rechaza.
     if ('verify' in workspace && (typeof workspace.verify !== 'string' || !workspace.verify.trim())) {
       errors.push(`ops.config.json: workspaceRoots[${index}].verify debe ser el comando, o no estar`)
     }

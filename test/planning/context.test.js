@@ -385,10 +385,8 @@ test('un planning que no se puede leer no contesta como uno vacío', () => {
   assert.equal(JSON.parse(good.stdout).queued, 0, 'y su cola está vacía, que es un estado válido')
 })
 
-// `autobuild` dejó de promover una épica al BACKLOG —`open` es «candidata editable que aún no fue
-// promovida», así que pegarla es promoverla, y BR-OPS-002 la deja fuera hasta que la apruebe una
-// persona—. Lo que queda es nombrarla, igual que se nombra una recurrencia vencida: sin esto, quien
-// corre el recorrido ve «sin tarea disponible» y no sabe que lo que sigue es promover.
+// Sin cola, `context` nombra la próxima épica abierta igual que una recurrencia vencida; por qué
+// `autobuild` no la encola solo está en `autobuild.js`, donde la corrida termina sin tarea.
 test('sin cola, context nombra la próxima épica sin promover', () => {
   const base = tempRoot('cauce-next-epic-')
   const target = path.join(base, 'demo-ops')

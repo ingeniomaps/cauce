@@ -88,9 +88,7 @@ test('commit: apunta a un sha real o declara por qué no lo hay', () => {
   }), ['DONE.md demo: commit debe apuntar a <sha> <asunto> o justificar n/a — razón'])
 })
 
-// La plantilla no traía ejemplo, así que quien escribía viñetas planas veía un inbox vacío sobre un
-// archivo lleno. La convención del nombre se conserva —es con lo que se cita el ítem— y lo que se
-// corrige es que la diferencia sea visible.
+// Mezcla viñetas con nombre y planas en dos secciones. El porqué vive en `readInbox` (parser.js).
 test('el inbox dice cuántas viñetas quedaron sin contar', () => {
   const root = tempRoot('ops-inbox-')
   fs.writeFileSync(path.join(root, 'INBOX.md'), '# Inbox\n\n## Deuda\n\n'

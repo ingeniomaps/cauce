@@ -145,8 +145,7 @@ test('un config ilegible calla el aviso en vez de tumbar la corrida', () => {
   assert.deepEqual(warnings(planning), [], 'sin poder establecer el modo, se calla')
 })
 
-// En sidecar el `.gitignore` queda dentro de la instancia y el repositorio es el workspace de arriba.
-// Es la topología que el caso no preveía, y la que rompería un aviso que resolviera mal la raíz.
+// La cuarta respuesta del encabezado: el `.gitignore` en la instancia y el repositorio en el workspace.
 test('en sidecar el aviso mira el repositorio del workspace, no la instancia', () => {
   const base = tempRoot('cauce-rastros-sidecar-')
   const workspace = path.join(base, 'mono')

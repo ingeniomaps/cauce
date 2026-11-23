@@ -23,7 +23,8 @@ function validateRoadmapStructure(dir) {
   for (const entry of entries) {
     // Un archivo que se llama como una épica y no cumple el patrón no lo lee nadie: ni `check`, ni
     // `tree`, ni el runner que busca trabajo. Ignorarlo en silencio es peor que rechazarlo, porque el
-    // planning se reporta válido mientras la épica que alguien escribió no existe para el sistema.
+    // planning se reporta válido mientras la épica que alguien escribió no existe para el sistema. Pasó
+    // en una corrida real con epic-001.md sin slug, y `check` respondía «planning válido: 0 épica(s)».
     if (/^epic-/.test(entry.name) && !/^epic-\d{3}-/.test(entry.name)) {
       errors.push(
         `roadmap/${entry.name}: nadie lo lee. Una épica se nombra epic-NNN-<slug>.md, `

@@ -66,9 +66,8 @@ test('check avisa por las credenciales que nadie se llevó', () => {
   assert.doesNotMatch(run(['check', path.join(target, 'planning')]).stdout, /nadie las carga/)
 })
 
-// Una corrida real dejó `epic-001.md` sin slug: el archivo estaba escrito, era una épica legítima, y
-// `check` respondía «planning válido: 0 épica(s)». El silencio es peor que el rechazo — el planning se
-// reporta sano mientras el trabajo que alguien escribió no existe para el sistema.
+// Escenario: epic-001.md sin slug tiene que poner rojo a `check` nombrándolo, y renombrado pasa. El porqué
+// vive en `validateRoadmapStructure` (structure.js).
 test('check no deja pasar una épica que nadie va a leer', () => {
   const base = tempRoot('cauce-invisible-')
   const target = path.join(base, 'demo-ops')
@@ -147,8 +146,8 @@ test('un lane que no existe se nombra, no se descarta', () => {
   )
 })
 
-// Las dos formas en que la aceptación le llega a un runner —propia y heredada del criterio— porque
-// una sola deja pasar la otra, y `context` entrega la misma frase en los dos casos.
+// Arma la tarea con la aceptación sin decidir escrita en ella y después heredada del criterio, y exige
+// el rechazo en las dos.
 test('una tarea no se toma con la aceptación sin decidir', () => {
   const base = tempRoot('cauce-acept-')
   const planning = path.join(base, 'planning')
@@ -412,16 +411,13 @@ test('curar un draft no deja la integración en rojo', () => {
   assert.ok(typeof I.validate === 'function')
 })
 
-// La épica que promueve una integración tiene que pasar `check`, y no pasaba: la descripción remota
-// trae sus propios `##` —el fixture del toolkit trae `## Criterios de aceptación`— y quedaban dentro de
-// `## Resultado`, compitiendo con el `## Criterios` que escribe promote. El parser toma la primera
-// sección cuyo título case, así que leía la importada, que no tiene ninguna viñeta `- **CN** —`.
+// Una descripción remota con su propio `## Criterios de aceptación` entra a la épica promovida, y esa
+// épica tiene que pasar `check`. El porqué vive en `nestHeadings` (engine/integrations/registry.js).
 test('la épica promovida no deja dos secciones compitiendo por el mismo rol', () => {
   const I = require('../../engine/integrations/registry')
   const P = require('../../engine/planning/parser')
 
-  // Los encabezados de la descripción remota bajan un nivel al entrar: dejan de competir y siguen
-  // legibles. Cualquier `## Historias` o `## Resultado` remoto choca igual y por la misma razón.
+  // Primero la función sola: el encabezado importado baja un nivel y sigue estando.
   const description = 'El operador necesita ver el último sync.\n\n## Criterios de aceptación\n\n'
     + '- La fecha del último sync es visible.\n'
   assert.equal(typeof I.nestHeadings, 'function', 'promote degrada lo que importa')

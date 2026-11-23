@@ -119,9 +119,8 @@ test('la cola tomada entera no se anuncia como cola vacía', () => {
   assert.match(luis.stdout, /^TAKEN {2}dashboard \(ana@acme\.com\)$/m)
 })
 
-// El caso que motivó separar runner de owner. Dos sesiones en la misma máquina resuelven el mismo
-// `git config user.email`, así que si lo que decidiera «esto es mío» fuera la persona, el segundo agente
-// recibiría la tarea del primero como propia y los dos construirían lo mismo — sin que nada falle.
+// El caso que motivó separar runner de owner, explicado en `runner` (engine/planning/claims.js): la misma
+// persona reclama desde dos árboles y cada uno ve sólo lo suyo.
 test('dos agentes en la misma máquina no se llevan la tarea del otro', () => {
   const dir = planning('cauce-dos-agentes-')
   const samePerson = 'manuel@acme.com'

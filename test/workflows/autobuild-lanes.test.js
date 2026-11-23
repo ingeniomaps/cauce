@@ -262,10 +262,8 @@ test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
   }
 })
 
-// El cargo llega al prompt por su slug, y el contrato que ese slug nombra vive en el paquete: el catálogo
-// no se copia a la instancia, así que no hay `agents/` en la raíz. La instrucción anterior mandaba a leer
-// ahí, y el agente que la siguiera al pie de la letra no encontraba nada. El workflow tampoco puede
-// resolver la ruta —su runtime no lee archivos—, así que lo que viaja es el comando que la da.
+// Se mira el prompt de Build en el carril directo: tiene que traer el comando que da la ruta del contrato
+// y no mandar a una carpeta de la raíz. Por qué la ruta no viaja resuelta, en `asRole` de `autobuild.js`.
 test('el prompt que trabaja dice dónde está el contrato del cargo, no dónde no está', async () => {
   const { prompts } = await runFlow({}, { lane: 'directo' })
   const build = prompts.find((one) => /Implementá sólo/.test(one.prompt))
