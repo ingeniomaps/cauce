@@ -12,9 +12,9 @@
 // proyecto y quedan afuera. `install` y `upgrade` escriben con `fs`, y estos guards no los ven.
 //
 // Por shell se leen las escrituras, los borrados, `mv`, `cp`, `ln`, `chmod` y sus parecidos, `git rm`, `git mv`,
-// `git checkout` y `git restore`, sobre el archivo, sobre una carpeta que lo contiene o con un glob que lo alcanza. No
-// se lee lo que escribe otro programa por su cuenta —`dd of=`, `perl -pi`, un script de Python, `patch`—, igual que en
-// `ops-config-shell`, ni lo que cambia un `git checkout <rama>`, un `merge` o un `pull`.
+// `git checkout` y `git restore`, sobre el archivo, sobre una carpeta que lo contiene o con un glob que lo alcanza; y
+// cualquier otro programa que nombre el archivo o un glob que lo alcance, salvo los que sólo lo leen o lo ejecutan.
+// No se lee lo que cambia un `git checkout <rama>`, un `merge` o un `pull`, que no nombran el archivo.
 //
 // La salida es que la persona lo pida nombrando el archivo, o lo confirme en el turno, sin línea que pegar: pegada,
 // dejaría abierta para siempre la escritura de lo que corre los guards. Son dos guards en un fuente, como `ops-config`
@@ -70,6 +70,8 @@ function guardedOf(root) {
 
 const within = (dir, file) => file === dir || file.startsWith(`${dir}${path.sep}`)
 const GLOB = /[*?[]/
+// Un patrón que no es un glob válido —el de un `grep` que quedó como argumento— no alcanza nada, y no rompe el guard.
+const globbed = (file, pattern) => { try { return path.matchesGlob(file, pattern) } catch { return false } }
 const exists = (one) => fs.existsSync(one)
 // El archivo y cada carpeta que lo contiene, que es lo que un glob puede nombrar.
 const chain = (file) => {
@@ -82,7 +84,7 @@ const chain = (file) => {
 // Con `exact`, sólo el archivo: volver a `HEAD` o al índice no cambia nada que no se haya escrito antes (`git
 // restore .`). Una carpeta sin nada protegido adentro —el `engine/` de un producto— no frena.
 function reached(guarded, raw, exact = false, removal = false) {
-  if (GLOB.test(raw)) return [...guarded.files].filter((one) => chain(one).some((at) => path.matchesGlob(at, raw)))
+  if (GLOB.test(raw)) return [...guarded.files].filter((one) => chain(one).some((at) => globbed(at, raw)))
   const one = real(raw)
   if (guarded.files.has(one) || guarded.trees.some((tree) => within(tree, one))) return [one]
   if (exact) return []
@@ -107,7 +109,7 @@ function judge(input, root, paths) {
   const guarded = guardedOf(root)
   const hits = [...new Set(paths.flatMap((one) => (typeof one === 'string' ? reached(guarded, one)
     : one.match ? [...guarded.files].filter((file) => within(one.path, file) && exists(file)
-      && path.matchesGlob(path.basename(file), one.match)) : reached(guarded, one.path, one.exact, one.removal))))]
+      && globbed(path.basename(file), one.match)) : reached(guarded, one.path, one.exact, one.removal))))]
   if (!hits.length) return
   const held = CHAT.unauthorizedNow(input, hits.map((one) => `escribe ${one}`))
   if (held.length) block(message(hits, AP.HOW(null, held, input, [], { turn: true })))
@@ -154,6 +156,50 @@ function gitTouched(rest, base) {
   return paths.map((raw) => ({ raw, base: from, exact }))
 }
 
+// Lo que nombra un archivo entregado sin cambiarlo: lo lee, lo compara o lo ejecuta. Cerrado por defecto (R27):
+// cualquier otro programa que nombre uno cuenta como que lo toca —`dd of=`, `patch`, un script propio—, y hasta 0.124.0
+// era al revés: sólo contaban los de `COPIES` y `TOUCHES`. Lo que ya se juzga en otro lado —las escrituras, los
+// borrados, `find -delete`— no se vuelve a juzgar acá.
+const LEAVES = new Set(['cat', 'head', 'tail', 'less', 'more', 'bat', 'nl', 'ls', 'stat', 'file', 'wc', 'grep', 'egrep',
+  'fgrep', 'rg', 'diff', 'cmp', 'md5sum', 'sha1sum', 'sha256sum', 'readlink', 'realpath', 'basename', 'dirname',
+  'test', '[', '[[', 'echo', 'printf', 'cd', 'pushd', 'du', 'tree', 'od', 'xxd', 'hexdump', 'strings', 'sort', 'uniq',
+  'cut', 'jq', 'yq', 'sed', 'awk', 'tee', 'bash', 'sh', 'zsh', 'dash', 'source', '.', 'which', 'type', 'command',
+  'true', 'false', 'rm', 'unlink', 'rmdir', 'find', 'shellcheck', 'tr', 'for', 'case', 'while', 'until', 'if', 'select',
+  'do', 'done', 'then', 'else', 'elif', 'fi', 'esac', 'function', '{', '}'])
+const HANDLED = new Set([...COPIES, ...TOUCHES, 'git'])
+// Los de git que no cambian el árbol, o lo cambian sin nombrar rutas; los que sí, en `gitTouched`.
+const GIT_LEAVES = new Set(['status', 'log', 'diff', 'show', 'blame', 'grep', 'ls-files', 'ls-tree', 'add', 'commit',
+  'check-ignore', 'check-attr', 'cat-file', 'rev-parse', 'describe', 'shortlog', 'reflog', 'fetch', 'push', 'rm', 'mv',
+  'checkout', 'restore'])
+// Un intérprete ejecuta su script sin cambiarlo; lo que su código nombra en una cadena y sus otros argumentos cuentan:
+// `node -e "fs.writeFileSync('automatization/hooks/…')"`, `perl -pi -e … archivo`.
+const INTERPRETERS = new Set(['node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
+const CODE_FLAGS = /^-(?:[a-zA-Z]*[ecp][a-zA-Z]*|-eval|-print)$/
+
+// Las rutas que nombra un programa: sus argumentos, y el valor de `--opción=valor` o de `of=valor`.
+// Un comodín sin nada más —el `'*'` de un `tr -d`— no nombra una ruta.
+const named = (args) => args.flatMap((word) => {
+  const valued = word.match(/^(?:-{1,2}[\w-]+|[a-z]+)=(.+)$/s)
+  if (valued) return [valued[1]]
+  return word && !word.startsWith('-') && !/^[*?]+$/.test(word) ? [word] : []
+})
+
+// Una cadena que el código sólo lee —`require('./.cauce/manifest.json')`, `open('x')` sin modo, `readFileSync('x')`—
+// no la cambia.
+const READ_CALL = /(?:require|readFileSync|open|load)\(\s*$/
+const READ_END = /^\s*(?:\)|,\s*['"](?:utf-?8|r)['"]\s*\))/
+
+function interpreted(rest) {
+  const code = rest.findIndex((word, at) => at && CODE_FLAGS.test(rest[at - 1]))
+  const source = code < 0 ? '' : rest[code]
+  const literals = [...source.matchAll(/'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/g)]
+    .filter((hit) => !(READ_CALL.test(source.slice(0, hit.index))
+      && READ_END.test(source.slice(hit.index + hit[0].length))))
+    .map((hit) => hit[1] ?? hit[2] ?? hit[3]).filter((one) => one && !/\s/.test(one))
+  const args = named(rest.filter((word, at) => at !== code && !(at && CODE_FLAGS.test(word))))
+  return [...literals, ...(code < 0 ? args.slice(1) : args)]
+}
+
 function touched(ran) {
   const found = []
   for (const { verb, rest, base } of ran) {
@@ -163,7 +209,18 @@ function touched(ran) {
       found.push({ raw: target, base, sources: args.filter((one) => one !== target) })
     }
     if (TOUCHES.has(verb)) for (const raw of verb === 'mv' ? args.slice(0, -1) : args) found.push({ raw, base })
-    if (verb === 'git') found.push(...gitTouched(rest, base))
+    if (verb === 'git') {
+      found.push(...gitTouched(rest, base))
+      const sub = rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
+      // `git clean` borra lo que nombra y lo de adentro; los demás, como cualquier programa, sólo el archivo exacto.
+      const clean = rest[sub] === 'clean'
+      if (sub >= 0 && !GIT_LEAVES.has(rest[sub])) {
+        found.push(...named(rest.slice(sub + 1)).map((raw) => ({ raw, base, exact: !clean, removal: clean })))
+      }
+    }
+    if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
+    // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
+    for (const raw of INTERPRETERS.has(verb) ? interpreted(rest) : named(rest)) found.push({ raw, base, exact: true })
   }
   return found
 }

@@ -78,6 +78,25 @@ test('por shell se frena tocarlo de cualquier forma que lo apague, y copiar desd
   }
 })
 
+// Cerrado por defecto: cualquier programa que nombre un archivo entregado cuenta como que lo toca, salvo el que lo lee
+// o lo ejecuta. Antes sólo contaban los que el guard conocía, y `dd of=` o `perl -pi` pasaban.
+test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta no', () => {
+  const { shell } = instance('cauce-runtime-ajeno-')
+  for (const command of [`dd if=/dev/null of=${SHIM}`, `perl -pi -e 's/exec/true/' ${SHIM}`, `patch ${SHIM} < x.diff`,
+    `node -e "require('node:fs').writeFileSync('${SHIM}', '')"`, `python3 -c "open('${SHIM}', 'w')"`,
+    `./propio.sh ${SHIM}`, `git clean -fdx ${HOOKS}`, `git apply --include=${SHIM} x.diff`,
+    `perl -pi -e 's/a/b/' ${HOOKS}/*.sh`]) {
+    blocked('runtime-shell', shell(command), RUNTIME)
+  }
+  for (const command of [`bash ${SHIM}`, `diff ${SHIM} /tmp/x`, `git log -p ${SHIM}`, `shellcheck ${SHIM}`,
+    './propio.sh .', 'tar -czf /tmp/b.tgz .', `for f in ${HOOKS}/*.sh; do echo "$f"; done`, "./propio.sh -d '*'",
+    `node -e "console.log(require('./.cauce/manifest.json').files)"`, 'node --test test/x.test.js',
+    // Un patrón que no es un glob válido no alcanza nada, y no rompe el guard.
+    "./propio.sh 'a/[[:space:]]+required: true[[:space:]]*\\$/'"]) {
+    assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
+  }
+})
+
 test('sin un registro legible se protege la carpeta entera', () => {
   const { target, write } = instance('cauce-runtime-registro-')
   fs.writeFileSync(path.join(target, '.cauce/manifest.json'), '{roto')
