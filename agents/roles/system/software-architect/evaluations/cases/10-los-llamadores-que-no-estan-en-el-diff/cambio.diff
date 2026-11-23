@@ -1,0 +1,25 @@
+diff --git a/src/dates.js b/src/dates.js
+--- a/src/dates.js
++++ b/src/dates.js
+@@ -1,10 +1,10 @@
+ 'use strict'
+ 
+-// Una fecha `AAAA-MM-DD` como Date; una inválida tira.
++// Una fecha `AAAA-MM-DD` como Date; una inválida devuelve null.
+ function parseDate(text) {
+   const date = new Date(`${text}T00:00:00Z`)
+-  if (Number.isNaN(date.getTime())) throw new Error(`fecha inválida: ${text}`)
++  if (Number.isNaN(date.getTime())) return null
+   return date
+ }
+ 
+ module.exports = { parseDate }
+diff --git a/test/dates.test.js b/test/dates.test.js
+--- a/test/dates.test.js
++++ b/test/dates.test.js
+@@ -5,6 +5,6 @@ const { parseDate } = require('../src/dates')
+ test('una fecha válida se lee', () => {
+   assert.equal(parseDate('2026-11-22').toISOString(), '2026-11-22T00:00:00.000Z')
+ })
+-test('una fecha inválida tira', () => assert.throws(() => parseDate('2026-13-40')))
++test('una fecha inválida devuelve null', () => assert.equal(parseDate('2026-13-40'), null))
