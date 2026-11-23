@@ -149,10 +149,36 @@ Lo que se corrió:
   en `./app`), y el producto no tiene rama `develop`.
 - `npm run ci` con los archivos nuevos stageados: 1883 de 1883, exit 0.
 
-**Sin probar:** el freno en una sesión real de un modelo. La única corrida no llegó a intentarlo, por la contaminación
-de las instrucciones globales, y el freno lo sostienen el banco sin modelo por el hook instalado y las pruebas. Correr
-la sesión sin esas instrucciones (`--setting-sources`) se dejó por el presupuesto aprobado. Tampoco se probó abrir el
-PR desde un `(cd app && …)` o un `cd` que no va al principio: `gitDirectory` toma sólo el primero, y frena de más.
+**Lo que se cerró después** (2026-11-22, a pedido de Manuel):
+
+- **El freno en una sesión real.** Corrí `claude -p` 2.1.330 sin las instrucciones del usuario
+  (`--setting-sources project,local`), en un banco con un `gh` falso. El subagente corrió
+  `gh pr create --repo acme-org/app --base main --head fork-dev:feat/sumar …` desde `./app`. `guard-shell.sh` lo frenó
+  con «'gh pr create' abre el PR en un repositorio que no es el origin del checkout», el `gh` falso no llegó a correr y
+  el subagente no intentó esquivarlo. USD 0,89.
+- **El PR desde una subcapa**, `(cd app && gh pr create …)`, frenaba de más: resolvía la carpeta de la sesión, sin
+  `origin`. El primer arreglo sumó `(` al `cd` de `gitDirectory`, y la revisión halló que eso abría un hueco en `git-add`:
+  `(cd $OTRO && ls); git add -A` dejaba de frenar, porque el `cd` de una subcapa ya cerrada no mueve al comando de
+  después. Se revirtió, y la subcapa se resuelve sólo para el PR (`prDirectory` en `delivery.js`): cuenta el `cd` de la
+  subcapa que contiene al `gh pr create`. `git-add.test.js` suma la prueba del hueco, y la mutación que repone el
+  cambio global la pone roja. Los paréntesis se buscan con las comillas tapadas, vale un espacio después del
+  paréntesis (`( cd app && … )`), y el `)` que cierra la subcapa ya no queda pegado al valor de `--repo`.
+- **Cada `gh pr create` resuelve su carpeta** (`dirAt`): los `cd` en orden, de afuera hacia la subcapa que lo contiene,
+  con paréntesis balanceados, sobre la carpeta del comando. Las subcapas que cerraron y los `cd` entre comillas no
+  cuentan, salvo en el argumento de un `bash -c`, que es otra subcapa: su `cd` mueve a lo de adentro y no al shell de
+  afuera. Un `git -C`, un `cd` en segundo plano (`cd x &`, también con una redirección en el medio; `&>` es una
+  redirección y sí mueve) o uno de cualquier lado de una tubería ya no mueven la carpeta. HEAD los tomaba como la del
+  shell, y dejaba pasar `git -C ../otro status && gh pr create --repo <original>`.
+- **Las revisiones de esta vuelta hallaron cuatro retrocesos de las versiones intermedias:** usar una sola carpeta para
+  todas las llamadas, tomar un `$(…)` cerrado como la subcapa, emparejar por posición con lo citado, y aplicar al shell
+  de afuera el `cd` de un `bash -c`. Los cuatro se arreglaron con su prueba. La última pasada, contra HEAD y contra
+  bash real sobre 207 entradas, no halló nada que impida entregar; de lo que encontró se arreglaron las redirecciones
+  junto al `&` y el `|` y el `cd` tras una tubería, con su prueba y su mutación, sin otra pasada. 25 mutaciones, las 25
+  rojas, junto con las del 539, con la copia sin mutar en verde.
+
+**Sin probar:** `cd -- app`, `cd $PWD/app`, `pushd app` y una ruta con espacios entre comillas, que frenan de más como en HEAD; una
+función que hace `cd` (`f() { cd ../otro; }; f; gh pr create`), cuyo `cd` se cuenta aunque la función no se llame; y
+`builtin cd`, `command cd`, `\cd` o `CDPATH= cd`, que el guard no ve: hace falta un comando armado a propósito.
 
 ### Lista de cierre
 
@@ -162,11 +188,11 @@ PR desde un `(cd app && …)` o un `cd` que no va al principio: `gitDirectory` t
 4. hecho: 15 mutaciones en una copia, las 15 rojas. De las que sobrevivieron en el camino, tres (`--repo=`, las comillas y `pr new` sin `--repo`) sumaron su caso, y otras tres (el esquema, la credencial y el puerto) se contestaron quitando lo que sobraba. Dos que no cambiaban nada se reescribieron contra el texto real.
 5. no aplica: agrega un freno y no quita ni reemplaza nada; la regla de sin `--repo` sigue igual, más su alias.
 6. hecho: banco sin modelo por el hook instalado del runner, sin dobles en el motor; se midió que `--repo` al original ya no pasa y que al fork sigue pasando.
-7. hecho: Manuel decidió el 2026-11-22 que el 540 se prueba con el banco sin modelo por el hook instalado. Además se corrió una sesión real, que no ejerció el freno, y lo dice «Sin probar».
+7. hecho: Manuel decidió el 2026-11-22 que el 540 se prueba con el banco sin modelo; además, el 2026-11-22 una sesión real sin las instrucciones del usuario ejerció el freno en un subagente.
 8. hecho: «Lo que se corrió» enumera los caminos; las mutaciones, la sesión y el banco sin modelo, repetido al cerrar, corrieron sobre la versión final.
 9. hecho: dos checkouts con historia distinta (fork y sin fork), dos posiciones del `-R` y dos `--repo` en un mismo comando.
 10. hecho: dependía `delivery.test.js`, que daba `--repo` por bueno sin git, y el comentario de `delivery.js` que decía «con el destino nombrado no se frena», corregido.
-11. hecho: tres pasadas de revisión independiente sobre este caso, junto con el 539 y el 541. La primera halló dos defectos que impedían entregar (`--repo` repetido y `-R` pegado), y la segunda, uno (sin `origin` y con un destino ilegible pasaba). Todos se arreglaron. La tercera no halló nada que impida entregar.
+11. hecho: tres pasadas de revisión independiente sobre el caso, más las pasadas de revisión independiente; en la vuelta de cierre del 2026-11-22 una halló que el `cd` de una subcapa abría un hueco en `git-add`, se revirtió y se volvió a revisar.
 12. hecho: pasada de comentarios; se corrigió el comentario que el propio caso señalaba como causa raíz.
 13. hecho: `npm run ci` con los archivos nuevos stageados, 1883 de 1883, exit 0.
 14. hecho: este cierre recorre el Fix propuesto, los Tradeoffs y lo que el enunciado no preveía.

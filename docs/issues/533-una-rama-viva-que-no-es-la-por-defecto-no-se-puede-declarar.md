@@ -97,7 +97,7 @@ Se recorrió el caso entero:
   - La reproducción citaba un `./hook.sh` que el banco no trae; se corrigió en el caso.
   - El prompt de `/autobuild` (`automatization/workflows/autobuild.js:429-452`) sigue definiendo la rama viva como
     `main`, `master` o la por defecto. Con `develop` declarada, el agente puede commitear ahí, y `live-commit` lo frena con
-    un intento perdido. No empeora nada: antes no frenaba nada. Tocar el workflow vence su eval, así que queda anotado.
+    un intento perdido. No empeora nada: antes no frenaba nada. Se cerró después, abajo.
   - `lines join` y la rama de la que sale una línea siguen midiendo contra la de integración, `main`. Eso es correcto:
     `production` no tiene que ser punto de partida. Con GitFlow, `lines join` mide contra `main` y no contra `develop`;
     eso es anterior a este caso.
@@ -112,6 +112,20 @@ Lo que se corrió:
 - `test/hooks/live-branches.test.js`, 3 pruebas, las 3 en rojo contra HEAD y en verde después.
 - 6 mutaciones en una copia, las 6 rojas.
 
+**Lo que se cerró después** (2026-11-22, a pedido de Manuel): el prompt de `/autobuild`.
+
+- `ops contract` trae `liveBranches`, y los prompts que commitean (el del producto y el de planning) nombran las ramas
+  vivas como las cuenta `live-commit`: `main, master, <las declaradas> o la rama por defecto del remoto`.
+- Lo que decía este cierre, que tocar el workflow vencía su eval, era una afirmación sin comprobar. `/autobuild` no tiene
+  una eval que venza: las evals son de los cargos y los recorridos.
+- **Dos corridas reales** de `/autobuild` con la misma tarea y el mismo banco, `app/` en `develop` y
+  `runner.liveBranches: ["develop"]`:
+  - con el prompt de antes (motor `HEAD`), el agente commiteó en `develop`, `live-commit` lo frenó («'git commit' cae en
+    develop, la rama viva de app») y recién ahí cortó la rama (USD 8,28);
+  - con el prompt nuevo, el agente corrió `git switch -c feat/sumar-dos-numeros` antes del primer commit, sin ningún
+    freno (USD 8,29).
+- `test/workflows/autobuild-live.test.js` y `test/planning/contract.test.js` suman sus pruebas; 5 mutaciones, las 5 rojas.
+
 **Sin probar:** nada más.
 
 ### Lista de cierre
@@ -122,7 +136,7 @@ Lo que se corrió:
 4. hecho: 6 mutaciones en una copia, las 6 rojas, entre ellas quitar la protección.
 5. no aplica: no quita nada; angosta, y la prueba asierta que sin la llave todo sigue igual.
 6. hecho: banco con el hook instalado y un remoto `--bare`, sin dobles; se midió que lo que antes pasaba ahora frena.
-7. no aplica: el guard no depende de un modelo; el prompt de `/autobuild` queda anotado arriba.
+7. hecho: el guard no depende de un modelo; el prompt de `/autobuild` sí, y se corrió en dos `/autobuild` reales, antes y después, el 2026-11-22.
 8. hecho: el banco y las mutaciones se repitieron sobre la versión final.
 9. hecho: dos ramas declaradas a la vez, una habilitada y la otra no; push y commit.
 10. hecho: lo usan sólo `push.js` y `live-commit.js`, y los dos reciben la raíz; `startPoint` y `reachedLive` se revisaron y no cambian. Los textos de «dos llaves» se corrigieron.

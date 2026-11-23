@@ -118,8 +118,19 @@ Lo que se corrió:
 - La revisión corrió ocho bancos: sin editar y editado, con dos instalaciones, Claude después de Codex, `uninstall` y
   `upgrade --force`.
 
-**Sin probar:** fuera del modo embebido (en sidecar el `AGENTS.md` de la instancia no es el que lleva el bloque de un
-runner).
+**Lo que se cerró después** (2026-11-22, a pedido de Manuel): los dos bordes que el arreglo dejaba del lado seguro.
+
+- La regla «volver a anotar sólo si no estaba editado» pasó a `engine/automation/shared-record.js`, y la usan `install` y
+  `uninstall`. Así `uninstall` también vuelve a anotar un archivo sin editar al que le quita el bloque. Antes lo dejaba
+  como edición de la empresa.
+- «Editado» se mide también sin los bloques de los runners. Un archivo que la empresa devolvió al molde, con el bloque
+  adentro, vuelve a ser del molde en la instalación siguiente.
+- La prueba nueva de `test/wiring/ownership.test.js` cubre los dos. 4 mutaciones, las 4 rojas. La que daba por del molde
+  un archivo sin anotar sobrevivió, y mostró que esa línea sobraba: sin digest anotado, ninguna comparación coincide.
+  Se quitó.
+
+**Sin probar:** fuera del modo embebido; y una edición de la empresa dentro de los marcadores de un bloque, que no cuenta como
+edición porque esa parte la reescribe `install`.
 
 ### Lista de cierre
 

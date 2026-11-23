@@ -102,11 +102,22 @@ Lo que se corrió:
 - 24 mutaciones en una copia, las 24 rojas. Las que sobrevivieron en el camino sumaron su caso: un título vacío, un
   comentario sin cierre, `##Pegado`, el costo de los enlaces y un `<!--` citado entre backticks.
 
-**Sin probar:** los enlaces de referencia `[x]: ruta`, que no se miran; un enlace `](<ruta con espacios>)`, que se saltea
-por el `<`; un título setext (`===`); un ```` ``` ```` dentro de un bloque indentado con 8 espacios, que abre un fence y oculta
-el resto del archivo, porque los fences indentados dentro de una lista se quisieron cubrir; un título con una imagen,
-que toma el alt para el ancla; y en un sidecar, un enlace de `planning/` hacia un repositorio de producto que no
-está clonado en esa ruta relativa, que daría un aviso de más.
+**Lo que se cerró después** (2026-11-22, a pedido de Manuel):
+
+- **La pasada de revisión que le faltaba** al arreglo de los comentarios encontró un borde. Un backtick suelto dentro
+  de un comentario se emparejaba con otro de afuera, tapaba el `-->` y se perdía el resto del archivo. `withoutComments`
+  pasó a un solo recorrido en orden de aparición, como CommonMark: lo que abre primero manda. Sigue lineal, 19 ms con
+  1 MB.
+- **Tres formas de markdown que no se miraban:**
+  - los enlaces entre `<…>`, que admiten espacios;
+  - las definiciones de referencia `[x]: ruta`;
+  - los títulos setext, sin tomar el frontmatter ni el `---` que sigue a un ítem de lista.
+- `test/planning/links.test.js` suma sus casos. 32 mutaciones, las 32 rojas, con la copia sin mutar en verde.
+- El molde y un `ops init` fresco siguen en cero avisos.
+
+**Sin probar:** un fence indentado con 8 espacios, porque distinguirlo de uno dentro de una lista pide leer las listas; el alt de
+una imagen en un título, porque cómo lo usa GitHub para el ancla no está documentado; y en un sidecar, el enlace hacia el
+producto que no está clonado en esa ruta, que avisa porque la ruta no existe ahí, y eso es lo que el chequeo tiene que decir.
 
 ### Lista de cierre
 

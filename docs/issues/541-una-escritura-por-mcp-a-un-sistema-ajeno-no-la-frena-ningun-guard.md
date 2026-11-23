@@ -188,13 +188,25 @@ Lo que se corrió:
     vigente en la sesión.
 - `npm run ci` con los archivos nuevos stageados: 1883 de 1883, exit 0.
 
-**Sin probar:** cuatro cosas.
-- La concesión por el diálogo en una sesión interactiva, con `mcp-granted` en `PostToolUse` anotándola. Lo cubren las
-  pruebas con el arnés, y en `-p` lo concedido llegó por el chat.
-- Cuánto agrega por llamada lanzar los dos procesos.
-- `automation install` real sobre una instancia con el hook viejo.
-- Un `query` de SQL que escriba (`mcp__postgres__query`) pasa como lectura, y `atlassianUserInfo` frena de más: los dos
-  se declaran.
+**Lo que se cerró después** (2026-11-22, a pedido de Manuel):
+
+- **La concesión por el diálogo en una sesión interactiva.** Abrí Claude Code 2.1.330 interactivo en tmux, sin las
+  instrucciones del usuario, con el servidor de prueba. Pedí dos notas con `post_note`.
+  - La primera abrió el diálogo con el motivo del guard («Hook PreToolUse:mcp__notes__post_note requires confirmation»).
+    Antes de aprobarla el servidor no había recibido nada.
+  - Elegí «1. Yes». `mcp-granted` anotó la concesión en `.grant-log` con `"via":"corrió"`, 129 ms después de la escritura.
+  - La segunda pasó sin diálogo.
+  - El registro del servidor trae las dos, con 3 segundos de diferencia.
+- **`automation install` sobre una instancia con el hook viejo.** Armé una instancia con el motor de antes del caso
+  (`70f074d9~1`), que registraba sólo `guard-jira-adf.sh` para `editJiraIssue`. Después del `upgrade` y la reinstalación
+  con el motor de ahora, `install` dijo «reemplazado guard-jira-adf.sh por guard-mcp.sh», y quedaron `guard-mcp.sh` en
+  `PreToolUse` y `guard-mcp-granted.sh` en `PostToolUse`.
+- **Cuánto agrega por llamada.** Medido sobre ese banco, 20 llamadas de cada hook: unos 72 ms `guard-mcp.sh` y 75 ms
+  `guard-mcp-granted.sh`, unos 150 ms por llamada MCP.
+
+**Sin probar:** un `query` de SQL que escriba (`mcp__postgres__query`) pasa como lectura, y `atlassianUserInfo` frena de más. No es
+algo sin correr sino el límite declarado de clasificar por el verbo del nombre, y lo que falta se declara en
+`mcpReads`.
 
 ### Lista de cierre
 
@@ -204,7 +216,7 @@ Lo que se corrió:
 4. hecho: 26 mutaciones en una copia, las 26 rojas; las que sobrevivieron en el camino sumaron su caso.
 5. hecho: cambia el matcher que registraba sólo `editJiraIssue`; la prueba del runner afirma el nuevo y se vio en rojo devolviendo el viejo, y `jira-adf` sigue frenando lo mismo.
 6. hecho: banco sin modelo por el hook instalado y una sesión real sin dobles en el motor; se midió que la escritura ya no llega al servidor y que la lectura sí.
-7. hecho: sesión real de `claude -p` 2.1.330 con un servidor MCP local, en tres turnos: frena la escritura, la destraba un «sí», y la segunda pasa por la aprobación de la sesión.
+7. hecho: sesión real de `claude -p` 2.1.330 en tres turnos, y una sesión interactiva por tmux el 2026-11-22: un diálogo, aprobado una vez, y la segunda escritura sin preguntar.
 8. hecho: «Lo que se corrió» enumera los caminos; las mutaciones, la sesión real y el banco sin modelo, repetido al cerrar, corrieron sobre la versión final.
 9. hecho: dos servidores en las pruebas (y dos nombres de un mismo servidor), dos herramientas en la concesión por sesión (la aprobada pasa, la otra frena) y dos turnos en la sesión real.
 10. hecho: dependían el matcher (`jira-adf.test.js`), los eventos de los guards del proyecto (`project-guards.test.js`), las llaves (`ops-config-keys.test.js`), el README de hooks y el comentario de `jira.js`; todos se corrigieron, y R12 dice dónde se comprueba.
