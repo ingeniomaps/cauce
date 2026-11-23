@@ -85,11 +85,16 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
   for (const command of [`dd if=/dev/null of=${SHIM}`, `perl -pi -e 's/exec/true/' ${SHIM}`, `patch ${SHIM} < x.diff`,
     `node -e "require('node:fs').writeFileSync('${SHIM}', '')"`, `python3 -c "open('${SHIM}', 'w')"`,
     `./propio.sh ${SHIM}`, `git clean -fdx ${HOOKS}`, `git apply --include=${SHIM} x.diff`,
-    `perl -pi -e 's/a/b/' ${HOOKS}/*.sh`]) {
+    `perl -pi -e 's/a/b/' ${HOOKS}/*.sh`,
+    // Lo que halló la revisión independiente: el `-C` de git, lo que reescribe con una bandera y `git clean` sin ruta.
+    `git -C ${HOOKS} clean -fdx guard-files.sh`, `git -C ${HOOKS} apply --include=guard-files.sh x.diff`,
+    `sort -o ${SHIM} /dev/null`, `uniq /dev/null ${SHIM}`, `awk -i inplace '{print}' ${SHIM}`, `find . -fprint ${SHIM}`,
+    'git clean -fdx']) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
   for (const command of [`bash ${SHIM}`, `diff ${SHIM} /tmp/x`, `git log -p ${SHIM}`, `shellcheck ${SHIM}`,
     './propio.sh .', 'tar -czf /tmp/b.tgz .', `for f in ${HOOKS}/*.sh; do echo "$f"; done`, "./propio.sh -d '*'",
+    'tar czf /tmp/x.tgz automatization/*',
     `node -e "console.log(require('./.cauce/manifest.json').files)"`, 'node --test test/x.test.js',
     // Un patrón que no es un glob válido no alcanza nada, y no rompe el guard.
     "./propio.sh 'a/[[:space:]]+required: true[[:space:]]*\\$/'"]) {

@@ -84,7 +84,10 @@ const chain = (file) => {
 // Con `exact`, sólo el archivo: volver a `HEAD` o al índice no cambia nada que no se haya escrito antes (`git
 // restore .`). Una carpeta sin nada protegido adentro —el `engine/` de un producto— no frena.
 function reached(guarded, raw, exact = false, removal = false) {
-  if (GLOB.test(raw)) return [...guarded.files].filter((one) => chain(one).some((at) => globbed(at, raw)))
+  // Con `exact`, el glob tiene que alcanzar el archivo, no sólo la carpeta que lo contiene.
+  if (GLOB.test(raw)) {
+    return [...guarded.files].filter((one) => (exact ? [one] : chain(one)).some((at) => globbed(at, raw)))
+  }
   const one = real(raw)
   if (guarded.files.has(one) || guarded.trees.some((tree) => within(tree, one))) return [one]
   if (exact) return []
@@ -159,12 +162,13 @@ function gitTouched(rest, base) {
 // Lo que nombra un archivo entregado sin cambiarlo: lo lee, lo compara o lo ejecuta. Cerrado por defecto (R27):
 // cualquier otro programa que nombre uno cuenta como que lo toca —`dd of=`, `patch`, un script propio—, y hasta 0.124.0
 // era al revés: sólo contaban los de `COPIES` y `TOUCHES`. Lo que ya se juzga en otro lado —las escrituras, los
-// borrados, `find -delete`— no se vuelve a juzgar acá.
+// borrados, `find -delete`— no se vuelve a juzgar acá. `sort`, `uniq`, `awk`, `yq` y `find` no están: con `-o`, un
+// segundo argumento, `-i` o `-fprint` reescriben el archivo.
 const LEAVES = new Set(['cat', 'head', 'tail', 'less', 'more', 'bat', 'nl', 'ls', 'stat', 'file', 'wc', 'grep', 'egrep',
   'fgrep', 'rg', 'diff', 'cmp', 'md5sum', 'sha1sum', 'sha256sum', 'readlink', 'realpath', 'basename', 'dirname',
-  'test', '[', '[[', 'echo', 'printf', 'cd', 'pushd', 'du', 'tree', 'od', 'xxd', 'hexdump', 'strings', 'sort', 'uniq',
-  'cut', 'jq', 'yq', 'sed', 'awk', 'tee', 'bash', 'sh', 'zsh', 'dash', 'source', '.', 'which', 'type', 'command',
-  'true', 'false', 'rm', 'unlink', 'rmdir', 'find', 'shellcheck', 'tr', 'for', 'case', 'while', 'until', 'if', 'select',
+  'test', '[', '[[', 'echo', 'printf', 'cd', 'pushd', 'du', 'tree', 'od', 'xxd', 'hexdump', 'strings', 'cut', 'jq',
+  'sed', 'tee', 'bash', 'sh', 'zsh', 'dash', 'source', '.', 'which', 'type', 'command', 'true', 'false', 'rm', 'unlink',
+  'rmdir', 'shellcheck', 'tr', 'for', 'case', 'while', 'until', 'if', 'select',
   'do', 'done', 'then', 'else', 'elif', 'fi', 'esac', 'function', '{', '}'])
 const HANDLED = new Set([...COPIES, ...TOUCHES, 'git'])
 // Los de git que no cambian el árbol, o lo cambian sin nombrar rutas; los que sí, en `gitTouched`.
@@ -212,10 +216,19 @@ function touched(ran) {
     if (verb === 'git') {
       found.push(...gitTouched(rest, base))
       const sub = rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
-      // `git clean` borra lo que nombra y lo de adentro; los demás, como cualquier programa, sólo el archivo exacto.
+      // Las rutas cuentan desde el `-C`, como en `gitTouched`.
+      const moves = (dir, word, at, all) => {
+        if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
+        return /^-C./.test(word) ? path.resolve(dir || '/', word.slice(2)) : dir
+      }
+      const from = rest.slice(0, Math.max(sub, 0)).reduce(moves, base)
+      // `git clean` borra lo que nombra y lo de adentro, y sin ruta, el árbol entero; los demás, como cualquier
+      // programa, sólo el archivo exacto.
       const clean = rest[sub] === 'clean'
       if (sub >= 0 && !GIT_LEAVES.has(rest[sub])) {
-        found.push(...named(rest.slice(sub + 1)).map((raw) => ({ raw, base, exact: !clean, removal: clean })))
+        const paths = named(rest.slice(sub + 1))
+        if (clean && !paths.length) found.push({ raw: '.', base: from, removal: true })
+        found.push(...paths.map((raw) => ({ raw, base: from, exact: !clean, removal: clean })))
       }
     }
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
