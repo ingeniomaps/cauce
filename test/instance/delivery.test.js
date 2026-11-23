@@ -85,6 +85,24 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
   assert.deepEqual(broken, [])
 })
 
+// La otra mitad, por carpeta: `TEMPLATE_PREFIXES` dice qué raíces de la instancia son del molde, y de eso
+// dependen dónde busca `upgrade` el original, qué no le pide plan `plan-first` y qué commits cuenta como
+// propios `check`. Declarar los archivos de una carpeta nueva en `TEMPLATE_OWN` no la suma ahí (R27).
+const SEEDED_ROOTS = {
+  '.github': 'el CI de la instancia: lo siembra `init` en embebido y desde ahí es del proyecto',
+}
+
+test('cada carpeta raíz del molde está entre las raíces de la instancia', () => {
+  const O = require('../../engine/core/ownership')
+  const roots = fs.readdirSync(path.join(__dirname, '..', '..', 'template'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+  const listed = new Set(O.TEMPLATE_PREFIXES.map((prefix) => prefix.replace(/\/$/, '')))
+  const unlisted = roots.filter((name) => !listed.has(name) && !SEEDED_ROOTS[name])
+  const stale = [...listed, ...Object.keys(SEEDED_ROOTS)].filter((name) => !roots.includes(name))
+  assert.deepEqual(unlisted, [], 'una carpeta del molde fuera de TEMPLATE_PREFIXES: sumala, o declará por qué no')
+  assert.deepEqual(stale, [], 'una raíz declarada que el molde ya no trae')
+})
+
 // El Makefile es la superficie que el dev escribe a mano, y un rename del CLI no lo alcanza solo. Pasó
 // con `teams/` → `flows/`: el cambio llegó al motor, al README y al CHANGELOG —que hasta le pide a cada
 // usuario renombrar sus propias automatizaciones— y dejó `make team-check` y `make team-show` llamando
