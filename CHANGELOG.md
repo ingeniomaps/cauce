@@ -103,6 +103,11 @@ diseño — eso vive en el commit y en el código.
   donde `sudo rm -rf .` frenaba. Ahora leen el verbo con la misma función que `secrets-shell`, que conoce todos los
   prefijos de `shell-wrappers` con sus banderas y valores. No hay nada que hacer en la instancia: llega con `upgrade`.
 
+- **`runtime-shell` y `shell-boundary` ven el `git` detrás de `--attr-source` y `--config-env`.** Las opciones globales
+  de git que llevan valor estaban copiadas en cuatro guards, y las copias no coincidían: `git --attr-source HEAD rm`
+  sobre un script de los guards, o `git --attr-source HEAD config core.hooksPath h`, pasaban donde `git -C . rm`
+  frenaba. Ahora las cuatro leen la misma lista. No hay nada que hacer en la instancia: llega con `upgrade`.
+
 - **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
   no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
   Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
