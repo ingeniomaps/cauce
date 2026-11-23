@@ -151,12 +151,8 @@ test('sellar un cargo en el toolkit lo anota en el CHANGELOG, y en una empresa n
   assert.equal(fs.existsSync(path.join(company, 'CHANGELOG.md')), false)
 })
 
-// El sello salía temprano mirando sólo el frontmatter, así que un `status` que llegó antes que él dejaba
-// el cuerpo diciendo lo contrario dentro del mismo documento — que es justo la contradicción que sellar
-// existe para cerrar. Pasó con `growth-marketer/2026-09`, aplicada con el arreglo del cuerpo ya puesto y
-// contradictoria igual: quien aplica edita archivos, y mover `status` es una edición que se le parece a
-// su trabajo. La salida temprana sigue existiendo, porque sellar dos veces no debe reescribir; lo que
-// cambia es qué cuenta como sellado.
+// Una propuesta firmada con `status: applied` puesto a mano y el cuerpo todavía en «aprobada»: sellar no
+// sale temprano. Por qué, en `seal` de learning-seal.js.
 test('un status que se adelantó no deja el cuerpo diciendo lo contrario', () => {
   const target = installedProject('Sello adelantado')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
@@ -211,10 +207,8 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
   assert.equal(sealed.already, false, 'y la revisión no queda sin sellar, que es como se reaplica')
 })
 
-// Un informe puede llegar tarde: escrito después de que su mes se consolidó, o traído de una semana
-// que nadie corrió. Filtrando por el prefijo del período no entraba en esa propuesta ni en ninguna
-// posterior —la del mes siguiente sólo miraba su propio mes—, y el hallazgo se perdía entero sin que
-// nada fallara. Los dos informes se veían igual: un archivo en `reports/`.
+// Enero ya consolidado y un informe de enero escrito después: se avisa mientras espera y entra en la
+// propuesta de febrero. Por qué, en `pendingReports` de learning.js.
 test('un informe atrasado entra en la próxima propuesta, y mientras tanto se ve', () => {
   const target = installedProject('Informe tardío')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
@@ -399,11 +393,8 @@ test('sin informes pendientes no se abre propuesta', () => {
   assert.ok(fs.existsSync(opened.file))
 })
 
-// Firmar y aplicar son actos separados a propósito —OPS-004—, así que entre uno y otro una propuesta
-// queda quieta con la decisión ya tomada. `proposalState` no la distinguía de la que todavía espera
-// que alguien la lea: mira el frontmatter, y la firma la escribe `sign-proposal.yml` en el cuerpo, así
-// que las dos caían en el mismo «sin aplicar». Son estados opuestos —una espera a una persona, la otra
-// espera que alguien retome trabajo ya autorizado— y sin decirlo hay que acordarse.
+// La misma propuesta sin firmar y después firmada: las dos cuentan como pendientes y sólo la firmada
+// avisa. Por qué, en `SIGNED` de learning-files.js.
 test('una propuesta firmada y sin aplicar se ve distinta de una que espera firma', () => {
   const target = installedProject('Firmada sin aplicar')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')

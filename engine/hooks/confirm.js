@@ -14,8 +14,8 @@
 
 const ASK = Symbol('cauce.ask')
 
-// Claude Code es el que manda `prompt_id` en cada llamada; Codex manda `turn_id` y Gemini ninguno
-// (`chat.js`, `idOf`). Sólo un `PreToolUse` puede pedir el diálogo.
+// Exigir `prompt_id` deja sólo a Claude Code: qué id manda cada runner está en `idOf` (chat.js). Sólo un
+// `PreToolUse` puede pedir el diálogo.
 //
 // Y sólo en un modo de permisos donde está medido que el diálogo lo contesta una persona. La lista es de
 // los que sí, y no de los que no, para que un modo nuevo nazca bloqueando: ahí el guard vuelve a la

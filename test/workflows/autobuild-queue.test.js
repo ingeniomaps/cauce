@@ -20,8 +20,7 @@ test('Done cierra por ops done viva la tarea en el archivo de su hito o en BACKL
   }
 })
 
-// Clasificar toda la cola escribía en los hitos de otra línea (caso 239): lo que se mide es que el prompt nombre
-// el archivo de la tarea y ya no la cola entera, y que proteger la siga mirando entera.
+// Caso 239, con la tarea en un hito: el prompt de Classify no nombra backlog/ y el de Build sí.
 test('clasificar mira el archivo del hito, y proteger la cola mira BACKLOG.md y backlog/', async () => {
   const run = await runFlow(inFile('backlog/h1.md'), { lane: 'full', vouched: true })
   const prompt = (key) => (run.prompts.find((one) => one.key === key) || {}).prompt || ''

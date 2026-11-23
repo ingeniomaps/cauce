@@ -62,9 +62,8 @@ test('nombrar el archivo de pruebas no ordena el runner sin cota', () => {
   }
 })
 
-// Caso 286. La comilla contaba como posición de comando, así que el patrón de un `grep` y lo que seguía a la
-// comilla de cierre de cualquier argumento se leían como una corrida. Los dos primeros son los que frenaron
-// un recorrido real. Van con su contraparte: lo entrecomillado detrás del `-c` de un shell sí se ejecuta.
+// Caso 286: lecturas con comillas que no son una corrida; los dos primeros frenaron un recorrido real. La
+// contraparte, lo entrecomillado detrás del `-c` de un shell, sí se frena.
 test('leer la configuración de las pruebas no es correrlas', () => {
   const root = pushRoot('cauce-workers-lectura-')
   for (const command of [
@@ -239,9 +238,8 @@ test('un runner pasado directo a un contenedor se juzga como el que va detrás d
   ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
 })
 
-// Caso 291. Un runner lanzado con el envoltorio del proyecto corre dentro de un contenedor con memoria y CPU
-// acotadas: no puede tirar la máquina, que es lo único que este guard cuida. Lo declara el proyecto, y vale
-// para lo que ese comando lanza y para nada más del mismo renglón.
+// Caso 291; el porqué está en `bounded` de `engine/hooks/workers.js`. La excepción vale para lo que el comando
+// declarado lanza y para nada más del mismo renglón.
 test('un runner lanzado con un comando que el proyecto declaró acotado no se frena', () => {
   const root = pushRoot('cauce-workers-acotado-')
   const declare = (boundedCommands) => fs.writeFileSync(path.join(root, 'ops.config.json'),

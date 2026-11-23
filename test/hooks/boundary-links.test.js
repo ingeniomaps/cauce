@@ -70,8 +70,7 @@ test('la ruta real resuelve cada enlace del camino, exista o no lo que sigue', (
   for (let at = 1; at <= 6; at += 1) fs.symlinkSync(at === 6 ? 'src' : `c${at + 1}`, path.join(service, `c${at}`))
   assert.equal(realPath(path.join(service, 'c1', 'a.js')), path.join(real, 'src', 'a.js'))
 
-  // El disco no lee una ruta como la junta `path.resolve`. Un `..` detrás de un enlace sube desde donde el
-  // enlace lleva, y un enlace relativo se resuelve contra la carpeta real que lo contiene.
+  // Un `..` detrás de un enlace y enlaces relativos encadenados: cada uno cae donde lo deja `landing`.
   assert.equal(landing(service, 'enlace/../a.js'), path.join(path.dirname(OUTSIDE), 'a.js'))
   assert.equal(landing(path.join(service, 'enlace'), '../a.js'), path.join(path.dirname(OUTSIDE), 'a.js'))
   assert.equal(landing(service, 'dentro/../src/a.js'), path.join(real, 'src', 'a.js'))
@@ -150,9 +149,8 @@ test('un enlace de afuera que apunta adentro no abre el límite', () => {
   assert.match(out.said, /fuera de las raíces/)
 })
 
-// Una línea de trabajo es un árbol aparte de la instancia, con el producto enlazado desde la original. Con la
-// raíz por defecto de un sidecar —`..`— la línea no enlaza la raíz sino sus hijos, así que lo que se escribe
-// en ellos cae en la instancia de la que salió: es del proyecto y no frena. Lo que desde ahí lleve afuera, sí.
+// Con la raíz por defecto de un sidecar —`..`— la línea no enlaza la raíz sino sus hijos: escribir en ellos no
+// frena, y lo que desde ahí lleve afuera, sí.
 test('desde una línea de trabajo se escribe en el producto de la instancia de la que salió', () => {
   const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' })
   // Con la raíz por defecto y con el servicio declarado por su carpeta: en la segunda la raíz es el enlace.

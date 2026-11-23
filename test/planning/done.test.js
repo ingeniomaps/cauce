@@ -207,6 +207,7 @@ test('una tarea full sin crítica del plan se nombra desde que la instancia escr
     fs.writeFileSync(path.join(dir, 'done', 'liviana.md'), on('liviana', '2026-10-12', '  lane: lite'))
     const critiqued = P.readDone(dir).entries.find((one) => one.slug === 'criticada')
     assert.equal(critiqued.critique, 'cambió el plan por: comprobar también el texto exacto del error')
+
     const output = JSON.parse(run(['check', dir, '--json']).stdout)
     const warning = output.warnings.filter((one) => /critique:|crítica del plan/.test(one))
     assert.equal(warning.length, 2, `uno por cada forma: ${JSON.stringify(output.warnings)}`)
@@ -216,7 +217,6 @@ test('una tarea full sin crítica del plan se nombra desde que la instancia escr
     assert.match(named, /^planning\/done: muda, vacia declara\(n\) lane: full sin crítica del plan/)
     for (const slug of ['vieja', 'criticada', 'liviana']) assert.doesNotMatch(named, new RegExp(slug))
     assert.deepEqual(output.errors.filter((one) => /critique|crítica/.test(one)), [], 'avisa y no falla')
-
   })
 
 // Cuánto del trabajo que entró al repositorio quedó registrado. Se mide sobre un repositorio de verdad
@@ -244,8 +244,10 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   const recorded = commit('uno.js')
   commit('dos.js')
   commit('tres.js')
+
   const close = (sha) => fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta.md'),
     `${entry('alta').replace(/commit: .*/, `commit: ${sha} feat: uno.js`)}`)
+
   close(recorded)
   const output = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
   const warning = output.warnings.filter((one) => /entrada de DONE nombra/.test(one))
@@ -253,8 +255,6 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   assert.match(warning[0], /2 commit\(s\)/)
   assert.match(warning[0], /app/, 'y dice en qué repositorio')
   assert.deepEqual(output.errors.filter((one) => /entrada de DONE nombra/.test(one)), [],
-
-
     'avisa y no falla: es un hecho del pasado que no se arregla editando nada')
 
   // La ventana arranca en la entrada **más reciente** y no en la primera: contar toda la historia da una

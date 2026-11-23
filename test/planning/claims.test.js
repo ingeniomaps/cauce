@@ -186,11 +186,11 @@ test('solo se toma trabajo promovido, y sin identidad no se toma nada', () => {
   const invented = as('ana@acme.com', () => run(['claim', dir, 'no-existe']))
   assert.equal(invented.status, 2)
   assert.match(invented.stderr, /no está en BACKLOG/)
+
   for (const command of ['claim', 'release']) {
     const withoutSlug = as('ana@acme.com', () => run([command, dir]))
     assert.equal(withoutSlug.status, 2, `${command} sin tarea`)
     assert.match(withoutSlug.stderr, /Falta el slug/)
-
     // Y sin decir dónde: los dos toman el directorio actual, que es como se los corre parado adentro.
     const withoutDir = as('ana@acme.com', () => run([command], dir))
     assert.equal(withoutDir.status, 2, `${command} desde adentro del planning`)
@@ -438,11 +438,11 @@ test('claim no reserva una tarea con acción humana pendiente, y sí cuando la f
   table('pendiente')
   const context = as('ana@acme.com', () => run(['context', dir]), '/w/ana')
   assert.match(context.stdout, /^SKIP {3}dashboard/m, 'context la saltea')
+
   const take = as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
   assert.equal(take.status, 1, take.stdout)
   assert.match(take.stderr, /dashboard espera una acción humana/)
   assert.match(take.stderr, /Elegir el proveedor de email/, 'y dice cuál')
-
   assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false, 'no quedó reservada')
 
   table('resuelta 2026-10-08')

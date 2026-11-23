@@ -152,9 +152,8 @@ test('con la configuración ilegible pasa volver a la del último commit, y nada
   assert.equal(restoresConfig({ cwd: root, tool_input: { command: 'git checkout HEAD -- ops.config.json' } }), false)
 })
 
-// La misma regla, un paso antes: si la entrada del hook no se puede parsear, cada guard veía `{}`
-// —sin comando y sin archivos— y dejaba pasar todo. Sin stdin sí es «no hay nada que leer», y ahí los
-// guards caen a las variables de entorno; se comprueban las dos ramas para no cerrar la buena.
+// La misma regla, un paso antes; el porqué, en `readInput` (`engine/hooks/input.js`). Se comprueban las dos
+// ramas para no cerrar la buena.
 test('una entrada de hook ilegible bloquea; la ausencia de entrada no', () => {
   const runtime = path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'run.js')
   const invoke = (payload, env = {}) => spawnSync(

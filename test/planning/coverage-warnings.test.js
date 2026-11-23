@@ -39,10 +39,7 @@ function instance(prefix, { abbrev }) {
   return { base, ops }
 }
 
-// El `%h` de git mide 7 por default y **sube solo** cuando el repositorio crece: en este mismo
-// repositorio mide 8. El filtro leía la fecha por columna fija —`line.slice(8, 18)`—, así que con 8 leía
-// un espacio y una fecha corta, que no compara igual, y con 9 o más leía la fecha corrida. El aviso
-// quedaba mudo sin decirlo: cero commits sobre un repositorio lleno.
+// Caso 169: el mismo aviso con el hash abreviado a 7, 8 y 12 (el porqué, en `unrecordedCommits`).
 test('el aviso de commits sin anotar no depende de cuánto mida el hash abreviado', () => {
   const done = {
     entries: [{ fecha: '2000-01-01', commit: '' }],
@@ -162,8 +159,8 @@ test('un commit anterior a la instancia no cuenta, aunque sea del mismo día', (
   assert.doesNotMatch(warning, /initial/, 'y el anterior no')
 })
 
-// En sidecar dentro del repositorio, la carpeta de la instancia entera es su propio estado: antes sólo se salteaba
-// `ops/planning`, y un commit de `ops/organization` salía como trabajo sin registrar.
+// Caso 270 en sidecar dentro del repositorio: un commit que toca sólo `ops/organization` no sale como trabajo sin
+// registrar.
 test('en sidecar dentro del repositorio, un commit que sólo toca la instancia no cuenta', () => {
   const repo = tempRoot('ops-cobertura-sidecar-adentro-')
   const git = (...args) => spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).stdout.trim()

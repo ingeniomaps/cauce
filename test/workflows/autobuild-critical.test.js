@@ -98,8 +98,7 @@ test('sobre una superficie crítica el revisor recibe que tiene que comprobar', 
   assert.match(review, /se comprueba antes de afirmarlo; sin comprobar no manda a corregir/)
 })
 
-// Sobre una superficie crítica, una sospecha bloqueante sin comprobar frena y la decide una persona: ni se
-// corrige —sería cambiar código por una hipótesis— ni se entrega. Fuera de lo crítico sigue yendo al INBOX.
+// Una sospecha bloqueante sin comprobar, y una revisión que la señala sobre la superficie que pida cada escenario.
 const suspicion = { detail: 'el total puede quedar negativo', blocking: true, ref: 'criterio', verified: false }
 const reviewed = (critical, concerns, second) => {
   let pass = 0

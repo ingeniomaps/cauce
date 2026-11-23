@@ -9,7 +9,7 @@ const { tempRoot } = require('../support/environment')
 const I = require('../../engine/hooks/input')
 const { directoriesOf } = require('../../engine/hooks/commit-repo')
 
-// Lo que hay detrás de una palabra de bloque también corre, y una función puede correr en cualquier carpeta (caso 474).
+// Caso 474: cada palabra que abre un bloque y las dos formas de función; los negativos sólo nombran el commit.
 test('un commit dentro de un bloque o una función se juzga donde puede caer', () => {
   const root = tempRoot('ops-bloque-')
   const other = tempRoot('ops-bloque-otro-')

@@ -177,6 +177,7 @@ test('desinstalar el runner, o devolver el AGENTS.md al molde, no lo deja como e
   assert.equal(run(['automation', 'install', clean, 'codex']).status, 0)
   assert.equal(run(['automation', 'uninstall', clean, 'codex']).status, 0)
   assert.doesNotMatch(run(['upgrade', clean, '--check']).stdout, /editado localmente: AGENTS\.md/, 'sin el bloque')
+
   const returned = path.join(base, 'devuelto')
   fs.mkdirSync(returned, { recursive: true })
   fs.writeFileSync(path.join(returned, 'AGENTS.md'), '# Nuestro AGENTS.md\n')
@@ -184,7 +185,6 @@ test('desinstalar el runner, o devolver el AGENTS.md al molde, no lo deja como e
   linkEngine(returned)
   assert.equal(run(['automation', 'install', returned, 'codex']).status, 0)
   const body = fs.readFileSync(path.join(returned, 'AGENTS.md'), 'utf8')
-
   const block = body.slice(body.indexOf('<!-- cauce:codex inicio'))
   fs.writeFileSync(path.join(returned, 'AGENTS.md'), `${template}\n${block}`)
   assert.equal(run(['automation', 'install', returned, 'codex']).status, 0)

@@ -1,17 +1,14 @@
 'use strict'
 
-// Cuántas vueltas de corrección admite Review y qué las compra (caso 343). Lo que Review juzga, con qué
-// reglas y a dónde va cada hallazgo sigue en `autobuild-review.test.js`.
+// Cuántas vueltas de corrección admite Review y qué las compra (caso 343): un bloqueante nuevo que declara
+// fixable compra una más, con tope de dos por tarea; sin fixable, o con bloqueado, la corrida para. El porqué
+// y la medición están en automatization/workflows/autobuild.js. Lo que Review juzga, con qué reglas y a dónde
+// va cada hallazgo sigue en `autobuild-review.test.js`.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { runFlow, ranToEnd, KEY } = require('../support/autobuild-harness')
 
-// La re-revisión paraba con `review-failed` ante cualquier bloqueante, también uno nuevo, comprobado y cuya
-// corrección el propio revisor escribió entera —«cambiar sólo esa frase»— (caso 343). Medido sobre los
-// diarios de esta máquina: 24 de 40 correcciones terminaron así, las 24 con `con-condiciones` y un
-// bloqueante que la primera pasada no había visto. Un hallazgo así declara `fixable` y compra una
-// corrección más, con tope de dos por tarea: lo que no lo declara, y `bloqueado`, paran como hasta ahora.
 const reviewedWith = (concerns, verdict = 'con-condiciones') => ({
   verdict, consulted: ['api/alta.go'], concerns,
 })

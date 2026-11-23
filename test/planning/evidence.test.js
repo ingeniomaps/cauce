@@ -127,11 +127,11 @@ test('el estado de una acción humana es vocabulario cerrado y se lee por el pri
   assert.equal(read('resuelta').resolved, true)
   assert.equal(read('Resuelta 2026-08-17').resolved, true, 'admite el detalle detrás del vocabulario')
   assert.equal(read('resuelta 2026-08-17').valid, true)
+
   for (const invention of ['✅ COMPLETADO 2026-08-10', 'COMPLETADA', 'hecha', 'SIN EFECTO', '']) {
     const outside = read(invention)
     assert.equal(outside.valid, false, `"${invention}" está fuera del vocabulario`)
     assert.equal(outside.resolved, false, `"${invention}" no desbloquea: fuera del vocabulario se bloquea`)
-
   }
 
   // El accidente inverso: la palabra reconocida aparece dentro del texto, no como estado.

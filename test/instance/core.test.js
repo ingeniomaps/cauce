@@ -25,7 +25,7 @@ test('valida el contrato completo de ops.config.json', () => {
   assert.ok(errors.some((error) => error.includes('allowPush debe ser boolean')))
 })
 
-// Opcional y booleano (caso 251): ausente es apagado, y una instancia instalada antes no lo trae.
+// Caso 251. Por qué es opcional, junto a su validación en `validateOpsConfig` (`engine/config/validate.js`).
 test('runner.commitToLiveBranch es opcional y sólo admite un booleano', () => {
   const errorsOf = (value) => {
     const config = opsConfig()

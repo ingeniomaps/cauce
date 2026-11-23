@@ -66,8 +66,7 @@ test('el informe trae escritas las convenciones de las que depende el ciclo', ()
   assert.match(scaffold, /H1, H2/, 'la etiqueta de hallazgo')
   assert.match(scaffold, /No renombres los títulos/, 'y que los títulos se leen con un patrón')
 
-  // El comentario va fuera de toda sección a propósito: dentro de «Recomendación» lo capturaría el
-  // patrón de consolidación y viajaría como texto a cada propuesta del catálogo.
+  // Con una recomendación escrita, la consolidación la lleva a la propuesta y deja el comentario afuera.
   fs.writeFileSync(report, scaffold.replace(
     '## Recomendación\n', '## Recomendación\n\n1. Rotar el token (cierra H1).\n',
   ))
@@ -164,11 +163,8 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   assert.match(fs.readFileSync(recordFile, 'utf8'), /^status: consolidated$/m)
 })
 
-// El sello buscaba `status:` en el documento entero, y un registro de corrida **nace sin `status` en el
-// frontmatter** —lo dice el comentario de `markConsolidated`—, mientras que su cuerpo lleva la respuesta
-// verbatim del cargo. Si esa respuesta trae una línea `status: <palabra>` a columna cero, el sello caía
-// ahí: el cuerpo quedaba marcado y el frontmatter sin marcar, o sea el registro sin sellar, o sea el
-// mismo hallazgo entrando a la propuesta siguiente. Es justo el modo de fallo que el sello cierra.
+// Caso 168: un registro de corrida cuya respuesta trae `status: rechazado` a columna cero en el cuerpo.
+// Por qué el sello va al frontmatter, en `markConsolidated` de learning.js.
 test('el sello va al frontmatter aunque el cuerpo traiga su propia línea de status', () => {
   const { target } = roleWithResults('Sello mal puesto',
     '### 02-dos\n\n- Veredicto: no pasa\n\nEl cargo respondió:\nstatus: rechazado\n\nFalló por esto.\n')

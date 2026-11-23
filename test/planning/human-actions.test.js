@@ -93,9 +93,8 @@ test('una fila resuelta con un comentario adentro se reconoce en el commit', () 
   assert.deepEqual(warnings, [], 'el parser lee la fila sin el comentario, y el commit se compara igual')
 })
 
-// Caso 351. `merge=union` evita el conflicto cuando dos líneas agregan una fila, y cuando una la resuelve
-// mientras la otra agrega la suya al lado deja las dos versiones: la resuelta y la pendiente. El motor lee
-// la pendiente y la tarea vuelve a quedar bloqueada sin que nadie lo haya decidido.
+// Caso 351: una rama resuelve una fila de la tabla mientras otra agrega la suya al lado, y la fusión por unión
+// deja las dos versiones. Por qué es un defecto, en el encabezado de `engine/planning/human-actions.js`.
 test('check rechaza la fila que una fusión por unión devolvió a pendiente', () => {
   const target = path.join(tempRoot('cauce-human-union-'), 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)

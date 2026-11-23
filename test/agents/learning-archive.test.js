@@ -188,8 +188,7 @@ function decidedProposal(title, slug) {
   return { target, own, file }
 }
 
-// Sin motivo, una propuesta descartada no se distinguía de una olvidada, y el informe siguiente volvía a
-// recomendar lo mismo: cuatro cargos lo repitieron semana tras semana en septiembre de 2026.
+// Por qué el motivo hace falta, en `discardedProposals` de learning-files.js.
 test('descartar un cambio decidido exige el motivo, y el motivo queda en el documento y el historial', () => {
   const { target, own, file } = decidedProposal('Descartar con motivo', 'probe6')
 

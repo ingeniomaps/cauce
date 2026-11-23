@@ -25,7 +25,7 @@ test('una escritura por MCP frena, sea del servidor que sea, y una lectura pasa'
     'mcp__atlassian__transitionJiraIssue', 'mcp__atlassian__createConfluencePage', 'mcp__slack__slack_send_message',
     'mcp__github__merge_pull_request', 'mcp__plugin_tools_drive__upload_file', 'mcp__nuevo__hacerAlgo',
     'mcp__claude_ai_Notion__notion-create-pages', 'mcp__git__git_commit', 'mcp__git__git',
-    // `log` y `status` nombran también escrituras: cargar horas, publicar un estado.
+    // Escrituras cuyo verbo es `log` o `status`.
     'mcp__tempo__log_work', 'mcp__jira__logWork', 'mcp__statuspage__status_update_incident', 'mcp__git__git_status',
   ]) blocked('mcp-writes', call(root, tool), WRITES)
   for (const tool of ['mcp__atlassian__getJiraIssue', 'mcp__atlassian__searchJiraIssuesUsingJql',

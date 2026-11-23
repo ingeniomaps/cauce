@@ -207,10 +207,8 @@ test('verify usa el candado que fija CAUCE_VERIFY_LOCK, no el de la máquina', (
   }
 })
 
-// Un monorepo con el manifiesto de cada servicio en su carpeta —el ejemplo del README, y lo que `/onboard`
-// configura solo— no tenía gate: `verify` buscaba `package.json` únicamente en la raíz git del commit y
-// el commit salía en verde con la suite roja, sin decirlo (caso 333). Ahora corre los gates de cada raíz
-// declarada que el commit toca, desde la raíz del repo o desde adentro de la raíz, y sólo ésas.
+// Caso 333: dos raíces declaradas, una con la suite roja; se commitea desde la raíz del repo y desde adentro
+// de la raíz, y corren sólo los gates de las raíces tocadas. Por qué, en `gatePlaces` de verify.js.
 test('verify corre los gates de cada raíz declarada que el commit toca, no sólo los de la raíz git', () => {
   const dir = tempRoot('cauce-verify-monorepo-')
   initRepo(dir)

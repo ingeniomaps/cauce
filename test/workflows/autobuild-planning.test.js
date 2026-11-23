@@ -11,8 +11,7 @@ const { KEY, baseScript, ranToEnd, runFlow } = require('../support/autobuild-har
 const promptOf = (prompts, key) => prompts.filter((one) => one.key === key).map((one) => one.prompt).join('\n')
 const contract = (changes) => ({ [KEY.contract]: { ...baseScript()[KEY.contract], ...changes } })
 
-// Caso 266. El cierre dejaba la cola, `done/` y el INBOX escritos y sin commitear. La rama es una sola que
-// se acumula, que es lo que la separa del commit del producto, donde hay una por tarea.
+// Caso 266: el commit de planning del cierre, en su rama de trabajo o, si se permite, en la rama viva.
 test('al cerrar una tarea se commitea su estado de planning, en una sola rama de trabajo', async () => {
   const { result, prompts, asked } = await runFlow()
   ranToEnd(result)
@@ -80,8 +79,8 @@ test('una corrida que retoma le dice a Review dónde están las condiciones de l
     'con las condiciones en memoria van escritas')
 })
 
-// Caso 271. El checkpoint del hito se escribe después del último commit de planning, así que quedaba
-// suelto en la instancia. Se commitea con la misma regla, y sólo si el proyecto commitea por tarea.
+// Caso 271. Con commitPerTask el prompt del checkpoint pide su commit en la rama de planning; sin él, lo
+// escribe y no lo commitea.
 test('el checkpoint del hito también se commitea, con la regla de rama de planning', async () => {
   const gate = (prompts) => promptOf(prompts, 'Closing|human-checkpoint') || prompts
     .filter((one) => one.key.endsWith('|human-checkpoint')).map((one) => one.prompt).join('\n')

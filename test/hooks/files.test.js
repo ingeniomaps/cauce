@@ -65,7 +65,7 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
     blocked('secrets', { tool_input: { file_path: `/project/${credential}` } },
       /credenciales que su herramienta mantiene/)
   }
-  // Tapa un caso conocido, no vuelve completo al guard: sigue decidiendo por el nombre del archivo.
+  // El nombre tiene que ser exacto: el límite que declara `engine/hooks/files.js`.
   assert.doesNotThrow(() => execute('secrets', { tool_input: { file_path: '/project/.npmrc.example' } }))
   blocked('integration-snapshot', { tool_input: { file_path: '/project/integrations/jira/staging/KEY-1/remote.json' } },
     /pertenece al sincronizador/)
@@ -90,9 +90,8 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
 test('los guards de archivo dejan pasar el archivo que la persona nombró', () => {
   const at = (file) => ({ tool_input: { file_path: file } })
 
-  // Y su bloqueo no ofrece ninguna variable, porque no tienen apagado por sesión: anunciar el permiso más
-  // ancho cuando alcanza el angosto es lo que hizo que la variable quedara como la vía a mano (caso 089).
-  // El contraste con `secrets-read`, que sí tiene una, es lo que prueba que el cambio es condicional.
+  // Y su bloqueo no ofrece ninguna variable, porque no tienen apagado por sesión; por qué no se anuncia, en
+  // `engine/hooks/approval.js`. El contraste con `secrets-read`, que sí tiene una, prueba que es condicional.
   assert.doesNotMatch(messageOf('secrets', at('/project/.env.production')), /La variable/)
   assert.match(messageOf('secrets-read', at('/project/.env')), /OPS_SECRETS_READ_OVERRIDE/)
   const chat = chatSession()
@@ -193,10 +192,8 @@ test('test-evidence reconoce los nombres de prueba corrientes fuera de una carpe
   }
 })
 
-// Codex manda el sobre de `apply_patch` entero como `tool_input.command`, no como `patch`. El matcher
-// engancha y el guard se ejecuta, pero sin reconocer ese campo no ve un solo archivo y deja pasar todo:
-// en una sesión real reescribió una migración existente sin decir una palabra. El encabezado es lo que
-// separa un parche de un comando de shell, y por eso se exige en vez de aceptar cualquier `command`.
+// El sobre de `apply_patch` que Codex manda como `tool_input.command`, sobre lo que pasó en una sesión real:
+// reescribir una migración existente. El porqué de exigir el encabezado está en `patchOf` de `engine/hooks/input.js`.
 test('guard-files lee el sobre de apply_patch aunque llegue como command', () => {
   const root = tempRoot('ops-hook-patch-')
   fs.mkdirSync(path.join(root, 'planning'))

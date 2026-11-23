@@ -1,8 +1,7 @@
 'use strict'
 
 // El bloque de `.codex/config.toml` que abre `.git` en el sandbox de Codex. Por qué hace falta, en
-// `engine/automation/sandbox.js`. `CODEX_HOME` va a un temporal: la confianza de los hooks vive bajo el home, y una
-// prueba no lee la de quien la corre (R23).
+// `engine/automation/sandbox.js`; por qué cada prueba lleva su propio `CODEX_HOME`, en `test/support/environment.js`.
 
 const { tempRoot, linkEngine } = require('../support/environment')
 

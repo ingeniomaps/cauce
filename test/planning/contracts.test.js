@@ -234,8 +234,8 @@ test('el aviso de una historia que no se lee sale en check', () => {
     JSON.stringify(warnings))
 })
 
-// Caso 208. Una regla derogada dice qué rige en su lugar o por qué se dio de baja. Que falte avisa —las
-// derogadas de antes no lo traían—, y lo que se escribe mal es error: citar algo que no existe, o a sí misma.
+// Caso 208: una derogada sin reemplazo ni razón avisa, y citar algo que no existe, o a sí misma, es error.
+// Por qué, en `lineage` de business-rules.js.
 test('una regla derogada dice qué la reemplaza, y la cita tiene que llevar a algo', () => {
   const root = tempRoot('ops-business-rules-lineage-')
   const rule = (id, state, extra = '') => `# Regla\n\n> **Dominio:** demo | **Estado:** ${state} | `
@@ -290,8 +290,7 @@ test('check avisa la derogada sin reemplazo y frena la cita rota', () => {
   assert.match(`${broken.stdout}${broken.stderr}`, /la reemplaza BR-DEMO-777, que no existe/)
 })
 
-// Caso 213. Si rige y si alguien la confirmó son dos preguntas. Que falte la segunda avisa —las reglas de
-// antes no la traían—; lo escrito mal es error, y ratificar exige autoridad propia.
+// Caso 213: la verificación que falta, la mal escrita y la ratificación sin autoridad propia.
 test('una regla dice si alguien con autoridad la confirmó, aparte de si rige', () => {
   const root = tempRoot('ops-business-rules-verification-')
   const rule = (extra = '') => '# Regla\n\n> **Dominio:** demo | **Estado:** vigente | **Actualizado:** 2026-10-01\n'

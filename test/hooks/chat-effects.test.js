@@ -98,10 +98,8 @@ test('lo concedido no abre un gate de commit, y gobernanza no interroga a la per
   }
   // El lockfile de `dependencies` está en disco y sin stagear a propósito: es lo que hace que el
   // manifiesto staged cuente como uno que va sin su lock.
-  // `governance` sale de esta lista: frena por **política** sobre qué archivos toca un commit, y eso a una
-  // persona que está dando instrucciones no se le pregunta (caso 126). Los dos que quedan frenan por un
-  // **defecto de hecho** —un manifiesto sin su lockfile, una verificación que falla—, y silenciarlos porque
-  // hay alguien hablando sería tapar un rojo. La diferencia es qué frena cada uno, no quién lo pidió.
+  // `governance` sale de esta lista porque con una persona conduciendo no pregunta (caso 126; el porqué, en
+  // engine/hooks/governance.js). Los dos que quedan tienen que seguir frenando con cualquier otro mensaje.
   const cases = [
     ['dependencies', bench('ops-hook-gate-deps-', { 'package.json': '{}\n', 'package-lock.json': '{}\n' },
       ['package.json']), 'commiteá package.json', /lockfile/i],

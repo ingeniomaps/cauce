@@ -107,8 +107,7 @@ test('en una línea el checkpoint del hito lleva el nombre de la línea', async 
   assert.doesNotMatch(gate, /"line:" a secas/)
 })
 
-// El archivo lo escribe un agente, y un `line:` mal escrito deja el checkpoint pendiente sin frenar a su
-// línea. Por eso se relee `context` después de escribirlo: lo que cuenta es que frene, no que exista.
+// Cuatro relecturas: frena a la primera, frena tras una corrección, no frena nunca, y frena por otro checkpoint.
 test('el checkpoint recién escrito se relee, y si no frena se corrige una vez y se dice', async () => {
   const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
   const held = (...answers) => {

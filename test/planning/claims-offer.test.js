@@ -96,7 +96,6 @@ test('check rechaza el reclamo que miente y el que reserva algo que no existe', 
     done: done(),
   })
   const dice = (pattern) => errors.some((error) => pattern.test(error))
-  // El nombre del archivo es lo que reserva, así que un `task` distinto bloquea una tarea y nombra otra.
   assert.ok(dice(/declara task "otra-tarea" y el archivo reserva a/))
   assert.ok(dice(/claims\/b\.md: falta owner/))
   assert.ok(dice(/claims\/b\.md: falta runner/))

@@ -1,7 +1,6 @@
 'use strict'
 
-// Caso 536: `ops copy` arma la copia que R23 pide para mutar. Lleva lo trackeado y lo nuevo no ignorado —la prueba
-// recién escrita—, deja afuera lo ignorado y el `.git`, mide antes y se niega pasado el tope, y nunca borra el destino.
+// Caso 536: cada prueba ejerce una de las garantías de `ops copy`, que enumera el encabezado de `engine/cli/copy.js`.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')

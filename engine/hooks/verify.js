@@ -272,17 +272,11 @@ function gatePlaces(input, repo, staged, root, temp) {
   return places
 }
 
-// Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice
-// materializado o el árbol, que ahí son lo mismo— y `dir` es el repositorio, que es el nombre que le
-// dice algo a quien lee el mensaje.
-//
-// Cada gate deja su rastro en `ops`; para qué sirve ese registro lo dice `core/evidence.js`. Lo que se
-// decide acá es que el rojo se anota igual que el verde: un gate que falló y se commiteó con
-// aprobación es exactamente lo que alguien va a querer ver después.
 // Lo que se sabe de un gate que falló, en la forma en que se va a leer. El mensaje decía sólo
 // `test (exit 1)` y tiraba la salida de la herramienta: cualquier causa —una suite en rojo, un gestor
-// que se negó a arrancar el script, un binario que no está— llegaba con el mismo texto. Es la misma
-// forma de fallar que el caso 066 encontró en una prueba, acá en el mensaje que lee una persona.
+// que se negó a arrancar el script, un binario que no está— llegaba con el mismo texto, y la salida que el
+// guard ofrece empujaba a aprobar el commit como «rojo conocido». Es la misma forma de fallar que el caso
+// 066 encontró en una prueba, acá en el mensaje que lee una persona.
 //
 // Se muestra **una** línea y acotada: la salida de un gate puede traer cualquier cosa del entorno, y lo
 // que hace falta para diagnosticar es la primera línea de error, no el volcado.
@@ -363,6 +357,13 @@ function rootOf(input, dir) {
     .find((one) => one && one.path && realPath(path.resolve(ops, one.path)) === realPath(dir))
 }
 
+// Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice
+// materializado o el árbol, que ahí son lo mismo— y `dir` es el repositorio, que es el nombre que le
+// dice algo a quien lee el mensaje.
+//
+// Cada gate deja su rastro en `ops`; para qué sirve ese registro lo dice `core/evidence.js`. Lo que se
+// decide acá es que el rojo se anota igual que el verde: un gate que falló y se commiteó con
+// aprobación es exactamente lo que alguien va a querer ver después.
 function verifyGates(root, dir, unapproved, env, input, timeoutMs, tree) {
   const ops = opsRoot(input)
   const failures = []

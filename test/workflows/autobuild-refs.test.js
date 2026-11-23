@@ -110,8 +110,7 @@ test('lo corregido lleva tope y cuenta lo que no entra', async () => {
   assert.match(doneFacts(run), /y 2 más/)
 })
 
-// Caso 210. Review juzga el diff contra la aceptación, así que la recibe —y la que rige, que puede ser la
-// que Ready refinó en esta corrida, no la que sigue escrita en el BACKLOG—.
+// Caso 210: la aceptación llega a la revisión y a la re-revisión, y con Ready refinándola llega la refinada.
 test('las dos pasadas de Review reciben la aceptación que rige', async () => {
   const run = await flow([finding({ ref: RULE, verified: true })])
   const passes = run.prompts.filter((one) => one.key === KEY.review)

@@ -1,8 +1,7 @@
 'use strict'
 
-// Lo que la revisión mandó a corregir una y otra vez, y qué se hizo con eso (caso 214). Lo que importa es
-// cuándo una regla vuelve como lección y cuándo no: proponer de más es ruido en el INBOX, y volver a
-// proponer lo rechazado sin evidencia nueva es insistir.
+// Caso 214: cuándo una regla corregida vuelve al INBOX como lección y cuándo no. El criterio, en el encabezado de
+// `engine/planning/lessons.js`.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')

@@ -265,9 +265,8 @@ test('la carpeta que Gemini manda en dir_path es donde corre el comando', () => 
   } finally { ws.restore() }
 })
 
-// Caso 451. El ítem era el comando entero, y un agente que reintenta con un `cd` adelante o un `echo` atrás ya pedía
-// otra cosa: el «dale» de la persona no lo cubría. El ítem es el tramo que la regla reconoce; dónde corre lo dice
-// el lugar.
+// Caso 451: la aprobación pegada con un `cd` y un `echo` alrededor cubre los reintentos en api y no los de web. El
+// porqué está en `stretchOf` (shell.js).
 test('lo que rodea al comando no cambia lo que se aprueba: un cd adelante o un echo atrás', () => {
   const ws = sidecar('ops-approval-place-stretch-')
   const chat = chatSession()

@@ -376,9 +376,8 @@ test('un banco que sobrevive a su borrado corta la corrida, y sólo se borra den
   assert.equal(fs.existsSync(dir), false)
 })
 
-// Caso 509: en una instancia el banco es para lo propio. Un cargo forkeado se evalúa con los archivos de sus casos a
-// mano, en una instancia desechable que lo resuelve a él —no al del catálogo— y que git no ve; uno del catálogo se
-// sigue evaluando en el toolkit.
+// Caso 509: el banco de un cargo forkeado lleva los archivos de sus casos a mano, en una instancia desechable que lo
+// resuelve a él —no al del catálogo— y que git no ve.
 test('en una instancia, un cargo propio tiene banco con sus archivos, y uno del catálogo no', () => {
   const { installedProject, CLI } = require('../support/environment')
   const { target, runCli: atRoot, env } = installedProject('cauce-banco-instancia-')
@@ -392,11 +391,10 @@ test('en una instancia, un cargo propio tiene banco con sus archivos, y uno del 
   assert.equal(atRoot(['agents', 'fork', 'software-architect', target]).status, 0)
   fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nUna empresa que vende ruteo.\n')
   fs.writeFileSync(path.join(target, 'planning', 'rules', 'propias.md'), '# Reglas propias\n')
-  // Un enlace relativo de la empresa viaja como enlace relativo: absoluto, lo que el banco escribiera ahí caería en la
-  // instancia viva.
+  // Un enlace relativo de la empresa, que tiene que viajar tal cual; por qué, en engine/cli/bench.js.
   fs.symlinkSync(path.join('..', 'software-architect', 'SKILL.md'),
     path.join(target, 'agents', 'roles', 'software-architect', 'references', 'enlace.md'))
-  // Uno absoluto apuntaría a la instancia viva desde el banco: no viaja.
+  // Y uno absoluto, que no tiene que viajar.
   fs.symlinkSync(path.join(target, 'organization', 'workspace.md'), path.join(target, 'organization', 'vivo.md'))
   assert.equal(JSON.parse(runCli(['evaluate', 'software-architect', '--cases', '--json']).stdout).owned, true)
   const made = runCli(['evaluate', 'software-architect', '--bench', '07-approval-without-looking'])

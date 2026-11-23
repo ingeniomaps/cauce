@@ -52,8 +52,7 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
   for (const wide of ['git checkout -- .', 'git restore .', 'git restore --staged .', 'git checkout --']) {
     blocked('destructive', { tool_input: { command: wide } }, /no sólo lo que estás mirando/)
   }
-  // Revertir un archivo nombrado es trabajo corriente y no se toca. Bloquearlo empujaría a la forma
-  // ancha, que es justo la peligrosa.
+  // Y la forma estrecha pasa: un archivo nombrado, o cambiar de rama.
   for (const narrow of ['git checkout -- src/main.js', 'git restore src/a.js', 'git checkout main']) {
     assert.doesNotThrow(() => execute('destructive', { tool_input: { command: narrow } }), narrow)
   }
@@ -194,9 +193,8 @@ test('el cuerpo de un heredoc es texto, y su línea de apertura sigue siendo com
   // La apertura no se toca: sigue siendo comando y su destino se sigue mirando.
   blocked('shell-boundary', input(document('hola').replace('nota.md', path.join(os.homedir(), 'x'))),
     /fuera de las raíces/)
-  // La redirección escrita *después* del delimitador también sobrevive: `cat <<FIN > salida` es válido y
-  // su destino está ahí. Recortando desde el delimitador se perdía, y no lo notaba nadie porque en la
-  // forma común el destino va antes del `<<`.
+  // La redirección escrita *después* del delimitador también sobrevive; por qué, en `commandOf`
+  // (`engine/hooks/input.js`).
   blocked('shell-boundary', input(`cat <<FIN > ${path.join(os.homedir(), 'y')}\nhola\nFIN`),
     /fuera de las raíces/)
   // Y lo que va después del cierre tampoco: el recorte se lleva el cuerpo, no el resto del comando.

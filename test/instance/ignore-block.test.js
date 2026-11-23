@@ -1,7 +1,7 @@
 'use strict'
 
-// Caso 513: lo que la instancia necesita ignorar llega al `.gitignore` que de verdad aplica, en un bloque marcado que
-// se rehace y se saca. En embebido es el del producto; en sidecar, el del repositorio donde el runner instala.
+// Caso 513: el bloque de Cauce por init, install, upgrade y destroy, en embebido y en sidecar. Qué es y por qué
+// existe, en el encabezado de `engine/core/ignore-block.js`.
 
 const { tempRoot, run, linkEngine } = require('../support/environment')
 const test = require('node:test')
@@ -149,7 +149,7 @@ test('una línea se juzga con sus negaciones, y la que escribió la persona no r
     '!planning/wip/README.md'], 'su .env.* queda como lo escribió, sin el !.env.example nuestro')
 })
 
-// De la tercera revisión del 513: en una subcarpeta de un monorepo, el control de versionados mira desde ella.
+// De la tercera revisión del 513: la app vive en `apps/tienda` y versiona archivos que sus líneas ignorarían.
 test('en una subcarpeta de un monorepo, una línea que ignoraría algo versionado ahí tampoco entra', () => {
   const mono = path.join(tempRoot('cauce-ignore-mono-'), 'mono')
   const app = path.join(mono, 'apps', 'tienda')

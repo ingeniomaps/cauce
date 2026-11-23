@@ -91,7 +91,7 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   const noFile = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: { FilePath: '.env', Cwd: cwd } } })
   assert.equal(noFile.decision, 'deny')
   assert.match(noFile.reason, /no trae TargetFile, AbsolutePath ni Path/)
-  // Con el archivo pero sin el contenido, los guards que juzgan contenido verían un texto vacío.
+  // Y con el archivo pero sin ningún campo de contenido.
   const renamedContent = { TargetFile: 'db/migrations/1.sql', Text: 'DROP TABLE x;', Cwd: cwd }
   const noContent = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: renamedContent } })
   assert.equal(noContent.decision, 'deny')

@@ -102,8 +102,7 @@ test('bench sidecar deja instancia y producto como repositorios hermanos', () =>
   assert.equal(fs.existsSync(path.join(product, '.git')), true, 'y el producto es otro, al lado')
   assert.deepEqual(config.workspaceRoots.map((one) => path.resolve(dir, one.path)), [product],
     'y la raíz declarada es ese repositorio, no la carpeta que contiene a los dos')
-  // Con la raíz en la carpeta contenedora, una tarea sin servicio resolvía al repositorio del que cuelga el
-  // banco, que es el del toolkit: `ops worktree` le habría agregado una rama y un árbol.
+  // Sin servicio y con él, la tarea resuelve al producto y no al repositorio del que cuelga el banco.
   const R = require('../../engine/core/repos')
   assert.deepEqual(R.reposFor(dir, '.'), [fs.realpathSync(product)])
   assert.deepEqual(R.reposFor(dir, 'app'), [fs.realpathSync(product)])

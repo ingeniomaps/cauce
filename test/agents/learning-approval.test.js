@@ -1,7 +1,7 @@
 'use strict'
 
-// El estado de la firma vive en «Aprobación humana», y una propuesta puede traer las mismas líneas dentro del fixture
-// de un caso nuevo (caso 501). Sellar, archivar y contar firmadas leen sólo esa sección (caso 507).
+// Una propuesta cuya «Evaluación» trae, en el fixture de un caso nuevo, las mismas líneas que escribe la firma
+// (caso 501): sellar, archivar y contar firmadas no las toman por las de «Aprobación humana» (caso 507).
 
 const test = require('node:test')
 const assert = require('node:assert/strict')

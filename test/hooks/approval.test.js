@@ -167,9 +167,8 @@ test('verify mide el índice y no el árbol de trabajo', () => {
   assert.doesNotThrow(() => execute('verify', commit), 'el entorno ignorado viaja y lo sano pasa')
   fs.rmSync(path.join(root, 'notas.txt'))
 
-  // Un gate que llama a git tiene que seguir funcionando sobre el índice materializado, que no trae
-  // `.git`. Sin el contexto apuntado al repositorio real, el guard frenaría un commit correcto porque
-  // su propia copia no es un repositorio — pasó con la suite de este repositorio al probarlo.
+  // Un gate que corre `git ls-files` sobre el índice materializado. Por qué la copia es un repositorio, en
+  // `commitTree` de verify.js.
   const withGit = tempRoot('ops-hook-verify-git-')
   initRepo(withGit)
   fs.writeFileSync(path.join(withGit, 'package.json'), JSON.stringify({ scripts: {

@@ -14,7 +14,8 @@ const INBOX_HEADS = { type: 'object', additionalProperties: false, properties: O
 // recuperable —sigue entero en el informe o en `done/`—, y la procedencia no se reconstruye después.
 const INBOX_LINE = 240
 // Dónde va una entrada nueva: un archivo por entrada en `inbox/<sección>/` (caso 216). `INBOX.md` se sigue
-// leyendo, pero escribir ahí hace chocar a dos líneas de trabajo que anotan a la vez.
+// leyendo, pero dos líneas de trabajo que anotan a la vez en la misma sección escriben ahí la misma zona y
+// chocan; cada una en su archivo, no.
 const inboxWhere = (planning, section) => `${planning}/inbox/${section.toLowerCase()}/`
 const INBOX_FILES = 'Cada entrada va en su propio archivo en esa carpeta, nombrado como la entrada —su nombre en '
   + 'negrita, en minúsculas y con guiones, más .md— y con la entrada como única línea. No edites INBOX.md.'

@@ -426,8 +426,8 @@ test('una frase citada se busca entera, con su código adentro y como la traza l
   assert.deepEqual(output.code, ['Expected: "ochenta" / Received: null'])
 })
 
-// Caso 362. El recorrido pide la ruta de la prueba desde la carpeta del servicio. Cuando la prueba vive
-// fuera de ella —`src` es el servicio y las pruebas están en `test/`—, la ruta sale con `..` adelante.
+// Caso 362: `src` es el servicio y las pruebas están en `test/`. Por qué la traza llega con `..`, en
+// `contrastParts` (`engine/core/evidence.js`).
 test('una traza que nombra su archivo subiendo desde el servicio se encuentra igual', () => {
   const EV = require('../../engine/core/evidence')
   const root = tempRoot('cauce-evidence-subiendo-')

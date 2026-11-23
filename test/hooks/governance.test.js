@@ -42,9 +42,8 @@ test('governance juzga las rutas relativas a la raíz ops, también con ops/ den
   }
 })
 
-// La revisión del conjunto lo encontró: `run-hook.sh` exporta la raíz ops con el `pwd` lógico, que conserva un
-// enlace simbólico, y git devuelve el toplevel real. Relativizar una contra el otro daba `../../…` y el guard
-// volvía a no frenar nada, en silencio, exactamente lo que el 334 cerró. Los dos lados se comparan reales.
+// La instancia alcanzada por un enlace simbólico, que encontró la revisión del conjunto. Por qué frenaba de
+// menos, en `realPath` (`engine/hooks/input.js`).
 test('governance frena igual cuando la instancia se alcanza por un enlace simbólico',
   { skip: process.platform === 'win32' }, () => {
   const real = tempRoot('ops-hook-gov-real-')

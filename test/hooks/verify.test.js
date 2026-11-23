@@ -156,10 +156,8 @@ test('un gate no pisa lo que el usuario ya construyó, y sigue viendo sus depend
     'VERSION = "lo-que-estoy-editando"', 'y la salida de build del usuario queda como estaba')
 })
 
-// El mensaje decía `test (exit 1)` y tiraba la salida de la herramienta, así que una suite en rojo y un
-// gestor que se negó a arrancar el script llegaban con el mismo texto — y la salida que el guard ofrece
-// empuja a aprobar el commit como «rojo conocido». Es la misma forma de fallar que el caso 066 encontró
-// en una prueba, acá en lo que lee una persona.
+// Una suite en rojo y un gestor que se negó a arrancar el script tienen que llegar con mensajes distintos;
+// el porqué está en `engine/hooks/verify.js`.
 test('un gate que falla dice cuánto tardó y qué dijo la herramienta', () => {
   const EV = require('../../engine/core/evidence')
   const root = tempRoot('ops-hook-mudo-')

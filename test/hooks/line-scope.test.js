@@ -328,7 +328,8 @@ test('un git en la instancia pasa si la persona lo pide, y su bloqueo no dice qu
     // sesión principal, que es lo que el 423 cerró.
     prompt(id, 'implementá la tarea', base)
     assert.throws(merge(), (error) => error.blocked && STRAYED.test(error.message), 'un pedido sobre otra cosa')
-    // Y el nombre va entero: «ambos» no es `git am`. La conjugación sí cuenta —«mergeá»—, en los nombres largos.
+    // Las dos lecturas de `ordersShared` (`engine/hooks/line-scope.js`): una palabra que contiene el subcomando,
+    // y el subcomando conjugado.
     prompt(id, 'implementá ambos cambios', base)
     assert.throws(() => execute('shell-boundary', shell(id, ops, 'git am x.patch')),
       (error) => error.blocked && STRAYED.test(error.message), '«ambos»')

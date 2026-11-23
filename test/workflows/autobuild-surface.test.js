@@ -78,8 +78,7 @@ test('con causas mezcladas, el rebote pide sólo las pruebas que faltan', async 
   assert.ok(!hollow.result.detail.includes(doc), 'la parada nombra sólo lo que de verdad falta')
 })
 
-// Caso 345. La causa se decide por criterio: con la regla atada al diff, una condición que se cumple en un
-// documento salía `missing-test` apenas la tarea tocaba código, y el recorrido pedía una prueba para prosa.
+// Caso 345: una tarea mixta, código y un documento. Lo que se le pide a Verify, con y sin la condición por diff.
 test('a Verify se le pide la causa criterio por criterio, sin atarla a lo que tocó el diff', async () => {
   const ctx = withAcceptance('el alta rechaza un duplicado; docs/RIESGOS.md anota el riesgo aceptado')
   const out = await runFlow({ [KEY.context]: ctx }, { contexts: [ctx] })
@@ -92,8 +91,8 @@ test('a Verify se le pide la causa criterio por criterio, sin atarla a lo que to
   assert.doesNotMatch(ask, /con cualquier otro en el diff es missing-test/)
 })
 
-// Caso 345, el borde que la causa por criterio abría: una tarea que escribió pruebas y a la que Verify le
-// declara todo sin superficie. `check` la rechazaba recién en Done, con el trabajo entero hecho; frena acá.
+// Caso 345. Todos los criterios llegan como no-surface sobre una tarea con pruebas: la corrida pide las
+// pruebas, termina en verify-hollow y no llega a QA.
 test('una tarea con pruebas no cierra con todos sus criterios declarados sin superficie', async () => {
   const crits = ['el alta rechaza un duplicado', 'el comentario del handler queda corregido']
   const ctx = withAcceptance(crits.join('; '))

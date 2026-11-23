@@ -301,10 +301,9 @@ test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termin
   assert.ok(!declined.phases.slice(declined.phases.lastIndexOf('Claim')).includes('Build'), 'no la construye')
   assert.doesNotMatch(declined.prompts.find((one) => one.key === 'Claim|claim:T-2').prompt, /declined=true/,
     'sin pedido no hay contra qué declinar')
-  // Quien reclama decide con el pedido a la vista: sin él, la corrida real reclamó la tarea excluida (caso 297).
+  // Con pedido, el prompt de Claim lo trae entero (caso 297).
   const asked = await runFlow(T2, { ...two, args: 'Sólo la tarea T-1; al cerrarla, parar. --max 5' })
-  // Y con cuántas lleva cerradas la corrida, que es lo único contra lo que «sólo la próxima» se puede leer:
-  // sin ese dato una corrida real cerró dos y frenó en la tercera (caso 304).
+  // Y la cuenta de cerradas avanza de una tarea a la siguiente: cero para T-1, una para T-2 (caso 304).
   const counted = { 'T-1': /ya cerró 0 tarea\(s\), y ésta sería la número 1\./,
     'T-2': /ya cerró 1 tarea\(s\) —T-1—, y ésta sería la número 2\./ }
   for (const id of ['T-1', 'T-2']) {

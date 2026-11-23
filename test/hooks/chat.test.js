@@ -132,10 +132,8 @@ test('mencionar algo en el chat no lo autoriza: la frase tiene que pedirlo', () 
   } finally { chat.close() }
 })
 
-// Caso 120. En inglés la negación se escribe contraída, y `NEGATION` sólo conocía `don't`: «the tool
-// doesn't read the .env» nombra el archivo, trae un verbo de la lista y ninguna negación reconocida, así
-// que una frase que **prohíbe** pasaba a autorizar. Es el error en la dirección peligrosa, al revés que el
-// 109: ahí lo que sobraba era permiso por nombrar; acá, permiso por no entender que se estaba negando.
+// Caso 120: cada auxiliar contraído que reconoce `NEGATION` frena una lectura del .env, y la frase que sí
+// pide la lectura sigue pasando. El porqué está junto a `CONTRACTED`, en engine/hooks/chat.js.
 test('una negación contraída en inglés revoca igual que la escrita entera', () => {
   const root = planFirstRoot('ops-hook-chat-negacion-en-', WIP_WITH_PLAN)
   const reads = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })

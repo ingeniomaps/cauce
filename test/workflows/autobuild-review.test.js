@@ -449,8 +449,7 @@ test('una decisión cae en un solo destino y no desaparece por ningún camino', 
   })
   assert.match(blocked.result.detail, /contrato público/, 'el motivo lleva lo que el revisor nombró')
 
-  // 3. No se pierde entre pasadas: al corrector se le pasa sólo lo que manda a corregir, así que nunca se
-  // entera de la decisión y no la puede cerrar. Si la re-revisión no la repite, desaparecía sin rastro.
+  // 3. Una decisión de la primera pasada, con una re-revisión que ya no la repite.
   let round = 0
   const betweenPasses = await runFlow({
     [KEY.review]: () => (round++ === 0

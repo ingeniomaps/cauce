@@ -309,9 +309,9 @@ test('el temporal de proyecto de Gemini se puede escribir, y sólo el de la sesi
   assert.doesNotMatch(hinted, /temporal del sistema/)
 })
 
-// De la revisión del 516: una carpeta de la sesión que es un enlace abriría lo que tiene detrás —el home entero, si
-// alguien la enlaza ahí—, porque el límite juzga por dónde cae la escritura. Ni la de Gemini ni el scratchpad cuentan
-// si son un enlace. El home es falso y cuelga de /var/tmp: ninguna prueba arma nada bajo el home real.
+// De la revisión del 516: ni la carpeta de Gemini ni el scratchpad cuentan si son un enlace; el porqué está en
+// `linked` de `engine/hooks/input.js`. El home es falso y cuelga de /var/tmp: ninguna prueba arma nada bajo el
+// home real.
 test('una carpeta de la sesión que es un enlace no abre nada', () => {
   const root = outsideTempRoot('ops-hook-sesion-enlace-')
   fs.mkdirSync(path.join(root, 'planning'))

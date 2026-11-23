@@ -278,12 +278,12 @@ test('los rangos que declara el README de reglas son los que hay', () => {
   const readme = fs.readFileSync(path.join(rules, 'README.md'), 'utf8')
   const declared = [...readme.matchAll(/^- `system\/([a-z-]+\.md)` — ([^:]+):/gm)]
   assert.ok(declared.length >= 4, 'el README declara un rango por archivo del sistema')
+
   const expand = (text) => text.split(',').flatMap((part) => {
     const range = part.trim().match(/^R(\d+)\.\.R(\d+)$/)
     if (!range) return [part.trim()]
     const from = Number(range[1])
     return Array.from({ length: Number(range[2]) - from + 1 }, (_, step) => `R${from + step}`)
-
   })
 
   const covered = new Set()

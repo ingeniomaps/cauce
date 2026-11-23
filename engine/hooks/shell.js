@@ -154,7 +154,7 @@ function rulesOf(input) {
     "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
-    // nombrado es trabajo corriente y no se toca.
+    // nombrado es trabajo corriente y no se toca, y frenarlo empujaría a la forma ancha.
     //
     // Pasó dos veces en una sesión, las dos limpiando restos de una prueba: el comando revirtió también
     // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el

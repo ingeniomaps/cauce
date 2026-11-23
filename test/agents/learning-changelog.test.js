@@ -68,8 +68,8 @@ test('un cargo que el agente ya marcó aplicado se anota igual, una sola vez en 
   assert.doesNotMatch(fs.readFileSync(path.join(old, 'CHANGELOG.md'), 'utf8'), /1\.5\.0/)
 })
 
-// Caso 497. La entrada del CHANGELOG copiaba el primer párrafo de «Cambio propuesto», que casi nunca dice qué cambia
-// sino dónde y por qué. Una propuesta lo dice en su línea `**En una línea:**`, y sin ella queda lo de antes.
+// Caso 497: una propuesta con su línea «En una línea» y otra sin ella, que cae al primer párrafo. Por qué, en
+// `summarize` de learning-seal.js.
 test('la entrada del CHANGELOG de un cargo sale de su línea «En una línea»', () => {
   const sealWith = (change) => {
     const root = tempRoot('cauce-toolkit-linea-')

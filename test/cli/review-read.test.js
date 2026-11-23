@@ -1,7 +1,7 @@
 'use strict'
 
-// Lo que quien revisó leyó según su transcripción, contra lo que declaró en `opened` (caso 549). Las transcripciones se
-// arman con la forma medida en Claude Code 2.1.330; ninguna es real.
+// Caso 549. Las transcripciones son fixtures armados con la forma que describe engine/cli/review-read.js;
+// ninguna es real.
 
 const { tempRoot, run } = require('../support/environment')
 const { git, initRepo } = require('../support/hooks-harness')

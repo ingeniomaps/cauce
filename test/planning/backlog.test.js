@@ -394,9 +394,7 @@ test('una fila de acciones humanas que casi nombra su tarea se marca; una que no
     'la que nombra la tarea sin ser su slug promete un bloqueo que no ocurre')
 })
 
-// La descripción de una tarea es lo que la aceptación no puede decir: dónde vive un símbolo, qué queda
-// fuera de alcance, con qué se produce la evidencia. Por qué tiene que salir del BACKLOG está junto al
-// campo, en el parser.
+// Qué lleva la descripción de una tarea y por qué tiene que salir del BACKLOG, junto al campo, en el parser.
 //
 // Las tres aserciones son las tres formas de equivocarse al recortarla, y ninguna se ve desde las otras:
 // dejarle la aceptación pegada, dejarle los marcadores del contrato, o devolverla vacía cuando la línea

@@ -1,7 +1,8 @@
 'use strict'
 
-// Caso 321. Lo que la revisión declara haber abierto viene con la ruta de la máquina, y `review` va textual a
-// `done/`. El prefijo se cambia en el recorrido, que es determinista, y nada más del campo se toca.
+// Caso 321. Arma revisiones que declaran rutas absolutas, con la instancia sola y con servicios al lado, y
+// comprueba en el prompt de Done qué prefijo se cambió y que el resto del campo quedó como vino. El porqué
+// está en automatization/workflows/autobuild.js.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -74,8 +75,7 @@ test('la prosa del revisor no se toca, y el árbol de la tarea sigue llegando co
   assert.ok(fact.includes(`que escribe ${ROOT} en cada workflow`), fact)
   assert.ok(fact.includes('sobre servicio/a.go'), fact)
 
-  // En una línea el trabajo ocurre en un árbol que al cerrar ya no existe, y puede colgar de la raíz: a
-  // `done/` llega el servicio como lo nombra la tarea (caso 277), no el árbol con el prefijo cambiado.
+  // Caso 277: con la tarea en una línea, lo leído se anota con el servicio de la tarea y no con la ruta del árbol.
   const tree = { ok: true, path: `${ROOT}/api-T-1`, work: `${ROOT}/api-T-1`, branch: 'task/T-1', repo: `${ROOT}/api` }
   const inLine = await reviewed(['api → ./api'], [`${ROOT}/api-T-1/src/alta.go`, `git -C ${ROOT}/api-T-1 diff`], {
     changes: {

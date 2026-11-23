@@ -182,8 +182,8 @@ test('ningún archivo de código pasa las 500 líneas sin decir por qué', () =>
   const unexplained = Object.entries(over)
     .filter(([name]) => !JUSTIFIED[name] && !PENDING_SPLIT[name])
     .map(([name, count]) => `${name}: ${count} líneas y ninguna razón registrada`)
-  // Una entrada que ya no hace falta manda a cuidar algo que nadie escribió, y en `PENDING_SPLIT` es
-  // peor: deja la deuda anotada después de pagarla. Se retira igual que un piso de cobertura huérfano.
+  // Una entrada que sobra se retira igual que un par aceptado que quedó huérfano, y en `PENDING_SPLIT`
+  // además deja la deuda anotada después de pagarla.
   for (const name of [...Object.keys(JUSTIFIED), ...Object.keys(PENDING_SPLIT)]) {
     if (!over[name]) unexplained.push(`${name}: ya no pasa las ${MAX_LINES} líneas, sacalo del registro`)
   }

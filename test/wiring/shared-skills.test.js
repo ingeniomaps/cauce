@@ -97,9 +97,8 @@ test('Gemini solo instala y desinstala sus punteros en la carpeta compartida com
   assert.equal(fs.existsSync(pointer(workspace, '.agents/skills', first.slug)), false)
 })
 
-// Caso 512: Gemini no lee nada bajo `node_modules`, y ahí apuntaba el puntero de cada cargo del catálogo. En la carpeta
-// que lee Gemini, el cargo del catálogo va copiado —contrato y referencias, sin una sola ruta al paquete—, y el propio
-// sigue siendo puntero. Codex instalado después no la vuelve a punteros, y desinstalar se lleva las copias.
+// Caso 512: Gemini instalado, un cargo del catálogo con referencias y uno propio; después Codex sobre la misma carpeta
+// y la desinstalación, que se lleva las copias. Por qué se copia, en `copiesRoles` de roles.js.
 test('en la carpeta que lee Gemini los cargos del catálogo van copiados, y los propios como puntero', () => {
   const { workspace, target, runCli } = installedProject('cauce-skills-copia-')
   const roles = roleCatalog(target)
