@@ -76,17 +76,17 @@ const CITED_PATH = /(?<![\w/-])agents\/[a-z0-9/-]+(?:\.(?:md|ya?ml|json|js))?/g
 // uno roto: hasta que un cargo citó un archivo del motor por primera vez, ninguno lo ejercitaba. Acá se
 // lo mide contra las dos formas de romperlo — dejar pasar una ruta inventada, o tirar una correcta —.
 test('el patrón de citas mira rutas enteras, no trozos de otra ruta', () => {
-  const citas = (text) => [...text.matchAll(CITED_PATH)].map((hit) => hit[0])
-  assert.deepEqual(citas('en `engine/agents/evaluations.js` o en otra parte'), [],
+  const cited = (text) => [...text.matchAll(CITED_PATH)].map((hit) => hit[0])
+  assert.deepEqual(cited('en `engine/agents/evaluations.js` o en otra parte'), [],
     'una ruta del motor no es una cita del catálogo')
-  assert.deepEqual(citas('el molde en `template/agents/x.md`'), [], 'ni una que viva bajo otra raíz')
-  assert.deepEqual(citas('ver `agents/roles/system/qa-engineer/learning/sources.yaml`'),
+  assert.deepEqual(cited('el molde en `template/agents/x.md`'), [], 'ni una que viva bajo otra raíz')
+  assert.deepEqual(cited('ver `agents/roles/system/qa-engineer/learning/sources.yaml`'),
     ['agents/roles/system/qa-engineer/learning/sources.yaml'], 'y la cita de verdad se sigue viendo')
-  assert.deepEqual(citas('ver agents/roles/system/no-existe/learning/sources.yaml'),
+  assert.deepEqual(cited('ver agents/roles/system/no-existe/learning/sources.yaml'),
     ['agents/roles/system/no-existe/learning/sources.yaml'], 'incluida la inventada, que es lo que se caza')
   // La clase no lleva mayúsculas, así que una ruta que termina en `SKILL.md` se comprueba hasta su
   // directorio. Se afirma para que quede dicho: es el alcance real del guard, no un descuido del caso.
-  assert.deepEqual(citas('ver `agents/roles/system/qa-engineer/SKILL.md`'),
+  assert.deepEqual(cited('ver `agents/roles/system/qa-engineer/SKILL.md`'),
     ['agents/roles/system/qa-engineer/'], 'una ruta con mayúsculas se comprueba hasta el directorio')
 })
 

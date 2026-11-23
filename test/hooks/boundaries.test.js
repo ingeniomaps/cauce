@@ -206,11 +206,11 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
 
   // Y si la persona lo pide, pasa: el guard cuida que el agente no parchee el motor por su cuenta, no que
   // ella no pueda tocarlo a sabiendas (caso 117).
-  const motor = 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js'
+  const engineFile = 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js'
   const chat = chatSession()
   try {
     assert.doesNotThrow(() => execute('engine',
-      chat.says(`editá ${motor}`)({ cwd: root, tool_input: { file_path: motor } })))
+      chat.says(`editá ${engineFile}`)({ cwd: root, tool_input: { file_path: engineFile } })))
   } finally { chat.close() }
 
   // En el toolkit el motor es el producto: acá editarlo es el trabajo, no una infracción.

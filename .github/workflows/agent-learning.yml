@@ -249,8 +249,8 @@ jobs:
           # gastó seis denegaciones y tres corridas del 2026-08-31 buscándolas, y terminó las tres con
           # el informe vacío. El job sí puede correrlas: se las da hechas en vez de abrirle permisos a
           # un modelo, y el dato le llega a los 53 cargos sin que ninguno lo pida.
-          entorno="Node $(node -v) y npm $(npm -v)"
-          prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta corrida ya está creado y vacío: completalo. Cubrí todo lo que tus fuentes publicaron desde tu informe anterior —el más reciente de learning/reports/—, no sólo lo último: la próxima corrida es dentro de un mes. El entorno de esta corrida es $entorno, medido por el job: dalo por dado, no hay shell para volver a comprobarlo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. Contestá el campo 'propone' del frontmatter con 'si' o con 'no' —el comentario del molde dice cuál va— y dejá 'status: draft' como está. El único archivo que escribís es ese informe."
+          runtime_env="Node $(node -v) y npm $(npm -v)"
+          prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta corrida ya está creado y vacío: completalo. Cubrí todo lo que tus fuentes publicaron desde tu informe anterior —el más reciente de learning/reports/—, no sólo lo último: la próxima corrida es dentro de un mes. El entorno de esta corrida es $runtime_env, medido por el job: dalo por dado, no hay shell para volver a comprobarlo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. Contestá el campo 'propone' del frontmatter con 'si' o con 'no' —el comentario del molde dice cuál va— y dejá 'status: draft' como está. El único archivo que escribís es ese informe."
           # Sin permisos declarados, `claude -p` no puede correr un comando ni salir a la web, que es
           # todo lo que una investigación hace. La primera corrida real duró tres minutos y devolvió el
           # informe vacío —«every tool this task needs is currently denied in this session»— y el
@@ -740,8 +740,8 @@ jobs:
           # encontraba. Como `reports/` nace con el primer informe, eso abortaba la publicación del
           # primero de cada cargo — y el directorio sólo está en git para los pocos que ya publicaron
           # uno, así que era casi toda la matriz.
-          otros="$(git status --porcelain -uall | awk '{print $2}' | grep -v -F "$dest" || true)"
-          if [ -n "$otros" ]; then
+          others="$(git status --porcelain -uall | awk '{print $2}' | grep -v -F "$dest" || true)"
+          if [ -n "$others" ]; then
             echo "Se esperaba exactamente el informe de $AGENT y nada más." >&2
             git status --porcelain -uall >&2
             exit 1
@@ -914,14 +914,14 @@ jobs:
           # devuelve lo que pueda leer del disco, y lo que no pudo establecer queda dicho en la propuesta
           # en vez de afirmarse. Concederlos es una decisión propia y se toma cuando una corrida real
           # muestre que hace falta, no de paso.
-          proponer() {
+          propose() {
             "$@" --permission-mode acceptEdits \
               --allowedTools 'Workflow' 'Read' 'Glob' 'Grep' 'Edit' 'Write' \
               -p "/agent-propose $AGENT"
           }
           if [ -n "$OAUTH" ]; then
             echo "Credencial: suscripción (CLAUDE_CODE_OAUTH_TOKEN)."
-            if proponer env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude; then exit 0; fi
+            if propose env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude; then exit 0; fi
             echo "La corrida con la suscripción falló." >&2
             if [ -z "$APIKEY" ]; then
               exit 0
@@ -932,7 +932,7 @@ jobs:
           fi
           # Una corrida que falla no frena acá: la rama se empuja igual con sus sellos, que es lo que evita
           # que el mismo material entre de nuevo el mes siguiente. Si falló lo dice el paso siguiente.
-          if ! proponer env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" claude; then
+          if ! propose env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" claude; then
             echo "La corrida con la API key falló." >&2
           fi
 

@@ -75,22 +75,22 @@ test('un dispatch elige su fase y no arrastra el ensamblaje', () => {
 test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => {
   const file = path.resolve(__dirname, '..', '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')
-  const crones = [...source.matchAll(/^ {4}- cron: '([^']+)'/gm)].map((hit) => hit[1])
-  assert.deepEqual(crones, ['17 13 24 * *', '17 13 23 3,6,9,12 *', '17 7 1 * *'])
+  const crons = [...source.matchAll(/^ {4}- cron: '([^']+)'/gm)].map((hit) => hit[1])
+  assert.deepEqual(crons, ['17 13 24 * *', '17 13 23 3,6,9,12 *', '17 7 1 * *'])
   // El cron del lunes se quitó con la cadencia semanal (caso 182): ninguno fija un día de la semana, y
   // a mano tampoco se puede pedir.
-  assert.equal(crones.some((one) => one.split(' ')[4] !== '*'), false, 'ningún cron corre por día de semana')
+  assert.equal(crons.some((one) => one.split(' ')[4] !== '*'), false, 'ningún cron corre por día de semana')
   assert.equal(/options: \[[^\]]*semanal/.test(source), false, 'y el dispatch no ofrece la cadencia semanal')
 
   // Ninguno comparte minuto con otro: antes el ensamblaje y la investigación del lunes disparaban a la
   // misma hora, con el orden librado a la cola.
-  assert.equal(new Set(crones.map((one) => one.split(' ').slice(0, 2).join(' '))).size > 1,
+  assert.equal(new Set(crons.map((one) => one.split(' ').slice(0, 2).join(' '))).size > 1,
     true, 'el ensamblaje no compite con la investigación')
 
   // Los tres de investigación tienen cadencia declarada; el del ensamblaje no está en la tabla, y por
   // eso ese día la lista sale vacía y `research` no arranca.
   const table = source.slice(source.indexOf('const BY_CRON'), source.indexOf('const cadence'))
-  for (const cron of crones.slice(0, 2)) assert.ok(table.includes(cron), `${cron} elige a quién correr`)
+  for (const cron of crons.slice(0, 2)) assert.ok(table.includes(cron), `${cron} elige a quién correr`)
   assert.equal(table.includes('17 7 1 * *'), false, 'el del ensamblaje no investiga a nadie')
   assert.match(source, /needs\.discover\.outputs\.agents != '\[\]'/, 'y research no arranca con lista vacía')
   assert.match(source, /github\.event\.schedule == '17 7 1 \* \*'/, 'propose corre el día del ensamblaje')

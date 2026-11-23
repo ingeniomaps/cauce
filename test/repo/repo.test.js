@@ -93,8 +93,8 @@ test('el paquete no publica la evidencia de nuestras propias corridas', () => {
   const pkg = Object.values(JSON.parse(output.stdout))[0]
   const files = pkg.files.map((entry) => entry.path)
 
-  for (const patron of [/evaluations\/results\//, /learning\/reports\//, /learning\/proposals\//]) {
-    assert.deepEqual(files.filter((route) => patron.test(route)), [], `${patron} viaja en el paquete`)
+  for (const pattern of [/evaluations\/results\//, /learning\/reports\//, /learning\/proposals\//]) {
+    assert.deepEqual(files.filter((route) => pattern.test(route)), [], `${pattern} viaja en el paquete`)
   }
   // Y la negación no puede llevarse puesto lo que el consumidor sí necesita del cargo.
   for (const required of [/\/SKILL\.md$/, /evaluations\/cases\//, /\/references\//,

@@ -21,12 +21,12 @@ const epic = (num, slug, story) => `---\nepic: ${num}\ntitle: ${slug}\nstatus: o
 const task = (slug) => `- [ ] **${slug}** [lite] — Algo. (→ C1) (epic: 001) (service: app)`
 
 // Lo que deja el merge de dos líneas que tomaron el mismo número, con una tarea de cada una en la cola.
-function collided(name, { envios = 'file' } = {}) {
+function collided(name, { layout = 'file' } = {}) {
   const target = path.join(tempRoot(name), 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const dir = path.join(target, 'planning')
   write(dir, 'roadmap/epic-001-pagos.md', epic('001', 'pagos', 'cobrar-tarjeta'))
-  write(dir, envios === 'file' ? 'roadmap/epic-001-envios.md' : 'roadmap/epic-001-envios/spec.md',
+  write(dir, layout === 'file' ? 'roadmap/epic-001-envios.md' : 'roadmap/epic-001-envios/spec.md',
     epic('001', 'envios', 'cotizar-envio'))
   write(dir, 'backlog/pagos.md', `---\norder: 10\n---\n\n## Hito pagos — Pagos\n\n${task('cobrar-tarjeta')}\n`)
   write(dir, 'backlog/envios.md', `---\norder: 20\n---\n\n## Hito envios — Envíos\n\n${task('cotizar-envio')}\n\n`
@@ -65,7 +65,7 @@ test('renumber-epic mueve la épica y sólo las citas de sus tareas, y check vue
 })
 
 test('una épica escrita como carpeta se mueve entera', () => {
-  const dir = collided('cauce-renumber-dir-', { envios: 'dir' })
+  const dir = collided('cauce-renumber-dir-', { layout: 'dir' })
   assert.equal(run(['renumber-epic', dir, 'epic-001-envios', '002']).status, 0)
   assert.match(read(dir, 'roadmap/epic-002-envios/spec.md'), /^epic: 002$/m)
   assert.ok(!fs.existsSync(path.join(dir, 'roadmap/epic-001-envios')))

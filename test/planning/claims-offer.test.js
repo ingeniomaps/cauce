@@ -95,12 +95,12 @@ test('check rechaza el reclamo que miente y el que reserva algo que no existe', 
     milestones: queue('a', 'b', 'c'),
     done: done(),
   })
-  const dice = (pattern) => errors.some((error) => pattern.test(error))
-  assert.ok(dice(/declara task "otra-tarea" y el archivo reserva a/))
-  assert.ok(dice(/claims\/b\.md: falta owner/))
-  assert.ok(dice(/claims\/b\.md: falta runner/))
-  assert.ok(dice(/started debe ser AAAA-MM-DD/))
-  assert.ok(dice(/fantasma no existe en BACKLOG ni DONE/))
+  const says = (pattern) => errors.some((error) => pattern.test(error))
+  assert.ok(says(/declara task "otra-tarea" y el archivo reserva a/))
+  assert.ok(says(/claims\/b\.md: falta owner/))
+  assert.ok(says(/claims\/b\.md: falta runner/))
+  assert.ok(says(/started debe ser AAAA-MM-DD/))
+  assert.ok(says(/fantasma no existe en BACKLOG ni DONE/))
 })
 
 test('check avisa lo viejo, lo terminado y dos tareas sobre el mismo servicio', () => {

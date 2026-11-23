@@ -51,7 +51,7 @@ test('exentar una entrada no exenta a las demás', () => {
 // Las tres salidas del informe en una sola corrida, incluida la que no aparece: la exención que
 // todavía hace falta no dice nada. Qué gana cada aviso lo cuenta `report`.
 test('el informe señala la exención que sobra y la que nombra a un fantasma', () => {
-  const cumple = {
+  const compliant = {
     source: 'done/ya-reescrita.md',
     slug: 'ya-reescrita',
     acceptance: 'el resultado se observa',
@@ -61,7 +61,7 @@ test('el informe señala la exención que sobra y la que nombra a un fantasma', 
     tests: 'A → make test',
     commit: 'abc1234 chore(hist): backfill',
   }
-  const done = { entries: [old('sigue-vieja'), cumple], set: new Set(), duplicates: [] }
+  const done = { entries: [old('sigue-vieja'), compliant], set: new Set(), duplicates: [] }
 
   const warnings = AD.report({ done, adopted: ['sigue-vieja', 'ya-reescrita', 'nunca-existio'] })
 
@@ -85,8 +85,8 @@ test('adopt exenta la historia que llegó con el proyecto, y sólo se corre una 
 
   assert.equal(run(['check', planning]).status, 1, 'una entrada vieja deja el planning en rojo')
 
-  const adoptado = run(['adopt', planning])
-  assert.equal(adoptado.status, 0, adoptado.stderr)
+  const adopted = run(['adopt', planning])
+  assert.equal(adopted.status, 0, adopted.stderr)
   const written = fs.readFileSync(path.join(planning, AD.BASELINE), 'utf8')
   assert.match(written, /^tarea-de-2024$/m)
   assert.match(written, /^# Entradas anteriores a la adopción de Cauce \(\d{4}-\d{2}-\d{2}\)/)
@@ -138,10 +138,10 @@ test('la huella distingue una lista que creció de una que se achicó', () => {
 
   // Lo que este caso vino a cerrar: un slug que nadie generó.
   write(`${seal('vieja-a', 'vieja-b')}nueva\n`)
-  const crecio = AD.sealWarnings(root)
-  assert.equal(crecio.length, 1)
-  assert.match(crecio[0], /creció/)
-  assert.match(crecio[0], /nueva/, 'nombra la entrada que sobra')
+  const grown = AD.sealWarnings(root)
+  assert.equal(grown.length, 1)
+  assert.match(grown[0], /creció/)
+  assert.match(grown[0], /nueva/, 'nombra la entrada que sobra')
 
   // Reordenar no es cambiar: la huella va sobre el conjunto y no sobre el texto, así que una
   // herramienta que ordene los renglones no puede disparar un aviso sobre algo que nadie hizo.

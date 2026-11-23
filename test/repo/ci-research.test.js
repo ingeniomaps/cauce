@@ -94,19 +94,19 @@ test('una semana sin credencial se anuncia, en vez de quedar en verde y en silen
     return { ...done, written: fs.readFileSync(output, 'utf8') }
   }
 
-  const sin = run({})
-  assert.equal(sin.status, 0, 'no se falla la corrida: un rojo cada lunes se termina ignorando')
-  assert.match(sin.written, /^ready=false$/m, 'y research no arranca')
-  assert.match(sin.stdout, /^::warning title=[^:]+::/m,
+  const absent = run({})
+  assert.equal(absent.status, 0, 'no se falla la corrida: un rojo cada lunes se termina ignorando')
+  assert.match(absent.written, /^ready=false$/m, 'y research no arranca')
+  assert.match(absent.stdout, /^::warning title=[^:]+::/m,
     'el aviso sale como anotación; un echo suelto no se ve sin abrir el log')
-  assert.match(sin.stdout, /CLAUDE_CODE_OAUTH_TOKEN/,
+  assert.match(absent.stdout, /CLAUDE_CODE_OAUTH_TOKEN/,
     'y nombra qué cargar, no sólo que falta algo')
 
   // Con cualquiera de las dos alcanza, y entonces no hay nada que anunciar.
   for (const env of [{ OAUTH: 'x' }, { KEY: 'x' }]) {
-    const con = run(env)
-    assert.match(con.written, /^ready=true$/m, `con ${Object.keys(env)[0]} se investiga`)
-    assert.equal(/::warning/.test(con.stdout), false, 'y no se avisa de una falta que no existe')
+    const present = run(env)
+    assert.match(present.written, /^ready=true$/m, `con ${Object.keys(env)[0]} se investiga`)
+    assert.equal(/::warning/.test(present.stdout), false, 'y no se avisa de una falta que no existe')
   }
 })
 
@@ -120,9 +120,9 @@ test('una semana sin credencial se anuncia, en vez de quedar en verde y en silen
 test('el job que evalúa contratos se lleva la historia entera', () => {
   const text = workflow('agent-learning')
   const jobs = text.split(/\n  (?=[a-z][a-z-]*:\n)/)
-  const evalua = jobs.filter((job) => /Bash\(make agent-evaluate/.test(job))
-  assert.equal(evalua.length, 1, `se esperaba un job que corra agent-evaluate, hay ${evalua.length}`)
-  assert.match(evalua[0], /actions\/checkout@[^\n]*\n\s*with:\n\s*fetch-depth: 0/,
+  const evaluators = jobs.filter((job) => /Bash\(make agent-evaluate/.test(job))
+  assert.equal(evaluators.length, 1, `se esperaba un job que corra agent-evaluate, hay ${evaluators.length}`)
+  assert.match(evaluators[0], /actions\/checkout@[^\n]*\n\s*with:\n\s*fetch-depth: 0/,
     'sin historia, la fecha del contrato no se puede leer y el aviso se apaga entero')
 
   // Y los demás siguen con el checkout barato: la historia completa de este repositorio son 76 MB
@@ -287,7 +287,7 @@ test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
 // dar: `security-engineer` gastó seis denegaciones pidiendo `node -v`, `npm -v` y `npm --version` en
 // una sola corrida, y las tres del 2026-08-31 terminaron con el informe vacío. Se le dan hechas en el
 // prompt en vez de abrirle Bash. Se ejecuta el paso porque lo que puede fallar es la interpolación:
-// un `entorno` que no se expande deja el prompt diciendo la palabra en vez del dato.
+// un `runtime_env` que no se expande deja el prompt diciendo la palabra en vez del dato.
 test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
   { skip: process.platform === 'win32' }, () => {
   const step = workflowStep(workflow('agent-learning'), 'id: research')

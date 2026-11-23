@@ -67,7 +67,7 @@ const bareMeta = (block) => block
   .replace(/`(?:\\[\s\S]|[^`\\])*`/g, (t) => `\`\`${(t.match(/\$\{/g) || []).join('')}`)
 
 const metaOffences = (block) => META_FORBIDDEN
-  .filter(([patron]) => patron.test(bareMeta(block))).map(([, whatItIs]) => whatItIs)
+  .filter(([pattern]) => pattern.test(bareMeta(block))).map(([, whatItIs]) => whatItIs)
 
 test('el meta de cada workflow es un literal puro, que es lo que el runtime acepta', () => {
   for (const file of workflowFiles()) {
@@ -106,8 +106,8 @@ test('ningún workflow lleva la ruta de una máquina', () => {
   const filtered = []
   for (const file of workflowFiles()) {
     const source = A.render(file, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
-    for (const patron of MACHINE_BOUND) {
-      if (patron.test(source)) filtered.push(`${path.relative(WF, file)} → ${patron}`)
+    for (const pattern of MACHINE_BOUND) {
+      if (pattern.test(source)) filtered.push(`${path.relative(WF, file)} → ${pattern}`)
     }
   }
   assert.ok(workflowFiles().length >= 8, 'el recorrido encontró los workflows')

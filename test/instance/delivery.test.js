@@ -32,15 +32,15 @@ test('todo lo que documenta el upgrade preserva la versión exacta',
     .filter((file) => /\.(js|md|sh|json)$/.test(file) || file.endsWith('Makefile'))
     .filter((file) => file !== 'CHANGELOG.md' && !file.startsWith('docs/issues/') && !file.startsWith('test/'))
   let found = 0
-  const sueltos = []
+  const unpinned = []
   for (const file of tracked) {
     for (const hit of fs.readFileSync(path.join(root, file), 'utf8').match(invocation) || []) {
       found += 1
-      if (!/--save-exact/.test(hit)) sueltos.push(`${file}: ${hit}`)
+      if (!/--save-exact/.test(hit)) unpinned.push(`${file}: ${hit}`)
     }
   }
   assert.ok(found >= 4, 'el comando se dicta en varios lugares y hay que verlos todos')
-  assert.deepEqual(sueltos, [], `dictan el comando sin el pin:\n  ${sueltos.join('\n  ')}`)
+  assert.deepEqual(unpinned, [], `dictan el comando sin el pin:\n  ${unpinned.join('\n  ')}`)
 })
 
 // `upgrade` sólo reemplaza lo del sistema y el runtime, así que un archivo propio del molde no llega a
@@ -62,9 +62,9 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
     || O.SYSTEM_COLLECTIONS.some((collection) => relative.startsWith(`${collection}/system/`))
     || O.RUNTIME_PATHS.some((base) => relative.startsWith(`${base}/`))
 
-  const propios = tracked.filter((file) => !fromSystem(file)).sort()
+  const ownFiles = tracked.filter((file) => !fromSystem(file)).sort()
   const declaredOnes = Object.keys(O.TEMPLATE_OWN).sort()
-  assert.deepEqual(propios, declaredOnes,
+  assert.deepEqual(ownFiles, declaredOnes,
     'un archivo propio del molde sin declarar no llega a quien actualiza: decidí si toda instancia ya '
     + 'lo tiene (init) o si esta versión lo agrega (upgrade)')
 
@@ -119,14 +119,14 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
     .map((line) => line.trim().split(' ')[1]))
   assert.ok(accepts.size > 8, 'el uso del CLI tiene que listar sus comandos')
 
-  const rotos = []
+  const missing = []
   let looked = 0
   for (const hit of makefile.matchAll(/ops\.js ([a-z-]+)/g)) {
     looked += 1
-    if (!accepts.has(hit[1])) rotos.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
+    if (!accepts.has(hit[1])) missing.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
   }
   assert.ok(looked > 10, 'el molde envuelve varios comandos y hay que verlos todos')
-  assert.deepEqual([...new Set(rotos)], [], `atajos rotos:\n  ${[...new Set(rotos)].join('\n  ')}`)
+  assert.deepEqual([...new Set(missing)], [], `atajos rotos:\n  ${[...new Set(missing)].join('\n  ')}`)
 })
 
 // Un workflow le dice a un agente dónde escribir, y esa instrucción envejece con el molde sin que nada

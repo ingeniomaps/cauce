@@ -15,10 +15,10 @@ recording=''
 [ "${1:-}" = "--update" ] && { runs=3; recording=1; }
 
 lcovs=()
-limpiar() { rm -f "${lcovs[@]}"; }
+cleanup() { rm -f "${lcovs[@]}"; }
 # Sólo en la salida sana. Al abortar, esto se llevaba los lcov ya medidos, que son el único material con
 # el que se podría reintentar desde donde murió: quien quedaba a mitad tenía que regenerarlos enteros.
-trap limpiar 0
+trap cleanup 0
 
 for _ in $(seq "$runs"); do
   lcov=$(mktemp)

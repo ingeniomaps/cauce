@@ -250,9 +250,9 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
 // empresa. Separados no se distingue una declaración correcta de la que se olvidó del segundo.
 test('la guía de entrega llega a una instancia y su project.md no', () => {
   const O = require('../../engine/core/ownership')
-  for (const guia of ['README.md', 'branches.md', 'release.md', 'environments.md', 'flags.md',
+  for (const doc of ['README.md', 'branches.md', 'release.md', 'environments.md', 'flags.md',
     'multi-repo.md']) {
-    assert.ok(O.SYSTEM_FILES.includes(`planning/delivery/${guia}`), `${guia} es del toolkit`)
+    assert.ok(O.SYSTEM_FILES.includes(`planning/delivery/${doc}`), `${doc} es del toolkit`)
   }
   assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false,
     'lo que el proyecto declara sobre su entrega es suyo')

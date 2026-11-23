@@ -97,9 +97,9 @@ jobs:
             fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 2)}\n`)
           '
           # Nada más que la versión: si el árbol trae otra cosa, alguien empujó a la rama de release.
-          otros="$(git status --porcelain -uall | awk '{print $2}' | grep -v -F 'package.json' || true)"
-          if [ -n "$otros" ]; then
-            echo "Se esperaba sólo package.json y apareció: $otros" >&2
+          others="$(git status --porcelain -uall | awk '{print $2}' | grep -v -F 'package.json' || true)"
+          if [ -n "$others" ]; then
+            echo "Se esperaba sólo package.json y apareció: $others" >&2
             exit 1
           fi
           if git diff --quiet -- package.json; then

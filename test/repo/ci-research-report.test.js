@@ -180,12 +180,12 @@ test('el primer informe de un cargo no aborta su publicación', () => {
   fs.writeFileSync(path.join(repo, dest), 'informe\n')
 
   // La línea real del workflow: lo que sobra además del informe, que tiene que ser nada.
-  const leftover = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
+  const leftover = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'others')}\nprintf '%s' "$others"`)
   assert.equal(leftover, '', 'el informe recién creado es lo único que hay, y el chequeo lo reconoce')
 
   // Y sigue detectando lo que de verdad sobra: el freno existe para que un agente no cuele otro archivo.
   fs.writeFileSync(path.join(repo, role, 'SKILL.md'), 'reescrito por el agente\n')
-  const withIntruder = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
+  const withIntruder = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'others')}\nprintf '%s' "$others"`)
   assert.match(withIntruder, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
 
@@ -270,8 +270,8 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   fs.mkdirSync(path.join(role, 'learning'), { recursive: true })
   fs.mkdirSync(path.join(role, 'references'), { recursive: true })
   fs.mkdirSync(path.join(role, 'evaluations', 'cases'), { recursive: true })
-  const fuentes = (body) => fs.writeFileSync(path.join(role, 'learning', 'sources.yaml'), body)
-  fuentes('version: 1\nsources:\n'
+  const writeSources = (body) => fs.writeFileSync(path.join(role, 'learning', 'sources.yaml'), body)
+  writeSources('version: 1\nsources:\n'
     + '  - name: Sana\n    url: https://sana.example/x\n    tier: standard\n'
     + '  - name: Bloqueada\n    url: https://bloqueado.example/x\n    tier: standard\n'
     + 'pending:\n'
@@ -355,14 +355,14 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
     ['eur-lex.europa.eu', /202\(sin-contenido\)/, 'un 202 es «vuelve más tarde», no contenido'],
     ['cascara.example', /200\(\d+-palabras\)/, 'y un 200 con una cáscara tampoco sirve'],
   ]) {
-    fuentes(`version: 1\nsources:\n  - name: F\n    url: https://${host}/x\n    tier: standard\n`)
+    writeSources(`version: 1\nsources:\n  - name: F\n    url: https://${host}/x\n    tier: standard\n`)
     const runResult = execute(step)
     assert.equal(runResult.status, 0, runResult.stderr)
     assert.match(fs.readFileSync(summary, 'utf8'), expected, because)
   }
 
   // Sin ninguna rota no hay nada que anunciar: un aviso que sale siempre se termina ignorando.
-  fuentes('version: 1\nsources:\n  - name: F\n    url: https://sana.example/x\n    tier: standard\n')
+  writeSources('version: 1\nsources:\n  - name: F\n    url: https://sana.example/x\n    tier: standard\n')
   fs.writeFileSync(path.join(role, 'references', 'metodo.md'), '[m](https://otra-sana.example/y)\n')
   const clean = execute(step)
   assert.equal(clean.status, 0)

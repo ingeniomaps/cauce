@@ -58,10 +58,10 @@ function claim(dir, slug, cli) {
   // `CAUCE_RUNNER`. Sin esto, el segundo se llevaría la tarea del primero creyéndola suya.
   //
   // La que se está pidiendo queda afuera del conteo: volver a pedir la propia es reintentar, no llevar dos.
-  const ocupado = state.claims
+  const holding = state.claims
     .find((one) => one.runner === from && one.slug !== slug && !state.done.set.has(one.slug))
-  if (ocupado) {
-    return fail(`este runner ya tiene ${ocupado.slug}. Cerrala o soltala primero; y si sos otro agente `
+  if (holding) {
+    return fail(`este runner ya tiene ${holding.slug}. Cerrala o soltala primero; y si sos otro agente `
       + 'en la misma máquina, exportá CAUCE_RUNNER con un valor propio.', REFUSED)
   }
 

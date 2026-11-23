@@ -55,12 +55,12 @@ test('el protocolo manda contrastar la línea de una tarea contra su descripció
   const lanes = protocol.split(/^##\s+/m).find((part) => /^Lanes/.test(part))
   assert.ok(lanes, 'la sección Lanes existe')
 
-  for (const [axis, patron] of [
+  for (const [axis, pattern] of [
     ['la aceptación cubre lo que la descripción promete', /descripción frase por frase/],
     ['el carril se lee contra la superficie', /carril contra la superficie/],
     ['el cast entrega a quien construye', /cast entregue a quien construye/],
   ]) {
-    assert.match(lanes, patron, `la pasada perdió el eje: ${axis}`)
+    assert.match(lanes, pattern, `la pasada perdió el eje: ${axis}`)
   }
 })
 
@@ -76,12 +76,12 @@ test('R29 pide que la mutación se declare, no sólo que se corra', () => {
   const r29 = testing.split(/^##\s+/m).find((part) => /^R29\b/.test(part))
   assert.ok(r29, 'R29 existe en proof.md')
 
-  for (const [axis, patron] of [
+  for (const [axis, pattern] of [
     ['la mutación se escribe, no sólo se corre', /mutación se declara por escrito/],
     ['dice qué romper y qué tiene que ponerse rojo', /qué se rompe\s*\n?\s*y qué prueba tiene que ponerse roja/],
     ['sin eso, revisar obliga a volver a correrla', /volver a correrla/],
   ]) {
-    assert.match(r29, patron, `R29 perdió el eje: ${axis}`)
+    assert.match(r29, pattern, `R29 perdió el eje: ${axis}`)
   }
 })
 
@@ -97,13 +97,13 @@ test('R17 dice qué cuenta como una condición, en las dos direcciones', () => {
   const r17 = processRules.split(/^##\s+/m).find((part) => /^R17\b/.test(part))
   assert.ok(r17, 'R17 existe en process.md')
 
-  for (const [axis, patron] of [
+  for (const [axis, pattern] of [
     ['una condición es un resultado, no una viñeta', /resultado que se puede mirar por separado/],
     ['contar de más parte lo que era uno solo', /mismo invariante[\s\S]{0,120}\*\*una\*\* condición/],
     ['contar de menos no dispara nada', /Contar de menos no dispara nada/],
     ['y hay una prueba que no pide criterio', /se pueden entregar por separado/],
   ]) {
-    assert.match(r17, patron, `R17 perdió el eje: ${axis}`)
+    assert.match(r17, pattern, `R17 perdió el eje: ${axis}`)
   }
 })
 
@@ -119,13 +119,13 @@ test('R8 prohíbe la firma de IA en todo lo que se publica, no sólo en el commi
   const r8 = commits.split(/^##\s+/m).find((part) => /^R8\b/.test(part))
   assert.ok(r8, 'R8 existe en commits.md')
 
-  for (const [axis, patron] of [
+  for (const [axis, pattern] of [
     ['cubre todo lo publicado, no sólo el commit', /cubre todo lo que este trabajo publica/],
     ['nombra dónde: título, cuerpo y comentarios', /título y el cuerpo del pull request[\s\S]{0,60}comentarios/],
     ['la agrega la herramienta, no la tipea nadie', /lo agrega la herramienta, sola/],
     ['por eso se cumple revisando la salida', /revisar la salida antes de publicarla/],
   ]) {
-    assert.match(r8, patron, `R8 perdió el eje: ${axis}`)
+    assert.match(r8, pattern, `R8 perdió el eje: ${axis}`)
   }
 })
 
@@ -140,14 +140,14 @@ test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () =
   const r10 = commits.split(/^##\s+/m).find((part) => /^R10\b/.test(part))
   assert.ok(r10, 'R10 existe en commits.md')
 
-  for (const [axis, patron] of [
+  for (const [axis, pattern] of [
     ['la autorización no dice a dónde', /autorización dice si se publica, nunca a dónde/],
     ['va al repo en el que se trabaja, y al fork si lo es', /Si ese remoto es un fork, va al fork/],
     ['la rama se corta de la suya', /rama\s*\n?\s*se corta de la suya/],
     ['que la herramienta lo resuelva no autoriza', /resuelva sola el repositorio de origen no es una/],
     ['y no tiene vuelta atrás', /cerrarlo no deshace nada/],
   ]) {
-    assert.match(r10, patron, `R10 perdió el eje: ${axis}`)
+    assert.match(r10, pattern, `R10 perdió el eje: ${axis}`)
   }
 })
 
@@ -163,14 +163,14 @@ test('R29 dice cuándo se puede quitar lo que está en uso', () => {
   const r29 = testing.split(/^##\s+/m).find((part) => /^R29\b/.test(part))
   assert.ok(r29, 'R29 existe en proof.md')
 
-  for (const [axis, patron] of [
+  for (const [axis, pattern] of [
     ['lo que está en uso se depreca, no se corta', /está en uso no se corta: se depreca/],
     ['la marca dice qué lo reemplaza', /qué lo reemplaza/],
     ['y qué condición permite borrarlo', /qué\s*\n?\s*condición permite borrarlo/],
     ['sin eso queda para siempre', /código muerto con un cartel puesto/],
     ['y lo que nadie llama se borra', /Lo que no llama nadie es otra cosa y se borra/],
   ]) {
-    assert.match(r29, patron, `R29 perdió el eje: ${axis}`)
+    assert.match(r29, pattern, `R29 perdió el eje: ${axis}`)
   }
 })
 
@@ -288,10 +288,10 @@ test('los rangos que declara el README de reglas son los que hay', () => {
 
   const covered = new Set()
   for (const [, file, range] of declared) {
-    const reales = [...fs.readFileSync(path.join(rules, 'system', file), 'utf8')
+    const actual = [...fs.readFileSync(path.join(rules, 'system', file), 'utf8')
       .matchAll(/^##\s+(R\d+)\s+[—-]/gm)].map((match) => match[1])
-    assert.deepEqual(expand(range).sort(), reales.sort(), `el rango de ${file} no es el que hay`)
-    for (const id of reales) covered.add(id)
+    assert.deepEqual(expand(range).sort(), actual.sort(), `el rango de ${file} no es el que hay`)
+    for (const id of actual) covered.add(id)
   }
 
   // Y ningún archivo del sistema queda sin declarar.

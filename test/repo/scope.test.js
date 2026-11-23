@@ -13,57 +13,57 @@ const assert = require('node:assert/strict')
 const SC = require('../../engine/core/scope')
 
 const root = (scope) => [{ name: 'web', path: '.', ...(scope ? { scope } : {}) }]
-const alcanza = (scope, files, repo = '/p') => SC.reachesGate(root(scope), repo, files)
+const reaches = (scope, files, repo = '/p') => SC.reachesGate(root(scope), repo, files)
 
 // La compatibilidad, que es la mitad del diseño: el campo baja a todos los consumidores en su próximo
 // `upgrade` y ninguno lo declara todavía. Si esto se rompe, el arreglo dejó de ser opcional.
 test('sin scope declarado, cualquier delta cuenta — como antes de que el campo existiera', () => {
-  assert.equal(alcanza(null, ['NOTAS.md']), true)
-  assert.equal(alcanza(null, ['lo/que/sea.txt']), true)
+  assert.equal(reaches(null, ['NOTAS.md']), true)
+  assert.equal(reaches(null, ['lo/que/sea.txt']), true)
 })
 
 test('con scope, sólo cuenta lo que la puerta lee', () => {
-  assert.equal(alcanza(['src/**'], ['NOTAS.md']), false, 'un archivo ajeno no fuerza la copia')
-  assert.equal(alcanza(['src/**'], ['src/app.ts']), true, 'uno que el gate abre, sí')
-  assert.equal(alcanza(['src/**'], ['NOTAS.md', 'src/app.ts']), true, 'basta uno adentro')
+  assert.equal(reaches(['src/**'], ['NOTAS.md']), false, 'un archivo ajeno no fuerza la copia')
+  assert.equal(reaches(['src/**'], ['src/app.ts']), true, 'uno que el gate abre, sí')
+  assert.equal(reaches(['src/**'], ['NOTAS.md', 'src/app.ts']), true, 'basta uno adentro')
 })
 
 // `*` dentro de un segmento y `**` cruzando segmentos no son lo mismo, y confundirlos es la forma más
 // fácil de declarar un alcance que no cubre lo que su autor cree.
 test('un asterisco no cruza la barra y dos sí', () => {
-  assert.equal(alcanza(['src/*.ts'], ['src/app.ts']), true)
-  assert.equal(alcanza(['src/*.ts'], ['src/hondo/app.ts']), false, '* no baja un nivel')
-  assert.equal(alcanza(['src/**/*.ts'], ['src/hondo/app.ts']), true)
+  assert.equal(reaches(['src/*.ts'], ['src/app.ts']), true)
+  assert.equal(reaches(['src/*.ts'], ['src/hondo/app.ts']), false, '* no baja un nivel')
+  assert.equal(reaches(['src/**/*.ts'], ['src/hondo/app.ts']), true)
   // El cero: es la mitad que se escribe sola al traducir el patrón y que nadie extraña hasta que un
   // archivo en la raíz del alcance queda afuera. El porqué, en `toRegExp`.
-  assert.equal(alcanza(['src/**/*.ts'], ['src/app.ts']), true, '**/ admite cero segmentos')
+  assert.equal(reaches(['src/**/*.ts'], ['src/app.ts']), true, '**/ admite cero segmentos')
 })
 
 test('un patrón sin comodines es la ruta exacta', () => {
-  assert.equal(alcanza(['package.json'], ['package.json']), true)
-  assert.equal(alcanza(['package.json'], ['otro/package.json']), false)
-  assert.equal(alcanza(['package.json'], ['package.json.bak']), false, 'ancla el final')
+  assert.equal(reaches(['package.json'], ['package.json']), true)
+  assert.equal(reaches(['package.json'], ['otro/package.json']), false)
+  assert.equal(reaches(['package.json'], ['package.json.bak']), false, 'ancla el final')
 })
 
 // Los tres casos que delatarían un escape incompleto, uno por familia: el punto que `ESCAPE` cubre y
 // los paréntesis y el `+` que se olvidan primero al escribir esa lista a mano.
 test('los metacaracteres de regex viajan como texto', () => {
-  assert.equal(alcanza(['package.json'], ['packageXjson']), false)
-  assert.equal(alcanza(['a+b/x.ts'], ['a+b/x.ts']), true)
-  assert.equal(alcanza(['a(b)/x.ts'], ['a(b)/x.ts']), true)
+  assert.equal(reaches(['package.json'], ['packageXjson']), false)
+  assert.equal(reaches(['a+b/x.ts'], ['a+b/x.ts']), true)
+  assert.equal(reaches(['a(b)/x.ts'], ['a(b)/x.ts']), true)
 })
 
 test('la interrogación es un carácter y tampoco cruza la barra', () => {
-  assert.equal(alcanza(['src/a?.ts'], ['src/ab.ts']), true)
-  assert.equal(alcanza(['src/a?.ts'], ['src/abc.ts']), false)
-  assert.equal(alcanza(['a?c'], ['a/c']), false, '? no se come una barra')
+  assert.equal(reaches(['src/a?.ts'], ['src/ab.ts']), true)
+  assert.equal(reaches(['src/a?.ts'], ['src/abc.ts']), false)
+  assert.equal(reaches(['a?c'], ['a/c']), false, '? no se come una barra')
 })
 
 // `git status` escribe los directorios con barra final y nadie declara el alcance así. Si no se
 // contemplara, declarar `build/**` y ver `?? build/` en el status dejaría la copia sin forzar.
 test('un directorio del status entra por su forma sin barra', () => {
-  assert.equal(alcanza(['build/**'], ['build/']), true)
-  assert.equal(alcanza(['src/**'], ['src/']), true)
+  assert.equal(reaches(['build/**'], ['build/']), true)
+  assert.equal(reaches(['src/**'], ['src/']), true)
 })
 
 // En un monorepo el `scope` de `apps/web` habla de `src/**`, no de `apps/web/src/**`: lo escribe quien

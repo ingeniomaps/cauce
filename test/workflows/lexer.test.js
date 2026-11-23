@@ -63,13 +63,13 @@ test('los recorridos que hoy existen se desnudan enteros, con sus regex adentro'
     // Se mide el balance de paréntesis y corchetes, que es lo que el modo de fallo rompe: comerse el
     // resto de una línea deja abiertos los que esa línea cerraba. Contar líneas no sirve —un template
     // multilínea se va entero y con razón—, y esto no depende de qué diga cada recorrido.
-    const abiertos = { '(': 0, '[': 0 }
+    const open = { '(': 0, '[': 0 }
     for (const ch of codeOnly(source)) {
-      if (ch in abiertos) abiertos[ch] += 1
-      if (ch === ')') abiertos['('] -= 1
-      if (ch === ']') abiertos['['] -= 1
+      if (ch in open) open[ch] += 1
+      if (ch === ')') open['('] -= 1
+      if (ch === ']') open['['] -= 1
     }
-    assert.deepEqual(abiertos, { '(': 0, '[': 0 },
+    assert.deepEqual(open, { '(': 0, '[': 0 },
       `${path.relative(WF, file)}: el lexer se comió el cierre de algo`)
   }
 })

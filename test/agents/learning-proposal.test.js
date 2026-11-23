@@ -308,7 +308,7 @@ test('el ciclo de aprendizaje llega del informe semanal al contrato', () => {
   assert.equal(report, `agents/roles/probe/learning/reports/${reportText}`, 'y el paso lo encuentra por su ruta')
 
   // El chequeo que exige el informe y nada más, con `reports/` estrenándose.
-  const leftover = bash(`dest=${JSON.stringify(report)}\n${workflowCommand(yml, 'otros')}\nprintf '%s' "$otros"`)
+  const leftover = bash(`dest=${JSON.stringify(report)}\n${workflowCommand(yml, 'others')}\nprintf '%s' "$others"`)
   assert.equal(leftover, '', 'nada más que publicar')
   bash(`git add ${report} && git -c user.email=t@t -c user.name=t commit -qm informe`)
 

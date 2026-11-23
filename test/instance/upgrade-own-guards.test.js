@@ -66,8 +66,8 @@ test('upgrade no pisa un guard propio cuando el paquete empieza a traer su nombr
   assert.match(auto.stderr, /guard-chat\.sh: es tuyo y se llama como uno que trae el paquete/)
   assert.doesNotMatch(auto.stderr, /guard-chat\.sh: quedó atrás/)
 
-  const reemplazado = run(['upgrade', target, '--force'])
-  assert.match(reemplazado.stdout, /reemplazado automatization\/hooks\/guard-chat\.sh/)
+  const replaced = run(['upgrade', target, '--force'])
+  assert.match(replaced.stdout, /reemplazado automatization\/hooks\/guard-chat\.sh/)
   assert.equal(fs.readFileSync(chat, 'utf8'), shipped, 'y lo que dice es lo que quedó en disco')
 
   // Sin huella pero idéntico al del paquete no es un choque: se registra en silencio.

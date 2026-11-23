@@ -28,7 +28,7 @@ async function choose(deps, text, choices, fallback) {
   // Una opción por línea y el default señalado donde se mira: apretar Enter es la respuesta más común, y
   // en una sola línea apretada el `[ninguno]` del final no se lee como «esto pasa si no elegís nada».
   const options = choices
-    .map((opcion, indice) => `  ${indice + 1}) ${opcion}${opcion === fallback ? '   ← Enter' : ''}`)
+    .map((choice, at) => `  ${at + 1}) ${choice}${choice === fallback ? '   ← Enter' : ''}`)
     .join('\n')
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
     let typed

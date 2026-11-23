@@ -117,9 +117,9 @@ test('archive human-actions saca las filas resueltas y conserva todo lo demás',
   assert.equal((second.match(/^\| Tarea \| Estado/gm) || []).length, 1, 'un solo encabezado')
   // Una copia pelada de `planning/` no es una instancia —le falta `integrations/config.json`—, así que
   // se juzga lo que este comando toca y no el exit code entero.
-  const validacion = JSON.parse(run(['check', planning, '--json']).stdout)
+  const validation = JSON.parse(run(['check', planning, '--json']).stdout)
   assert.deepEqual(
-    validacion.errors.filter((error) => /HUMAN_ACTIONS|human-actions/.test(error)), [],
+    validation.errors.filter((error) => /HUMAN_ACTIONS|human-actions/.test(error)), [],
     'lo que quedó y lo que se archivó siguen siendo válidos',
   )
 })

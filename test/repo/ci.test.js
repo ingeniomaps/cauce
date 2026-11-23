@@ -95,20 +95,20 @@ test('las acciones están fijadas por SHA, no por tag', () => {
 // esperando a divergir.
 function runBlocks(source) {
   const lines = source.split('\n')
-  const bloques = []
+  const blocks = []
   for (let i = 0; i < lines.length; i += 1) {
     const found = lines[i].match(/^(\s*)run:\s*(.*)$/)
     if (!found) continue
-    const [, sangria, rest] = found
-    if (!/^[|>]/.test(rest)) { bloques.push(rest); continue }
+    const [, indent, rest] = found
+    if (!/^[|>]/.test(rest)) { blocks.push(rest); continue }
     const body = []
     for (let j = i + 1; j < lines.length; j += 1) {
-      if (lines[j].trim() && !lines[j].startsWith(`${sangria} `)) break
+      if (lines[j].trim() && !lines[j].startsWith(`${indent} `)) break
       body.push(lines[j])
     }
-    bloques.push(body.join('\n'))
+    blocks.push(body.join('\n'))
   }
-  return bloques
+  return blocks
 }
 
 // Una expresión dentro de un `run:` no llega como dato: se sustituye en el texto del script antes de

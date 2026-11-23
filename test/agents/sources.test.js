@@ -32,16 +32,16 @@ test('evaluate rechaza la misma URL bajo dos nombres', () => {
   fs.mkdirSync(path.join(dir, 'evaluations'), { recursive: true })
   fs.writeFileSync(path.join(dir, 'SKILL.md'),
     '---\nname: probe\ndescription: x\nsummary: y\n---\nno inventar autorización evidencia observable\n')
-  const fuentes = (second) => fs.writeFileSync(path.join(dir, 'learning', 'sources.yaml'),
+  const writeSources = (second) => fs.writeFileSync(path.join(dir, 'learning', 'sources.yaml'),
     `sources:\n  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n${second}`)
 
   // La barra final no hace otra fuente: es la misma página escrita distinto.
-  fuentes('  - name: Otro nombre\n    url: https://ej.test/a/\n    tier: platform\n')
+  writeSources('  - name: Otro nombre\n    url: https://ej.test/a/\n    tier: platform\n')
   assert.match(learning.evaluate(root, 'probe').errors.join('\n'),
     /https:\/\/ej\.test\/a está dos veces, como "Uno" y como "Otro nombre"/)
 
   // El mismo nombre repetido no es el defecto que esto busca: eso es una entrada duplicada, no un alias.
-  fuentes('  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n')
+  writeSources('  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n')
   assert.equal(learning.evaluate(root, 'probe').errors.some((one) => one.includes('dos veces')), false)
 })
 
@@ -133,10 +133,10 @@ test('el inventario de contratos en las referencias es el que está declarado', 
     if (!fs.existsSync(file)) return false
     const text = fs.readFileSync(file, 'utf8')
     return [...text.matchAll(/```markdown\n([\s\S]*?)\n```/g)].some((block) => {
-      const campos = block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length
+      const fieldCount = block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length
       const heads = [...text.slice(0, block.index).matchAll(/^## (.+)$/gm)]
       const head = heads.length ? heads[heads.length - 1][1] : ''
-      return campos >= 6 && head.toLowerCase().startsWith('contrato')
+      return fieldCount >= 6 && head.toLowerCase().startsWith('contrato')
     })
   })
 
@@ -272,9 +272,9 @@ test('el lector no se saltea ninguna fuente del catálogo', () => {
     const body = text.slice(text.indexOf('sources:'))
     const until = body.search(/^pending:/m)
     const declaredOnes = ((until === -1 ? body : body.slice(0, until)).match(/url:/g) || []).length
-    const vistas = sourceUrls(text).length
+    const readCount = sourceUrls(text).length
     total += declaredOnes
-    if (vistas !== declaredOnes) mismatches.push(`${slug}: declara ${declaredOnes} y se leen ${vistas}`)
+    if (readCount !== declaredOnes) mismatches.push(`${slug}: declara ${declaredOnes} y se leen ${readCount}`)
   }
   assert.ok(total > 200, `el recorrido tiene que ver el catálogo entero, vio ${total}`)
   assert.deepEqual(mismatches, [], `fuentes que el lector no ve:\n  ${mismatches.join('\n  ')}`)

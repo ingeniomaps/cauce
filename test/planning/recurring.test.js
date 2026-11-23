@@ -103,16 +103,16 @@ test('check rechaza la fila que no se puede leer y la que emitiría una tarea in
       { id: 'accesos', date: '1 de mayo', reason: 'x', raw: '' },
     ],
   })
-  const dice = (pattern) => errors.some((error) => pattern.test(error))
-  assert.ok(dice(/cadencia "semanal" fuera de/), 'la cadencia es vocabulario cerrado')
-  assert.ok(dice(/identificador va en minúsculas/), 'el identificador es un slug')
-  assert.ok(dice(/Desde debe ser AAAA-MM-DD/), 'la fecha tiene una sola forma')
-  assert.ok(dice(/no declara _Aceptación/), 'sin aceptación la línea emitida no pasa BACKLOG')
-  assert.ok(dice(/no declara \(service/), 'y sin service tampoco')
-  assert.ok(dice(/identificador duplicado deps/), 'dos filas con el mismo nombre comparten historia')
-  assert.ok(dice(/una postergación se escribe/), 'una postergación sin forma no se cuenta y hay que verlo')
-  assert.ok(dice(/postergación de fantasma, que la tabla no declara/))
-  assert.ok(dice(/postergación de accesos: la fecha va en AAAA-MM-DD/))
+  const says = (pattern) => errors.some((error) => pattern.test(error))
+  assert.ok(says(/cadencia "semanal" fuera de/), 'la cadencia es vocabulario cerrado')
+  assert.ok(says(/identificador va en minúsculas/), 'el identificador es un slug')
+  assert.ok(says(/Desde debe ser AAAA-MM-DD/), 'la fecha tiene una sola forma')
+  assert.ok(says(/no declara _Aceptación/), 'sin aceptación la línea emitida no pasa BACKLOG')
+  assert.ok(says(/no declara \(service/), 'y sin service tampoco')
+  assert.ok(says(/identificador duplicado deps/), 'dos filas con el mismo nombre comparten historia')
+  assert.ok(says(/una postergación se escribe/), 'una postergación sin forma no se cuenta y hay que verlo')
+  assert.ok(says(/postergación de fantasma, que la tabla no declara/))
+  assert.ok(says(/postergación de accesos: la fecha va en AAAA-MM-DD/))
 
   assert.deepEqual(RC.validate({ exists: false, rows: [], postponements: [] }), [],
     'sin el archivo no hay nada que juzgar')
