@@ -539,16 +539,21 @@ const CONTRACT = {
     reviewExempt: { type: 'array', items: { type: 'string' } },
   },
 }
-// La lista de archivos de un diff, que devuelve un clerk; para qué, donde se pide.
+// La lista de archivos de un diff, que devuelve un clerk; para qué, donde se pide. `ran` separa «no hay nada» de «no
+// pude mirar»: sin él, un comando denegado volvía como una lista vacía y el cruce de Review no pedía nada (caso 552).
 const DIFFED = {
-  type: 'object', additionalProperties: false, required: ['files'],
-  properties: { files: { type: 'array', items: { type: 'string' } } },
+  type: 'object', additionalProperties: false, required: ['ran', 'files'],
+  properties: {
+    ran: { type: 'boolean' }, why: { type: 'string' }, files: { type: 'array', items: { type: 'string' } },
+  },
 }
 // El pedido de archivos del diff, igual para la foto de antes de Build y para lo que juzga Review: si los dos se
 // pidieran distinto, la resta compararía listas escritas de dos formas.
-const DIFF_FILES = (what, how) => `Listá ${what}. ${how}. Devolvé en files cada ruta relativa a la raíz de ese `
-  + 'repositorio, una vez cada una, sin comillas: de un renombre, sólo la ruta nueva; un archivo borrado no va. '
-  + 'No abras ningún archivo ni corras otra cosa.'
+const DIFF_FILES = (what, how) => `Listá ${what}. ${how}, con git -C <raíz del repositorio> y no con cd. Devolvé en `
+  + 'files cada ruta relativa a la raíz de ese repositorio, una vez cada una, sin comillas: de un renombre, sólo la '
+  + 'ruta nueva; un archivo borrado no va. ran es true sólo si el comando corrió y files es su salida; si no corrió '
+  + '—denegado, error, repositorio que no está—, ran es false, files va vacío y en why va qué pasó. No abras ningún '
+  + 'archivo ni corras otra cosa.'
 // Un glob de `reviewExempt` a expresión: `**` cruza carpetas, `*` y `?` no. El recorrido no tiene `require`, así que
 // `path.matchesGlob` no está a mano.
 const globbed = (pattern) => new RegExp(`^${String(pattern).trim().replace(/\/$/, '/**')
@@ -1978,10 +1983,16 @@ while (rounds++ < MAX_TASKS) {
         + `bajo ${P}`)
       + WHERE, { schema: DIFFED, label: 'review-diff' })
     if (!diffed) return halt('agent-unavailable', 'la lista de archivos del diff no devolvió resultado')
+    if (diffed.ran !== true) {
+      return halt('agent-unavailable', 'la lista de archivos del diff no se pudo sacar '
+        + `(${diffed.why || 'sin motivo'}), y sin ella Review no tiene contra qué cruzar lo que abrió quien revisa`)
+    }
     const exempt = (contract.reviewExempt || []).map(globbed)
     const clean = (one) => String(one).trim().replace(/,$/, '').replace(/(?::\d+(?:[-:]\d+)*|#L\d+(?:-L?\d+)?)$/, '')
       .replace(/^["'`]+|["'`]+$/g, '').replace(/(?::\d+(?:[-:]\d+)*|#L\d+(?:-L?\d+)?)$/, '').replace(/^\.\//, '')
-    const earlier = new Set(((handed && handed.hash) || !before ? [] : before.files).map(clean))
+    // Una foto de antes que no se pudo sacar deja todo como del diff, que es pedir de más y no de menos.
+    if (before && before.ran !== true) log(`la foto de antes de Build no se pudo sacar (${before.why || 'sin motivo'})`)
+    const earlier = new Set(((handed && handed.hash) || !before || before.ran !== true ? [] : before.files).map(clean))
     const required = [...new Set(diffed.files.map(clean))]
       .filter((file) => file && !earlier.has(file) && !exempt.some((pattern) => pattern.test(file)))
     const unopened = (verdict) => required.filter((file) => !(verdict.opened || []).map(clean).includes(file))
