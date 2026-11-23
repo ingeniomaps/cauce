@@ -1782,6 +1782,8 @@ separate
 separated
 separator
 september
+sequence
+sequences
 serve
 server
 serves

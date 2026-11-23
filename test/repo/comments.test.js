@@ -271,3 +271,65 @@ test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
   assert.ok(blocks.length > 300, `sólo se compararon ${blocks.length} párrafos`)
   assert.deepEqual(unexplained, [], `razones repetidas:\n  ${unexplained.join('\n  ')}`)
 })
+
+// La comparación de arriba no ve una oración copiada dentro de un párrafo que cambió alrededor: el párrafo entero se
+// parece poco. Doce palabras seguidas iguales en dos comentarios no son casualidad. El 2026-11-23 había 127 lugares
+// así por debajo del umbral, casi todos la razón del código transcrita en su prueba. Lo que se repite a propósito se
+// acepta abajo, con su razón y cuántas veces, igual que arriba.
+const SEQUENCE = 12
+const ACCEPTED_SEQUENCES = {
+  'automatization/hooks/run-hook.sh::automatization/runners/antigravity/hook.js':
+    { pairs: 1, reason: 'La marca de cada copia de `packagePath`, puesta a propósito para que apunte al original.' },
+}
+// Los shims salen de una misma plantilla y su línea repetida es la forma: reescritos por separado divergirían.
+const SHIM = /^automatization\/hooks\/guard-[\w-]+\.sh:\d+$/
+
+function commentRuns(file) {
+  const mark = file.endsWith('.sh') ? /^\s*#(?!!)/ : /^\s*\/\//
+  const lines = fs.readFileSync(file, 'utf8').split('\n')
+  const runs = []
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!mark.test(lines[i])) continue
+    const start = i
+    const body = []
+    while (i < lines.length && mark.test(lines[i])) { body.push(lines[i].replace(mark, '').trim()); i += 1 }
+    runs.push({ line: start + 1, words: body.join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .match(/[a-z0-9`]+/g) || [] })
+  }
+  return runs
+}
+
+test('ningún comentario repite doce palabras seguidas de otro sin decir por qué', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const where = new Map()
+  for (const file of sourceFiles()) {
+    const name = path.relative(root, file)
+    for (const { line, words } of commentRuns(file)) {
+      for (let at = 0; at + SEQUENCE <= words.length; at += 1) {
+        const key = words.slice(at, at + SEQUENCE).join(' ')
+        if (!where.has(key)) where.set(key, new Set())
+        where.get(key).add(`${name}:${line}`)
+      }
+    }
+  }
+  const found = {}
+  for (const [sequence, spots] of where) {
+    if (spots.size < 2 || [...spots].every((spot) => SHIM.test(spot))) continue
+    const list = [...spots].sort()
+    const files = [...new Set(list.map((one) => one.replace(/:\d+$/, '')))]
+    const key = files.length > 1 ? files.join('::') : `${files[0]}::${files[0]}`
+    found[key] = found[key] || new Map()
+    if (!found[key].has(list.join(' ↔ '))) found[key].set(list.join(' ↔ '), sequence)
+  }
+  const unexplained = []
+  for (const [key, hits] of Object.entries(found)) {
+    const accepted = ACCEPTED_SEQUENCES[key]
+    if (!accepted) unexplained.push(...[...hits].map(([spots, sequence]) => `${spots} — «${sequence}»`))
+    else if (hits.size > accepted.pairs) unexplained.push(`${key}: ${hits.size} y el registro acepta ${accepted.pairs}`)
+  }
+  for (const key of Object.keys(ACCEPTED_SEQUENCES)) {
+    if (!found[key]) unexplained.push(`${key}: aceptado en el registro y ya no existe`)
+  }
+  assert.ok(where.size > 50000, `sólo se miraron ${where.size} secuencias`)
+  assert.deepEqual(unexplained, [], `comentarios que repiten doce palabras de otro:\n  ${unexplained.join('\n  ')}`)
+})
