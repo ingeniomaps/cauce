@@ -555,8 +555,10 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   vencidos, 227 de ellos de un solo commit que agregó un párrafo a todos los SKILL.md y 58 de cambios de octubre aplicados
   sin re-evaluar. Renovarlos costó una corrida entera del catálogo. El promote mensual ya lo cumple; la regla es para lo
   demás, sobre todo el cambio transversal, que vence todo el catálogo a la vez. Ahí la re-evaluación es parte del costo
-  que se decide, a unos 0,24M tokens por caso, y no algo que queda para después. Si no se va a medir, se dice en el PR
-  y el cambio no se entrega como si estuviera probado.
+  que se decide, a unos 0,24M tokens por caso, y no algo que queda para después. Si no se va a medir, se declara en
+  `UNMEASURED` de `test/repo/verdicts.test.js`, con su razón, y el cambio no se entrega como si estuviera probado.
+  Desde el 2026-11-23 esa prueba falla con cualquier veredicto vencido o caso sin medir que no esté declarado. Por eso
+  el job de CI clona con historia: sin ella no hay fechas contra qué comparar.
 
 - **Un doble de prueba sale de `test/support/fakes.js` y dice por qué existe** (R18). Hoy los dobles de este repo son
   comandos falsos puestos delante en el `PATH`; `test/repo/doubles.test.js` frena el que se escriba a mano y el que no
