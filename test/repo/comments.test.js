@@ -187,10 +187,10 @@ test('ningún comentario cita algo que dejó de existir',
 // cubría, dos módulos del motor con el mismo hecho escrito de dos maneras, dos suites explicando cada
 // una dónde aterriza un runner. Ninguna rompió nada; simplemente dejaron de coincidir.
 //
-// El umbral es lo único de acá que no es un hecho, y por eso se eligió midiendo: los puntajes forman un
-// continuo con saltos de milésimas salvo un hueco, entre 0.50 y 0.395. 0.45 cae adentro. Contra el árbol
-// de antes del repaso nombra treinta y uno de los cincuenta y cinco; el resto vivía por debajo, donde
-// vocabulario compartido y copia dejan de distinguirse solos.
+// El umbral es lo único de acá que no es un hecho. Fue 0.45, elegido en el hueco que los puntajes tenían
+// entre 0.50 y 0.395, y por debajo se siguieron acumulando copias: la auditoría del 2026-11-23 encontró 97
+// pares nuevos entre 0.30 y 0.45, casi todos una prueba que transcribía el porqué del código. Se bajó a
+// 0.35 después de arreglarlos; lo que queda arriba y no es copia se acepta abajo con su razón.
 //
 // Y por eso el registro, con la misma forma que el piso de cobertura: un par nuevo falla hasta que
 // alguien lo arregla o lo acepta **con su razón escrita**. Sin esa segunda salida el gate se apagaría el
@@ -201,8 +201,24 @@ const ACCEPTED_PAIRS = {
     { pairs: 1, reason: 'Workflows gemelos: cada uno viaja y se lee solo, y difieren en el verbo que importa.' },
   'automatization/hooks/guard-files.sh::automatization/hooks/guard-shell.sh':
     { pairs: 1, reason: 'Los quince shims son una plantilla; lo que cambia es a qué guard delegan.' },
+  'automatization/hooks/guard-files.sh::automatization/hooks/guard-mcp.sh':
+    { pairs: 1, reason: 'Shims de la misma plantilla, como el par de arriba.' },
+  'automatization/hooks/guard-mcp.sh::automatization/hooks/guard-shell.sh':
+    { pairs: 1, reason: 'Shims de la misma plantilla, como el par de arriba.' },
+  'engine/planning/promote.js::engine/planning/renumber.js':
+    { pairs: 1, reason: 'Cada encabezado dice qué garantiza su propio `plan`; comparten el patrón, no la razón.' },
+  'test/hooks/boundary-approval.test.js::test/hooks/chat-effects.test.js':
+    { pairs: 1, reason: 'Dos salidas distintas de un bloqueo: declarar la ruta, y el «dale» de la persona.' },
+  'engine/cli/line-env.js::engine/cli/lines.js':
+    { pairs: 1, reason: 'El contrato de `copyInto` y por qué `lines` copia antes de avisar: razones distintas.' },
+  'test/hooks/task-tree-boundary.test.js::test/planning/worktree.test.js':
+    { pairs: 1, reason: 'El límite de escritura en el árbol de una tarea, y `ops worktree` reusando el checkout.' },
+  'test/wiring/runners-contract.test.js::test/wiring/runners-contract.test.js':
+    { pairs: 3, reason: 'El registro del número exacto: una entrada por cambio, cada una con su consigna.' },
+  'test/wiring/shared-skills.test.js::test/wiring/shared-skills.test.js':
+    { pairs: 1, reason: 'Dos enlaces distintos: uno dentro de la carpeta y la carpeta entera hacia afuera.' },
 }
-const SIMILAR = 0.45
+const SIMILAR = 0.35
 
 test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
   const root = path.resolve(__dirname, '..', '..')

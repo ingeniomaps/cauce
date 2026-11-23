@@ -580,13 +580,13 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - **La pasada de comentarios que pide R11 no la cubre la puerta.** «Ninguna razón está escrita en dos
-  lugares sin decir por qué» compara párrafos de ocho palabras o más y marca desde 0.45 de solapamiento,
-  así que una razón repetida un poco por debajo pasa en verde: dejó pasar dos pares a 0.38 y 0.35 en la
-  misma sesión en la que atrapó un tercero. Bajar el umbral no es la salida —hay pares legítimos
-  preexistentes en 0.36 y 0.38, que empezarían a fallar—, y el otro medio fallo, el comentario que repite
-  el nombre de su propia prueba, no repite a ningún otro y ninguna comparación lo va a ver.
-  Para mirar lo que la puerta deja pasar alcanza con reusar el tokenizador de esa prueba con el umbral en
-  0.22: lo propio no debería aparecer por encima de lo preexistente.
+  lugares sin decir por qué» compara párrafos de ocho palabras o más y marca desde 0.35 de solapamiento;
+  lo que queda arriba sin ser copia se acepta en `ACCEPTED_PAIRS`, con su razón. Hasta el 2026-11-23 el
+  umbral fue 0.45, y por debajo se acumularon 97 pares nuevos en dos meses, casi todos una prueba que
+  transcribía el porqué del código que cubre. Lo que sigue sin verse es la copia por debajo de 0.35 y el
+  comentario que repite el nombre de su propia prueba, que no repite a ningún otro y ninguna comparación
+  lo va a ver. Para mirar lo que la puerta deja pasar alcanza con reusar el tokenizador de esa prueba con
+  el umbral en 0.22: lo propio no debería aparecer por encima de lo preexistente.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
 - **En `main` no se trabaja.** El ruleset del repositorio exige pull request y dos status checks, y el
