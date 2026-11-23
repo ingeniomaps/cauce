@@ -48,7 +48,7 @@
           },
           "verify": {
             "type": "string",
-            "description": "Comando que corre la puerta de esta raíz —pruebas, lint, typecheck, build—, tal como se invoca desde ella. Sin él, quien verifica tiene que descubrirlo leyendo el repositorio en cada tarea, y eso es trabajo de modelo repetido para siempre sobre una respuesta que no cambia."
+            "description": "Comando que corre la puerta de esta raíz —pruebas, lint, typecheck, build—, tal como se invoca desde ella. Sin él, quien verifica tiene que descubrirlo leyendo el repositorio en cada tarea, y eso es trabajo de modelo repetido para siempre sobre una respuesta que no cambia. Es también lo que corre el hook de commit en lugar de los gates que adivina por el stack."
           },
           "scope": {
             "type": "array",
@@ -166,6 +166,11 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "Cuánto puede durar cada gate de verify antes de cortarlo, con todo lo que lanzó. Por defecto 10."
+        },
+        "gateMinFreeMb": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Memoria libre, en MB, que verify pide para arrancar los gates de un commit; con menos, frena el commit y lo dice. Sin declarar no mira la memoria. Sólo en Linux, donde se lee MemAvailable: en otro sistema no frena."
         },
         "liveBranches": {
           "type": "array",

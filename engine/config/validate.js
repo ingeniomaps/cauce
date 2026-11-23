@@ -61,8 +61,8 @@ const CONFIG_KEYS = ['$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoo
   'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone', 'lines', 'guards', 'reviewExempt',
   'mcpSandbox', 'mcpReads']
 const RUNNER_BOOLEANS = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
-const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'liveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
-  'allowAiSignature', ...RUNNER_BOOLEANS]
+const RUNNER_KEYS = ['maxTaskHours', 'pushToLiveBranches', 'liveBranches', 'gateTimeoutMinutes', 'gateMinFreeMb',
+  'commitToLiveBranch', 'allowAiSignature', ...RUNNER_BOOLEANS]
 
 function validateOpsConfig(config) {
   const errors = []
@@ -338,6 +338,10 @@ function validateRunner(runner, errors) {
   if (runner.gateTimeoutMinutes !== undefined
     && (typeof runner.gateTimeoutMinutes !== 'number' || runner.gateTimeoutMinutes <= 0)) {
     errors.push('ops.config.json: runner.gateTimeoutMinutes debe ser mayor que cero')
+  }
+  if (runner.gateMinFreeMb !== undefined
+    && (typeof runner.gateMinFreeMb !== 'number' || !(runner.gateMinFreeMb > 0))) {
+    errors.push('ops.config.json: runner.gateMinFreeMb debe ser un número de MB mayor que cero')
   }
   if (typeof runner.maxTaskHours !== 'number' || runner.maxTaskHours <= 0) {
     errors.push('ops.config.json: runner.maxTaskHours debe ser mayor que cero')

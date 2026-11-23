@@ -23,6 +23,9 @@ const turnedOff = (before, after) => (before === true && after !== true ? [text(
 // Como número, que es como lo lee `autobuild` (`cli/contract.js`).
 const raised = (before, after) => (Number.isFinite(Number(after)) && Number(after) > Number(before)
   ? [String(after)] : [])
+// Un piso que baja o se quita: sin declarar no frena nada.
+const lowered = (before, after) => (Number(before) > 0 && !(Number(after) >= Number(before))
+  ? [String(after ?? 'sin declarar')] : [])
 // Por grupo: cada evento de `guards`, cada línea de `lines`.
 const byGroup = (rule) => (before, after) => {
   const groups = new Set([...Object.keys(object(before)), ...Object.keys(object(after))])
@@ -53,6 +56,7 @@ const KEYS = {
   'runner.allowAiSignature': turnedOn, // ai-signature
   'runner.humanCheckpointBetweenMilestones': turnedOff, // autobuild: el checkpoint entre hitos
   'runner.maxTaskHours': raised, // autobuild: el tope con que se parte una tarea
+  'runner.gateMinFreeMb': lowered, // verify: la memoria libre con que arranca un gate (caso 550)
   boundedCommands: added, // test-workers
   reviewExempt: added, // autobuild: los archivos que la revisión tiene que abrir (caso 485)
   lines: byGroup(added), // cada repositorio de una línea es una raíz escribible

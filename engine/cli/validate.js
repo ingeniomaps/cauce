@@ -48,13 +48,14 @@ const { fail, planningRoot, TODAY, REFUSED } = require('./io')
 
 // Un lint con `--fix` no lo corre `verify` cuando el commit coincide con el árbol, porque escribiría en él
 // (caso 240). Un hook no tiene cómo avisar sin frenar, así que lo dice `check`: si no, el gate se saltea en
-// silencio y el commit pasa sin lint.
+// silencio y el commit pasa sin lint. Una raíz que declara su `verify` corre ése y no los del stack (caso 547).
 function lintThatWrites(opsDir, workspace) {
+  if (typeof workspace.verify === 'string' && workspace.verify.trim()) return []
   let lint
   // Sin `package.json`, ilegible o sin `scripts`: no hay lint que mirar, y las tres caen acá.
   const file = path.resolve(opsDir, workspace.path, 'package.json')
   try { lint = JSON.parse(fs.readFileSync(file, 'utf8')).scripts.lint } catch { return [] }
-  if (!VF.writesInTree('lint', lint || '', workspace)) return []
+  if (!VF.writesInTree('lint', lint || '')) return []
   return [`ops.config.json: la raíz ${workspace.name} corre lint con --fix, y verify no lo corre sobre el árbol `
     + 'porque escribiría en él: agregá un script de lint que sólo revise']
 }

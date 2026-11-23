@@ -36,12 +36,12 @@ function logPath(root) {
 // nunca arrancó. Antes había que restar los `at` de dos líneas seguidas para estimarlo, y esa resta
 // incluye lo que pasó entre gate y gate; el número propio no. Fue lo que costó diagnosticar el caso 068:
 // tres gates «en rojo» a un segundo uno de otro, cuando la corrida real de ese proyecto tarda trece.
-function record(root, gate, status, ms) {
+function record(root, gate, status, ms, extra = {}) {
   if (!root) return
   try {
     const file = logPath(root)
     const previous = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean) : []
-    const entry = JSON.stringify({ at: new Date().toISOString(), gate, status, ...(ms >= 0 ? { ms } : {}) })
+    const entry = JSON.stringify({ at: new Date().toISOString(), gate, status, ...(ms >= 0 ? { ms } : {}), ...extra })
     fs.mkdirSync(path.dirname(file), { recursive: true })
     fs.writeFileSync(file, `${[...previous, entry].slice(-MAX_RUNS).join('\n')}\n`)
   } catch { /* el registro es evidencia, no una puerta */ }

@@ -33,6 +33,8 @@ const CASES = {
     { runner: { humanCheckpointBetweenMilestones: false } }, { runner: { humanCheckpointBetweenMilestones: true } }],
   'runner.maxTaskHours': [{ runner: { maxTaskHours: 4 } }, { runner: { maxTaskHours: 8 } }, '8',
     { runner: { maxTaskHours: 4 } }, { runner: { maxTaskHours: 2 } }],
+  'runner.gateMinFreeMb': [{ runner: { gateMinFreeMb: 4096 } }, { runner: {} }, 'sin declarar',
+    { runner: { gateMinFreeMb: 1024 } }, { runner: { gateMinFreeMb: 4096 } }],
   boundedCommands: [{}, { boundedCommands: ['vitest'] }, '+vitest', { boundedCommands: ['vitest'] }, {}],
   reviewExempt: [{}, { reviewExempt: ['**/*.lock'] }, '+**/*.lock', { reviewExempt: ['**/*.lock'] }, {}],
   lines: [{ lines: { a: ['../x'] } }, { lines: { a: ['../x', '../y'] } }, 'a +../y', { lines: { a: ['../x'] } }, {}],

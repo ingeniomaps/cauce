@@ -11,7 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawn, spawnSync } = require('node:child_process')
 const { execute } = require('../../engine/hooks/run')
-const { holdMachine, lockFile } = require('../../engine/hooks/machine-lock')
+const { holdMachine, lockFile, memoryShort } = require('../../engine/hooks/machine-lock')
 const C = require('../../engine/config/validate')
 
 // Un repositorio embedded con todo staged y nada suelto, que es lo que hace correr los gates en el árbol;
@@ -63,8 +63,42 @@ test('un build que la raíz declara en su verify corre también sobre el árbol'
   const dir = repo('cauce-verify-declarado-', { test: 'node -e 0', build: 'touch BUILD' },
     { verify: 'npm test && npm run build' })
   assert.doesNotThrow(() => execute('verify', commit(dir)))
-  assert.deepEqual(gates(dir), ['test', 'build'])
+  assert.deepEqual(gates(dir), ['verify'])
   assert.ok(fs.existsSync(path.join(dir, 'BUILD')))
+})
+
+test('el verify que la raíz declara reemplaza a los gates del stack, y su rojo frena el commit', () => {
+  const dir = repo('cauce-verify-propio-', { test: 'touch STACK' },
+    { verify: 'node -e "console.error(\'gate propio en rojo\'); process.exit(3)"' })
+  assert.throws(() => execute('verify', commit(dir)),
+    (error) => /Verify falló en .*verify \(exit 3.*gate propio en rojo/s.test(error.message))
+  assert.deepEqual(gates(dir), ['verify'])
+  assert.equal(fs.existsSync(path.join(dir, 'STACK')), false)
+})
+
+test('el verify declarado corre también cuando la sesión entra a la raíz por un enlace', () => {
+  const dir = repo('cauce-verify-propio-enlace-', { test: 'node -e 0' }, { verify: 'node -e "process.exit(3)"' })
+  const link = `${dir}-enlace`
+  fs.symlinkSync(dir, link)
+  assert.throws(() => execute('verify', commit(link)), (error) => /verify \(exit 3/.test(error.message))
+  assert.deepEqual(gates(dir), ['verify'])
+})
+
+test('el verify declarado corre sobre la copia del índice, y un rojo conocido como verify no frena', () => {
+  const dir = repo('cauce-verify-propio-copia-', { test: 'node -e 0' }, { verify: 'test -f app.js && exit 4' })
+  fs.writeFileSync(path.join(dir, 'suelto.txt'), 'dispara la copia\n')
+  assert.throws(() => execute('verify', commit(dir)), (error) => /verify \(exit 4/.test(error.message))
+  fs.writeFileSync(path.join(dir, 'planning', 'gate-known-red'), 'app: verify — roto desde antes\n')
+  assert.doesNotThrow(() => execute('verify', commit(dir)))
+})
+
+test('cada corrida anota el árbol que juzgó, el mismo que el commit grabaría', () => {
+  const dir = repo('cauce-verify-arbol-juzgado-', { test: 'node -e 0' })
+  assert.doesNotThrow(() => execute('verify', commit(dir)))
+  const tree = spawnSync('git', ['write-tree'], { cwd: dir, encoding: 'utf8' }).stdout.trim()
+  const logged = fs.readFileSync(path.join(dir, 'planning', '.verify-log'), 'utf8').split('\n').filter(Boolean)
+    .map((line) => JSON.parse(line).tree)
+  assert.deepEqual(logged, [tree])
 })
 
 test('sobre la copia del índice corren todos, y el árbol no se entera', () => {
@@ -73,6 +107,27 @@ test('sobre la copia del índice corren todos, y el árbol no se entera', () => 
   assert.doesNotThrow(() => execute('verify', commit(dir)))
   assert.deepEqual(gates(dir), ['lint', 'build'])
   assert.equal(fs.existsSync(path.join(dir, 'BUILD')), false)
+})
+
+test('sin la memoria que pide runner.gateMinFreeMb el gate no arranca, y fuera de Linux no se mira', () => {
+  const mb = 1024 * 1024
+  assert.match(memoryShort(4096, { free: 1000 * mb, platform: 'linux' }),
+    /hay 1000 MB de memoria libre y runner\.gateMinFreeMb en ops\.config\.json pide 4096/)
+  assert.equal(memoryShort(4096, { free: 4096 * mb, platform: 'linux' }), '')
+  assert.equal(memoryShort(4096, { free: 10 * mb, platform: 'darwin' }), '')
+  assert.equal(memoryShort(NaN, { free: 10 * mb, platform: 'linux' }), '')
+})
+
+test('verify frena el commit sin correr ningún gate cuando no hay la memoria declarada', { skip:
+  process.platform !== 'linux' && 'el freno sólo lee la memoria en Linux' }, () => {
+  const dir = repo('cauce-verify-memoria-', { test: 'touch STACK' }, {}, { gateMinFreeMb: Number.MAX_SAFE_INTEGER })
+  assert.throws(() => execute('verify', commit(dir)),
+    (error) => /Verify no arrancó: hay \d+ MB de memoria libre y runner\.gateMinFreeMb/.test(error.message))
+  assert.equal(fs.existsSync(path.join(dir, 'planning', '.verify-log')), false)
+  assert.equal(fs.existsSync(path.join(dir, 'STACK')), false)
+  const free = repo('cauce-verify-memoria-sobra-', { test: 'node -e 0' }, {}, { gateMinFreeMb: 1 })
+  assert.doesNotThrow(() => execute('verify', commit(free)))
+  assert.deepEqual(gates(free), ['test'])
 })
 
 test('el candado espera a quien lo tiene vivo, toma el de un proceso muerto y suelta sólo el suyo', () => {
@@ -102,6 +157,11 @@ test('runner.gateTimeoutMinutes se valida, y check avisa un lint con --fix', () 
   assert.ok(C.validateOpsConfig(config({ gateTimeoutMinutes: 0 }))
     .includes('ops.config.json: runner.gateTimeoutMinutes debe ser mayor que cero'))
   assert.ok(!C.validateOpsConfig(config({ gateTimeoutMinutes: 15 })).some((one) => /gateTimeout/.test(one)))
+  for (const bad of [0, -1, '4096']) {
+    assert.ok(C.validateOpsConfig(config({ gateMinFreeMb: bad }))
+      .includes('ops.config.json: runner.gateMinFreeMb debe ser un número de MB mayor que cero'), String(bad))
+  }
+  assert.ok(!C.validateOpsConfig(config({ gateMinFreeMb: 2048 })).some((one) => /gateMinFreeMb/.test(one)))
 
   const { run } = require('../support/environment')
   const target = path.join(tempRoot('cauce-verify-check-'), 'demo-ops')
@@ -114,6 +174,12 @@ test('runner.gateTimeoutMinutes se valida, y check avisa un lint con --fix', () 
   assert.equal(warned(), false, 'un lint que sólo revisa no avisa')
   fs.writeFileSync(path.join(product, 'package.json'), JSON.stringify({ scripts: { lint: 'eslint . --fix' } }))
   assert.equal(warned(), true)
+  // Con su verify declarado, la raíz corre ése y no el lint del stack: el aviso ya no es cierto (caso 547).
+  const file = path.join(target, 'ops.config.json')
+  const read = JSON.parse(fs.readFileSync(file, 'utf8'))
+  read.workspaceRoots = read.workspaceRoots.map((one) => ({ ...one, verify: 'npm test' }))
+  fs.writeFileSync(file, JSON.stringify(read))
+  assert.equal(warned(), false, 'con verify declarado no avisa')
 })
 
 test('sin CAUCE_VERIFY_LOCK el candado es el de la máquina', () => {
