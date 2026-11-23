@@ -86,6 +86,8 @@ diseño — eso vive en el commit y en el código.
   que se llevó el bloque del runner de un archivo que conservó. **Qué hacer:** si una instancia perdió así su
   `AGENTS.md`, el historial de git lo tiene.
 
+  `automation uninstall` también vuelve a anotar un `AGENTS.md` sin editar al que le quita el bloque, y uno que la
+  empresa devolvió al molde, con el bloque adentro, vuelve a ser del molde.
 - **El cierre de `/autobuild` lo hace `ops done`** (caso 538). El agente de Done reimplementaba en prosa lo que `ops
   done` hace en una llamada, y las dos versiones ya habían divergido. Ahora escribe lo que juzga en un archivo de campos
   y corre `ops done`, que valida antes de escribir. La validación previa suma la regla que rechaza un `tests: n/a` sobre
@@ -98,12 +100,15 @@ diseño — eso vive en el commit y en el código.
   No mira `done/`, `archive/`, los bloques de código ni los placeholders de plantilla (`NNN-slug.md`, `{{…}}`). Es aviso,
   no error: una instancia con enlaces viejos no pasa a rojo de golpe, y el ancla depende de cómo slugifica el visor.
 
+  Mira también los enlaces entre `<…>`, las definiciones `[x]: ruta` y los títulos setext.
 - **Una instancia con GitFlow puede declarar sus otras ramas vivas** (caso 533). Cauce contaba como vivas `main`,
   `master` y la rama por defecto de cada remoto, así que con `allowPush` un agente empujaba y commiteaba directo en
   `develop` o `production`. `runner.liveBranches` suma las que el proyecto nombra: un commit que cae en ellas frena, y
   publicar en ellas pide nombrarlas en `pushToLiveBranches`, como con `main`. El agente no se la escribe, como
   `allowPush`. **Qué hacer:** si trabajás con GitFlow, declará `develop` y las ramas de ambiente.
 
+  Los prompts de `/autobuild` que commitean también las nombran, así que el agente corta su rama antes de commitear
+  en vez de esperar el freno.
 - **Un WIP que quedó apuntando a una tarea ya cerrada ya no se ofrece como la tarea en curso** (caso 535). Si una
   sesión se cortaba entre escribir `done/<tarea>.md` y dejar el WIP en IDLE, `ops context` presentaba esa tarea y
   mandaba a reclamarla, `claim` la rechazaba, y `/autobuild` la retomaba como reanudación. Ahora `context` lo dice en una
@@ -128,6 +133,7 @@ diseño — eso vive en el commit y en el código.
   del checkout donde corre `gh`, por dueño y nombre, también con GitHub Enterprise. Sin `origin`, o con un destino
   que no se puede leer (una variable), frena. Abrir un PR
   por la API frena siempre. Se aprueba como el resto, con la línea `gh pr create --repo <dueño>/<nombre>`.
+  Desde una subcapa, `(cd app && gh pr create …)`, se lee el `origin` de `app`, y ya no frena de más.
 - **`delivery` frena también los actos de R10 pedidos a la API de GitHub** (caso 539). Hasta ahora, el merge, la
   aprobación o el workflow que `gh pr merge`, `gh pr review` o `gh workflow run` frenan pasaban si se pedían de otra
   forma. Ahora frenan también así:
@@ -139,6 +145,9 @@ diseño — eso vive en el commit y en el código.
   `gh api …/pulls/N/merge` también como lectura. Mover una rama o escribir un archivo por la API frena como un push.
   Comentar o cerrar por la API de issues frena aunque el número sea de un issue, porque desde el comando no se
   distingue de un PR. Se aprueba como el resto, con el tramo del comando tal como se escribió.
+  Sin método, httpie manda POST cuando stdin no es una terminal, que es como corre un agente, así que un `http URL` a
+  secas contra la API frena salvo con `GET` o `--ignore-stdin`; xh se trata igual. Y wget y httpie se leen con sus
+  propias banderas: `wget -T 10` y `http -F` ya no frenan de más, y curl suma `--data-ascii` y `--form-string`.
 - **`decisions:` es opcional en una entrada de `done/`, como dice el PROTOCOL**, y la plantilla y el rechazo de `check`
   ahora lo dicen: si no hubo una decisión no obvia, la línea no va (caso 537).
 
