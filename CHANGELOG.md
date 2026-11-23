@@ -18,6 +18,25 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`ops review-read` dice qué archivos del diff leyó de verdad quien revisó, según su transcripción** (caso 549). En
+  `/autobuild` el revisor declara en `opened` lo que abrió y nada lo comprobaba. Ahora, después de Review, el hecho que
+  va a `done/` dice si la transcripción muestra leído todo el diff, qué no muestra leído, o que `opened` quedó declarado
+  sin comprobar y por qué. Todavía no frena: eso se decide con los números de las corridas. Sólo en Claude Code, que es
+  el que deja la transcripción; su forma no es una API documentada, y está medida en 2.1.330.
+
+- **`runner.gateMinFreeMb` frena un commit cuando no hay memoria para correr sus gates** (caso 550). Una QA en una
+  instancia real congeló la máquina, y el candado de un gate por vez cuenta gates, no memoria. Con la llave declarada,
+  `verify` mira la memoria disponible al tomar el candado y, si no alcanza, frena sin correr nada, diciendo cuánta hay y
+  cuánta pide. No tiene default: sin la llave todo sigue igual. Sólo en Linux, donde se lee `MemAvailable`; en otro
+  sistema no frena. Bajarla o quitarla pide confirmación. El cupo de varios gates a la vez quedó aplazado (caso 553).
+
+- **Armar una línea de trabajo, sumarle un repositorio o retirarla frena hasta que la persona la nombre** (caso 551).
+  Una sesión abrió una línea que nadie pidió: `ops line` declara la línea, crea su rama y sus árboles, y declararla a
+  mano en `ops.config.json` ya frenaba, pero por la CLI no la miraba nadie. El guard nuevo `line-command`, en el grupo
+  `pre-shell`, frena la línea nueva, el repositorio nuevo y el `--apply` de `lines join` y `lines migrate`; deja pasar
+  las lecturas, la línea ya declarada, `ops worktree --line` y `lines env`. Se aprueba nombrando «la línea <nombre>» en
+  el turno, o confirmando después del bloqueo.
+
 - **`automation doctor . claude` dice cuánto carga de instrucciones una sesión entera** (caso 532). `install` y
   `check` miden sólo el bloque de Cauce, en bytes; Claude Code avisa por otra cuenta, todos los archivos de
   instrucciones en caracteres. La línea nueva da esa cuenta como la documenta Claude Code —el usuario, la carpeta y sus
@@ -78,6 +97,19 @@ diseño — eso vive en el commit y en el código.
   referencia», declaralas en `adopta:` y reinstalá el runner.
 
 ### Corregido
+
+- **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
+  no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
+  Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
+  motivo. Una foto de antes que no se pudo sacar no le resta nada a lo que se exige.
+
+- **El `verify` que declara una raíz es el gate que corre el hook de commit** (caso 547). El hook lo ignoraba y elegía
+  los comandos por el stack, así que el gate que el proyecto declaró —y que corre el agente en Verify— y el que frenaba
+  el commit eran dos cosas distintas, y un gate propio no tenía dónde ponerse. Ahora, si la raíz declara `verify`, corre
+  ése en lugar de los del stack, con el mismo tope, el mismo candado y sobre la misma copia del índice. **Un `verify`
+  que hasta ahora estaba declarado sólo como dato pasa a frenar commits**: si está mal escrito, se ve en el próximo.
+  El registro lo anota como `verify`, que `gate-known-red` ya acepta; una entrada vieja con `test` para esa raíz deja
+  de aplicar. Además, cada corrida anota el árbol que juzgó, para medir cuántas veces se repite la puerta sobre el mismo.
 
 - **Instalar Codex ya no hace que el `upgrade` reemplace el `AGENTS.md` de la empresa** (caso 546). En una instancia
   embebida, `init --force` conserva el `AGENTS.md` que la empresa ya tenía y lo marca como editado. `automation install
