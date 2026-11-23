@@ -67,7 +67,7 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
 // `preserve` conserva todo lo que ya exista —es lo que `init` necesita— y `conservar` conserva sólo lo
 // que responda que sí, que es lo que `upgrade` necesita para saltear una edición local sin congelar el
 // resto del directorio. Son dos preguntas distintas y por eso no se unifican en una.
-function copyRuntime(source, target, preserve = false, boundary = target, skip = [], conservar = () => false) {
+function copyRuntime(source, target, preserve = false, boundary = target, skip = [], keep = () => false) {
   F.assertNoSymlinkPath(boundary, target)
   fs.mkdirSync(target, { recursive: true })
   const preserved = {}
@@ -75,8 +75,8 @@ function copyRuntime(source, target, preserve = false, boundary = target, skip =
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
     const to = path.join(target, entry.name)
-    if (!entry.isDirectory() && conservar(to)) continue
-    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip, conservar))
+    if (!entry.isDirectory() && keep(to)) continue
+    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip, keep))
     else if (preserve && fs.existsSync(to)) {
       console.log(`= conservado ${to}`)
       preserved[to] = M.digest(from)
@@ -293,7 +293,7 @@ function upgrade(dir, cli) {
     }
   }
 
-  const conservar = (file) => {
+  const keep = (file) => {
     const relative = path.relative(root, file).replace(/\\/g, '/')
     return keptFiles.has(relative) || collisions.has(relative)
   }
@@ -304,7 +304,7 @@ function upgrade(dir, cli) {
     if (keptFiles.has(relative)) continue
     // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
     // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
-    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root, [], conservar)
+    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root, [], keep)
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))

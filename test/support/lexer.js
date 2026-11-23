@@ -15,14 +15,14 @@
 // La decisión es por el carácter anterior y tiene dos bordes conocidos, los dos raros y los dos hacia el
 // falso positivo: `)` cierra una condición —`if (x) /re/.test(y)`— y una cadena o un template ya se
 // reemplazaron por un espacio, así que dividir por uno se lee como abrir un regex.
-const DIVIDE_ANTES = /[\w$)\]]$/
-const NO_DIVIDEN = new Set(['return', 'typeof', 'case', 'in', 'of', 'new', 'delete', 'void', 'do',
+const DIVIDES_AFTER = /[\w$)\]]$/
+const NEVER_DIVIDE = new Set(['return', 'typeof', 'case', 'in', 'of', 'new', 'delete', 'void', 'do',
   'else', 'yield', 'await', 'instanceof'])
 
 function opensRegex(emitted) {
-  const previo = emitted.replace(/\s+$/, '')
-  if (!previo || !DIVIDE_ANTES.test(previo)) return true
-  return NO_DIVIDEN.has((previo.match(/[A-Za-z_$][\w$]*$/) || [''])[0])
+  const previous = emitted.replace(/\s+$/, '')
+  if (!previous || !DIVIDES_AFTER.test(previous)) return true
+  return NEVER_DIVIDE.has((previous.match(/[A-Za-z_$][\w$]*$/) || [''])[0])
 }
 
 // Devuelve dónde termina el regex que arranca en `from`, o -1 si no termina en su línea: un literal de

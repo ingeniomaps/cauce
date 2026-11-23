@@ -440,7 +440,7 @@ function install(root, name, output = console, options = {}) {
   output.log(`  ${name}: ${RL.weightLine(root)}`)
   const invocation = runner.commands && runner.commands.invocation
   if (invocation && (runner.commands.names || []).length) {
-    const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
+    const listing = runner.commands.names.map((commandName) => invocation.replace('{name}', commandName))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
     // Los que sólo este runner instala —los de mantener un cargo propio en Claude— no entran en la lista común, que
     // es igual en todos; sin esta línea quien forkeaba un cargo no sabía que tenía con qué evaluarlo.

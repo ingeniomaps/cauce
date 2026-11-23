@@ -302,9 +302,9 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  const nota = oneLine(one.verdict.contractNote)
-  const para = nota ? `- Para el contrato: ${nota}\n` : ''
-  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Respuesta del cargo**\n\n`
+  const note = oneLine(one.verdict.contractNote)
+  const contractLine = note ? `- Para el contrato: ${note}\n` : ''
+  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${contractLine}\n**Respuesta del cargo**\n\n`
     + `${one.answer}\n\n**Contraste**\n\n${one.verdict.reasoning}`, ROOT)
 }).join('\n\n')
 

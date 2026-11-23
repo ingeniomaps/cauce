@@ -106,8 +106,8 @@ const DISPOSABLE = [os.tmpdir(), OUTSIDE, path.join(path.resolve(__dirname, '..'
 
 // Y el borrado, que es la otra mitad y no decide nada.
 function discard(target) {
-  const negativa = undeletable(target, DISPOSABLE)
-  if (negativa) throw new Error(negativa)
+  const refusal = undeletable(target, DISPOSABLE)
+  if (refusal) throw new Error(refusal)
   fs.rmSync(path.resolve(target), { recursive: true, force: true })
 }
 
@@ -135,9 +135,9 @@ process.env.CAUCE_RUNNER = TEST_RUNNER
 const wipPath = (planning) => path.join(planning, 'wip',
   `${require('../../engine/planning/parser').wipName(TEST_RUNNER)}.md`)
 
-function writeWip(planning, texto) {
+function writeWip(planning, text) {
   fs.mkdirSync(path.join(planning, 'wip'), { recursive: true })
-  fs.writeFileSync(wipPath(planning), texto)
+  fs.writeFileSync(wipPath(planning), text)
 }
 
 // Este repositorio puesto donde una instancia busca el paquete, que es de donde le llegan el motor y

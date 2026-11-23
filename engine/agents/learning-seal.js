@@ -222,8 +222,8 @@ function appendHistory(target, file, responsible, change, decision = 'aplicada')
   // encabezado, y la fila quedaba pegada ahí: en markdown eso no es una tabla sino texto con barras, y
   // nadie lo veía porque el archivo se lee dos veces al año. Se agrega la cabecera antes de la primera
   // fila en vez de exigir que ya esté, que es pedirle a cada cargo que se acuerde.
-  const cabecera = /^\|\s*Fecha\s*\|/m.test(previous) ? '' : `\n${HISTORY_HEADER}`
-  fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${cabecera}${row}`)
+  const header = /^\|\s*Fecha\s*\|/m.test(previous) ? '' : `\n${HISTORY_HEADER}`
+  fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${header}${row}`)
 }
 
 // Si lo que se aplica —«Cambio propuesto» y «Evaluación»— sigue siendo lo que se firmó. Una propuesta firmada antes

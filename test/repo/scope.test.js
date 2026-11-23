@@ -12,8 +12,8 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const SC = require('../../engine/core/scope')
 
-const raiz = (scope) => [{ name: 'web', path: '.', ...(scope ? { scope } : {}) }]
-const alcanza = (scope, files, repo = '/p') => SC.reachesGate(raiz(scope), repo, files)
+const root = (scope) => [{ name: 'web', path: '.', ...(scope ? { scope } : {}) }]
+const alcanza = (scope, files, repo = '/p') => SC.reachesGate(root(scope), repo, files)
 
 // La compatibilidad, que es la mitad del diseño: el campo baja a todos los consumidores en su próximo
 // `upgrade` y ninguno lo declara todavía. Si esto se rompe, el arreglo dejó de ser opcional.

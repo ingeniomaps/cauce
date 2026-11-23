@@ -10,7 +10,7 @@ const { codeOnly } = require('../support/lexer')
 // direcciones van juntas porque una sola deja pasar a la otra — un lexer que tratara toda barra como
 // regex pasaría las tres primeras y se comería cada división.
 test('una barra se lee como regex o como división según lo que tenga delante', () => {
-  const casos = [
+  const cases = [
     ['const p = u.replace(/x\\//g, "") + noExiste(1)\n', /noExiste\(1\)/,
       'lo que sigue a un regex con // adentro tiene que quedar a la vista'],
     ['const x = t.replace(/^["\']+/g, "")\nconst z = "prosa."\n', /^(?!.*prosa)[\s\S]*$/,
@@ -26,8 +26,8 @@ test('una barra se lee como regex o como división según lo que tenga delante',
     ['const a = /sin cerrar\nconst b = x.y / z\n', /x\.y/,
       'un regex no cruza líneas: lo que no cierra en la suya no era uno y no se traga la siguiente'],
   ]
-  for (const [fuente, espera, porque] of casos) {
-    assert.match(codeOnly(fuente), espera, porque)
+  for (const [sourceText, wait, because] of cases) {
+    assert.match(codeOnly(sourceText), wait, because)
   }
 })
 

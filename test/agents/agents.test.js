@@ -42,9 +42,9 @@ test('el catálogo se puede recorrer con una línea por cargo', () => {
   // su propio tope —`SUMMARY_MAX`, que valida `learn`—. El techo sale de ahí y no de un número escrito
   // a mano: el que había se quedaba corto por un carácter y pasaba de casualidad, porque el resumen
   // más largo no le había tocado al cargo de nombre más largo.
-  const columna = Math.max(...AGENTS.map((role) => role.slug.length))
-  const techo = columna + 2 + SUMMARY_MAX
-  for (const line of lines) assert.ok(line.length <= techo, `pasa de ${techo}: ${line}`)
+  const column = Math.max(...AGENTS.map((role) => role.slug.length))
+  const ceiling = column + 2 + SUMMARY_MAX
+  for (const line of lines) assert.ok(line.length <= ceiling, `pasa de ${ceiling}: ${line}`)
 
   assert.match(listing.stdout, /Si ninguno encaja/, 'dice qué hacer cuando no hay cargo que sirva')
   assert.match(listing.stdout, /agents\/roles\//, 'y nombra dónde va el propio')

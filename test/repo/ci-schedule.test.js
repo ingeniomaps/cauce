@@ -89,14 +89,14 @@ test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => 
 
   // Los tres de investigación tienen cadencia declarada; el del ensamblaje no está en la tabla, y por
   // eso ese día la lista sale vacía y `research` no arranca.
-  const table = source.slice(source.indexOf('const POR_CRON'), source.indexOf('const cadence'))
+  const table = source.slice(source.indexOf('const BY_CRON'), source.indexOf('const cadence'))
   for (const cron of crones.slice(0, 2)) assert.ok(table.includes(cron), `${cron} elige a quién correr`)
   assert.equal(table.includes('17 7 1 * *'), false, 'el del ensamblaje no investiga a nadie')
   assert.match(source, /needs\.discover\.outputs\.agents != '\[\]'/, 'y research no arranca con lista vacía')
   assert.match(source, /github\.event\.schedule == '17 7 1 \* \*'/, 'propose corre el día del ensamblaje')
 
   // Sin `SCHEDULE` la corrida es a mano: ahí no se filtra, porque quien la lanza quiere lo que pidió.
-  assert.match(source, /const porCron = Boolean\(\(process\.env\.SCHEDULE \|\| ""\)\.trim\(\)\)/)
+  assert.match(source, /const byCron = Boolean\(\(process\.env\.SCHEDULE \|\| ""\)\.trim\(\)\)/)
 })
 
 // Tres formas de trabajar de más o de menos que tuvo este workflow: la credencial comprobada dentro
@@ -309,9 +309,9 @@ test('un dispatch puede nombrar un recorrido, y sólo miente un slug que no es n
   const flows = JSON.stringify([{ slug: 'un-recorrido', pending: 2 }])
 
   // Un slug de recorrido: el paso de cargos ya no aborta, y devuelve la lista vacía que corresponde.
-  const cargos = execute('id: list', roles, { ONLY: 'un-recorrido', SCHEDULE: '' })
-  assert.equal(cargos.status, 0, `el paso de cargos abortó: ${cargos.stderr}`)
-  assert.match(cargos.output, /^agents=\[\]$/m, 'ningún cargo se llama así, y eso no es un error')
+  const roleNames = execute('id: list', roles, { ONLY: 'un-recorrido', SCHEDULE: '' })
+  assert.equal(roleNames.status, 0, `el paso de cargos abortó: ${roleNames.stderr}`)
+  assert.match(roleNames.output, /^agents=\[\]$/m, 'ningún cargo se llama así, y eso no es un error')
 
   const flowNames = execute('id: flows', flows, { ONLY: 'un-recorrido', AGENTS: '[]' })
   assert.equal(flowNames.status, 0, `el paso de recorridos abortó: ${flowNames.stderr}`)

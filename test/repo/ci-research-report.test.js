@@ -21,7 +21,7 @@ test('un informe sin contenido no abre PR', () => {
   const source = fs.readFileSync(file, 'utf8')
 
   // Se mira contenido, y de las secciones que la propuesta mensual consolida.
-  assert.match(source, /for seccion in 'Fuentes consultadas' 'Hallazgos'/)
+  assert.match(source, /for section in 'Fuentes consultadas' 'Hallazgos'/)
   assert.match(source, /quedó sin contenido en:/, 'y dice cuáles quedaron vacías')
   assert.match(source, /No se abre PR/, 'en vez de publicar un insumo que no existe')
   // El diagnóstico que ahorra la próxima media hora: la causa suele ser un permiso, no el modelo.

@@ -11,8 +11,8 @@ const path = require('node:path')
 const AD = require('../../engine/planning/adoption')
 const PC = require('../../engine/planning/contracts')
 
-const vieja = (slug) => ({ source: `done/${slug}.md`, slug, done: 'lo único que aquel proceso registraba' })
-const estado = (entries, adopted) => ({
+const old = (slug) => ({ source: `done/${slug}.md`, slug, done: 'lo único que aquel proceso registraba' })
+const state = (entries, adopted) => ({
   epics: [],
   milestones: [{ slug: 'h', title: 'H', tasks: [] }],
   done: { entries, set: new Set(entries.map((entry) => entry.slug)), duplicates: [] },
@@ -32,20 +32,20 @@ test('el baseline se lee por renglón y descarta lo que no es un slug', () => {
 // La entrada del fixture trae un `commit:` con formato ajeno, así que falla por lo que no escribió y
 // también por lo que sí. Las dos mitades tienen que callarse juntas; `validateState` dice por qué.
 test('una entrada exenta no la juzga ninguna de las cinco comprobaciones', () => {
-  const conCommitAjeno = { ...vieja('tarea-de-2024'), commit: 'r4521 · migración de cobros' }
+  const withForeignCommit = { ...old('tarea-de-2024'), commit: 'r4521 · migración de cobros' }
 
-  const sinExentar = PC.validateState(estado([conCommitAjeno], []))
-  assert.ok(sinExentar.some((one) => /falta acept:/.test(one)), 'falla por lo que no escribió')
-  assert.ok(sinExentar.some((one) => /commit debe apuntar/.test(one)), 'y por lo que sí escribió')
+  const notExempted = PC.validateState(state([withForeignCommit], []))
+  assert.ok(notExempted.some((one) => /falta acept:/.test(one)), 'falla por lo que no escribió')
+  assert.ok(notExempted.some((one) => /commit debe apuntar/.test(one)), 'y por lo que sí escribió')
 
-  assert.deepEqual(PC.validateState(estado([conCommitAjeno], ['tarea-de-2024'])), [])
+  assert.deepEqual(PC.validateState(state([withForeignCommit], ['tarea-de-2024'])), [])
 })
 
 test('exentar una entrada no exenta a las demás', () => {
-  const errores = PC.validateState(estado([vieja('tarea-de-2024'), vieja('nueva')], ['tarea-de-2024']))
+  const errors = PC.validateState(state([old('tarea-de-2024'), old('nueva')], ['tarea-de-2024']))
 
-  assert.ok(errores.length, 'la que no está en la lista sigue respondiendo por sí misma')
-  assert.deepEqual(errores.filter((error) => error.includes('tarea-de-2024')), [])
+  assert.ok(errors.length, 'la que no está en la lista sigue respondiendo por sí misma')
+  assert.deepEqual(errors.filter((error) => error.includes('tarea-de-2024')), [])
 })
 
 // Las tres salidas del informe en una sola corrida, incluida la que no aparece: la exención que
@@ -61,14 +61,14 @@ test('el informe señala la exención que sobra y la que nombra a un fantasma', 
     tests: 'A → make test',
     commit: 'abc1234 chore(hist): backfill',
   }
-  const done = { entries: [vieja('sigue-vieja'), cumple], set: new Set(), duplicates: [] }
+  const done = { entries: [old('sigue-vieja'), cumple], set: new Set(), duplicates: [] }
 
-  const avisos = AD.report({ done, adopted: ['sigue-vieja', 'ya-reescrita', 'nunca-existio'] })
+  const warnings = AD.report({ done, adopted: ['sigue-vieja', 'ya-reescrita', 'nunca-existio'] })
 
-  assert.ok(avisos.some((one) => /ya-reescrita ya cumple el contrato/.test(one)))
-  assert.ok(avisos.some((one) => /nunca-existio no está en done\//.test(one)))
-  assert.deepEqual(avisos.filter((one) => /sigue-vieja/.test(one)), [], 'la que todavía hace falta no molesta')
-  assert.match(avisos[avisos.length - 1], /3 entrada\(s\) exenta\(s\)/, 'y la cuenta se ve siempre')
+  assert.ok(warnings.some((one) => /ya-reescrita ya cumple el contrato/.test(one)))
+  assert.ok(warnings.some((one) => /nunca-existio no está en done\//.test(one)))
+  assert.deepEqual(warnings.filter((one) => /sigue-vieja/.test(one)), [], 'la que todavía hace falta no molesta')
+  assert.match(warnings[warnings.length - 1], /3 entrada\(s\) exenta\(s\)/, 'y la cuenta se ve siempre')
   assert.deepEqual(AD.report({ done, adopted: [] }), [], 'sin exenciones no hay nada que mostrar')
 })
 
@@ -87,17 +87,17 @@ test('adopt exenta la historia que llegó con el proyecto, y sólo se corre una 
 
   const adoptado = run(['adopt', planning])
   assert.equal(adoptado.status, 0, adoptado.stderr)
-  const escrito = fs.readFileSync(path.join(planning, AD.BASELINE), 'utf8')
-  assert.match(escrito, /^tarea-de-2024$/m)
-  assert.match(escrito, /^# Entradas anteriores a la adopción de Cauce \(\d{4}-\d{2}-\d{2}\)/)
+  const written = fs.readFileSync(path.join(planning, AD.BASELINE), 'utf8')
+  assert.match(written, /^tarea-de-2024$/m)
+  assert.match(written, /^# Entradas anteriores a la adopción de Cauce \(\d{4}-\d{2}-\d{2}\)/)
 
-  const verde = run(['check', planning])
-  assert.equal(verde.status, 0, verde.stderr)
-  assert.match(verde.stdout + verde.stderr, /1 entrada\(s\) exenta\(s\)/, 'la exención se ve en cada corrida')
+  const green = run(['check', planning])
+  assert.equal(green.status, 0, green.stderr)
+  assert.match(green.stdout + green.stderr, /1 entrada\(s\) exenta\(s\)/, 'la exención se ve en cada corrida')
 
-  const otraVez = run(['adopt', planning])
-  assert.equal(otraVez.status, 1, 'regenerarlo perdonaría de nuevo lo que alguien ya arregló')
-  assert.match(otraVez.stderr, /ya existe/)
+  const again = run(['adopt', planning])
+  assert.equal(again.status, 1, 'regenerarlo perdonaría de nuevo lo que alguien ya arregló')
+  assert.match(again.stderr, /ya existe/)
 })
 
 test('adopt no escribe nada cuando no hay historia que exentar', () => {
@@ -124,20 +124,20 @@ test('adopt no escribe nada cuando no hay historia que exentar', () => {
 // eso está bien.
 test('la huella distingue una lista que creció de una que se achicó', () => {
   const root = tempRoot('ops-adoption-huella-')
-  const escribir = (cuerpo) => fs.writeFileSync(path.join(root, AD.BASELINE), cuerpo)
-  const sellar = (...slugs) => `# Entradas anteriores a la adopción de Cauce (2026-09-07).\n`
+  const write = (body) => fs.writeFileSync(path.join(root, AD.BASELINE), body)
+  const seal = (...slugs) => `# Entradas anteriores a la adopción de Cauce (2026-09-07).\n`
     + `# huella: ${slugs.length} entradas · sha256:${AD.digest(slugs)}\n${slugs.join('\n')}\n`
 
-  escribir(sellar('vieja-a', 'vieja-b'))
+  write(seal('vieja-a', 'vieja-b'))
   assert.deepEqual(AD.sealWarnings(root), [], 'intacta no dice nada')
 
   // Retirar es el camino recomendado y no puede sonar a alarma.
-  escribir(sellar('vieja-a', 'vieja-b').replace('\nvieja-b', '\n#~ vieja-b'))
+  write(seal('vieja-a', 'vieja-b').replace('\nvieja-b', '\n#~ vieja-b'))
   assert.deepEqual(AD.sealWarnings(root), [], 'retirar un renglón deja la huella intacta')
   assert.deepEqual(AD.read(root), ['vieja-a'], 'y lo retirado deja de estar exento')
 
   // Lo que este caso vino a cerrar: un slug que nadie generó.
-  escribir(`${sellar('vieja-a', 'vieja-b')}nueva\n`)
+  write(`${seal('vieja-a', 'vieja-b')}nueva\n`)
   const crecio = AD.sealWarnings(root)
   assert.equal(crecio.length, 1)
   assert.match(crecio[0], /creció/)
@@ -145,15 +145,15 @@ test('la huella distingue una lista que creció de una que se achicó', () => {
 
   // Reordenar no es cambiar: la huella va sobre el conjunto y no sobre el texto, así que una
   // herramienta que ordene los renglones no puede disparar un aviso sobre algo que nadie hizo.
-  escribir(sellar('vieja-a', 'vieja-b').replace('vieja-a\nvieja-b', 'vieja-b\nvieja-a'))
+  write(seal('vieja-a', 'vieja-b').replace('vieja-a\nvieja-b', 'vieja-b\nvieja-a'))
   assert.deepEqual(AD.sealWarnings(root), [], 'reordenar deja la huella intacta')
 
   // Cambiar un slug por otro conserva la cuenta y rompe la huella igual.
-  escribir(sellar('vieja-a', 'vieja-b').replace('vieja-b', 'otra-cosa'))
+  write(seal('vieja-a', 'vieja-b').replace('vieja-b', 'otra-cosa'))
   assert.match(AD.sealWarnings(root).join(' '), /no coincide/)
 
   // La lista sin huella se avisa en vez de callarse: no hay con qué comprobarla.
-  escribir('# Entradas anteriores (2026-09-03)\nvieja-a\n')
+  write('# Entradas anteriores (2026-09-03)\nvieja-a\n')
   assert.match(AD.sealWarnings(root).join(' '), /sin huella/)
   assert.deepEqual(AD.sealWarnings(tempRoot('ops-adoption-vacio-')), [], 'sin archivo no hay nada que decir')
 })
@@ -178,18 +178,18 @@ test('la huella viaja en el archivo y check la comprueba', () => {
   fs.writeFileSync(path.join(planning, 'done', 'agregada-a-mano.md'),
     '- [x] **agregada-a-mano** — Trabajo de hoy.\n  done: a medias\n')
   fs.appendFileSync(baseline, 'agregada-a-mano\n')
-  const crecido = run(['check', planning])
-  assert.match(crecido.stdout + crecido.stderr, /la lista creció/)
-  assert.match(crecido.stdout + crecido.stderr, /agregada-a-mano/)
+  const grown = run(['check', planning])
+  assert.match(grown.stdout + grown.stderr, /la lista creció/)
+  assert.match(grown.stdout + grown.stderr, /agregada-a-mano/)
 
   // Y la salida de ese aviso, que es la mitad que importa: sin ella el aviso no tendría qué hacer.
   // Por qué `adopt` acepta sellar y sigue negándose a regenerar, en `adopt`.
   fs.writeFileSync(baseline, '# Entradas anteriores (2026-09-03)\ntarea-de-2024\nagregada-a-mano\n')
-  const sinHuella = run(['check', planning])
-  assert.match(sinHuella.stdout + sinHuella.stderr, /sin huella/)
-  const sellado = run(['adopt', planning])
-  assert.equal(sellado.status, 0, sellado.stderr)
-  assert.match(sellado.stdout, /sellado con 2 entrada\(s\)/)
+  const withoutFootprint = run(['check', planning])
+  assert.match(withoutFootprint.stdout + withoutFootprint.stderr, /sin huella/)
+  const sealed = run(['adopt', planning])
+  assert.equal(sealed.status, 0, sealed.stderr)
+  assert.match(sealed.stdout, /sellado con 2 entrada\(s\)/)
   assert.match(fs.readFileSync(baseline, 'utf8'), /^tarea-de-2024$/m, 'la lista quedó como estaba')
   assert.equal(run(['check', planning]).status, 0)
   assert.match(run(['adopt', planning]).stderr, /ya existe/, 'con huella se sigue negando')

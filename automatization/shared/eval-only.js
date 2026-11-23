@@ -32,8 +32,8 @@ function pickCases(items, only) {
 let CATALOG = 0
 
 // Sólo cuando de verdad falta algo: un aviso que sale en toda corrida se deja de leer.
-const coverageNote = (ran, sujeto) => (ran && CATALOG > ran
+const coverageNote = (ran, subject) => (ran && CATALOG > ran
   ? `> **Corrida parcial: ${ran} de ${CATALOG} casos.** Este registro no cubre los demás, que conservan `
-    + `el veredicto de su última corrida. Para saber si ${sujeto} se sostiene entero hay que componerlo `
+    + `el veredicto de su última corrida. Para saber si ${subject} se sostiene entero hay que componerlo `
     + `con ésos, diciendo de qué corrida viene cada uno.\n\n`
   : '')

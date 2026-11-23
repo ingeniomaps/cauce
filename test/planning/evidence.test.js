@@ -184,11 +184,11 @@ test('una acción humana cuya tarea no está en el backlog no rompe check ni blo
   const ST = require('../../engine/planning/state')
   const row = { task: 'no-existe', state: 'pendiente', valid: true, action: 'crear la cuenta' }
 
-  const errores = PC.validateState({
+  const errorList = PC.validateState({
     epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [] }],
     done: { entries: [], set: new Set(), duplicates: [] }, wips: [], humanActions: [row],
   })
-  assert.deepEqual(errores, [], 'check sólo juzga el Estado de la fila, nunca su tarea')
+  assert.deepEqual(errorList, [], 'check sólo juzga el Estado de la fila, nunca su tarea')
 
   const taskRow = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
   const { task, skipped } = ST.currentTask({

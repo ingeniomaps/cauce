@@ -77,21 +77,21 @@ test('upgrade conserva lo editado, actualiza el resto y lo dice', () => {
   fs.writeFileSync(guard, '#!/usr/bin/env bash\n# lo edité a mano\n')
   // Borrado y no editado: lo editado se conserva, así que para ver que el resto sí se actualiza hace
   // falta un archivo que el molde tenga que reponer.
-  const repuesto = path.join(target, 'automatization', 'hooks', 'guard-secrets.sh')
-  fs.rmSync(repuesto)
+  const restored = path.join(target, 'automatization', 'hooks', 'guard-secrets.sh')
+  fs.rmSync(restored)
 
-  const hecho = run(['upgrade', target])
-  assert.equal(hecho.status, 0, hecho.stderr)
+  const done = run(['upgrade', target])
+  assert.equal(done.status, 0, done.stderr)
   assert.match(fs.readFileSync(guard, 'utf8'), /lo edité a mano/, 'lo editado sigue intacto')
-  assert.match(hecho.stdout, /conservado automatization\/hooks\/guard-verify\.sh/)
-  assert.equal(fs.existsSync(repuesto), true, 'y lo que nadie editó sí se actualiza')
+  assert.match(done.stdout, /conservado automatization\/hooks\/guard-verify\.sh/)
+  assert.equal(fs.existsSync(restored), true, 'y lo que nadie editó sí se actualiza')
 
   // La deuda no se paga sola: sigue siendo una edición local en la corrida siguiente. Sin esto el
   // registro guardaría el digest de lo local y el próximo upgrade lo pisaría en silencio, que es
   // exactamente lo que el 001 vino a impedir.
-  const otra = run(['upgrade', target])
-  assert.equal(otra.status, 0, otra.stderr)
-  assert.match(otra.stdout, /conservado automatization\/hooks\/guard-verify\.sh/)
+  const other = run(['upgrade', target])
+  assert.equal(other.status, 0, other.stderr)
+  assert.match(other.stdout, /conservado automatization\/hooks\/guard-verify\.sh/)
   assert.match(fs.readFileSync(guard, 'utf8'), /lo edité a mano/)
 
   const forced = run(['upgrade', target, '--force'])
@@ -113,10 +113,10 @@ test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro 
   // Editar uno del toolkit sí se detiene, y la salida tiene que decir algo que realmente funcione.
   const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
   fs.writeFileSync(guard, '#!/usr/bin/env bash\n# editado\n')
-  const conservado = run(['upgrade', target])
-  assert.equal(conservado.status, 0, conservado.stderr)
-  assert.match(conservado.stdout, /agregá lo tuyo al lado con otro nombre/)
-  assert.equal(/junto a system\//.test(conservado.stdout), false, 'hooks no tiene system/: no puede sugerirlo')
+  const kept = run(['upgrade', target])
+  assert.equal(kept.status, 0, kept.stderr)
+  assert.match(kept.stdout, /agregá lo tuyo al lado con otro nombre/)
+  assert.equal(/junto a system\//.test(kept.stdout), false, 'hooks no tiene system/: no puede sugerirlo')
 
   // Descartar es legítimo; hacerlo en silencio no.
   const forced = run(['upgrade', target, '--force'])
@@ -188,12 +188,12 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   // Editado por la empresa: se conserva, y el consejo distingue de qué naturaleza es cada cosa.
   fs.appendFileSync(guard, '# mío\n')
   fs.appendFileSync(rule, '\nmía\n')
-  const conservado = run(['upgrade', target])
-  assert.equal(conservado.status, 0, conservado.stderr)
-  assert.match(conservado.stdout, /guard-verify\.sh/)
-  assert.match(conservado.stdout, /BR-OPS-001/)
-  assert.match(conservado.stdout, /mismo ID/, 'la guía para una regla es el override')
-  assert.match(conservado.stdout, /guard propio sobrevive/, 'y para el runtime, agregar al lado')
+  const kept = run(['upgrade', target])
+  assert.equal(kept.status, 0, kept.stderr)
+  assert.match(kept.stdout, /guard-verify\.sh/)
+  assert.match(kept.stdout, /BR-OPS-001/)
+  assert.match(kept.stdout, /mismo ID/, 'la guía para una regla es el override')
+  assert.match(kept.stdout, /guard propio sobrevive/, 'y para el runtime, agregar al lado')
   assert.match(fs.readFileSync(guard, 'utf8'), /# mío/, 'y lo editado sigue ahí')
 
   // Con --force se reemplazan y el registro vuelve a reflejar lo entregado.
@@ -206,9 +206,9 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   const contract = path.join(target, 'AGENTS.md')
   assert.ok(M.read(target)['AGENTS.md'], 'el archivo suelto queda registrado')
   fs.appendFileSync(contract, '\nlínea de la empresa\n')
-  const suelto = run(['upgrade', target])
-  assert.equal(suelto.status, 0, suelto.stderr)
-  assert.match(suelto.stdout, /conservado AGENTS\.md/, 'el archivo suelto se conserva como los demás')
+  const looseRun = run(['upgrade', target])
+  assert.equal(looseRun.status, 0, looseRun.stderr)
+  assert.match(looseRun.stdout, /conservado AGENTS\.md/, 'el archivo suelto se conserva como los demás')
   assert.match(fs.readFileSync(contract, 'utf8'), /línea de la empresa/)
   assert.equal(run(['upgrade', target, '--force']).status, 0)
   assert.equal(/línea de la empresa/.test(fs.readFileSync(contract, 'utf8')), false)
@@ -296,14 +296,14 @@ test('upgrade mueve los recorridos propios de teams/ a flows/', () => {
 
   // La instancia como la dejó una versión anterior: la carpeta vieja, con un recorrido propio adentro.
   discard(path.join(target, 'flows'))
-  const mio = path.join(target, 'teams', 'mi-recorrido')
-  fs.mkdirSync(mio, { recursive: true })
-  fs.writeFileSync(path.join(mio, 'team.json'), '{"slug":"mi-recorrido"}')
-  fs.writeFileSync(path.join(mio, 'WORKFLOW.md'), '# Mío\n')
+  const mine = path.join(target, 'teams', 'mi-recorrido')
+  fs.mkdirSync(mine, { recursive: true })
+  fs.writeFileSync(path.join(mine, 'team.json'), '{"slug":"mi-recorrido"}')
+  fs.writeFileSync(path.join(mine, 'WORKFLOW.md'), '# Mío\n')
   fs.writeFileSync(path.join(target, 'teams', 'README.md'), 'viejo\n')
 
-  const salida = run(['upgrade', target, '--force'])
-  assert.equal(salida.status, 0, salida.stderr)
+  const output = run(['upgrade', target, '--force'])
+  assert.equal(output.status, 0, output.stderr)
 
   assert.equal(fs.existsSync(path.join(target, 'teams')), false, 'la carpeta vieja no queda al lado')
   assert.equal(fs.readFileSync(path.join(target, 'flows', 'mi-recorrido', 'flow.json'), 'utf8'),
@@ -312,7 +312,7 @@ test('upgrade mueve los recorridos propios de teams/ a flows/', () => {
   assert.equal(fs.existsSync(path.join(target, 'flows', 'mi-recorrido', 'team.json')), false)
   // Y el README del molde se reemplaza por el nuevo, como cualquier archivo del toolkit.
   assert.match(fs.readFileSync(path.join(target, 'flows', 'README.md'), 'utf8'), /^# Recorridos/)
-  assert.match(salida.stdout, /teams\/ → flows\//, 'y la migración se dice, no ocurre en silencio')
+  assert.match(output.stdout, /teams\/ → flows\//, 'y la migración se dice, no ocurre en silencio')
 })
 
 // Adoptar Cauce en un repositorio que ya tiene contenido es `init --force`: los archivos propios que
@@ -389,10 +389,10 @@ test('upgrade repone la versión exacta en package.json', () => {
   assert.match(upgraded.stdout, /package\.json/, 'y lo dice, porque cambió un archivo del proyecto')
 
   // Lo demás del manifiesto es del repo anfitrión y no se toca.
-  const conScripts = JSON.parse(fs.readFileSync(manifest, 'utf8'))
-  conScripts.scripts = { test: 'echo acme' }
-  conScripts.devDependencies['@ingeniomaps/cauce'] = `^${version}`
-  fs.writeFileSync(manifest, `${JSON.stringify(conScripts, null, 2)}\n`)
+  const withScripts = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  withScripts.scripts = { test: 'echo acme' }
+  withScripts.devDependencies['@ingeniomaps/cauce'] = `^${version}`
+  fs.writeFileSync(manifest, `${JSON.stringify(withScripts, null, 2)}\n`)
   assert.equal(run(['upgrade', target]).status, 0)
   const final = JSON.parse(fs.readFileSync(manifest, 'utf8'))
   assert.deepEqual(final.scripts, { test: 'echo acme' })
@@ -422,9 +422,9 @@ test('lo que el proyecto escribe no vive en un archivo que upgrade reemplaza', (
 
   const workspace = path.join(target, 'organization', 'workspace.md')
   assert.ok(fs.existsSync(workspace), 'la instancia recibe dónde escribir lo suyo')
-  const molde = fs.readFileSync(workspace, 'utf8')
-  for (const seccion of ['## Mapa real', '## Integraciones y ambientes', '## Excepciones de autonomía']) {
-    assert.ok(molde.includes(seccion), `${seccion} vive donde el proyecto escribe`)
+  const template = fs.readFileSync(workspace, 'utf8')
+  for (const section of ['## Mapa real', '## Integraciones y ambientes', '## Excepciones de autonomía']) {
+    assert.ok(template.includes(section), `${section} vive donde el proyecto escribe`)
   }
 
   // Y AGENTS.md ya no pide completarlo: enlaza a donde sí corresponde.
@@ -449,9 +449,9 @@ test('upgrade crea el archivo propio que esta versión agrega, y no repone lo de
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
 
   const workspace = path.join(target, 'organization', 'workspace.md')
-  const propio = path.join(target, 'organization', 'domains.md')
+  const ownCopy = path.join(target, 'organization', 'domains.md')
   fs.rmSync(workspace)
-  fs.rmSync(propio)
+  fs.rmSync(ownCopy)
 
   const upgraded = run(['upgrade', target])
   assert.equal(upgraded.status, 0, upgraded.stderr)
@@ -460,7 +460,7 @@ test('upgrade crea el archivo propio que esta versión agrega, y no repone lo de
 
   // Lo que toda instancia ya tiene no se repone: borrar un archivo del molde que no usás es legítimo,
   // y devolvértelo en cada actualización sería la fricción que no queremos.
-  assert.equal(fs.existsSync(propio), false, 'lo que borraste a propósito sigue borrado')
+  assert.equal(fs.existsSync(ownCopy), false, 'lo que borraste a propósito sigue borrado')
 
   // Y lo que ya está no se pisa: el contenido del proyecto sobrevive a la creación.
   fs.writeFileSync(workspace, '# Nuestro\n\nTres servicios.\n')
@@ -476,15 +476,15 @@ test('check cuenta los archivos del molde congelados por una edición local', ()
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
-  const limpio = run(['check', path.join(target, 'planning')])
-  assert.equal(limpio.status, 0, limpio.stderr)
-  assert.equal(/congelados/.test(limpio.stderr), false, 'sin ediciones no hay deuda que contar')
+  const clean = run(['check', path.join(target, 'planning')])
+  assert.equal(clean.status, 0, clean.stderr)
+  assert.equal(/congelados/.test(clean.stderr), false, 'sin ediciones no hay deuda que contar')
 
   fs.appendFileSync(path.join(target, 'planning', 'PROTOCOL.md'), '\n# fase propia\n')
-  const conDeuda = run(['check', path.join(target, 'planning')])
-  assert.equal(conDeuda.status, 0, 'la deuda es una advertencia, no un error')
+  const withDebt = run(['check', path.join(target, 'planning')])
+  assert.equal(withDebt.status, 0, 'la deuda es una advertencia, no un error')
   // Las advertencias de `check` van por stderr; el ✓ del final es lo único que va por stdout.
-  assert.match(conDeuda.stderr, /1 archivo\(s\) del molde congelados/)
+  assert.match(withDebt.stderr, /1 archivo\(s\) del molde congelados/)
 
   // Y sigue contándose después de actualizar: conservar no salda la deuda, la difiere.
   assert.equal(run(['upgrade', target]).status, 0)

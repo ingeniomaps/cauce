@@ -257,9 +257,9 @@ test('actualizar sobre un lcov sin archivos se niega en vez de anunciar éxito',
 // mide la prueba de abajo, ejecutando el script.
 test('coverage.sh mide por el contenido del lcov, y sólo al registrar ignora el exit', () => {
   const script = fs.readFileSync(path.join(ROOT, 'test', 'tools', 'coverage.sh'), 'utf8')
-  assert.match(script, /\|\|\s*estado=\$\?|set \+e/, 'el exit de node --test se captura en vez de cortar')
+  assert.match(script, /\|\|\s*status=\$\?|set \+e/, 'el exit de node --test se captura en vez de cortar')
   assert.match(script, /-s\s+"\$lcov"|\[ -s /, 'y se exige que el lcov traiga contenido')
-  assert.match(script, /-z "\$registrando" \] && \[ "\$estado" -ne 0/,
+  assert.match(script, /-z "\$recording" \] && \[ "\$status" -ne 0/,
     'y fuera de --update una suite en rojo corta la corrida')
   // El `trap` se lleva los lcov al abortar, así que hoy ni siquiera queda el material para reintentar a
   // mano desde donde murió. Lo que se conserva es lo que ya se midió.

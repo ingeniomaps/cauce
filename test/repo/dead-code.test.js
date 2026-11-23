@@ -21,20 +21,20 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { tempRoot, discard } = require('../support/environment')
 
-const BARRIDO = path.resolve(__dirname, '..', 'tools', 'dead-code.js')
+const SWEEPER = path.resolve(__dirname, '..', 'tools', 'dead-code.js')
 
 // `automatization/` va aunque el caso no lo use: `ENGINE` declara los dos directorios y `walk` los recorre
 // sin preguntar si existen, así que sin él el script muere con `ENOENT` antes de barrer nada. Es conducta
 // del producto y está fijada más abajo; acá sólo se monta la forma que el script asume.
-function arbol(prefix, archivos) {
+function tree(prefix, files) {
   const root = path.join(tempRoot(prefix), 'repo')
   for (const dir of ['test/tools', 'test/unidad', 'engine', 'automatization']) {
     fs.mkdirSync(path.join(root, dir), { recursive: true })
   }
-  fs.copyFileSync(BARRIDO, path.join(root, 'test', 'tools', 'dead-code.js'))
+  fs.copyFileSync(SWEEPER, path.join(root, 'test', 'tools', 'dead-code.js'))
   fs.writeFileSync(path.join(root, 'automatization', 'nada.js'), "'use strict'\nmodule.exports = {}\n")
-  for (const [relativo, texto] of Object.entries(archivos)) {
-    fs.writeFileSync(path.join(root, relativo), texto)
+  for (const [relative, text] of Object.entries(files)) {
+    fs.writeFileSync(path.join(root, relative), text)
   }
   // Lo trackeado es el universo de `checkExports`: sin un índice de git ese barrido mide un árbol vacío.
   const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' })
@@ -44,13 +44,13 @@ function arbol(prefix, archivos) {
   git('add', 'engine', 'automatization', 'test')
   // El barrido se lanza sin `NODE_TEST_CONTEXT`, igual que hace `run()` en el arnés y por lo que `green()`
   // explica. `extra` existe para volver a ponerla: es el único caso que necesita la variable puesta.
-  const limpio = { ...process.env }
-  delete limpio.NODE_TEST_CONTEXT
-  return { root, corrida: (extra = {}) => spawnSync(process.execPath, ['test/tools/dead-code.js'],
-    { cwd: root, encoding: 'utf8', env: { ...limpio, ...extra } }) }
+  const clean = { ...process.env }
+  delete clean.NODE_TEST_CONTEXT
+  return { root, run: (extra = {}) => spawnSync(process.execPath, ['test/tools/dead-code.js'],
+    { cwd: root, encoding: 'utf8', env: { ...clean, ...extra } }) }
 }
 
-const VIVO = `'use strict'
+const LIVE = `'use strict'
 const path = require('node:path')
 function donde() { return path.join('a', 'b') }
 module.exports = { donde }
@@ -58,7 +58,7 @@ module.exports = { donde }
 
 // Que caza lo que tiene que cazar, del lado del motor: el conteo lo propone y la corrida lo confirma.
 test('un import que nadie usa en el motor se acusa con su archivo y su línea', () => {
-  const { root, corrida } = arbol('cauce-muerta-motor-', {
+  const { root, run } = tree('cauce-muerta-motor-', {
     'engine/vivo.js': `'use strict'
 const path = require('node:path')
 const sobra = require('node:url')
@@ -72,7 +72,7 @@ const { donde } = require('../../engine/vivo')
 test('anda', () => { assert.ok(donde().length > 0) })
 `,
   })
-  const done = corrida()
+  const done = run()
   discard(path.dirname(root))
   assert.equal(done.status, 1, `${done.stdout}${done.stderr}`)
   assert.match(done.stdout, /✗ 1 sin uso/)
@@ -81,8 +81,8 @@ test('anda', () => { assert.ok(donde().length > 0) })
 
 // Y del lado de las suites, que se confirma distinto: contra su propio archivo y no contra la suite entera.
 test('un import que nadie usa en una suite se acusa contra su propia corrida', () => {
-  const { root, corrida } = arbol('cauce-muerta-suite-', {
-    'engine/vivo.js': VIVO,
+  const { root, run } = tree('cauce-muerta-suite-', {
+    'engine/vivo.js': LIVE,
     'test/unidad/vivo.test.js': `'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -91,7 +91,7 @@ const sobraAqui = require('node:url')
 test('anda', () => { assert.ok(donde().length > 0) })
 `,
   })
-  const done = corrida()
+  const done = run()
   discard(path.dirname(root))
   assert.equal(done.status, 1, `${done.stdout}${done.stderr}`)
   assert.match(done.stdout, /test\/unidad\/vivo\.test\.js:5 sobraAqui/)
@@ -102,8 +102,8 @@ test('anda', () => { assert.ok(donde().length > 0) })
 // borrar código vivo. Las tres formas de «sí se usa» van juntas porque la que importa es la tercera —el
 // nombre que aparece únicamente dentro de un string—, que hasta este caso vivía sólo en un comentario.
 test('no acusa lo que sí se usa, ni siquiera si el nombre sólo aparece en un string', () => {
-  const { root, corrida } = arbol('cauce-muerta-vivos-', {
-    'engine/vivo.js': VIVO,
+  const { root, run } = tree('cauce-muerta-vivos-', {
+    'engine/vivo.js': LIVE,
     'test/unidad/vivo.test.js': `'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -120,7 +120,7 @@ test('usado una sola vez', () => { assert.equal(typeof fs.existsSync, 'function'
 test('mencionado sólo dentro de un string', () => { assert.equal('soloEnString', 'soloEnString') })
 `,
   })
-  const done = corrida()
+  const done = run()
   discard(path.dirname(root))
   assert.equal(done.status, 0, `${done.stdout}${done.stderr}`)
   assert.match(done.stdout, /✓ ninguna superficie muerta/)
@@ -129,7 +129,7 @@ test('mencionado sólo dentro de un string', () => { assert.equal('soloEnString'
 // La otra mitad, la que decide por búsqueda y no por corrida — el porqué de ese orden está en el
 // encabezado del script.
 test('un export que ningún archivo nombra se acusa', () => {
-  const { root, corrida } = arbol('cauce-muerta-export-', {
+  const { root, run } = tree('cauce-muerta-export-', {
     'engine/vivo.js': `'use strict'
 const path = require('node:path')
 function donde() { return path.join('a', 'b') }
@@ -143,7 +143,7 @@ const { donde } = require('../../engine/vivo')
 test('anda', () => { assert.ok(donde().length > 0) })
 `,
   })
-  const done = corrida()
+  const done = run()
   discard(path.dirname(root))
   assert.equal(done.status, 1, `${done.stdout}${done.stderr}`)
   assert.match(done.stdout, /engine\/vivo\.js :: nadieMeNombra/)
@@ -151,7 +151,7 @@ test('anda', () => { assert.ok(donde().length > 0) })
 
 // La diferencia entre «medí y no había» y «no medí», que el script ya distingue y nadie comprobaba.
 test('con la suite rota lo dice en vez de informar un barrido limpio', () => {
-  const { root, corrida } = arbol('cauce-muerta-ciega-', {
+  const { root, run } = tree('cauce-muerta-ciega-', {
     'engine/vivo.js': `'use strict'
 const path = require('node:path')
 function donde() { return path.join('a', 'b') }
@@ -170,7 +170,7 @@ const assert = require('node:assert/strict')
 test('falla a propósito', () => { assert.equal(1, 2) })
 `,
   })
-  const done = corrida()
+  const done = run()
   discard(path.dirname(root))
   assert.equal(done.status, 0, `${done.stdout}${done.stderr}`)
   assert.match(done.stdout, /⚠ sin confirmar: la suite no está verde/)
@@ -181,7 +181,7 @@ test('falla a propósito', () => { assert.equal(1, 2) })
 // Acá se ejerce desde afuera —lanzando el barrido con la variable puesta, que es lo que le pasa a
 // cualquier hijo de `node --test`— y se exige que siga distinguiendo una suite rota de una verde.
 test('la corrida interna no hereda el contexto del runner que la lanzó', () => {
-  const { root, corrida } = arbol('cauce-muerta-contexto-', {
+  const { root, run } = tree('cauce-muerta-contexto-', {
     'engine/vivo.js': `'use strict'
 const path = require('node:path')
 function donde() { return path.join('a', 'b') }
@@ -200,7 +200,7 @@ const assert = require('node:assert/strict')
 test('falla a propósito', () => { assert.equal(1, 2) })
 `,
   })
-  const done = corrida({ NODE_TEST_CONTEXT: 'child' })
+  const done = run({ NODE_TEST_CONTEXT: 'child' })
   discard(path.dirname(root))
   assert.match(done.stdout, /⚠ sin confirmar: la suite no está verde/)
   assert.doesNotMatch(done.stdout, /✗ 1 sin uso/)
@@ -210,8 +210,8 @@ test('falla a propósito', () => { assert.equal(1, 2) })
 // que el barrido muera en vez de barrer lo que hay, para que tolerarlo alguna vez sea una decisión y no
 // un descuido (caso 131).
 test('si falta un directorio del universo declarado, muere en vez de barrer lo que hay', () => {
-  const { root, corrida } = arbol('cauce-muerta-sin-dir-', {
-    'engine/vivo.js': VIVO,
+  const { root, run } = tree('cauce-muerta-sin-dir-', {
+    'engine/vivo.js': LIVE,
     'test/unidad/vivo.test.js': `'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -220,7 +220,7 @@ test('anda', () => { assert.ok(donde().length > 0) })
 `,
   })
   discard(path.join(root, 'automatization'))
-  const done = corrida()
+  const done = run()
   discard(path.dirname(root))
   assert.notEqual(done.status, 0, 'no se queda callado')
   assert.match(done.stderr, /ENOENT/)

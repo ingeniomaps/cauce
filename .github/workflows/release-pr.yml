@@ -109,16 +109,16 @@ jobs:
             git commit -m "chore(release): $VERSION"
           fi
           git push --force-with-lease origin "$branch"
-          cuerpo="$(printf '%s\n' \
+          body="$(printf '%s\n' \
             "Sube \`package.json\` de $BEFORE a **$VERSION**, que es lo que declara la entrada más nueva de \`CHANGELOG.md\`." \
             "" \
             "Al mergearlo se publica: \`release.yml\` corre con ese merge, publica en npm y crea el tag." \
             "" \
             "El merge es el acto humano que \`R10\` pide, y \`release.yml\` verifica que la versión no haya salido y que el CHANGELOG tenga su entrada antes de tocar npm.")"
           if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
-            gh pr edit "$branch" --title "release: $VERSION" --body "$cuerpo"
+            gh pr edit "$branch" --title "release: $VERSION" --body "$body"
           else
-            gh pr create --base main --head "$branch" --title "release: $VERSION" --body "$cuerpo"
+            gh pr create --base main --head "$branch" --title "release: $VERSION" --body "$body"
           fi
 
       # Lo que dejó a 0.42.0 y 0.43.0 publicadas sin tag: nada avisaba. Un aviso no bloquea nada y

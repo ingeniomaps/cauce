@@ -135,8 +135,8 @@ test('un equipo debe separar descubrimiento de entrega', () => {
   assert.ok(withoutPhase.some((error) => /phase debe ser/.test(error)))
 
   // Un equipo que sólo entrega no propone nada: no hay recorrido que correr.
-  const soloEntrega = manifest([stage('build', 'delivery')])
-  assert.ok(soloEntrega.some((error) => /al menos una etapa de discovery/.test(error)))
+  const onlyDelivery = manifest([stage('build', 'delivery')])
+  assert.ok(onlyDelivery.some((error) => /al menos una etapa de discovery/.test(error)))
 
   assert.deepEqual(manifest([stage('frame', 'discovery'), stage('build', 'delivery')]), [])
 })

@@ -62,7 +62,7 @@ const RUNS_A_STRING = new RegExp(`${AFTER_SEPARATOR}(?:${EXECUTORS})\\b`)
 const HEREDOC = /(^|\n)([^\n]*?)<<-?[ \t]*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\3[\s\S]*?\n[ \t]*\4[ \t]*(?=\n|$)/g
 const withoutHeredocs = (text) => text.replace(
   HEREDOC,
-  (todo, antes, apertura) => (RUNS_A_STRING.test(apertura) ? todo : `${antes}${apertura}<<HEREDOC`),
+  (whole, before, opening) => (RUNS_A_STRING.test(opening) ? whole : `${before}${opening}<<HEREDOC`),
 )
 
 const withoutQuoted = (text) => text.replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""')

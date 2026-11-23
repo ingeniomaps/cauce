@@ -233,9 +233,9 @@ test('una copia de la plantilla de épica se activa tal cual', () => {
 - [ ] **slug-de-historia** [lite] — x. (→ C1) (epic: 001) (service: ruta)
 - [ ] **slug-del-borde** [lite] — x. (→ C2) (epic: 001) (service: ruta)
 `)
-  const errores = JSON.parse(run(['check', planning, '--json']).stdout).errors
+  const errorList = JSON.parse(run(['check', planning, '--json']).stdout).errors
     .filter((error) => /epic-001|BACKLOG/.test(error))
-  assert.deepEqual(errores, [], 'la copia no arrastra nada que haya que borrar')
+  assert.deepEqual(errorList, [], 'la copia no arrastra nada que haya que borrar')
 })
 
 // Una regla de merge que nombra un archivo que el molde ya no trae no falla: deja de aplicarse, y el
@@ -311,7 +311,7 @@ test('una copia de la plantilla de ADR se valida tal cual', () => {
   fs.writeFileSync(path.join(planning, 'adr', '001-algo.md'),
     fs.readFileSync(path.join(templateText, 'adr', '000-template.md'), 'utf8'))
 
-  const errores = JSON.parse(run(['check', planning, '--json']).stdout).errors
+  const errorList = JSON.parse(run(['check', planning, '--json']).stdout).errors
     .filter((error) => /adr\//.test(error))
-  assert.deepEqual(errores, [], 'la copia nace válida y en Propuesto')
+  assert.deepEqual(errorList, [], 'la copia nace válida y en Propuesto')
 })

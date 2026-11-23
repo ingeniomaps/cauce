@@ -182,26 +182,26 @@ service: api
 
 ${line}
 `)
-  const errores = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
+  const errorList = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
     .filter((error) => /BACKLOG alta-nueva/.test(error))
 
   epic('Un alta con email nuevo devuelve 201.')
   backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)')
-  assert.deepEqual(errores(), [], 'una aceptación decidida pasa')
+  assert.deepEqual(errorList(), [], 'una aceptación decidida pasa')
 
   backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. _Aceptación: Por definir._ (service: api)')
-  assert.deepEqual(errores(),
+  assert.deepEqual(errorList(),
     ['BACKLOG alta-nueva: la aceptación no está decidida — "Por definir."'])
 
   // Heredada: la tarea no escribe aceptación y el criterio que cita todavía no decidió nada.
   epic('El umbral de reintentos: por definir.')
   backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. (→ C1) (epic: 001) (service: api)')
-  assert.deepEqual(errores(),
+  assert.deepEqual(errorList(),
     ['BACKLOG alta-nueva: la aceptación no está decidida — "El umbral de reintentos: por definir."'])
 
   // Y con el criterio resuelto, la misma tarea heredada pasa.
   epic('Un alta con email nuevo devuelve 201.')
-  assert.deepEqual(errores(), [])
+  assert.deepEqual(errorList(), [])
 
   // El mismo filtro, un nivel más arriba. La épica rechaza el marcador al activarse y la tarea lo
   // rechaza en su aceptación; el hito no rechazaba nada, así que un título sin decidir agrupaba tareas
@@ -244,22 +244,22 @@ acceptance: "201 y login"
 ## Plan aprobado
 ${plan}
 `)
-  const errores = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
+  const errorList = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
     .filter((error) => /^wip\//.test(error))
 
   wip('1. [x] Prueba roja\n2. [ ] Implementar')
-  assert.deepEqual(errores(), [], 'el plan numerado pasa')
+  assert.deepEqual(errorList(), [], 'el plan numerado pasa')
 
   wip('- [x] Prueba roja\n- [ ] Implementar')
-  assert.deepEqual(errores(),
+  assert.deepEqual(errorList(),
     [`${path.relative(planning, wipPath(planning))}: el plan de alta-email-nuevo no tiene pasos `
       + 'que el motor pueda contar; se escriben `1. [ ] paso`'])
 
   wip('El plan es obvio.')
-  assert.equal(errores().length, 1, 'un plan sin pasos tampoco sirve para retomar')
+  assert.equal(errorList().length, 1, 'un plan sin pasos tampoco sirve para retomar')
 
   fs.rmSync(wipPath(planning), { force: true })
-  assert.deepEqual(errores(), [], 'el WIP inactivo no tiene plan que contar')
+  assert.deepEqual(errorList(), [], 'el WIP inactivo no tiene plan que contar')
 })
 
 // Las dos mitades: sin nada declarado la salida queda limpia, y con algo declarado avisa sin fallar.

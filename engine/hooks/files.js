@@ -179,8 +179,8 @@ function testEvidence(input) {
   if (!content) return
   for (const raw of filesOf(input)) {
     if (!isTestFile(raw) || approved(input, raw)) continue
-    for (const [marca, nombre] of TEST_OFF) {
-      if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${why}${how(raw)}`)
+    for (const [marker, label] of TEST_OFF) {
+      if (marker.test(content)) block(`${raw} apaga una prueba con ${label}.\n${why}${how(raw)}`)
     }
   }
 }

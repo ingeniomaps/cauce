@@ -52,8 +52,8 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   // Claude ya no trae reglas nativas de lectura: frenaban también lo que la persona pedía, y el shell lo cubre
   // `secrets-shell` en los cuatro runners (caso 104). Las que entregó antes quedan declaradas como retiradas.
   assert.equal(claudeSettings.permissions, undefined, 'sin permissions.deny propias')
-  const retiradas = claude.config.retired.permissions.deny
-  for (const rule of ['Read(.env)', 'Read(.env.local)', 'Read(id_ed25519)']) assert.ok(retiradas.includes(rule), rule)
+  const retiredOnes = claude.config.retired.permissions.deny
+  for (const rule of ['Read(.env)', 'Read(.env.local)', 'Read(id_ed25519)']) assert.ok(retiredOnes.includes(rule), rule)
 
   // El hook de mensaje, en el evento propio de cada runner que tiene uno (caso 098).
   const codexHooks = JSON.parse(fs.readFileSync(path.join(root, 'codex', 'hooks.json'), 'utf8')).hooks
@@ -76,9 +76,9 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   // Un evento que `hookGroups` no conoce niega, y lo dice nombrándolo. Falla cerrado como todo el
   // puente, y es la única forma de enterarse: un manifiesto que registre un evento mal escrito deja al
   // agente sin herramientas, que es el modo de fallo que este archivo ya vivió dos veces.
-  const raro = evaluate('evento-que-no-existe', payload('git status'))
-  assert.equal(raro.decision, 'deny')
-  assert.match(raro.reason, /Evento Antigravity desconocido: evento-que-no-existe/)
+  const odd = evaluate('evento-que-no-existe', payload('git status'))
+  assert.equal(odd.decision, 'deny')
+  assert.match(odd.reason, /Evento Antigravity desconocido: evento-que-no-existe/)
 
   // Una llamada que el puente no sabe describir no se autoriza: con otro nombre de campo el mismo push
   // forzado llegaba vacío a los guards y pasaba (caso 200). El motivo nombra lo que sí llegó.
@@ -437,10 +437,10 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
 // que acaba de decir «al día» es lo único que esa persona tiene para saber si se equivocó ella o el toolkit.
 test('en sidecar el install dice dónde quedaron los workflows, no sólo dónde la configuración', () => {
   const { workspace, target, runCli } = installedProject('cauce-sidecar-workflows-')
-  const hecho = runCli(['automation', 'install', target, 'claude'])
-  assert.equal(hecho.status, 0)
+  const done = runCli(['automation', 'install', target, 'claude'])
+  assert.equal(done.status, 0)
   const landed = path.join(workspace, '.claude', 'workflows')
   assert.ok(fs.existsSync(path.join(landed, 'autobuild.js')), 'quedaron en la carpeta de la compañía')
-  assert.ok(hecho.stdout.includes(landed),
+  assert.ok(done.stdout.includes(landed),
     'y la salida los nombra desde la raíz en la que el runner tiene que estar parado para verlos')
 })

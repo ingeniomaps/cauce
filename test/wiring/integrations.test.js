@@ -19,11 +19,11 @@ const { fetchItems, validateConfig } = require('../../engine/integrations/provid
 
 // Las variables de entorno son del proceso, no del test: si una aserción falla en el medio, la que
 // quedó puesta cambia el resultado de los que siguen y el fallo real aparece disfrazado en otro caso.
-async function withEnv(vars, cuerpo) {
+async function withEnv(vars, body) {
   const previous = Object.fromEntries(Object.keys(vars).map((key) => [key, process.env[key]]))
   Object.assign(process.env, vars)
   try {
-    return await cuerpo()
+    return await body()
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key]
@@ -360,23 +360,23 @@ El operador recibe una alerta observable.
 // pasaba, así que ese adaptador habría creído poder emitir advertencias y nadie lo habría notado —nada
 // falla cuando se ignora un argumento—. Se contrasta contra la declaración real del único que hay.
 test('el README de integraciones declara las firmas que el adaptador tiene', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const readme = fs.readFileSync(path.join(raiz, 'integrations', 'README.md'), 'utf8')
-  const fuente = fs.readFileSync(path.join(raiz, 'engine', 'integrations', 'providers', 'jira.js'), 'utf8')
+  const rootDir = path.resolve(__dirname, '..', '..')
+  const readme = fs.readFileSync(path.join(rootDir, 'integrations', 'README.md'), 'utf8')
+  const sourceText = fs.readFileSync(path.join(rootDir, 'engine', 'integrations', 'providers', 'jira.js'), 'utf8')
 
-  for (const nombre of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
-    const declarada = fuente.match(new RegExp(`(?:async )?function ${nombre}\\(([^)]*)\\)`))
-    assert.ok(declarada, `${nombre} se declara en el adaptador`)
+  for (const label of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
+    const declared = sourceText.match(new RegExp(`(?:async )?function ${label}\\(([^)]*)\\)`))
+    assert.ok(declared, `${label} se declara en el adaptador`)
     // La firma del README omite los valores por defecto: documenta qué recibe, no cómo se inicializa.
-    const params = declarada[1].split(',').map((p) => p.split('=')[0].trim()).filter(Boolean)
-    assert.ok(readme.includes(`\`${nombre}(${params.join(', ')})\``),
-      `el README declara ${nombre}(${params.join(', ')})`)
+    const params = declared[1].split(',').map((p) => p.split('=')[0].trim()).filter(Boolean)
+    assert.ok(readme.includes(`\`${label}(${params.join(', ')})\``),
+      `el README declara ${label}(${params.join(', ')})`)
   }
 
   // Y que el adaptador siga exportando las tres: el contrato no es sólo la firma.
   const jira = require('../../engine/integrations/providers/jira')
-  for (const nombre of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
-    assert.equal(typeof jira[nombre], 'function', `el adaptador exporta ${nombre}`)
+  for (const label of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
+    assert.equal(typeof jira[label], 'function', `el adaptador exporta ${label}`)
   }
   assert.equal(jira.contract, 1, 'el de Cauce declara la versión que exige a los de la empresa')
 })
@@ -384,11 +384,11 @@ test('el README de integraciones declara las firmas que el adaptador tiene', () 
 // El README de arriba no viaja en el paquete; el que llega a cada instancia es el del molde, y es el que
 // lee quien escribe un adaptador propio (caso 091).
 test('el README de integraciones que viaja documenta el contrato con su versión', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const readme = fs.readFileSync(path.join(raiz, 'template', 'integrations', 'README.md'), 'utf8')
-  for (const firma of ['`contract: 1`', '`validateConfig(config, errors)`', '`fetchItems(config, options)`',
+  const rootDir = path.resolve(__dirname, '..', '..')
+  const readme = fs.readFileSync(path.join(rootDir, 'template', 'integrations', 'README.md'), 'utf8')
+  for (const signature of ['`contract: 1`', '`validateConfig(config, errors)`', '`fetchItems(config, options)`',
     '`normalizeFixture(payload, config)`', '"adapter": "./adapter.js"']) {
-    assert.ok(readme.includes(firma), `el README del molde declara ${firma}`)
+    assert.ok(readme.includes(signature), `el README del molde declara ${signature}`)
   }
 })
 

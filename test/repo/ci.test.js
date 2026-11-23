@@ -16,24 +16,25 @@ const path = require('node:path')
 // que revisar que los inputs que pasábamos siguieran ahí no podía verlo. Lo que se rompe es un default.
 test('ningún setup-node deja encendido el caché que este repo no puede alimentar', () => {
   const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
-  const usos = []
+  const uses = []
   for (const name of fs.readdirSync(dir).filter((one) => one.endsWith('.yml'))) {
-    const lineas = fs.readFileSync(path.join(dir, name), 'utf8').split('\n')
-    lineas.forEach((linea, i) => {
-      if (!/uses:\s*actions\/setup-node@/.test(linea)) return
+    const yamlLines = fs.readFileSync(path.join(dir, name), 'utf8').split('\n')
+    yamlLines.forEach((line, i) => {
+      if (!/uses:\s*actions\/setup-node@/.test(line)) return
       // El bloque `with:` de ese paso: hasta la próxima línea con menos sangría.
-      const bloque = []
-      for (let j = i + 1; j < lineas.length && (!lineas[j].trim() || lineas[j].startsWith('        ')); j += 1) {
-        bloque.push(lineas[j])
+      const stepBlock = []
+      for (let j = i + 1; j < yamlLines.length
+        && (!yamlLines[j].trim() || yamlLines[j].startsWith('        ')); j += 1) {
+        stepBlock.push(yamlLines[j])
       }
-      usos.push({
+      uses.push({
         at: `${name}:${i + 1}`,
-        apagado: bloque.some((one) => /package-manager-cache:\s*false/.test(one)),
+        apagado: stepBlock.some((one) => /package-manager-cache:\s*false/.test(one)),
       })
     })
   }
-  assert.ok(usos.length, 'se encontró al menos un setup-node')
-  assert.deepEqual(usos.filter((one) => !one.apagado).map((one) => one.at), [],
+  assert.ok(uses.length, 'se encontró al menos un setup-node')
+  assert.deepEqual(uses.filter((one) => !one.apagado).map((one) => one.at), [],
     'un setup-node sin package-manager-cache: false busca un lock file que no existe')
 })
 
@@ -73,10 +74,10 @@ test('quien corre el agente no puede escribir, y quien escribe no tiene la crede
 // simplificación del grupo a `ci-${github.ref}` se ve, en vez de esperar a la próxima tanda semanal.
 test('en `main` cada commit tiene su propio grupo de concurrencia', () => {
   const ci = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'ci.yml'), 'utf8')
-  const grupo = ci.match(/^concurrency:\n\s*group:\s*(.+)$/m)
-  assert.ok(grupo, 'ci.yml declara un grupo de concurrencia')
-  assert.match(grupo[1], /github\.sha/, 'sin el sha, dos merges seguidos comparten grupo y uno pierde su corrida')
-  assert.match(grupo[1], /refs\/heads\/main/, 'y sólo en main: en una rama, cancelar la vieja es lo que se quiere')
+  const group = ci.match(/^concurrency:\n\s*group:\s*(.+)$/m)
+  assert.ok(group, 'ci.yml declara un grupo de concurrencia')
+  assert.match(group[1], /github\.sha/, 'sin el sha, dos merges seguidos comparten grupo y uno pierde su corrida')
+  assert.match(group[1], /refs\/heads\/main/, 'y sólo en main: en una rama, cancelar la vieja es lo que se quiere')
 })
 
 test('las acciones están fijadas por SHA, no por tag', () => {
@@ -98,14 +99,14 @@ function runBlocks(source) {
   for (let i = 0; i < lines.length; i += 1) {
     const found = lines[i].match(/^(\s*)run:\s*(.*)$/)
     if (!found) continue
-    const [, sangria, resto] = found
-    if (!/^[|>]/.test(resto)) { bloques.push(resto); continue }
-    const cuerpo = []
+    const [, sangria, rest] = found
+    if (!/^[|>]/.test(rest)) { bloques.push(rest); continue }
+    const body = []
     for (let j = i + 1; j < lines.length; j += 1) {
       if (lines[j].trim() && !lines[j].startsWith(`${sangria} `)) break
-      cuerpo.push(lines[j])
+      body.push(lines[j])
     }
-    bloques.push(cuerpo.join('\n'))
+    bloques.push(body.join('\n'))
   }
   return bloques
 }
@@ -120,17 +121,17 @@ function runBlocks(source) {
 // convención sino algo que la sostuviera: se cumple sola hasta el día que alguien la rompe.
 test('ningún `run:` interpola una expresión: lo de afuera entra por `env:`', () => {
   const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
-  let vistos = 0
+  let seen = 0
   for (const name of fs.readdirSync(dir)) {
-    for (const cuerpo of runBlocks(fs.readFileSync(path.join(dir, name), 'utf8'))) {
-      vistos += 1
-      assert.equal(/\$\{\{/.test(cuerpo), false,
+    for (const body of runBlocks(fs.readFileSync(path.join(dir, name), 'utf8'))) {
+      seen += 1
+      assert.equal(/\$\{\{/.test(body), false,
         `${name}: un run: interpola una expresión en vez de recibirla por env:`)
     }
   }
   // Sin esto la prueba pasa igual el día que `runBlocks` deje de encontrar nada, que es la única forma
   // de que una aserción sobre ausencias mienta.
-  assert.ok(vistos >= 25, `se esperaban los run: de los cuatro workflows y aparecieron ${vistos}`)
+  assert.ok(seen >= 25, `se esperaban los run: de los cuatro workflows y aparecieron ${seen}`)
 })
 
 // Las dos garantías se aserían sobre `agent-learning.yml` y no sobre los otros tres, que las cumplen
@@ -143,8 +144,8 @@ test('todo workflow nace sin poder escribir y ningún job hereda las seis horas'
   let jobs = 0
   for (const name of fs.readdirSync(dir)) {
     const source = fs.readFileSync(path.join(dir, name), 'utf8')
-    const cabecera = source.slice(0, source.indexOf('jobs:'))
-    assert.match(cabecera, /^permissions:\n  contents: read$/m, `${name}: el default no es el mínimo`)
+    const header = source.slice(0, source.indexOf('jobs:'))
+    assert.match(header, /^permissions:\n  contents: read$/m, `${name}: el default no es el mínimo`)
     for (const block of source.split(/\n  (?=[a-z][a-z-]*:\n)/)) {
       if (!/\n    runs-on:/.test(block)) continue
       jobs += 1

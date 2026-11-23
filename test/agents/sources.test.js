@@ -164,8 +164,8 @@ test('una fuente declara su tipo dentro del vocabulario cerrado', () => {
 
   for (const tier of learning.SOURCE_TIERS) {
     write(tier)
-    const errores = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
-    assert.deepEqual(errores, [], `${tier} es del vocabulario y no debería objetarse`)
+    const errorList = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
+    assert.deepEqual(errorList, [], `${tier} es del vocabulario y no debería objetarse`)
   }
 
   write('primary-standard')

@@ -364,10 +364,10 @@ test('el motor se encuentra cuando la instancia vive dentro del repo que lo inst
   // tienen que buscar en los mismos lugares está junto a `packageDir` (engine/core/ownership.js). Acá se
   // mide sobre el mismo target que el motor, en la misma prueba, porque separarlas es lo que dejó pasar
   // un año de verdes sobre medio layout (caso 171).
-  const cargos = run(['agents', 'list', target, '--json'])
-  assert.equal(cargos.status, 0, cargos.stderr)
-  assert.ok(JSON.parse(cargos.stdout).length >= MIN_ROLES,
-    `el catálogo llegó vacío con el paquete arriba: ${cargos.stdout.slice(0, 80)}`)
+  const roles = run(['agents', 'list', target, '--json'])
+  assert.equal(roles.status, 0, roles.stderr)
+  assert.ok(JSON.parse(roles.stdout).length >= MIN_ROLES,
+    `el catálogo llegó vacío con el paquete arriba: ${roles.stdout.slice(0, 80)}`)
   // Los recorridos salen del mismo `packageDir`, y se piden desde el target porque `flow list` resuelve
   // su raíz por `opsRoot()` y no por un posicional.
   assert.match(run(['flow', 'list'], target).stdout, /\w/, 'y los recorridos igual')

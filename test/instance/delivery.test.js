@@ -58,13 +58,13 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
     .stdout.trim().split('\n').filter(Boolean).map((file) => file.replace(/^template\//, ''))
   assert.ok(tracked.length > 40, 'el recorrido tiene que ver el molde entero')
 
-  const delSistema = (relative) => O.SYSTEM_FILES.includes(relative)
+  const fromSystem = (relative) => O.SYSTEM_FILES.includes(relative)
     || O.SYSTEM_COLLECTIONS.some((collection) => relative.startsWith(`${collection}/system/`))
     || O.RUNTIME_PATHS.some((base) => relative.startsWith(`${base}/`))
 
-  const propios = tracked.filter((file) => !delSistema(file)).sort()
-  const declarados = Object.keys(O.TEMPLATE_OWN).sort()
-  assert.deepEqual(propios, declarados,
+  const propios = tracked.filter((file) => !fromSystem(file)).sort()
+  const declaredOnes = Object.keys(O.TEMPLATE_OWN).sort()
+  assert.deepEqual(propios, declaredOnes,
     'un archivo propio del molde sin declarar no llega a quien actualiza: decidí si toda instancia ya '
     + 'lo tiene (init) o si esta versión lo agrega (upgrade)')
 
@@ -74,15 +74,15 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
 
   // Y lo que el molde nombra como ruta tiene que existir en el molde: es por donde entró el caso, con
   // un `AGENTS.md` que apuntaba a un archivo que la instancia no tenía.
-  const enElMolde = new Set(tracked)
-  const rotas = []
+  const inTemplate = new Set(tracked)
+  const broken = []
   for (const file of tracked.filter((name) => name.endsWith('.md'))) {
     const text = fs.readFileSync(path.join(root, 'template', file), 'utf8')
     for (const hit of text.matchAll(/`(organization\/[a-z][a-zA-Z0-9._-]*\.md)`/g)) {
-      if (!enElMolde.has(hit[1])) rotas.push(`${file}: nombra ${hit[1]}, que el molde no trae`)
+      if (!inTemplate.has(hit[1])) broken.push(`${file}: nombra ${hit[1]}, que el molde no trae`)
     }
   }
-  assert.deepEqual(rotas, [])
+  assert.deepEqual(broken, [])
 })
 
 // El Makefile es la superficie que el dev escribe a mano, y un rename del CLI no lo alcanza solo. Pasó
@@ -97,17 +97,17 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
   const makefile = fs.readFileSync(path.join(root, 'template', 'Makefile'), 'utf8')
   const help = spawnSync(process.execPath, [path.join(root, 'engine', 'cli', 'ops.js'), '--help'],
     { encoding: 'utf8' })
-  const acepta = new Set((`${help.stdout}${help.stderr}`.match(/^ {2}ops ([a-z-]+)/gm) || [])
+  const accepts = new Set((`${help.stdout}${help.stderr}`.match(/^ {2}ops ([a-z-]+)/gm) || [])
     .map((line) => line.trim().split(' ')[1]))
-  assert.ok(acepta.size > 8, 'el uso del CLI tiene que listar sus comandos')
+  assert.ok(accepts.size > 8, 'el uso del CLI tiene que listar sus comandos')
 
   const rotos = []
-  let mirados = 0
+  let looked = 0
   for (const hit of makefile.matchAll(/ops\.js ([a-z-]+)/g)) {
-    mirados += 1
-    if (!acepta.has(hit[1])) rotos.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
+    looked += 1
+    if (!accepts.has(hit[1])) rotos.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
   }
-  assert.ok(mirados > 10, 'el molde envuelve varios comandos y hay que verlos todos')
+  assert.ok(looked > 10, 'el molde envuelve varios comandos y hay que verlos todos')
   assert.deepEqual([...new Set(rotos)], [], `atajos rotos:\n  ${[...new Set(rotos)].join('\n  ')}`)
 })
 
@@ -121,25 +121,25 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
 test('ningún workflow manda a escribir en una sección que el molde no tiene', () => {
   const root = path.resolve(__dirname, '..', '..')
   const dir = path.join(root, 'automatization', 'workflows')
-  const seccionesDe = (file) => {
+  const sectionsOf = (file) => {
     try {
       return new Set((fs.readFileSync(path.join(root, 'template', file), 'utf8')
         .match(/^##\s+(.+)$/gm) || []).map((line) => line.replace(/^##\s+/, '').trim()))
     } catch { return null }
   }
 
-  const perdidas = []
-  let miradas = 0
+  const lost = []
+  let checked = 0
   for (const name of fs.readdirSync(dir).filter((file) => file.endsWith('.js'))) {
     const text = fs.readFileSync(path.join(dir, name), 'utf8')
     // `"## X" de ${ALGO}/ruta.md` y `${ALGO}/ruta.md … "## X"`: las dos formas que usan los recorridos.
     for (const hit of text.matchAll(/"##\s+([^"]+)"\s+de\s+\$\{[A-Z]+\}\/([a-zA-Z0-9/_.-]+\.md)/g)) {
-      const [, seccion, ruta] = hit
-      const secciones = seccionesDe(ruta) || seccionesDe(path.join('organization', ruta))
-      if (!secciones) continue
-      miradas += 1
-      if (!secciones.has(seccion)) perdidas.push(`${name}: manda a "## ${seccion}" de ${ruta}, que no la tiene`)
+      const [, section, route] = hit
+      const sections = sectionsOf(route) || sectionsOf(path.join('organization', route))
+      if (!sections) continue
+      checked += 1
+      if (!sections.has(section)) lost.push(`${name}: manda a "## ${section}" de ${route}, que no la tiene`)
     }
   }
-  assert.deepEqual(perdidas, [], `secciones que el molde no tiene:\n  ${perdidas.join('\n  ')}`)
+  assert.deepEqual(lost, [], `secciones que el molde no tiene:\n  ${lost.join('\n  ')}`)
 })

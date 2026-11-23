@@ -12,10 +12,10 @@ const fs = require('node:fs')
 const path = require('node:path')
 const RC = require('../../engine/planning/recurring')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
 // El mínimo que `status` necesita, sin pasar por el archivo: una fila y lo que DONE haya cerrado.
-function fila(extra = {}) {
+function tableRow(extra = {}) {
   return {
     id: 'deps',
     cadence: 'mensual',
@@ -28,42 +28,42 @@ function fila(extra = {}) {
 const done = (...slugs) => ({ entries: slugs.map((slug) => ({ slug })), set: new Set(slugs) })
 
 test('el vencimiento rueda desde el último cierre y no desde el ancla', () => {
-  const rows = [fila()]
-  const sinCerrar = RC.status({ rows, postponements: [], done: done(), today: '2026-01-01' })
-  assert.equal(sinCerrar[0].due, '2026-01-01', 'sin ninguna vuelta cerrada manda la fecha declarada')
-  assert.equal(sinCerrar[0].last, '')
+  const rows = [tableRow()]
+  const unclosedOne = RC.status({ rows, postponements: [], done: done(), today: '2026-01-01' })
+  assert.equal(unclosedOne[0].due, '2026-01-01', 'sin ninguna vuelta cerrada manda la fecha declarada')
+  assert.equal(unclosedOne[0].last, '')
 
   // Y una vuelta cerrada tarde corre la próxima: lo contrario —contar desde el ancla— dejaría debiendo
   // las vueltas que no se hicieron, que es justo lo que un vencimiento rodante no hace.
-  const cerrada = RC.status({
+  const closedTask = RC.status({
     rows, postponements: [], done: done('deps-2026-05'), today: '2026-06-02',
   })
-  assert.equal(cerrada[0].last, '2026-05')
-  assert.equal(cerrada[0].due, '2026-06-01')
-  assert.equal(cerrada[0].overdueDays, 1)
-  assert.equal(cerrada[0].overdue, true)
+  assert.equal(closedTask[0].last, '2026-05')
+  assert.equal(closedTask[0].due, '2026-06-01')
+  assert.equal(closedTask[0].overdueDays, 1)
+  assert.equal(closedTask[0].overdue, true)
 
   // La más nueva manda, no la última escrita: DONE se lee entero, incluido lo archivado.
-  const varias = RC.status({
+  const several = RC.status({
     rows,
     postponements: [],
     // Y el slug de otra cosa no cuenta como vuelta de ésta, aunque empiece parecido.
     done: done('deps-2026-07', 'deps-2026-03', 'deps-web-2026-09', 'otra-2026-08'),
     today: '2026-07-15',
   })
-  assert.equal(varias[0].last, '2026-07')
-  assert.equal(varias[0].due, '2026-08-01')
-  assert.equal(varias[0].overdue, false)
+  assert.equal(several[0].last, '2026-07')
+  assert.equal(several[0].due, '2026-08-01')
+  assert.equal(several[0].overdue, false)
 
   // El día del vencimiento ya cuenta como vencida, y se dice distinto: «hace 0 días» se lee como un error.
-  const hoy = RC.status({ rows, postponements: [], done: done('deps-2026-07'), today: '2026-08-01' })
-  assert.equal(hoy[0].overdue, true)
-  assert.equal(hoy[0].overdueDays, 0)
-  assert.match(RC.warnings(hoy)[0], /vence hoy/)
+  const todayDate = RC.status({ rows, postponements: [], done: done('deps-2026-07'), today: '2026-08-01' })
+  assert.equal(todayDate[0].overdue, true)
+  assert.equal(todayDate[0].overdueDays, 0)
+  assert.match(RC.warnings(todayDate)[0], /vence hoy/)
 })
 
 test('una postergación compra un período, y la anterior al cierre ya no cuenta', () => {
-  const rows = [fila()]
+  const rows = [tableRow()]
   const postponements = [
     { id: 'deps', date: '2026-04-10', reason: 'x' },
     { id: 'deps', date: '2026-06-10', reason: 'y' },
@@ -76,26 +76,26 @@ test('una postergación compra un período, y la anterior al cierre ya no cuenta
   assert.equal(state[0].due, '2026-07-01')
   assert.equal(state[0].overdue, false)
 
-  const tres = RC.status({
+  const three = RC.status({
     rows,
     postponements: ['2026-01-05', '2026-02-05', '2026-03-05'].map((date) => ({ id: 'deps', date, reason: 'x' })),
     done: done(),
     today: '2026-04-10',
   })
-  assert.equal(tres[0].postponed, 3)
-  assert.match(RC.warnings(tres).join('\n'), /postergada 3 veces/, 'tres seguidas se avisan')
+  assert.equal(three[0].postponed, 3)
+  assert.match(RC.warnings(three).join('\n'), /postergada 3 veces/, 'tres seguidas se avisan')
 })
 
 test('check rechaza la fila que no se puede leer y la que emitiría una tarea inválida', () => {
   const errors = RC.validate({
     exists: true,
     rows: [
-      fila({ cadence: 'semanal' }),
-      fila({ id: 'Deps Mal' }),
-      fila({ id: 'accesos', since: '2026-1-1' }),
-      fila({ id: 'costos', task: 'Mirar el gasto. (service: .)' }),
-      fila({ id: 'inbox', task: 'Recorrerlo. _Aceptación: nada queda sin decidir._' }),
-      fila({ id: 'deps' }),
+      tableRow({ cadence: 'semanal' }),
+      tableRow({ id: 'Deps Mal' }),
+      tableRow({ id: 'accesos', since: '2026-1-1' }),
+      tableRow({ id: 'costos', task: 'Mirar el gasto. (service: .)' }),
+      tableRow({ id: 'inbox', task: 'Recorrerlo. _Aceptación: nada queda sin decidir._' }),
+      tableRow({ id: 'deps' }),
     ],
     postponements: [
       { id: '', date: '', reason: '', raw: '- me olvidé de deps' },
@@ -123,8 +123,8 @@ test('check rechaza la fila que no se puede leer y la que emitiría una tarea in
 // con la tarea ya pegada.
 test('la línea que se promueve la acepta el check de BACKLOG', () => {
   const planning = path.join(tempRoot('cauce-recurring-'), 'planning')
-  fs.cpSync(MOLDE, planning, { recursive: true })
-  const row = fila()
+  fs.cpSync(TEMPLATE_PLANNING, planning, { recursive: true })
+  const row = tableRow()
   const line = RC.taskLine(row, '2026-09')
   fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido\n
 ## Hito mantenimiento — Mantenimiento de setiembre\n\n${line}\n`)
@@ -145,7 +145,7 @@ test('la línea que se promueve la acepta el check de BACKLOG', () => {
 // una viñeta que no encaja se cuenta como fila rota, que es lo único que hace visible el error.
 test('las dos listas se leen de su sección, y la viñeta que no encaja se ve', () => {
   const planning = path.join(tempRoot('cauce-recurring-lee-'), 'planning')
-  fs.cpSync(MOLDE, planning, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, planning, { recursive: true })
   const file = path.join(planning, RC.FILE)
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
     .replace(/\|---\|---\|---\|---\|\n/,
@@ -197,7 +197,7 @@ test('una instancia que ya existe recibe el contrato al actualizar', () => {
 
 test('sin el archivo, ni check ni context dicen una palabra', () => {
   const planning = path.join(tempRoot('cauce-recurring-mudo-'), 'planning')
-  fs.cpSync(MOLDE, planning, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, planning, { recursive: true })
   fs.rmSync(path.join(planning, RC.FILE))
 
   const check = JSON.parse(run(['check', planning, '--json']).stdout)
@@ -209,7 +209,7 @@ test('sin el archivo, ni check ni context dicen una palabra', () => {
 
 test('context nombra la recurrencia vencida, y sólo la vencida', () => {
   const planning = path.join(tempRoot('cauce-recurring-due-'), 'planning')
-  fs.cpSync(MOLDE, planning, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, planning, { recursive: true })
   const file = path.join(planning, RC.FILE)
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(
     /\|---\|---\|---\|---\|\n/,
@@ -249,7 +249,7 @@ test('una instancia recién creada trae la recurrencia del INBOX activa y sin ve
 test('cada fila de ejemplo del molde, descomentada, deja check sin errores', () => {
   for (const id of ['deps', 'accesos', 'costos']) {
     const planning = path.join(tempRoot(`cauce-recurring-ejemplo-${id}-`), 'planning')
-    fs.cpSync(MOLDE, planning, { recursive: true })
+    fs.cpSync(TEMPLATE_PLANNING, planning, { recursive: true })
     const file = path.join(planning, RC.FILE)
     const text = fs.readFileSync(file, 'utf8')
     const row = text.match(new RegExp(`^\\| ${id} .*$`, 'm'))[0]
