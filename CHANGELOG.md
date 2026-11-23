@@ -117,6 +117,13 @@ diseño — eso vive en el commit y en el código.
   `npx dotenv -e .env`, `tar`— ahora frena y se aprueba en el chat. No hay nada que hacer en la instancia: llega con
   `upgrade`.
 
+- **`secrets-shell` lee el comando respetando las comillas y mira lo que corre otro shell.** Un `;` o un `|` entre
+  comillas partía el comando, así que `grep -E '^(TOKEN|KEY)=' .env` o `python3 -c "import os; print(open('.env').read())"`
+  pasaban, y el script de un `docker exec … sh -c '. ./.env; …'` o de un `ssh host` se leía sólo por accidente. Ahora el
+  valor de `-c` o `--command`, lo que sigue a `eval` y el comando remoto de `ssh` se leen como comandos; `\cat`, `"cat"`
+  y `git show HEAD:.env` también frenan. Sobre 101.218 comandos reales de sesiones frena 132 lecturas de una
+  credencial que pasaban, y deja de frenar 31 que no leían nada: texto con `.env` adentro o código como `x.key`.
+
 - **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
   no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
   Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
