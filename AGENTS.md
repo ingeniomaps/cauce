@@ -534,8 +534,15 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   `esArchivoCompartido`— cuesta más que cualquiera de los dos idiomas: obliga a adivinar en cuál está
   escrito el siguiente. **Al escribir código nuevo se nombra en inglés desde el principio**, y eso
   incluye mover o partir un archivo: los identificadores viajan tal cual y la deuda termina repartida
-  en más archivos que antes. El repositorio todavía tiene nombres en español anteriores a esta regla;
-  se traducen cuando se toca el archivo, no en un barrido aparte.
+  en más archivos que antes.
+
+  **La regla tiene puerta desde el 2026-11-23**: `test/repo/language.test.js` falla con cualquier nombre
+  en español del JavaScript, el shell y los `run:` de los workflows. Antes no la tenía, y entre 0.90.0 y
+  0.123.1 se acumularon unos 670 nombres que hubo que traducir de una vez. La prueba detecta por una lista
+  de palabras y por la forma, así que la palabra nueva que no está en la lista pasa: se agrega a
+  `test/support/spanish-words.txt` cuando aparece. El vocabulario que el código nombra igual que el
+  documento que escribe se declara en la propia prueba, con su razón. No mira claves ni propiedades, ni
+  los fixtures de los casos de evaluación.
 
   Traducir uno se revisa **leyendo el diff, no corriendo la puerta**, porque un rename entra en tres
   lugares donde no debe y ninguno rompe una prueba: la prosa española dentro de un template literal,
