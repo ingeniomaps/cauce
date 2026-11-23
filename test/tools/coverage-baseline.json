@@ -679,6 +679,11 @@
     "branches": 96,
     "functions": 100
   },
+  "engine/hooks/line-command.js": {
+    "lines": 100,
+    "branches": 94,
+    "functions": 100
+  },
   "engine/hooks/unrecorded.js": {
     "lines": 100,
     "branches": 100,

@@ -125,6 +125,9 @@ test('secrets-shell deja correr la copia y la comparación, y sigue frenando lee
   const H = require('../support/hooks-harness')
   const { executeAll } = require('../../engine/hooks/run')
   const root = H.pushRoot('cauce-line-env-guard-')
+  // Declarada, como la deja quien la pidió: armar una línea nueva la frena `line-command` (caso 551), no esto.
+  const config = path.join(root, 'ops.config.json')
+  fs.writeFileSync(config, JSON.stringify({ ...JSON.parse(fs.readFileSync(config, 'utf8')), lines: { pagos: [] } }))
   const shell = (command) => ({ cwd: root, hook_event_name: 'PreToolUse', permission_mode: 'dontAsk',
     tool_input: { command } })
   for (const command of ['node tools/ops.js line . pagos --env', 'npm run ops -- lines env . pagos --apply']) {

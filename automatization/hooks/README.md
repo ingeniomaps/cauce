@@ -126,7 +126,7 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 
 | Grupo | Guards | Wrapper |
 |---|---|---|
-| `pre-shell` | destructive, git-add, dependencies, governance, live-commit, ai-signature, comments, verify, shell-boundary, secrets-shell, test-evidence-shell, ops-config-shell, runtime-shell, test-workers | `guard-shell.sh` |
+| `pre-shell` | destructive, git-add, dependencies, governance, live-commit, ai-signature, comments, verify, shell-boundary, secrets-shell, test-evidence-shell, ops-config-shell, runtime-shell, line-command, test-workers | `guard-shell.sh` |
 | `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence, plan-first, ops-config, runtime | `guard-files.sh` |
 | `pre-read` | secrets-read | `guard-secrets-read.sh` |
 | `pre-mcp` | jira-adf, mcp-writes | `guard-mcp.sh` |

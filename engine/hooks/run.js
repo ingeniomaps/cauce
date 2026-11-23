@@ -21,6 +21,7 @@ const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell, restoresConfig } = require('./ops-config')
 const { runtimeWrites, runtimeShell } = require('./runtime')
+const { lineCommand } = require('./line-command')
 const { jiraAdf } = require('./jira')
 const { mcpWrites, mcpGranted } = require('./mcp-writes')
 const { testWorkers } = require('./workers')
@@ -86,6 +87,7 @@ const guards = {
   engine: files.engineWrites,
   runtime: runtimeWrites,
   'runtime-shell': runtimeShell,
+  'line-command': lineCommand,
   migrations,
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
@@ -106,7 +108,8 @@ const guards = {
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'ai-signature', 'comments',
     'verify',
-    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'runtime-shell', 'test-workers'],
+    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'runtime-shell', 'line-command',
+    'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config', 'runtime'],
   'pre-read': ['secrets-read'],
@@ -242,6 +245,12 @@ const hookMetadata = [
     event: 'PreToolUse · shell',
     purpose: 'Lo mismo que runtime, por shell: escribir, borrar, mover o cambiarle el permiso a esos archivos, '
       + 'también por su carpeta, un glob o git.',
+  },
+  {
+    name: 'line-command',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena armar una línea de trabajo, sumarle un repositorio y su `lines join` o `migrate --apply` hasta '
+      + 'que la persona nombre la línea en el chat o lo confirme en el turno.',
   },
   {
     name: 'migrations',
