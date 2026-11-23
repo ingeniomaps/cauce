@@ -415,6 +415,10 @@ const MESSAGE_OF = (id) => ` Si escribís el mensaje en un archivo, hacelo con e
 // rama de la anterior: en una corrida real dos tareas terminaron en una rama con el nombre de la primera, y
 // hubo que abrirlas en un solo PR (caso 307). Una rama que la persona eligió y no es de ninguna tarea se
 // respeta como antes.
+// Qué ramas son vivas, como las cuenta `live-commit`: las de siempre más las que el proyecto declara en
+// `runner.liveBranches` (caso 533).
+const LIVE = () => [...new Set(['main', 'master', ...(contract.liveBranches || [])])].join(', ')
+  + ' o la rama por defecto del remoto'
 const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
   ? ` El repositorio es el árbol de la línea ${tree.line}, ${tree.path}, en la rama ${tree.branch}: commiteá ahí y `
     + 'en esa rama, sin cortar otra ni renombrarla. El árbol no se saca: es de la línea y sigue después de esta '
@@ -426,8 +430,8 @@ const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
     + `\`git -C ${tree.repo} worktree remove ${tree.path}\`: la rama queda.`
   : contract.commitToLiveBranch
   ? ' Commiteá en la rama en la que esté el repositorio.'
-  : ' Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —main, master o la rama por '
-    + 'defecto del remoto— no commitees ahí ni lo consultes: cortá una con `git switch -c <tipo>/' + slug
+  : ` Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —${LIVE()}— no commitees ahí ni `
+    + 'lo consultes: cortá una con `git switch -c <tipo>/' + slug
     + '`, donde tipo es el del Conventional Commit, que se lleva los cambios sin commitear; si esa rama ya '
     + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa, salvo que '
     + `sea la rama de otra tarea: ${earlier.length ? `las que esta corrida ya usó —${earlier.join(', ')}—, o ` : ''}`
@@ -439,8 +443,8 @@ const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
 // se acumula con un PR abierto, así que antes de cortar una se busca la que ya exista.
 const PLANNING_BRANCH = () => (contract.commitToLiveBranch
   ? ' Commiteá en la rama en la que esté ese repositorio.'
-  : ' Antes de stagear mirá en qué rama está. Si es una rama viva —main, master o la rama por defecto del '
-    + 'remoto— no commitees ahí ni lo consultes: pasate a la rama de trabajo de planning que ya exista —la '
+  : ` Antes de stagear mirá en qué rama está. Si es una rama viva —${LIVE()}— no commitees ahí ni lo consultes: `
+    + 'pasate a la rama de trabajo de planning que ya exista —la '
     + 'que ya lleva commits de estado de planning sin mergear— y si no hay ninguna cortá `work/planning`. '
     + 'Es una sola rama que se acumula, nunca una por tarea. Si ya está en una rama que no es viva, '
     + 'commiteá en ésa.' + LINE_INSTANCE())
@@ -521,6 +525,7 @@ const CONTRACT = {
     gates: { type: 'array', items: { type: 'string' } },
     maxTaskHours: { type: 'number' }, commitPerTask: { type: 'boolean' },
     commitToLiveBranch: { type: 'boolean' },
+    liveBranches: { type: 'array', items: { type: 'string' } },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
     // Qué archivos de un runner quedaron atrás del motor instalado; por qué importa, donde se lee.

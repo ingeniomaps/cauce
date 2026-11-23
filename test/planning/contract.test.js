@@ -28,6 +28,16 @@ const contractOf = (root, extra = []) => {
   return { result, value: result.status === 0 ? JSON.parse(result.stdout) : null }
 }
 
+test('contract trae las ramas vivas que el proyecto declara, y ninguna si no declara (caso 533)', () => {
+  const root = instance('cauce-contract-vivas-')
+  assert.deepEqual(contractOf(root).value.liveBranches, [])
+  const file = path.join(root, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.runner.liveBranches = ['develop', 'production']
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  assert.deepEqual(contractOf(root).value.liveBranches, ['develop', 'production'])
+})
+
 test('contract lee runner.commitToLiveBranch cuando el proyecto lo declara', () => {
   const root = instance('cauce-contract-live-')
   const file = path.join(root, 'ops.config.json')

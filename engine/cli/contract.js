@@ -258,6 +258,10 @@ function contract(dir, cli) {
     maxTaskHours: Number(runner.maxTaskHours || 0),
     commitPerTask: Boolean(runner.commitPerTask),
     commitToLiveBranch: Boolean(runner.commitToLiveBranch),
+    // Las ramas vivas que el proyecto suma a `main`, `master` y la por defecto (caso 533): el recorrido las nombra al
+    // decidir dónde commitea, y sin ellas cortaba rama sólo después de que `live-commit` lo frenara.
+    liveBranches: (Array.isArray(runner.liveBranches) ? runner.liveBranches : [])
+      .filter((one) => typeof one === 'string'),
     humanCheckpoint: Boolean(runner.humanCheckpointBetweenMilestones),
     // Lo instalado que quedó atrás del motor. Después de `upgrade` y antes de reinstalar el runner, el
     // recorrido y sus agentes son los de la versión anterior: la corrida anda, y anda con lo viejo (caso 308).
