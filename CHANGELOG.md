@@ -124,6 +124,13 @@ diseño — eso vive en el commit y en el código.
   y `git show HEAD:.env` también frenan. Sobre 101.218 comandos reales de sesiones frena 132 lecturas de una
   credencial que pasaban, y deja de frenar 31 que no leían nada: texto con `.env` adentro o código como `x.key`.
 
+- **`runtime-shell` frena cualquier programa que nombre un script de los guards, no sólo los que conoce.** Contaba
+  `cp`, `mv`, `chmod` y sus parecidos, así que `dd of=automatization/hooks/guard-files.sh`, `perl -pi -e … guard.sh`,
+  `patch`, `git clean` o un `node -e` que escribía el archivo pasaban. Ahora cuenta cualquier programa que nombre el
+  archivo exacto o un glob que lo alcance, salvo los que sólo lo leen o lo ejecutan (`cat`, `diff`, `bash guard.sh`,
+  `git log`). Sobre 101.218 comandos reales de sesiones frena 29 más, casi todos scripts de Python que reescribían el
+  motor con `open(p, 'w')`, y ninguno que antes frenara pasa.
+
 - **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
   no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
   Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
