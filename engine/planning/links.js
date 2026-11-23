@@ -14,6 +14,9 @@ const SKIPPED_DIRS = new Set(['done', 'archive', 'node_modules', '.git'])
 const PLACEHOLDER = /NNN|\{\{|<|>|000-template/
 // La ruta no lleva `(`, `)` ni `]`: así una tira de `](x` sin cerrar no se recorre hasta el final desde cada una.
 const LINK = /\]\(\s*([^()\]\s]+)(?:\s+["'][^"']*["'])?\s*\)/g
+// Las otras dos formas de un enlace: entre `<…>`, que admite espacios, y la definición de referencia `[x]: ruta`.
+const ANGLED = /\]\(\s*<([^<>\n]+)>/g
+const REFERENCE = /^ {0,3}\[[^\]\n]+\]:[ \t]*(?:<([^<>\n]+)>|([^\s<>]+))/gm
 
 function markdownFiles(dir) {
   let entries = []
@@ -46,19 +49,31 @@ function blocks(text) {
   return withoutComments(kept.join('\n'))
 }
 
-// Con `indexOf` y no con `<!--[\s\S]*?-->`, que con muchas aperturas sin cierre recorría el resto desde cada una. Se
-// busca con los `span` tapados, del mismo largo: un `<!--` citado entre backticks no abre un comentario.
+// En un solo recorrido y en orden de aparición, como CommonMark: lo que abre primero manda. Un `span` que empieza
+// antes tapa el `<!--` que trae adentro, y un comentario que empieza antes se lleva los backticks que tenga. Tapar
+// primero los `span` emparejaba un backtick suelto del comentario con uno de afuera y se perdía el cierre. Con
+// `indexOf` y no con `<!--[\s\S]*?-->`, que con muchas aperturas sin cierre recorría el resto desde cada una.
 function withoutComments(text) {
-  const masked = text.replace(/`[^`\n]*`/g, (span) => ' '.repeat(span.length))
+  const next = /`|<!--/g
   let out = ''
   let at = 0
+  let eol = -1
   for (;;) {
-    const start = masked.indexOf('<!--', at)
-    if (start === -1) return out + text.slice(at)
-    const end = masked.indexOf('-->', start + 4)
-    out += text.slice(at, start)
-    if (end === -1) return out
-    at = end + 3
+    next.lastIndex = at
+    const hit = next.exec(text)
+    if (!hit) return out + text.slice(at)
+    if (hit[0] === '`') {
+      if (eol < hit.index) eol = text.indexOf('\n', hit.index) === -1 ? text.length : text.indexOf('\n', hit.index)
+      const close = text.indexOf('`', hit.index + 1)
+      const stop = close !== -1 && close < eol ? close + 1 : hit.index + 1
+      out += text.slice(at, stop)
+      at = stop
+      continue
+    }
+    const close = text.indexOf('-->', hit.index + 4)
+    out += text.slice(at, hit.index)
+    if (close === -1) return out
+    at = close + 3
   }
 }
 
@@ -78,10 +93,27 @@ const prose = (text) => blocks(text).replace(/`[^`\n]*`/g, '')
 // El ancla que GitHub le da a un título: del texto que se ve —el código sin backticks, un enlace sin su ruta—, en
 // minúsculas, sin puntuación salvo `-` y `_`, espacios por guiones, y `-1`, `-2` para los repetidos. Más las que el
 // documento declara a mano con `<a id>` o `{#id}`.
+// Los títulos de un documento: los ATX (`## Título`) y los setext, una línea subrayada con `===` o `---`. Un `---` sólo
+// subraya si la línea de arriba es texto, y el frontmatter no cuenta: su `---` de cierre no es un subrayado.
+function titles(text) {
+  const lines = text.replace(/^---\n[\s\S]*?\n---\n/, '\n').split('\n')
+  const found = []
+  for (let at = 0; at < lines.length; at += 1) {
+    const atx = titleOf(lines[at])
+    if (atx) found.push(atx)
+    else if (at + 1 < lines.length && /^ {0,3}(?:=+|-+)[ \t]*$/.test(lines[at + 1]) && lines[at].trim()
+      && !/^ {0,3}(?:[-*+>]|\d+[.)])\s/.test(lines[at])) {
+      found.push(lines[at].trim())
+      at += 1
+    }
+  }
+  return found
+}
+
 function anchorsOf(text) {
   const seen = new Map()
   const anchors = new Set()
-  for (const title of blocks(text).split('\n').map(titleOf).filter(Boolean)) {
+  for (const title of titles(blocks(text))) {
     const shown = title.replace(/!?\[([^[\]]*)\]\([^()\]]*\)/g, '$1').replace(/`/g, '')
     const base = shown.trim().toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, '').replace(/\s/g, '-')
     const count = seen.get(base) || 0
@@ -107,7 +139,9 @@ function linkWarnings(opsRoot) {
   const warnings = []
   for (const file of files) {
     const shown = path.relative(opsRoot, file)
-    for (const [, raw] of prose(fs.readFileSync(file, 'utf8')).matchAll(LINK)) {
+    const text = prose(fs.readFileSync(file, 'utf8'))
+    const found = [...text.matchAll(LINK), ...text.matchAll(ANGLED), ...text.matchAll(REFERENCE)]
+    for (const raw of found.map((match) => match[1] || match[2])) {
       // Una URL con esquema, un `mailto:` o una ruta absoluta no son del árbol que se mira.
       if (/^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith('/') || PLACEHOLDER.test(raw)) continue
       const [target, anchor] = raw.split('#')

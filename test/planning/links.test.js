@@ -69,6 +69,10 @@ test('avisa el archivo que no existe y el ancla que falta, y deja pasar lo que n
   const titles = L.anchorsOf('## C#\n## Título ##\n## ##\n##Pegado\n<!-- ## Oculto\n## Tampoco\n')
   assert.deepEqual([...titles], ['c', 'título'])
   assert.ok(L.anchorsOf('Usá `<!--` para comentar.\n## Después\n').has('después'), 'un `<!--` citado no abre')
+  // Un backtick suelto dentro del comentario no se empareja con uno de afuera ni tapa el cierre.
+  assert.ok(L.anchorsOf('<!-- usa ` para código --> ver `x\n## Después\n').has('después'), 'el comentario cierra')
+  assert.ok(!L.anchorsOf('a `\n<!--\n## Oculto\n-->\n`b\n').has('oculto'), 'un span no cruza la línea')
+  assert.ok(L.anchorsOf('## Final\nfin `x` y un ` suelto').has('final'), 'un span en la última línea, sin salto')
 })
 
 test('una tira de enlaces sin cerrar no cuelga check', () => {
@@ -78,6 +82,23 @@ test('una tira de enlaces sin cerrar no cuelga check', () => {
   const started = Date.now()
   assert.deepEqual(L.linkWarnings(ops), [])
   assert.ok(Date.now() - started < 2000, `tardó ${Date.now() - started} ms`)
+})
+
+test('mira también los enlaces entre <…>, los de referencia y los títulos setext', () => {
+  const ops = tempRoot('cauce-enlaces-formas-')
+  fs.mkdirSync(path.join(ops, 'planning'))
+  fs.writeFileSync(path.join(ops, 'planning', 'mi guia.md'), '---\ntitulo: x\n---\nSubrayado\n=========\n\n'
+    + '- item\n---\n\nOtro\n----\n')
+  fs.writeFileSync(path.join(ops, 'planning', 'a.md'), '[bien](<mi guia.md>) [mal](<no esta.md>)\n'
+    + '[ref]: ./falta.md\n[ok]: <mi guia.md#subrayado>\n[sub](mi%20guia.md#otro) [no](mi%20guia.md#item)\n'
+    + '[fm](mi%20guia.md#titulo-x)\n')
+  assert.deepEqual(L.linkWarnings(ops).sort(), [
+    'planning/a.md: el enlace a ./falta.md apunta a un archivo que no existe',
+    'planning/a.md: el enlace a mi%20guia.md#item apunta a un ancla que mi guia.md no tiene',
+    'planning/a.md: el enlace a mi%20guia.md#titulo-x apunta a un ancla que mi guia.md no tiene',
+    'planning/a.md: el enlace a no esta.md apunta a un archivo que no existe',
+  ])
+  assert.equal(L.anchorsOf('- item\n---\n').size, 0, 'tras un ítem de lista, el --- es una regla y no un título')
 })
 
 test('check lo avisa sin volverlo error', () => {
