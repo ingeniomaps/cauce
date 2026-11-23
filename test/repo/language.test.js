@@ -6,10 +6,13 @@
 // el vocabulario que se escribe a disco. Lo que de ese vocabulario aparece como nombre se declara abajo,
 // una vez y con su razón.
 //
-// Detecta, no demuestra. Reconoce el español por tres señales: una tilde o una eñe, una primera palabra
-// que en inglés no abre un nombre (`sinCambio`, `conGit`), y una lista de palabras que salió de traducir
-// cuatrocientos ochenta nombres. Una palabra que no está en la lista y no tiene esas formas pasa en verde.
-// La lista se agranda cuando aparece una que se escapó; achicarla para que algo pase es la salida que no
+// Detecta, no demuestra. Reconoce el español por cuatro señales: una tilde o una eñe, una primera palabra
+// que en inglés no abre un nombre (`sinCambio`, `conGit`), una lista de palabras que salió de traducir
+// cuatrocientos ochenta nombres, y la prosa del propio repositorio. Esta última cierra por defecto (R27): una palabra
+// de un nombre que la prosa en español usa cuenta como español hasta que `english-words.txt` la declara inglesa. La
+// lista a mano dejó pasar veintinueve nombres —`ocupado`, `candidatos`, `limpiar`— que sí estaban en la prosa.
+// Lo que queda abierto es la palabra que la prosa nunca usó. Una palabra nueva en inglés que la prosa también usa
+// pone esto en rojo y se agrega a `english-words.txt`; agregar una en español para que algo pase es la salida que no
 // corresponde.
 
 const test = require('node:test')
@@ -18,6 +21,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { sourceFiles } = require('../support/environment')
 const { codeOnly } = require('../support/lexer')
+const { proseWords } = require('../support/prose')
 
 const ROOT = path.resolve(__dirname, '..', '..')
 const WORDS = new Set(fs.readFileSync(path.join(__dirname, '..', 'support', 'spanish-words.txt'), 'utf8')
@@ -25,11 +29,19 @@ const WORDS = new Set(fs.readFileSync(path.join(__dirname, '..', 'support', 'spa
 const FIRST_WORDS = new Set(['sin', 'con', 'en', 'para', 'por', 'del', 'al', 'ya', 'solo', 'tras', 'entre',
   'desde', 'hasta', 'mas'])
 const SUFFIX = /(?:ados|adas|idos|idas|ciones|mente)$/
+const ENGLISH = new Set(fs.readFileSync(path.join(__dirname, '..', 'support', 'english-words.txt'), 'utf8')
+  .split('\n').map((one) => one.trim()).filter(Boolean))
+let prose
+const inSpanishProse = (word) => {
+  prose = prose || proseWords(ROOT)
+  return word.length >= 3 && prose.has(word) && !ENGLISH.has(word)
+}
 
 // Vocabulario que el código nombra igual que el documento que lee o escribe: traducirlo dejaría el nombre
 // y el campo diciendo cosas distintas, o rompería lo ya escrito. Cada uno con lo que nombra.
 const VOCABULARY = {
   fecha: 'el campo `fecha:` de una entrada de DONE',
+  pagos: 'una línea de ejemplo de las pruebas de líneas, dentro de una plantilla que el lexer lee como código',
 }
 
 const normalize = (word) => word.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -41,8 +53,8 @@ function spanishWord(name) {
   if (/[áéíóúñÁÉÍÓÚÑ]/.test(name)) return name
   const words = wordsOf(name)
   if (words.length > 1 && FIRST_WORDS.has(words[0].toLowerCase())) return words[0]
-  return words.find((word) => WORDS.has(normalize(word)) || (word.length > 6 && SUFFIX.test(normalize(word))))
-    || ''
+  return words.find((word) => WORDS.has(normalize(word)) || (word.length > 6 && SUFFIX.test(normalize(word)))
+    || inSpanishProse(normalize(word))) || ''
 }
 
 // Los nombres de un archivo de JavaScript, sin propiedades ni claves de objeto.
@@ -112,6 +124,16 @@ test('ningún nombre de código está en español', () => {
   assert.deepEqual(offending, [], `nombres en español:\n  ${offending.join('\n  ')}`)
 })
 
+// Las dos listas no se contradicen, y la inglesa no declara lo que la prosa ya no usa: una palabra que salió de la
+// prosa vuelve a quedar abierta, y declararla inglesa sería una excepción sin nada que exceptuar.
+test('la lista inglesa no choca con la española y sólo trae palabras de la prosa', () => {
+  const both = [...ENGLISH].filter((word) => WORDS.has(word))
+  prose = prose || proseWords(ROOT)
+  const unused = [...ENGLISH].filter((word) => !prose.has(word))
+  assert.deepEqual(both, [], `palabras en las dos listas: ${both.join(', ')}`)
+  assert.deepEqual(unused, [], `palabras de english-words.txt que la prosa ya no usa: ${unused.join(', ')}`)
+})
+
 test('cada nombre del vocabulario sigue apareciendo en el código', () => {
   const used = new Set([...spanishNames().values()].map((one) => one.name))
   const stale = Object.keys(VOCABULARY).filter((name) => !used.has(name))
@@ -119,7 +141,9 @@ test('cada nombre del vocabulario sigue apareciendo en el código', () => {
 })
 
 test('el detector reconoce el español y deja pasar el inglés', () => {
-  for (const name of ['sinCambio', 'conGit', 'texto', 'salidaJson', 'heredados', 'Revisión', 'enElNombre']) {
+  // `limpiar`, `ocupado` y `candidatos` no están en la lista a mano: los reconoce la prosa.
+  for (const name of ['sinCambio', 'conGit', 'texto', 'salidaJson', 'heredados', 'Revisión', 'enElNombre', 'limpiar',
+    'ocupado', 'candidatosRepo']) {
     assert.notEqual(spanishWord(name), '', name)
   }
   for (const name of ['configRuns', 'heredoc', 'withoutFootprint', 'output', 'sinceLast', 'context',
