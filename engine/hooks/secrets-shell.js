@@ -14,6 +14,7 @@ const path = require('node:path')
 const { asRun, commandOf, rawCommandOf, cwdOf, block, isCommit, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
 const { afterLeaders } = require('./shell-wrappers')
+const { masked, shellWord } = require('./quoting')
 const { GIT_VALUED } = require('./git-globals')
 const { REDIRECT } = require('./shell-writes')
 const { writes } = require('./shell-changes')
@@ -100,9 +101,13 @@ function argumentsOf(text) {
   const found = []
   for (const word of text.match(/(?:[^\s"']|"[^"]*"|'[^']*')+|["']/g) || []) {
     if (/^["']$/.test(word)) break
-    const bare = word.replace(/"([^"]*)"|'([^']*)'/g, '$1$2')
+    // Un paréntesis sin comillas cierra un subshell o una sustitución, no es parte del nombre: `(perl … .env)`.
+    const unquoted = word.replace(/"([^"]*)"|'([^']*)'/g, '$1$2').replace(/^[({]+/, '')
+    const bare = /[({]/.test(unquoted) ? unquoted : unquoted.replace(/[)}]+$/, '')
     const value = bare.startsWith('-') ? bare.split(/=(.*)/s)[1] : bare
     if (value && !/\s/.test(value)) found.push(value)
+    // `HEAD:.env` es el `.env` de esa revisión, y `host:.env` el de esa máquina.
+    if (value && /^[^/:]+:[^/]/.test(value)) found.push(value.replace(/^[^:]*:/, ''))
   }
   return found
 }
@@ -179,6 +184,60 @@ function quotedSeparator(text) {
   return false
 }
 
+// Lo que corre otro shell: el valor de `-c` o `--command` —`sh -c`, `docker exec … bash -c`, `gcloud compute ssh
+// --command`—, lo que sigue a `eval` y el comando remoto de `ssh`. Se lee como un comando, sea cual sea el verbo de
+// afuera: `docker` sólo nombra, y el `. ./.env` de su `sh -c` sí lee.
+const SSH_VALUED = /^-[BbcDEeFIiJLlmOoPpQRSWw]$/
+function scriptsOf(words, verb) {
+  const found = []
+  words.forEach((word, at) => {
+    if (/^(?:-c|--command)$/.test(word) && words[at + 1]) found.push(words[at + 1])
+    else if (word.startsWith('--command=')) found.push(word.slice('--command='.length))
+  })
+  const name = path.basename(verb)
+  const rest = words.slice(words.indexOf(verb) + 1)
+  if (name === 'eval') found.push(rest.join(' '))
+  if (name === 'ssh') {
+    let at = 0
+    while (at < rest.length && rest[at].startsWith('-')) at += SSH_VALUED.test(rest[at]) ? 2 : 1
+    if (rest.length > at + 1) found.push(rest.slice(at + 1).join(' '))
+  }
+  return found.map(shellWord)
+}
+
+// Los intérpretes nombran un archivo en una cadena de su código —`readFileSync('.env')`, `open('.env')`—; lo demás
+// del código no es una ruta: `console.log(x.key)` no lee un archivo `.key`. Sus argumentos sueltos también cuentan.
+const INTERPRETERS = new Set(['node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
+function literalsOf(text) {
+  const found = argumentsOf(text)
+  for (const word of text.match(/"(?:[^"\\]|\\[\s\S])*"|'[^']*'/g) || []) {
+    for (const hit of shellWord(word).matchAll(/'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/g)) {
+      const literal = hit[1] ?? hit[2] ?? hit[3]
+      if (literal && !/\s/.test(literal)) found.push(literal)
+    }
+  }
+  return found
+}
+
+// Los tramos y sus separadores, alternados. Un `;`, un `|` o un salto entre comillas o escapado no separa: lo lee otro
+// programa —el `;` de un `python3 -c`, el `|` de un `grep -E '(A|B)'`—, y cortar ahí dejaba la credencial en un tramo
+// sin su lector.
+function separated(text) {
+  const hidden = masked(text).replace(/\\[\s\S]/g, '\u0000\u0000')
+  const found = []
+  let last = 0
+  for (const run of hidden.matchAll(/[;&|\n]+/g)) {
+    found.push(text.slice(last, run.index), run[0])
+    last = run.index + run[0].length
+  }
+  found.push(text.slice(last))
+  return found
+}
+
+// Las palabras de un tramo, sin lo que abre un bloque, y con las comillas dentro de la palabra: `B="a b"` es una.
+const wordsOf = (piece) => piece.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
+  .match(/(?:[^\s"']|"[^"]*"|'[^']*'|["'])+/g) || []
+
 const ASSIGNED = /^\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s"'])*\s+)+/
 
 // Los comandos de un tramo: el de afuera y el de cada sustitución, que se lee hasta el final del tramo porque su `)`
@@ -215,22 +274,24 @@ function moved(base, to) {
 // `$( … )`, un backtick, un comentario o un separador entre comillas en el comando, lo que sigue a un `cd` no se sabe:
 // seguirlos pedía leer bien comillas y redirecciones, y leerlas mal hacía pasar una lectura aprobada en otra carpeta.
 // Una carpeta que no se sabe no se adivina: la lectura de una credencial pide la ruta absoluta.
-function readTokens(command, cwd) {
+function readTokens(command, cwd, depth = 0) {
   const found = new Map()
   const text = unbraced(command)
   const scoped = /[()`#]/.test(text) || quotedSeparator(text)
   let base = cwd
   let pending
-  for (const [at, segment] of text.split(/([;&|\n]+)/).entries()) {
+  for (const [at, segment] of separated(text).entries()) {
     if (at % 2) {
       if (segment.includes('||') && (pending !== undefined || base !== cwd)) base = null
       else if (pending !== undefined && /^(?:&&|;|\n)+$/.test(segment)) base = pending
       pending = undefined
       continue
     }
-    for (const piece of pieces(segment)) {
-      const words = piece.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
-        .split(/\s+/).filter(Boolean)
+    for (const written of pieces(segment)) {
+      const raw = verbOf(wordsOf(written))
+      // `\cat` y `"cat"` son `cat`.
+      const piece = raw ? written.replace(raw, shellWord(raw)) : written
+      const words = wordsOf(piece)
       if (/^\s*(?:else|elif)\b/.test(piece) && base !== cwd) base = null
       const verb = verbOf(words)
       if (verb === 'cd') pending = scoped ? null : moved(base, words[1])
@@ -239,8 +300,12 @@ function readTokens(command, cwd) {
       // `writtenCredentials` como escritura (caso 402). Una asignación delante del verbo guarda un nombre, no lo lee.
       const read = withoutPattern(piece.replace(ASSIGNED, ''), verb).replace(REDIRECT, ' ')
       const tokens = reading === 'all' ? read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || [] : []
-      for (const token of reading === 'words' ? argumentsOf(read) : tokens) {
+      const code = reading === 'all' && INTERPRETERS.has(path.basename(verb))
+      for (const token of reading === 'words' ? argumentsOf(read) : code ? literalsOf(read) : tokens) {
         found.set(`${base}\0${token}`, { token, base })
+      }
+      for (const script of depth < 3 ? scriptsOf(words, verb) : []) {
+        for (const one of readTokens(script, base, depth + 1)) found.set(`${one.base}\0${one.token}`, one)
       }
     }
   }

@@ -121,6 +121,26 @@ test('secrets-shell frena el lector que no conoce y deja pasar lo que sólo nomb
   assert.equal(long.status, 0, 'saltear una asignación no puede depender de su largo')
 })
 
+// Un separador entre comillas no corta el comando, y lo que corre otro shell se lee como comando. Antes, el `;` de un
+// `python3 -c` o el `|` de un `grep -E '(A|B)'` dejaban la credencial en un tramo sin lector, y el script de un
+// `docker exec … sh -c` se leía partido por accidente.
+test('secrets-shell lee respetando comillas y mira lo que corre otro shell', () => {
+  const root = planFirstRoot('ops-hook-comillas-', WIP_WITH_PLAN)
+  const runs = (command) => ({ cwd: root, tool_input: { command } })
+  for (const command of [`python3 -c "import os; print(open('.env').read())"`, "grep -E '^(A|B)=' .env",
+    `echo "$(grep -E '(A|B)=' .env)"`, 'A=1 B="a b" cat .env', '\\cat .env', '"cat" .env', 'git show HEAD:.env',
+    "docker exec x sh -c 'set -a; . ./.env; set +a; npm start'", "ssh host cat .env", "eval 'cat .env'",
+    `gcloud compute ssh h --command='sudo grep -E "^IP=" /opt/app/.env'`, "(perl -ne 'print' .env)",
+    `echo "$(echo "$(perl -ne 'print' .env)")"`]) {
+    blocked('secrets-shell', runs(command), /lee .*credencial/)
+  }
+  for (const command of ['echo "a; cat .env"', 'node -e "for (const x of list) console.log(x.key)"',
+    "printf 'cd %s && grep -c GITHUB .env\\n' x",
+    "gcloud compute instances describe v --format='value(items[].key)'"]) {
+    assert.doesNotThrow(() => execute('secrets-shell', runs(command)), command)
+  }
+})
+
 // Un commit en el mismo comando no apaga la escritura, y su mensaje no es una: lo que dice entre comillas o en un
 // heredoc es dato. Bajo un `cd` que no se resuelve no hay ruta que aprobar, así que se frena pidiéndola.
 test('secrets-shell juzga la escritura de una credencial aunque el comando commitee, y no la ubica bajo un cd perdido',
@@ -229,13 +249,16 @@ test('secrets-shell resuelve una lectura desde el cd del mismo comando', () => {
   // que se podrían adivinar, ninguna de estas pasa.
   require('node:fs').appendFileSync(path.join(root, 'planning', '.ops-approval'), `${path.join(portal, '.env')}\n`)
   for (const command of ['cd "$DIR" && cat .env', 'cd - && cat .env', 'cd .. || cat .env', 'cd -P .. && cat .env',
-    'cd "sub dir" && cat .env', 'cd "$(git rev-parse --show-toplevel)" && cat .env', 'x="$(cd .. && pwd)"; cat .env',
+    'cd "$(git rev-parse --show-toplevel)" && cat .env', 'x="$(cd .. && pwd)"; cat .env',
     'echo `cd ..`; cat .env', '(cd ..; true) 2>/dev/null; cat .env', `(cd ${root} && cat .env)`,
-    "echo 'hint; cd ..; make'; cat .env", 'true # ; cd ..\ncat .env', 'if cd ..; then :; else cat .env; fi',
+    'true # ; cd ..\ncat .env', 'if cd ..; then :; else cat .env; fi',
     'cd .. && cat a || cat .env']) {
     blocked('secrets-shell', runs(command), /cd` a un destino que no se puede resolver/)
   }
   assert.doesNotThrow(() => execute('secrets-shell', runs('cd "$DIR" && cat README.md')))
+  // Lo que las comillas dicen sí se sabe: un `cd` dentro de un texto no corre, y una carpeta con espacio es una.
+  assert.doesNotThrow(() => execute('secrets-shell', runs("echo 'hint; cd ..; make'; cat .env")))
+  blocked('secrets-shell', runs('cd "sub dir" && cat .env'), new RegExp(`lee ${path.join(portal, 'sub dir', '.env')},`))
   assert.doesNotThrow(() => execute('secrets-shell', runs(`cat ${path.join(root, '.env')}`)))
   // Lo que la persona pidió en el chat nombrándolo pasa también bajo un `cd` que no se resuelve, como la escritura.
   const chat = chatSession()
