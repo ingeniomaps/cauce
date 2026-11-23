@@ -51,9 +51,10 @@ una cadena — permisos del runner, alcance del token, aprobación de un PR.
 Dos guards frenan leer un archivo que `secrets` frenaría al escribir —los nombres conocidos y las
 identidades que declara `organization/secrets.json`—: `secrets-read` en las herramientas de lectura y de
 búsqueda del runner (`Read` y `Grep` en Claude, `read_file` y `grep_search` en Gemini) y `secrets-shell` en
-el shell de los cuatro runners, cuando un comando la muestra —`cat`, `head`, `grep`, `sed`, `source`, una
-redirección `<`, un intérprete en línea—. Un comodín que la nombra —`rg -g '.env*'`, `--include='*.env'`—
-cuenta igual. Lo que sólo la nombra —`ls`, `test -f`, `rm`, `cp .env.example .env`— pasa, y lo que la
+el shell de los cuatro runners, cuando un comando la nombra como argumento. Cualquier programa instalado cuenta
+como lector, también uno que el guard no conoce —`comm`, `zcat`, `git diff`—, y además una redirección `<` y un
+intérprete en línea. Un comodín que la nombra —`rg -g '.env*'`, `--include='*.env'`— cuenta igual. Lo que sólo la
+nombra —`ls`, `test -f`, `rm`, `cp .env.example .env`, `git add`, `docker compose --env-file`— pasa, y lo que la
 persona pidió en el chat también.
 
 ### Escribir una credencial desde el shell
