@@ -42,7 +42,7 @@ test('un hook o la configuración de git no se escriben, ni con la herramienta d
       'echo x > .git/modules/sub/hooks/pre-commit', 'echo x > .GIT/config', 'git config core.hooksPath list',
       'echo x > .git/modules/lib/foo/hooks/pre-commit', 'echo x > .git/modules/lib/foo/config',
       'cp pre-commit .git/modules/sub/hooks/', 'mkdir -p .git/modules/lib/foo/hooks',
-      `git -C /tmp config -f ${root}/.git/config core.hooksPath h`]) {
+      `git -C /tmp config -f ${root}/.git/config core.hooksPath h`, 'git --attr-source HEAD config core.hooksPath h']) {
       blocked('shell-boundary', shell(command), INSIDE)
     }
     // Lo que escribe un commit, y leer la configuración, pasan.

@@ -23,6 +23,7 @@ const LT = require('../core/line-trees')
 const { landing } = require('../core/files')
 const { opsRoot, rawCommandOf, cwdOf } = require('./input')
 const { steps, home } = require('./shell-changes')
+const { GIT_VALUED } = require('./git-globals')
 const AP = require('./approval')
 const CHAT = require('./chat')
 
@@ -226,7 +227,7 @@ function gitTargets(ran, { resolve } = {}) {
       else if (flag === '-c' && /^core\.worktree=/i.test(rest[at + 1] || '')) {
         moved.push([flag, rest[(at += 1)].replace(/^[^=]*=/, '')])
       } else if (flag === '--config-env') configured.push(`${flag}=${value()}`)
-      else if (['-c', '--namespace'].includes(flag) && glued === undefined) at += 1
+      else if (GIT_VALUED.has(flag) && glued === undefined) at += 1
     }
     const sub = rest[at]
     if (!sub || reads(sub, rest.slice(at + 1))) continue

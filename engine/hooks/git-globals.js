@@ -24,7 +24,10 @@
 // acierta por dónde termina una ruta ajena no está cubriendo nada.
 const { eachQuoted, masked, segments, shellWord, unquoted } = require('./quoting')
 
-const VALUED = '--(?:git-dir|work-tree|namespace|config-env|attr-source)'
+// Las globales de git que llevan valor, pegado con `=` o en la palabra siguiente (`git --help`, 2.53.0). Los guards
+// que saltean globales la toman de acá.
+const VALUED_FLAGS = ['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env', '--attr-source']
+const VALUED = `--(?:${VALUED_FLAGS.filter((flag) => flag.startsWith('--')).map((flag) => flag.slice(2)).join('|')})`
 const FLAG = new RegExp(`-[Cc](?=\\s|\\\\\\n)|${VALUED}(?:=|(?=\\s|\\\\\\n))`
   + '|--exec-path=|(?:-[pP]|--(?:paginate|no-pager|no-replace-objects|bare|no-optional-locks|no-advice|no-lazy-fetch'
   + '|(?:literal|glob|noglob|icase)-pathspecs))(?=\\s|$)', 'y')
@@ -279,5 +282,6 @@ function isCommit(command) {
 }
 
 module.exports = {
-  directoryFlag, FEEDS_SHELL, isCommit, shellScriptOf, withoutGitGlobals, withoutQuotedData, WRAPPER,
+  directoryFlag, FEEDS_SHELL, GIT_VALUED: new Set(VALUED_FLAGS), isCommit, shellScriptOf, withoutGitGlobals,
+  withoutQuotedData, WRAPPER,
 }

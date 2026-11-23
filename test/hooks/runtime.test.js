@@ -50,7 +50,8 @@ test('por shell se frena tocarlo de cualquier forma que lo apague, y copiar desd
     `mv ${SHIM} /tmp/fuera`, `ln -sf /bin/true ${SHIM}`, `chmod -x ${SHIM}`, 'chmod -R a-x automatization',
     `cp /tmp/guard-files.sh ${HOOKS}/`, `cp -t ${HOOKS} /tmp/guard-files.sh`, `git rm ${SHIM}`,
     `git checkout HEAD~1 -- ${SHIM}`, "echo '{}' > .cauce/manifest.json", `sh -c 'printf x > ${SHIM}'`,
-    `git -C . rm ${SHIM}`, `git restore --source=HEAD~1 ${HOOKS}`, 'rm -rf automat*', `find ${HOOKS} -delete`,
+    `git -C . rm ${SHIM}`, `git --attr-source HEAD rm ${SHIM}`, `git --config-env x=Y rm ${SHIM}`,
+    `git restore --source=HEAD~1 ${HOOKS}`, 'rm -rf automat*', `find ${HOOKS} -delete`,
     `find ${HOOKS} -name 'guard-f*' -delete`, `git checkout HEAD~1 -- ${HOOKS}`, `git checkout HEAD~1 ${HOOKS}`,
     'git restore -sHEAD~1 automatization', 'git restore --staged -W --source=HEAD~1 automatization',
     'git restore -sSTABLE automatization']) {

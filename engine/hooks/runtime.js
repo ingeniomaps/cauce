@@ -27,6 +27,7 @@ const CHAT = require('./chat')
 const AP = require('./approval')
 const { writes, removals, steps } = require('./shell-changes')
 const { real } = require('./boundary')
+const { GIT_VALUED } = require('./git-globals')
 const M = require('../core/manifest')
 const { installRoot } = require('../automation/runners')
 
@@ -122,8 +123,6 @@ const words = (rest) => rest.filter((word) => word && !word.startsWith('-'))
 const COPIES = new Set(['cp', 'ln', 'install', 'rsync'])
 // Los que tocan cada argumento: moverlo o quitarle el permiso deja al script sin correr.
 const TOUCHES = new Set(['mv', 'chmod', 'chown', 'chgrp', 'chattr', 'truncate', 'shred'])
-// Las opciones de `git` que van antes del subcomando y llevan valor; `-C` además cambia desde dónde se leen las rutas.
-const GIT_VALUED = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path'])
 
 // Lo que toca un `git rm`, `mv`, `checkout` o `restore`. Volver a `HEAD` o al índice se mira sólo por archivo, y sólo
 // en el árbol: `--staged` o `--cached` sin `--worktree` cambian el índice y nada que se ejecute.
