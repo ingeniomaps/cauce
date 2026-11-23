@@ -143,3 +143,26 @@ test('con --role review el diff sale de los commits de quien construyó, sin fot
   assert.ok(!run.asked.some((key) => key.endsWith('|review-baseline')), 'sacó una foto del árbol en el rol review')
 })
 
+// Caso 549: lo que la transcripción muestra leído se anota en el hecho, y todavía no frena.
+const doneFacts = ({ written }) => written.find((prompt) => prompt.includes('Cerrá T-1 de forma atómica')) || ''
+test('el hecho de revisión dice lo que la transcripción no muestra leído, o que no se pudo comprobar', async () => {
+  const unread = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')),
+    'Review|review-read': { found: true, unread: ['api/alta.go'] } })
+  ranToEnd(unread.result)
+  assert.match(doneFacts(unread), /review=[^;]*la transcripción no muestra leídos: api\/alta\.go/)
+  const ask = (unread.prompts.find((one) => one.key === 'Review|review-read') || {}).prompt || ''
+  assert.match(ask, /review-read <raíz del repositorio git dueño de \S+> --files api\/alta\.go/)
+  const none = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')),
+    'Review|review-read': { found: false, why: 'sin CLAUDE_CODE_SESSION_ID', unread: [] } })
+  ranToEnd(none.result)
+  assert.match(doneFacts(none), /review=[^;]*opened declarado, no comprobado \(sin CLAUDE_CODE_SESSION_ID\)/)
+  const lost = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')), 'Review|review-read': null })
+  assert.match(doneFacts(lost), /review=[^;]*opened declarado, no comprobado \(el contraste no devolvió resultado\)/)
+  const all = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')) })
+  assert.match(doneFacts(all), /review=[^;]*la transcripción muestra leído todo el diff/)
+})
+
+test('sin archivos en el diff no se pregunta por la transcripción', async () => {
+  const run = await runFlow({ [KEY.review]: passes(approves()) })
+  assert.ok(!run.asked.some((key) => key.endsWith('|review-read')))
+})

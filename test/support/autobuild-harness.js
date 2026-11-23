@@ -190,6 +190,8 @@ async function runFlow(changes = {}, options = {}) {
     // Los archivos que toca el diff que Review juzga, contra los que se cruza lo que dice haber abierto (caso 485).
     // Vacío por defecto: el cruce lo ejerce la prueba que lo mide, y el resto no tiene que contestar `opened`.
     if (options.label === 'review-diff' && !(key in script)) return { ran: true, files: [] }
+    // Lo que la transcripción del revisor muestra leído (caso 549): por defecto, todo.
+    if (options.label === 'review-read' && !(key in script)) return { found: true, unread: [] }
     // La corrección de Review contesta qué notas de construcción dejó sin efecto (caso 511): por defecto, ninguna.
     if (options.label === 'review-fix' && !(key in script)) return { dropped: [], added: [] }
     // Y lo que ya estaba sin commitear antes de construir: en el camino feliz, nada.

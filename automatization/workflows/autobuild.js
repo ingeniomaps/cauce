@@ -547,6 +547,14 @@ const DIFFED = {
     ran: { type: 'boolean' }, why: { type: 'string' }, files: { type: 'array', items: { type: 'string' } },
   },
 }
+// Lo que la transcripción de quien revisó muestra leído, contra lo que declaró en `opened` (caso 549). Por ahora sólo
+// se anota en el hecho: frenar por esto se decide con los números de las corridas reales.
+const REVIEW_READ = {
+  type: 'object', additionalProperties: false, required: ['found', 'unread'],
+  properties: {
+    found: { type: 'boolean' }, why: { type: 'string' }, unread: { type: 'array', items: { type: 'string' } },
+  },
+}
 // El pedido de archivos del diff, igual para la foto de antes de Build y para lo que juzga Review: si los dos se
 // pidieran distinto, la resta compararía listas escritas de dos formas.
 const DIFF_FILES = (what, how) => `Listá ${what}. ${how}, con git -C <raíz del repositorio> y no con cd. Devolvé en `
@@ -2189,11 +2197,21 @@ while (rounds++ < MAX_TASKS) {
     // cerrar ya no existe (caso 277).
     const seated = (one) => [tree && tree.work, tree && tree.path]
       .reduce((out, from) => (from ? out.split(from).join(declared) : out), one)
+    const contrasted = required.length ? await clerk(`Corré "node tools/ops.js review-read <raíz del repositorio git `
+      + `dueño de ${task.service}> --files ${required.join(',')}" desde ${ROOT} y copiá found, why y unread de lo que `
+      + 'imprima, también si sale con 1. No abras ningún archivo ni corras otra cosa.' + WHERE,
+    { schema: REVIEW_READ, label: 'review-read' }) : null
     reviewFact = `${review.verdict} por ${cast.review}, sobre `
       + review.consulted.map((one) => local(seated(one))).join(', ')
       + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
       + (decided.length > filed.length ? ` · ${decided.length - filed.length} decisión(es) sin volcar` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
+    if (required.length) {
+      reviewFact += !contrasted ? ' · opened declarado, no comprobado (el contraste no devolvió resultado)'
+        : !contrasted.found ? ` · opened declarado, no comprobado (${contrasted.why || 'sin transcripción'})`
+          : contrasted.unread.length ? ` · la transcripción no muestra leídos: ${contrasted.unread.join(', ')}`
+            : ' · la transcripción muestra leído todo el diff'
+    }
     // Qué superficie crítica tocó, dicho siempre: «no toca ninguna» también es lo que se miró. Y si la tabla
     // está sin declarar se dice acá, que es lo que llega a `done/`, en vez de suponer que no hay ninguna.
     reviewFact += review.critical ? ` · toca la superficie crítica ${review.critical}`

@@ -291,5 +291,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 74 desde el 2026-11-22: el cierre de `/autobuild` dicta un solo comando, `tools/ops.js done` (caso 538), en vez del
   // `tools/ops.js release` y el `tools/ops.js check` que dictaba; misma raíz, uno menos.
-  assert.equal(hits, 74, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 75 desde el 2026-11-22: Review dicta `tools/ops.js review-read` desde `${ROOT}` (caso 549), la misma familia y la
+  // misma raíz que el `done` de arriba.
+  assert.equal(hits, 75, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
