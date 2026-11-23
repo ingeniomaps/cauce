@@ -450,7 +450,9 @@ esa mitad no alcanza vive en R29; acá está sólo cuándo se aplica.
 
 `test/repo/issues.test.js` comprueba que la sección exista, que el estado del frontmatter coincida con el
 encabezado, que `resuelto-en` no se adelante a la versión abierta, —desde 0.75.0— que el cierre nombre su prueba,
-—desde 0.118.0— que traiga su línea `**Sin probar:**`, y —desde el caso 464— su lista de cierre sin puntos pendientes. **No comprueba que el cierre sea honesto**, y
+—desde 0.118.0— que traiga su línea `**Sin probar:**`, —desde el caso 464— su lista de cierre sin puntos pendientes, y que
+el CHANGELOG de su versión nombre el caso cuando el punto 16 lo afirma. **No comprueba que el resto del cierre sea
+honesto**, y
 decirlo es parte de la puerta: una que se presenta como más fuerte de lo que es enseña a no creerle al
 resto. El contraste rige desde 0.65.0 y la prueba nombrada desde 0.75.0; los casos cerrados antes se
 quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo que el contraste

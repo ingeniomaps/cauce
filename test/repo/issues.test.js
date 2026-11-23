@@ -139,6 +139,38 @@ test('un caso resuelto recorrió la lista de cierre punto por punto', () => {
   assert.deepEqual(missing, [], `cierres sin recorrer la lista:\n  ${missing.join('\n  ')}`)
 })
 
+// Lo que una prueba puede contrastar de un cierre sin leer su prosa: el punto 16 que afirma una entrada en el
+// CHANGELOG la tiene en la sección de su versión, sola, en una lista o en un rango (`casos 487 a 490`). El que dice
+// que no lleva entrada no se mira; lo demás —mutaciones, corridas reales— sólo se comprueba leyendo.
+function changelogCases(section) {
+  const found = new Set()
+  for (const match of section.replace(/\s+/g, ' ').matchAll(/\bcasos? ((?:\d{3}(?:,| y| a|–|-| )*)+)/g)) {
+    for (const range of match[1].matchAll(/(\d{3})(?:\s*(?:a|–|-)\s*(\d{3}))?/g)) {
+      for (let n = Number(range[1]); n <= Number(range[2] || range[1]); n += 1) found.add(n)
+    }
+  }
+  return found
+}
+
+test('un cierre que afirma su entrada en el CHANGELOG la tiene', () => {
+  const changelog = fs.readFileSync(path.resolve(ISSUES, '..', '..', 'CHANGELOG.md'), 'utf8')
+  const sectionOf = (open) => {
+    const start = changelog.indexOf(`## [${open}]`)
+    if (start < 0) return ''
+    const end = changelog.indexOf('\n## [', start + 1)
+    return changelog.slice(start, end < 0 ? undefined : end)
+  }
+  let claimed = 0
+  const missing = cases().filter((one) => one.estado === 'resuelto' && Number(one.caso) >= 464).filter((one) => {
+    const point = (one.text.match(/^16\. .*(?:\n {3}.*)*/m) || [''])[0]
+    if (!/CHANGELOG/.test(point) || /no lleva entrada/i.test(point)) return false
+    claimed += 1
+    return !changelogCases(sectionOf(one.resueltoEn)).has(Number(one.caso))
+  }).map((one) => `${one.name}: el punto 16 la afirma y la sección ${one.resueltoEn} no nombra el caso`)
+  assert.ok(claimed > 30, `sólo ${claimed} cierres afirman su entrada`)
+  assert.deepEqual(missing, [], `entradas que el cierre afirma y no están:\n  ${missing.join('\n  ')}`)
+})
+
 test('la lista que exige la puerta tiene tantos puntos como la que escribe AGENTS.md', () => {
   const agents = fs.readFileSync(path.join(ISSUES, '..', '..', 'AGENTS.md'), 'utf8')
   const start = agents.indexOf('### Qué tiene que estar para darlo por cerrado')
