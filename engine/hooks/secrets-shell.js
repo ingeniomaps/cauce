@@ -27,7 +27,8 @@ const RC = require('../core/remote-credentials')
 const READERS = new Set(['cat', 'tac', 'nl', 'head', 'tail', 'less', 'more', 'bat', 'sed', 'awk', 'grep', 'egrep',
   'fgrep', 'rg', 'strings', 'xxd', 'od', 'hexdump', 'base64', 'cut', 'sort', 'uniq', 'rev', 'paste', 'fold', 'pr',
   'dd', 'jq', 'yq', 'diff', 'cmp', 'source', '.', 'node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
-const verbOf = (words) => afterLeaders(words)[0] || ''
+// Sobre una copia: `afterLeaders` consume lo que recibe, y se llevaba el script de un `su user -c '…'`.
+const verbOf = (words) => afterLeaders([...words])[0] || ''
 
 // Lo que nombra un archivo sin mostrarlo. Cualquier otro verbo cuenta como lector (R27): hasta 0.124.0 sólo contaban
 // los de `READERS`, y un agente leyó el `.env` con `nl` cuando no estaba. `cp`, `mv`, `ln`, `install` y `rsync`
@@ -37,12 +38,16 @@ const verbOf = (words) => afterLeaders(words)[0] || ''
 const NAMES_ONLY = new Set(['ls', 'test', '[', '[[', 'stat', 'file', 'touch', 'rm', 'unlink', 'mkdir', 'chmod', 'chown',
   'chgrp', 'cp', 'mv', 'ln', 'install', 'rsync', 'echo', 'printf', 'cd', 'pushd', 'realpath', 'readlink', 'basename',
   'dirname', 'du', 'wc', 'md5sum', 'sha1sum', 'sha256sum', 'which', 'type', 'export', 'unset', 'mktemp', 'shred',
-  'docker', 'docker-compose', 'podman', 'ssh', 'scp', 'sftp', 'ssh-add', 'ssh-keygen'])
+  'docker', 'docker-compose', 'podman', 'ssh', 'scp', 'sftp', 'ssh-add', 'ssh-keygen', 'tee', 'truncate'])
+// Salvo que el destino de la copia sea la pantalla: `cp .env /dev/stdout` la muestra.
+const COPIERS = new Set(['cp', 'install', 'rsync'])
+const SHOWN = /^\/dev\/(?:stdout|stderr|tty|fd\/\d+)$/
 // Los de git que nombran rutas sin mostrarlas; `show`, `blame` o `stash show` las muestran. `log` sólo con un parche, y
 // `diff` salvo que liste nombres o cuentas.
 const GIT_NAMES_ONLY = new Set(['add', 'rm', 'mv', 'check-ignore', 'ls-files', 'status', 'restore', 'checkout', 'reset',
   'clean', 'commit', 'stash', 'update-index'])
-const GIT_PATCH = /^(?:-p|-u|-U\d*|--patch|--word-diff(?:=.*)?|--color-words(?:=.*)?|-[a-zA-Z]*p[a-zA-Z]*)$/
+const GIT_PATCH = new RegExp(String.raw`^(?:-p|-u|-U\d*|--patch|--word-diff(?:=.*)?|--color-words(?:=.*)?`
+  + String.raw`|-[a-zA-Z]*p[a-zA-Z]*|-L.*|--cc|-c|--diff-merges(?:=.*)?|-m)$`)
 const GIT_NAMES = /^--(?:name-only|name-status|stat|numstat|shortstat|dirstat|summary|quiet)(?:=.*)?$/
 // `find` nombra lo que encuentra, salvo que se lo pase a un programa que lo lea o lo imprima con formato.
 const FIND_RUNS = /^-(?:exec|execdir|ok|okdir)$/
@@ -59,21 +64,23 @@ function gitNamesOnly(rest) {
   const after = rest.slice(rest.indexOf(sub) + 1)
   if (sub === 'stash') return after[0] !== 'show'
   if (sub === 'log' || sub === 'whatchanged') return !after.some((one) => GIT_PATCH.test(one))
-  if (sub === 'diff') return after.some((one) => GIT_NAMES.test(one))
+  if (sub === 'diff') return after.some((one) => GIT_NAMES.test(one)) && !after.some((one) => GIT_PATCH.test(one))
   return GIT_NAMES_ONLY.has(sub)
 }
 
 // Un programa que no está en esta máquina no lee nada: así un pedazo de código o de prosa que quedó al principio de un
-// tramo —`for(const`, `y`, `const`— no se toma por un lector. Uno con ruta se busca desde la carpeta del tramo.
+// tramo —`for(const`, `y`, `const`— no se toma por un lector. Uno con ruta se busca desde la carpeta del tramo, y tiene
+// que ser ejecutable: un `.env` existe y no es un programa.
 const runnable = new Map()
+const executable = (file) => {
+  try { return fs.statSync(file).isFile() && (fs.accessSync(file, fs.constants.X_OK), true) } catch { return false }
+}
 function installed(verb, base) {
   const own = verb.includes('/')
   const key = own ? path.resolve(base || process.cwd(), verb) : verb
   if (!runnable.has(key)) {
     const dirs = own ? [''] : String(process.env.PATH || '').split(path.delimiter).filter(Boolean)
-    runnable.set(key, /^[\w./+-]+$/.test(verb) && dirs.some((dir) => {
-      try { return fs.statSync(path.join(dir, own ? key : verb)).isFile() } catch { return false }
-    }))
+    runnable.set(key, /^[\w./+-]+$/.test(verb) && dirs.some((dir) => executable(path.join(dir, own ? key : verb))))
   }
   return runnable.get(key)
 }
@@ -84,8 +91,9 @@ function installed(verb, base) {
 function readingOf(words, verb, base) {
   const name = path.basename(verb)
   if (READERS.has(name)) return 'all'
-  if (!name || NAMES_ONLY.has(name)) return null
   const rest = words.slice(words.indexOf(verb) + 1)
+  if (COPIERS.has(name) && rest.some((word) => SHOWN.test(word.replace(/^["']|["']$/g, '')))) return 'words'
+  if (!name || NAMES_ONLY.has(name)) return null
   if (name === 'find') {
     const runs = rest.filter((word, at) => at && FIND_RUNS.test(rest[at - 1]))
     return rest.some((word) => FIND_PRINTS.test(word)) || runs.some((one) => !NAMES_ONLY.has(path.basename(one)))
@@ -95,8 +103,10 @@ function readingOf(words, verb, base) {
   return installed(verb, base) ? 'words' : null
 }
 
-// Los argumentos enteros de un tramo, sin comillas, y el valor de un `--opción=valor`. Una frase con espacios es texto,
-// y lo que sigue a una comilla que el tramo no cierra también: el separador que lo cortó estaba adentro.
+// Los argumentos enteros de un tramo, sin comillas, y el valor de un `--opción=valor` o de una asignación —el programa
+// recibe ese archivo: `DOTENV_CONFIG_PATH=.env node …`—. Un `@` o un `<` delante es la forma de curl de mandar el
+// archivo: `-d @.env`, `-F f=@.env`. Una frase con espacios es texto, y lo que sigue a una comilla que el tramo no
+// cierra también: el separador que lo cortó estaba adentro.
 function argumentsOf(text) {
   const found = []
   for (const word of text.match(/(?:[^\s"']|"[^"]*"|'[^']*')+|["']/g) || []) {
@@ -104,7 +114,8 @@ function argumentsOf(text) {
     // Un paréntesis sin comillas cierra un subshell o una sustitución, no es parte del nombre: `(perl … .env)`.
     const unquoted = word.replace(/"([^"]*)"|'([^']*)'/g, '$1$2').replace(/^[({]+/, '')
     const bare = /[({]/.test(unquoted) ? unquoted : unquoted.replace(/[)}]+$/, '')
-    const value = bare.startsWith('-') ? bare.split(/=(.*)/s)[1] : bare
+    const valued = bare.startsWith('-') || /^[A-Za-z_][\w.-]*=/.test(bare)
+    const value = (valued ? bare.split(/=(.*)/s)[1] : bare)?.replace(/^(?:[\w.-]*=)?[@<]/, '')
     if (value && !/\s/.test(value)) found.push(value)
     // `HEAD:.env` es el `.env` de esa revisión, y `host:.env` el de esa máquina.
     if (value && /^[^/:]+:[^/]/.test(value)) found.push(value.replace(/^[^:]*:/, ''))
@@ -187,11 +198,16 @@ function quotedSeparator(text) {
 // Lo que corre otro shell: el valor de `-c` o `--command` —`sh -c`, `docker exec … bash -c`, `gcloud compute ssh
 // --command`—, lo que sigue a `eval` y el comando remoto de `ssh`. Se lee como un comando, sea cual sea el verbo de
 // afuera: `docker` sólo nombra, y el `. ./.env` de su `sh -c` sí lee.
+const RUNS_SCRIPT = /^(?:sh|bash|zsh|dash|ksh|ash|mksh|su|runuser|flock)$/
 const SSH_VALUED = /^-[BbcDEeFIiJLlmOoPpQRSWw]$/
 function scriptsOf(words, verb) {
   const found = []
   words.forEach((word, at) => {
-    if (/^(?:-c|--command)$/.test(word) && words[at + 1]) found.push(words[at + 1])
+    // `-c` es el script sólo si antes en el tramo hay un shell: en `wc -c` o `ls -c` es otra cosa.
+    if (word === '-c' && words[at + 1] && words.slice(0, at).some((one) => RUNS_SCRIPT.test(path.basename(one)))) {
+      found.push(words[at + 1])
+    }
+    else if (word === '--command' && words[at + 1]) found.push(words[at + 1])
     else if (word.startsWith('--command=')) found.push(word.slice('--command='.length))
   })
   const name = path.basename(verb)
@@ -237,8 +253,6 @@ function separated(text) {
 // Las palabras de un tramo, sin lo que abre un bloque, y con las comillas dentro de la palabra: `B="a b"` es una.
 const wordsOf = (piece) => piece.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
   .match(/(?:[^\s"']|"[^"]*"|'[^']*'|["'])+/g) || []
-
-const ASSIGNED = /^\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s"'])*\s+)+/
 
 // Los comandos de un tramo: el de afuera y el de cada sustitución, que se lee hasta el final del tramo porque su `)`
 // puede estar entre comillas. Lo que sigue al primer `)` se le pasa además al de afuera, con la sustitución como un
@@ -294,11 +308,11 @@ function readTokens(command, cwd, depth = 0) {
       const words = wordsOf(piece)
       if (/^\s*(?:else|elif)\b/.test(piece) && base !== cwd) base = null
       const verb = verbOf(words)
-      if (verb === 'cd') pending = scoped ? null : moved(base, words[1])
+      if (verb === 'cd') pending = scoped ? null : moved(base, words[words.indexOf(verb) + 1])
       const reading = /<(?![<(])/.test(piece) ? 'all' : readingOf(words, verb, base)
       // Lo que va después de `>` es el destino, no lo que se lee: `cat > .npmrc` escribe, y eso lo juzga
-      // `writtenCredentials` como escritura (caso 402). Una asignación delante del verbo guarda un nombre, no lo lee.
-      const read = withoutPattern(piece.replace(ASSIGNED, ''), verb).replace(REDIRECT, ' ')
+      // `writtenCredentials` como escritura (caso 402).
+      const read = withoutPattern(piece, verb).replace(REDIRECT, ' ')
       const tokens = reading === 'all' ? read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || [] : []
       const code = reading === 'all' && INTERPRETERS.has(path.basename(verb))
       for (const token of reading === 'words' ? argumentsOf(read) : code ? literalsOf(read) : tokens) {
