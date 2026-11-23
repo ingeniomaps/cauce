@@ -14,7 +14,7 @@ const { segments, shellWord } = require('./quoting')
 const GH_FIELDS = new Set(['-f', '-F', '--field', '--raw-field', '--input'])
 const GH_VALUED = new Set([...GH_FIELDS, '-X', '--method', '-H', '--header', '-q', '--jq', '-t', '--template',
   '--hostname', '-p', '--preview', '--cache'])
-const CURL_DATA = /^(?:-d|--data(?:-raw|-binary|-urlencode)?|--json|-F|--form|--post-data|--post-file|--body-data)$/
+const CURL_DATA = /^(?:-d|--data(?:-raw|-binary|-urlencode|-ascii)?|--json|-F|--form(?:-string)?)$/
 const CURL_PUT = /^(?:-T|--upload-file)$/
 
 // Un número puede llegar en una variable o en el marcador de `xargs -I{}`, y el dueño con el nombre en una sola
@@ -107,29 +107,43 @@ function ghApi(raws) {
 }
 
 // `curl`, `wget` y httpie hablan con la API sin pasar por `gh`. A GraphQL por un cliente HTTP le va el cuerpo en un
-// `-d`, que acá no se lee como consulta, así que frena siempre.
+// `-d`, que acá no se lee como consulta, así que frena siempre. Cada cliente con sus banderas: las letras de curl en
+// wget o httpie frenaban de más —`wget -T 10` es un plazo y `http -F` sigue redirecciones— (caso 539).
 function httpClient(program, args) {
   const at = args.findIndex((one) => API_HOST.test(one))
   if (at === -1) return ''
-  const route = routeOf(args[at])
+  // Una redirección pegada, `…/comments<cuerpo.json`, no es parte de la ruta.
+  const route = routeOf(args[at].replace(/<.*$/s, ''))
   if (route === 'graphql') return graphql('', true)
   let method = ''
   let data = false
-  for (let index = 0; index < args.length; index += 1) {
-    const [flag, attached] = flagOf(args[index], CURL_SHORT) || [args[index]]
-    const value = attached === undefined ? args[index + 1] : attached
-    if (flag === '-X' || flag === '--request' || flag === '--method') method = value || ''
-    else if (flag === '-G' || flag === '--get') method = 'GET'
-    else if (CURL_PUT.test(flag)) method = method || 'PUT'
-    else if (CURL_DATA.test(flag)) data = true
-  }
-  if (!/^(?:curl|wget)$/.test(program)) {
-    // Con httpie y xh, el método es la palabra justo antes de la URL, y los campos `clave=valor` van después.
-    const named = /^(?:GET|POST|PUT|PATCH|DELETE|HEAD)$/i.test(args[at - 1] || '') ? args[at - 1] : ''
-    method = method || named
-    // `clave=valor`, `clave:=json` y `clave@archivo` van en el cuerpo; `clave==valor` es la query y `Clave:valor`, una
-    // cabecera.
-    data = data || args.slice(at + 1).some((one) => /^[^-=:@][^=:@]*(?::=|=(?!=)|@)/.test(one))
+  if (program === 'curl') {
+    for (let index = 0; index < args.length; index += 1) {
+      const [flag, attached] = flagOf(args[index], CURL_SHORT) || [args[index]]
+      const value = attached === undefined ? args[index + 1] : attached
+      if (flag === '-X' || flag === '--request') method = value || ''
+      else if (flag === '-G' || flag === '--get') method = 'GET'
+      else if (CURL_PUT.test(flag)) method = method || 'PUT'
+      else if (CURL_DATA.test(flag)) data = true
+    }
+  } else if (program === 'wget') {
+    for (let index = 0; index < args.length; index += 1) {
+      const [flag, attached] = args[index].split(/=(.*)/s)
+      if (flag === '--method') method = attached === undefined ? args[index + 1] || '' : attached
+      else if (/^--(?:post|body)-(?:data|file)$/.test(flag)) data = true
+    }
+  } else {
+    // Con httpie y xh, el método es una palabra antes de la URL. Sin método, httpie manda POST si hay cuerpo: campos
+    // `clave=valor`, `clave:=json` o `clave@archivo` —`clave==valor` es la query y `Clave:valor`, una cabecera—,
+    // `--raw`, o stdin, y stdin cuenta con sólo no ser una terminal (`_guess_method` y `has_stdin_data` en
+    // httpie/cli/argparser.py, leído el 2026-11-22). Un agente corre sin terminal, así que sin método ni
+    // `--ignore-stdin` es POST. Que xh haga lo mismo no está comprobado: se lo trata igual, del lado que frena.
+    // Antes de la URL, aunque una bandera los separe: `http POST -v URL`.
+    method = args.slice(0, at).find((one) => /^(?:GET|POST|PUT|PATCH|DELETE|HEAD)$/i.test(one)) || ''
+    data = args.slice(at + 1).some((one) => /^[^-=:@][^=:@]*(?::=|=(?!=)|@)/.test(one))
+      || args.some((one) => one === '--raw' || one.startsWith('--raw='))
+      // `-I` también agrupado (`-vI`), pero no como valor pegado de una bandera que lo lleva (`-oIndex`).
+      || !args.some((one) => one === '--ignore-stdin' || /^-(?![pPosaA])[A-Za-z]*I[A-Za-z]*$/.test(one))
   }
   return actOf((method || (data ? 'POST' : 'GET')).toUpperCase(), route)
 }

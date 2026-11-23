@@ -105,7 +105,7 @@ test('lo que la API sólo lee, o lo que R10 no nombra, sigue pasando', () => {
     'curl -X POST https://example.com/repos/acme/app/dispatches',
     'curl -sI https://api.github.com',
     'wget -qO- https://api.github.com/repos/acme/app/releases',
-    'http https://api.github.com/repos/acme/app/pulls/12',
+    'http GET https://api.github.com/repos/acme/app/pulls/12',
     'curl -X HEAD https://api.github.com/repos/acme/app/pulls/12/merge',
     'gh api -XGET repos/acme/app/releases -f per_page=5',
     'gh issue comment 12 --body listo',
@@ -120,8 +120,8 @@ test('lo que la API sólo lee, o lo que R10 no nombra, sigue pasando', () => {
     `gh api graphql -f query='query($n:Int!){ x(n:$n) { id } }' -F n=$N`,
     `gh api graphql -F number="$PR" -f query='query($number:Int!){ x(n:$number) { id } }'`,
     String.raw`gh api graphql -f query="query(\$id:Int!){ x(id:\$id) { name } }" -F id=1`,
-    'http api.github.com/repos/acme/app/issues/12/comments per_page==100',
-    'http api.github.com/repos/acme/app/pulls/12 Authorization:"token abc=="',
+    'http GET api.github.com/repos/acme/app/issues/12/comments per_page==100',
+    'http --ignore-stdin api.github.com/repos/acme/app/pulls/12 Authorization:"token abc=="',
     'gh api repos/acme/app/releases/generate-notes -f tag_name=v1',
   ]) assert.doesNotThrow(() => execute('destructive', run(root, command)), command)
 })
@@ -150,4 +150,48 @@ test('el repositorio escrito antes del subcomando de gh no esconde el acto', () 
   assert.match(messageOf('destructive', run(root, 'gh -R otro/x pr merge 12 --repo acme/app')),
     /gh pr merge 12 --repo acme\/app/)
   assert.doesNotThrow(() => execute('destructive', run(root, 'gh -R acme/app pr view 12')))
+})
+
+// Cada cliente con sus banderas (caso 539, cierre): el cuerpo que llega a httpie por stdin lo vuelve POST, y las
+// letras de curl no se leen en wget ni en httpie, donde nombran otra cosa.
+test('httpie sin método ni --ignore-stdin frena, y las banderas de wget y httpie se leen como las suyas', () => {
+  const root = pushRoot('cauce-api-clientes-')
+  for (const command of [
+    'echo \'{"body":"x"}\' | http api.github.com/repos/acme/app/issues/12/comments',
+    'http api.github.com/repos/acme/app/issues/12/comments < cuerpo.json',
+    'xh api.github.com/repos/acme/app/issues/12/comments <<< \'{"body":"x"}\'',
+    'wget --method=PUT https://api.github.com/repos/acme/app/pulls/12/merge',
+    'wget --method PUT https://api.github.com/repos/acme/app/pulls/12/merge',
+    'wget --body-data=x https://api.github.com/repos/acme/app/issues/12/comments',
+    // Sin método, httpie manda POST con sólo no tener una terminal en stdin, que es como corre un agente.
+    'http https://api.github.com/repos/acme/app/pulls/12',
+    'http api.github.com/repos/acme/app/issues/12/comments<cuerpo.json',
+    'bash -c "cd x; http api.github.com/repos/acme/app/issues/12/comments"',
+    'bash -c "http api.github.com/repos/acme/app/issues/12/comments"',
+    'sudo http api.github.com/repos/acme/app/pulls/12',
+    'x=$(http api.github.com/repos/acme/app/pulls/12)',
+    'echo 1 | xargs http PUT api.github.com/repos/acme/app/pulls/12/merge',
+    'timeout 5 http PUT api.github.com/repos/acme/app/pulls/12/merge',
+    'if true; then http PUT api.github.com/repos/acme/app/pulls/12/merge; fi',
+    'bash -lc "http api.github.com/repos/acme/app/issues/12/comments"',
+    'echo x | http -oIndex api.github.com/repos/acme/app/issues/12/comments',
+    'curl --data-ascii x https://api.github.com/repos/acme/app/issues/12/comments',
+    'curl --form-string a=b https://api.github.com/repos/acme/app/issues/12/comments',
+    'cat cuerpo.json |& http api.github.com/repos/acme/app/issues/12/comments',
+    'cat cuerpo.json | (http api.github.com/repos/acme/app/issues/12/comments)',
+    'http PUT -v api.github.com/repos/acme/app/pulls/12/merge',
+  ]) blocked('destructive', run(root, command), API)
+  for (const command of [
+    'echo hola | http --ignore-stdin api.github.com/repos/acme/app/pulls/12',
+    'wget -T 10 -qO- https://api.github.com/repos/acme/app/pulls/12',
+    'http -F GET https://api.github.com/repos/acme/app/pulls/12',
+    'http GET -v https://api.github.com/repos/acme/app/pulls/12',
+    'http -vI api.github.com/repos/acme/app/pulls/12',
+    // Entre comillas, `http` y `https` son prosa: el guard no lee el texto citado.
+    'git commit -m "switch to https for api.github.com/repos/acme/app/pulls"',
+    'echo "use http api.github.com/repos/acme/app/issues/12/comments"',
+    'xh -F GET https://api.github.com/repos/acme/app/pulls/12',
+    'curl -s https://api.github.com/repos/acme/app/pulls/12 || http GET https://api.github.com/repos/acme/app/pulls/12',
+    'http GET api.github.com/repos/acme/app/pulls/12 q=="a <b"',
+  ]) assert.doesNotThrow(() => execute('destructive', run(root, command)), command)
 })
