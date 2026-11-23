@@ -164,8 +164,8 @@ function makeBench(root, dir, force, name, { repos = [dir], wipe = dir } = {}) {
   // **Y de acá para abajo el directorio no existe.** Eso es lo que sostiene que el andamiaje y el enlace
   // se escriban sin defensas: hasta el 073, los dos llevaban una por si algo sobrevivía al borrado.
   for (const target of [...lines.map((line) => line.home), wipe]) {
-    const problema = clearBench(target, path.join(root, '.cauce-eval'))
-    if (problema) fail(problema, USAGE)
+    const problem = clearBench(target, path.join(root, '.cauce-eval'))
+    if (problem) fail(problem, USAGE)
   }
   // Sin `force`, y eso es lo que hay que poder decir: sólo servía si algún archivo sobrevivía al borrado,
   // y la comprobación de arriba garantiza que no queda ninguno. Lo llevaba porque el mismo test falló tres
@@ -208,14 +208,14 @@ function makeBench(root, dir, force, name, { repos = [dir], wipe = dir } = {}) {
 // `maintenance.auto=false` y no `gc.auto=0`: medido con `GIT_TRACE=1`, el segundo deja que el commit
 // lance el mantenimiento igual —sólo hace que su tarea de `gc` no encuentre trabajo— y el proceso toma su
 // lock y escribe lo mismo. Se le quita el motivo de lanzarlo, no lo que hace una vez lanzado.
-function seal(dir, git, mensaje) {
+function seal(dir, git, message) {
   fs.appendFileSync(path.join(dir, '.gitignore'), '\nnode_modules/\n')
   git('init', '-q')
   git('config', 'user.email', 'banco@cauce.local')
   git('config', 'user.name', AUTHOR)
   git('config', 'maintenance.auto', 'false')
   git('add', '-A')
-  git('commit', '-q', '-m', mensaje)
+  git('commit', '-q', '-m', message)
 }
 
 // Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
@@ -230,14 +230,14 @@ function seal(dir, git, mensaje) {
 //
 // Se recrea entero en cada corrida —si no, lo que escribió el lunes es contexto del martes— y queda
 // en disco, gitignorado: después de un veredicto raro uno quiere mirar qué escribió el cargo.
-function evaluationBench(root, agent, caso, force, kind) {
+function evaluationBench(root, agent, caseName, force, kind) {
   const safe = (value) => {
     if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
       fail(`nombre inválido para el banco: ${value}`, USAGE)
     }
     return value
   }
-  const dir = path.join(root, '.cauce-eval', safe(agent), safe(caso || '_libre'))
+  const dir = path.join(root, '.cauce-eval', safe(agent), safe(caseName || '_libre'))
   const { git } = makeBench(root, dir, force, 'Banco de evaluación')
 
   // En una instancia el banco es una copia de la empresa y no del molde (caso 509): su contexto, sus reglas, y sus
@@ -264,8 +264,8 @@ function evaluationBench(root, agent, caso, force, kind) {
   // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
   // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir. Y después de la
   // copia de la empresa, para ganar si cae en una de sus rutas.
-  if (caso) {
-    const fixture = EV.fixtures(root, agent, caso, kind)
+  if (caseName) {
+    const fixture = EV.fixtures(root, agent, caseName, kind)
     if (fixture.files.length) fs.cpSync(fixture.dir, dir, { recursive: true })
   }
 
@@ -334,13 +334,13 @@ function populate(dir, scenario, git) {
   const declared = JSON.parse(fs.readFileSync(config, 'utf8'))
   declared.workspaceRoots = [{ name: 'app', path: path.relative(dir, app) }]
   fs.writeFileSync(config, `${JSON.stringify(declared, null, 2)}\n`)
-  const suyo = (...args) => spawnSync('git', ['-C', app, ...args], { stdio: 'ignore', env: git.env })
-  suyo('init', '-q')
-  suyo('config', 'user.email', 'banco@cauce.local')
-  suyo('config', 'user.name', AUTHOR)
-  suyo('config', 'maintenance.auto', 'false')
-  suyo('add', 'src/app.js')
-  suyo('commit', '-q', '-m', 'producto del banco')
+  const appGit = (...args) => spawnSync('git', ['-C', app, ...args], { stdio: 'ignore', env: git.env })
+  appGit('init', '-q')
+  appGit('config', 'user.email', 'banco@cauce.local')
+  appGit('config', 'user.name', AUTHOR)
+  appGit('config', 'maintenance.auto', 'false')
+  appGit('add', 'src/app.js')
+  appGit('commit', '-q', '-m', 'producto del banco')
 }
 
 // El banco de una medición. Vive junto al de evaluación —un solo lugar desechable, un solo gitignore, y

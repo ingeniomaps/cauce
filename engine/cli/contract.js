@@ -55,7 +55,7 @@ const restoreAdvice = (file) => 'Ese archivo lo mantiene Cauce entero, y `ops up
 // Con qué arranca un párrafo que **enuncia** un límite, frente a uno que lo explica. Es vocabulario
 // cerrado, igual que `lane` o `blocked`, y por la misma razón: lo que sigue es una lista de la que un
 // agente tiene que poder obedecer cada entrada, y una heurística abierta admite cualquier cosa.
-const ENUNCIA = /^(?:El runner\b|Debe\b|Nunca\b)/
+const STATES_A_LIMIT = /^(?:El runner\b|Debe\b|Nunca\b)/
 // Un límite por entrada y no la sección cruda. `SCOPE()` las une con `; ` en una sola frase del preámbulo
 // que se reenvía a **cada** subagente, así que el tamaño no se paga una vez: volcar ahí los dos mil bytes
 // de la sección entera metía encabezados, conectores —«Eso rige sin que nadie escriba nada.»— y los
@@ -147,7 +147,7 @@ function limits(text) {
       .filter((line) => line && !line.startsWith('#') && !line.startsWith('|') && !taken.has(line))
       .join(' ')
       .trim())
-    .filter((block) => ENUNCIA.test(block))
+    .filter((block) => STATES_A_LIMIT.test(block))
   return [...bullets, ...prose]
 }
 
@@ -184,12 +184,12 @@ function warnings(root) {
   // une las viñetas seguidas en un párrafo solo, así que una lista declarada no era igual a ninguna
   // viñeta de `marked()` y se contaba entera como un límite perdido (caso 159).
   const { own, intros } = marked(mine)
-  const suyo = new Set([...own, ...intros])
+  const markedLines = new Set([...own, ...intros])
   const outside = P.withoutComments(mine).split('\n')
-    .filter((line) => !suyo.has(line.replace(BULLET, '').trim()))
+    .filter((line) => !markedLines.has(line.replace(BULLET, '').trim()))
     .join('\n')
   const lost = paragraphs(outside)
-    .filter((one) => !fromTemplate.has(one) && !ENUNCIA.test(one))
+    .filter((one) => !fromTemplate.has(one) && !STATES_A_LIMIT.test(one))
   if (!lost.length) return []
   // El aviso nombra el camino declarado y no la gramática, aunque los dos sigan valiendo: desde 0.92.0
   // hay una forma de arreglar esto que no pide imitar nada, y mandar a la otra es mandar al camino que
@@ -245,7 +245,7 @@ function contract(dir, cli) {
   const runner = config.runner || {}
   const lines = LT.declared(root, config)
   const map = workspaceMap(root)
-  const excepciones = P.section(readIfAny(path.join(root, 'organization', 'workspace.md')),
+  const exceptions = P.section(readIfAny(path.join(root, 'organization', 'workspace.md')),
     /Excepciones de autonom/)
   const report = {
     rootOk: true,
@@ -273,7 +273,7 @@ function contract(dir, cli) {
     contracts: sections[path.join('planning', 'PROTOCOL.md')].trim(),
     // Los del toolkit primero y los del proyecto después, que es el orden en que se leen: lo segundo amplía
     // o restringe lo primero, y al revés se leería como si el proyecto fijara la base.
-    boundaries: [...limits(sections['AGENTS.md']), ...limits(excepciones)],
+    boundaries: [...limits(sections['AGENTS.md']), ...limits(exceptions)],
     // Las líneas declaradas, para que `/autobuild pagos` sepa que `pagos` es una línea y no un pedido (caso
     // 394). Sólo cuando hay: sin líneas el contrato es el de siempre.
     ...(Object.keys(lines).length ? { lines: Object.keys(lines) } : {}),

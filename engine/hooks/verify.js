@@ -22,7 +22,7 @@ const { holdMachine, memoryShort } = require('./machine-lock')
 // Salidas de build y cachés que cualquier gate rehace solo. Se comparan contra el nombre entero de la
 // entrada para que valga también anidado —`packages/app/dist`—, y con el separador de `git status`, que
 // siempre usa `/`.
-const RECREABLE = new RegExp('(^|/)(?:dist|build|out|coverage|__pycache__'
+const REBUILDABLE = new RegExp('(^|/)(?:dist|build|out|coverage|__pycache__'
   + '|\\.next|\\.nuxt|\\.svelte-kit|\\.turbo|\\.output|\\.parcel-cache|\\.pytest_cache)$')
 
 // Dónde tiene que correr un gate: sobre lo que el commit va a grabar, que es el índice y no el árbol.
@@ -86,7 +86,7 @@ function commitTree(dir, input) {
     // falte un nombre— deja el comportamiento de antes; errarle por exceso hace que un gate reconstruya,
     // que es más lento y no incorrecto. Lo que **sí** se enlaza es lo que un gate no puede fabricar:
     // `node_modules`, un `.env`, las credenciales de una herramienta.
-    if (RECREABLE.test(name)) continue
+    if (REBUILDABLE.test(name)) continue
     const link = path.join(temp, name)
     if (fs.existsSync(link)) continue
     fs.mkdirSync(path.dirname(link), { recursive: true })

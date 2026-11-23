@@ -1526,7 +1526,7 @@ while (rounds++ < MAX_TASKS) {
         // lugar donde eso se dice es la épica: ahí es donde la unidad vivía. En `done/` no va —su README
         // declara que es la evidencia de lo que una tarea **entregó**, y una partida no entregó nada—
         // (caso 169).
-        const historias = task.epic
+        const storyNote = task.epic
           ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
             + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
           : ''
@@ -1536,7 +1536,7 @@ while (rounds++ < MAX_TASKS) {
         // paralelas, esperar a una sola lo dejaría arrancar antes.
         await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
           `independiente: ${JSON.stringify(estimate.subtasks)}. Cada subtarea lleva un slug nuevo, distinto de ` +
-          `${task.id}: las partes son unidades nuevas y la partida deja de existir.${historias} ` +
+          `${task.id}: las partes son unidades nuevas y la partida deja de existir.${storyNote} ` +
           'Y toda tarea de la cola —en ' +
           `${QUEUE}— que declare (depende: …) nombrando a ${task.id} pasa a depender de todas las subtareas ` +
           'nuevas, con los demás slugs que ya declaraba.', { label: 'split' })

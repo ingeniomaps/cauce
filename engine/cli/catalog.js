@@ -100,12 +100,12 @@ function learn(agent, cli) {
       // Los dos archivados no son lo mismo y el mensaje lo dice: uno es una decisión, con su motivo, y
       // el otro es tirar un andamio que nadie llegó a llenar. Afirmar el primero sobre el segundo le
       // cuenta a quien archiva que hubo una revisión que no hubo.
-      const porque = result.reason
+      const why = result.reason
         ? `descartada — ${result.reason}`
         : 'nadie decidió el cambio y el documento quedó con el molde'
       return console.log(result.already
         ? `= ${relative} ya estaba archivada`
-        : `✓ ${relative} queda archivada: ${porque}`)
+        : `✓ ${relative} queda archivada: ${why}`)
     }
     // Antes de aplicar, `agent-promote` pregunta si lo que se firmó es lo que hay (caso 486).
     if (cli.has('--check-signature')) {
@@ -170,7 +170,7 @@ function learn(agent, cli) {
 // Un sujeto que no se resuelve no es propio: lo dice el error que da después quien lo busque de verdad.
 const ownedOrNot = (root, agent, kind) => { try { return EV.owned(root, agent, kind) } catch { return false } }
 
-function evaluate(agent, caso, cli) {
+function evaluate(agent, caseName, cli) {
   const root = opsRoot()
   // De quién son los casos, resuelto por bandera y no por el slug. Por qué no se deduce, en `subject`.
   const kind = cli.has('--flow') ? 'flow' : 'agent'
@@ -187,7 +187,7 @@ function evaluate(agent, caso, cli) {
     // y de ahí la ruta viaja a los informes y a las propuestas que después lee otro cargo. Absoluta
     // nombraba el directorio personal de una máquina, y así quedaron mil cuatrocientas ochenta y cinco
     // citas que dejaron de resolver el día que este repositorio cambió de nombre.
-    return console.log(path.relative(root, B.evaluationBench(root, agent, caso, cli.has('--force'), kind)))
+    return console.log(path.relative(root, B.evaluationBench(root, agent, caseName, cli.has('--force'), kind)))
   }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de

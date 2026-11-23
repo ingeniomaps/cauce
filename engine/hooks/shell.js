@@ -41,9 +41,9 @@ const { deliveryRules, namesRepo, GH, DIR } = require('./delivery')
 //
 // Y el `\s*` va adentro del lookahead. Afuera, el cuantificador retrocede a vacío y el lookahead ve el
 // espacio que él mismo habría consumido, así que `git checkout -- src/app.js` empieza a caer.
-const ANTES = String.raw`(?:^|[\s;&|('"\`])`
-const PALABRA = String.raw`$|[\s;&|)'"\`]`
-const COMANDO = String.raw`$|[;&|)'"\`]`
+const BEFORE = String.raw`(?:^|[\s;&|('"\`])`
+const WORD_END = String.raw`$|[\s;&|)'"\`]`
+const COMMAND_END = String.raw`$|[;&|)'"\`]`
 
 // Si algún remoto alcanza al commit que está en HEAD. Lectura local e inocua: `branch -r` mira lo que ya
 // está en `refs/remotes/`, no habla con ningún servidor. Un `fetch` que nadie corrió deja la respuesta
@@ -163,7 +163,7 @@ function rulesOf(input) {
       // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
       // que restaura el working tree por defecto y toma el pathspec sin separador.
       new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${SAME_COMMAND}*?\s)?`
-        + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
+        + String.raw`(?:--(?=\s*(?:${COMMAND_END}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMMAND_END})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
       true,
@@ -183,7 +183,7 @@ function rulesOf(input) {
       DIR,
     ],
     [
-      new RegExp(ANTES + PROGRAM_PATH + String.raw`(?:mkfs\S*|shred)\s`
+      new RegExp(BEFORE + PROGRAM_PATH + String.raw`(?:mkfs\S*|shred)\s`
         + String.raw`|\bdd\s+${SAME_COMMAND}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],
@@ -194,7 +194,7 @@ function rulesOf(input) {
       // sus variables. Y `destructive` no desentrecomilla fuera de un commit, a propósito, así que la
       // comilla tiene que entrar en el patrón (caso 167).
       new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:--\s+)?['"]?`
-        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${PALABRA})`),
+        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${WORD_END})`),
       "'rm -r' sobre /, home o el directorio padre es catastrófico.",
     ],
   ]
@@ -303,7 +303,7 @@ function gitAdd(input) {
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
   // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
   // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
-  if (new RegExp(String.raw`\bgit\s+add\s+(?:${SAME_COMMAND}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
+  if (new RegExp(String.raw`\bgit\s+add\s+(?:${SAME_COMMAND}*\s)?(?:-A|--all|\.)(?=${WORD_END})`)
     .test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
   }

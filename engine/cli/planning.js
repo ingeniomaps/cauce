@@ -50,8 +50,8 @@ function evidence(dir, cli) {
   const entries = P.readDone(root).entries
   const slug = cli.value('--task')
   // Sin `--task`, la más reciente, y la decide `fecha:` — por qué ese campo existe lo dice el contrato.
-  const reciente = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
-  const entry = slug ? entries.find((one) => one.slug === slug) : reciente
+  const latest = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
+  const entry = slug ? entries.find((one) => one.slug === slug) : latest
   if (!entry && slug) return fail(`DONE no tiene la entrada ${slug}`, USAGE)
   if (!entry) return fail('DONE no tiene ninguna entrada', REFUSED)
 
@@ -71,13 +71,13 @@ function evidence(dir, cli) {
   console.log(`TAREA  ${entry.slug}${entry.epic ? ` (epic: ${entry.epic})` : ''}`)
   if (!traces.length) console.log('TESTS  (la entrada no rastrea ningún criterio)')
   for (const trace of traces) {
-    const nota = trace.verdict === 'inbuscable'
+    const note = trace.verdict === 'inbuscable'
       ? (roots.length ? 'describe la prueba en vez de nombrarla' : 'el proyecto no declara raíces de código')
       : trace.verdict === 'parcial' ? `el archivo existe; no aparece en él: ${trace.missing.join(', ')}`
         : trace.verdict === 'encontrado' && trace.files?.length ? found(trace) : ''
     // De dónde salió, en todo veredicto que no vio el disco: sin eso, «el archivo existe» se lee como en disco.
     const origin = trace.commit ? ` (en el commit ${trace.commit}, no en disco)` : ''
-    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}${origin}`)
+    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${note ? ` — ${note}` : ''}${origin}`)
   }
   if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')
   else console.log(`GATES  ${runs.length === 1 ? 'la última corrida' : `las últimas ${runs.length} corridas`} `
@@ -180,29 +180,29 @@ function context(dir, cli) {
   if (asked.error) return fail(asked.error, USAGE)
   const { line } = asked
   const from = CL.runner(asked.id, path.join(root, '..'))
-  const { wip: mio, stale: staleWip } = ST.ownWip(state, from)
-  const hito = cli.value('--hito')
+  const { wip: myWip, stale: staleWip } = ST.ownWip(state, from)
+  const milestoneArg = cli.value('--hito')
   // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir
   // otro hito mientras sostenías una tarea ofrecía una segunda que `claim` después se niega a dar: el
   // comando que dice qué hacer y el que lo autoriza contestaban distinto, y sólo se veía al reclamar.
   const own = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
   // La línea acota antes que el hito (caso 239), y con la misma excepción: lo que ya tenés no se esconde.
-  const lined = LN.scope(state.milestones, line, new Set([own && own.slug, mio && mio.task].filter(Boolean)))
+  const lined = LN.scope(state.milestones, line, new Set([own && own.slug, myWip && myWip.task].filter(Boolean)))
   state.claims = [...state.claims, ...LN.claimsElsewhere(root)]
-  let hitoOmitido = ''
-  if (hito) {
-    const existe = state.milestones.find((one) => one.slug === hito)
+  let milestoneSkipped = ''
+  if (milestoneArg) {
+    const exists = state.milestones.find((one) => one.slug === milestoneArg)
     // Un hito mal escrito devolvería «sin tarea disponible», que es indistinguible de un hito terminado.
-    if (!existe) {
-      const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
-      return fail(`el hito ${hito} no existe. Hay: ${hay}`, USAGE)
+    if (!exists) {
+      const available = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
+      return fail(`el hito ${milestoneArg} no existe. Hay: ${available}`, USAGE)
     }
-    if (lined.hidden.includes(existe)) return fail(`el hito ${hito} ${LN.whereToTake(existe)}`, REFUSED)
+    if (lined.hidden.includes(exists)) return fail(`el hito ${milestoneArg} ${LN.whereToTake(exists)}`, REFUSED)
   }
   state.milestones = lined.milestones
-  if (hito) {
-    if (own) hitoOmitido = `${hito} no se aplica: ya tenés ${own.slug} tomada`
-    else state.milestones = state.milestones.filter((one) => one.slug === hito)
+  if (milestoneArg) {
+    if (own) milestoneSkipped = `${milestoneArg} no se aplica: ya tenés ${own.slug} tomada`
+    else state.milestones = state.milestones.filter((one) => one.slug === milestoneArg)
   }
   const holding = CK.holding(root, line)
   const [held] = holding
@@ -238,7 +238,7 @@ function context(dir, cli) {
     // `autobuild` le dice que lea cuatro archivos una sola vez y nada más, y el roadmap no es ninguno.
     epic: epic ? { num: epic.num, title: epic.title, status: epic.status, context: epic.context } : null,
     // El WIP que este runner tiene, no el de la instancia: es lo único que le corresponde continuar.
-    wip: mio ? { phase: mio.phase, complete: mio.complete, pending: mio.pending } : null,
+    wip: myWip ? { phase: myWip.phase, complete: myWip.complete, pending: myWip.pending } : null,
     // Dónde va su plan. Lo dice el motor porque el nombre sale del id del runner, y quien escribe el
     // plan —un workflow— no tiene por qué saber cómo se deriva.
     wipFile: `wip/${P.wipName(from)}.md`, staleWip,
@@ -281,7 +281,7 @@ function context(dir, cli) {
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   if (staleWip) console.log(`STALE  ${report.wipFile} apunta a ${staleWip}, que ya está en done/. ${PC.STALE_ADVICE}`)
-  const reglas = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)
+  const rules = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)
 
   if (report.blocked === 'awaiting-review') {
     const body = P.read(path.join(root, held.file)).replace(/^---\n[\s\S]*?\n---\n/, '')
@@ -304,16 +304,16 @@ function context(dir, cli) {
   // Que el reclamo sea tuyo desde otro id ya se decía; que además haya un **plan escrito** bajo ese id, no.
   // Esa es la mitad que cuesta la sesión: los pasos ya hechos están en un archivo que nadie nombra, y el id
   // que lo recupera es justo el que esta sesión no supo deducir. Los dos datos están en el reclamo.
-  const tomadas = () => {
+  const takenOnes = () => {
     for (const one of report.taken) {
       console.log(`TAKEN  ${one.slug} (${ownerLabel(one)})`)
       if (!mine(one) || !one.wip) continue
       const session = { line: report.line, legacy: asked.legacy, wipFile: report.wipFile,
-        busy: Boolean(mio) && mio.task !== one.slug, moved: Boolean(mio) && mio.task === one.slug }
+        busy: Boolean(myWip) && myWip.task !== one.slug, moved: Boolean(myWip) && myWip.task === one.slug }
       console.log(`PLAN   ${one.slug}: su plan está en wip/${one.wip}${LN.resumeAdvice(one, session, root)}`)
     }
   }
-  const espera = () => {
+  const wait = () => {
     for (const one of report.waiting) {
       console.log(`WAIT   ${one.slug}: espera a ${one.dep}${one.owner ? ` (${one.owner})` : ''}`)
     }
@@ -330,7 +330,7 @@ function context(dir, cli) {
       console.log(`DUE    ${one.id}: ${when}`)
     }
   }
-  const lineas = () => {
+  const lines = () => {
     if (!report.line && !report.otherLines.length) return
     console.log(`LINE   ${report.line || '(ninguna)'}${report.otherLines.length
       ? ` — de otras líneas, no se ofrecen: ${report.otherLines.join(', ')}` : ''}`)
@@ -338,17 +338,17 @@ function context(dir, cli) {
   }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
-    lineas()
+    lines()
     const { nextEpic: next } = report
     if (next) console.log(`EPIC   ${next.num}: ${next.title} — sin promover`)
     // Mismo motivo que `blocked` arriba, con otra causa: acá la cola no la traba una persona, la tiene
     // el equipo, y lo que corresponde es hablar con quien la tiene.
-    tomadas()
-    espera()
+    takenOnes()
+    wait()
     byHand()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
-    return reglas()
+    return rules()
   }
   console.log(`TASK   ${report.task.slug}${report.task.tier ? ` [${report.task.tier}]` : ''}` +
     `${report.task.service ? `  service: ${report.task.service}` : ''}` +
@@ -368,18 +368,18 @@ function context(dir, cli) {
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
   const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'
   console.log(`WIP    ${wip}`)
-  if (hitoOmitido) console.log(`HITO   ${hitoOmitido}`)
-  lineas()
+  if (milestoneSkipped) console.log(`HITO   ${milestoneSkipped}`)
+  lines()
   console.log(report.claimed
     ? `CLAIM  tuya desde el reclamo (${report.owner})`
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
-  tomadas()
-  espera()
+  takenOnes()
+  wait()
   byHand()
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()
-  reglas()
+  rules()
 }
 
 // Qué trabajo recurrente vence, y la línea con la que se promueve. Emite esa línea y no la escribe:

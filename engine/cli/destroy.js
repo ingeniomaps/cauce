@@ -26,14 +26,14 @@ const { undeclareEngine } = require('./dependency')
 // recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
 function whatIsLost(root) {
   const planning = path.join(root, 'planning')
-  const queued = BK.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
+  const queued = BK.readBacklog(planning).reduce((total, milestone) => total + (milestone.tasks || []).length, 0)
   const humanActions = ST.pendingHumanActions(planning).length
   return {
-    epicas: P.readEpics(planning).length,
-    hechas: (P.readDone(planning).entries || []).length,
-    enCola: queued,
+    epics: P.readEpics(planning).length,
+    done: (P.readDone(planning).entries || []).length,
+    queued,
     humanActions,
-    contexto: !OB.guide(root).fresh,
+    context: !OB.guide(root).fresh,
     runners: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))],
     trees: taskTrees(root),
   }
@@ -85,11 +85,11 @@ function destroy(dir, cli) {
 
   const loss = whatIsLost(root)
   const lines = [
-    loss.epicas && `${loss.epicas} épica(s) en el roadmap`,
-    loss.enCola && `${loss.enCola} tarea(s) en la cola`,
-    loss.hechas && `${loss.hechas} tarea(s) terminada(s) con su evidencia`,
+    loss.epics && `${loss.epics} épica(s) en el roadmap`,
+    loss.queued && `${loss.queued} tarea(s) en la cola`,
+    loss.done && `${loss.done} tarea(s) terminada(s) con su evidencia`,
     loss.humanActions && `${loss.humanActions} acción(es) humana(s) pendiente(s)`,
-    loss.contexto && 'el contexto escrito en organization/',
+    loss.context && 'el contexto escrito en organization/',
   ].filter(Boolean)
 
   const embedded = O.mode(root) === 'embedded'
