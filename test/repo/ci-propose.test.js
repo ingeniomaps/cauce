@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 const REPO = path.resolve(__dirname, '..', '..')
 
@@ -56,7 +57,8 @@ function runSteps(t, { claude, oauth = 'x', apikey = 'y' }) {
     fails: 'exit 1',
     removes: `rm "${proposal}"\nexit 0`,
   }[claude]
-  fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\necho "$@" >> "${dir}/args"\n${fake}\n`, { mode: 0o755 })
+  // El modelo no corre acá: el `claude` falso anota sus argumentos y hace lo que el caso le pide.
+  fakeCommand(bin, 'claude', `#!/bin/sh\necho "$@" >> "${dir}/args"\n${fake}\n`)
 
   const source = workflow('agent-learning')
   const env = {

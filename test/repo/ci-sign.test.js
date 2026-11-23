@@ -11,6 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync, spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 const APPROVAL = '## Aprobación humana\n\n- Estado: pendiente\n'
   + '- Responsable: por definir\n- Fecha: por definir\n'
@@ -24,7 +25,7 @@ const proposal = (state) => `---\nagent: probe\nperiod: 2099-01\nstatus: ${state
 const withGh = (repo, script) => {
   const bin = path.join(repo, 'bin')
   fs.mkdirSync(bin, { recursive: true })
-  fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\n${script}\n`, { mode: 0o755 })
+  fakeCommand(bin, 'gh', `#!/bin/sh\n${script}\n`)
   return `${bin}${path.delimiter}${process.env.PATH}`
 }
 

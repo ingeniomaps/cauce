@@ -22,6 +22,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { tempRoot, discard } = require('../support/environment')
+const { fakeCommand } = require('../support/fakes')
 
 const ROOT = path.resolve(__dirname, '..', '..')
 const TOOL = path.join(ROOT, 'test', 'tools', 'coverage-files.js')
@@ -276,7 +277,7 @@ test('coverage.sh mide por el contenido del lcov, y sólo al registrar ignora el
 const withSuite = (repo, output) => {
   const bin = path.join(repo, 'bin')
   fs.mkdirSync(bin, { recursive: true })
-  fs.writeFileSync(path.join(bin, 'node'), [
+  fakeCommand(bin, 'node', [
     '#!/usr/bin/env bash',
     'for a in "$@"; do [ "$a" = "--test" ] && suite=1; done',
     `if [ -z "\${suite:-}" ]; then exec ${JSON.stringify(process.execPath)} "$@"; fi`,
@@ -294,7 +295,7 @@ const withSuite = (repo, output) => {
     'LCOV',
     `exit ${output}`,
     '',
-  ].join('\n'), { mode: 0o755 })
+  ].join('\n'))
   return `${bin}${path.delimiter}${process.env.PATH}`
 }
 

@@ -14,6 +14,7 @@ const path = require('node:path')
 
 const { spawnSync } = require('node:child_process')
 const { execute, guards } = require('../../engine/hooks/run')
+const { fakeCommand } = require('../support/fakes')
 
 test('la copia recibe la palanca que apaga la sincronización, y ya no la que desarma confirmaciones', () => {
   const root = tempRoot('ops-hook-ci-')
@@ -101,11 +102,11 @@ test('un gate no puede purgar el node_modules del proyecto por el enlace', () =>
   // El `pnpm` de mentira: reinstala —o sea, empieza borrando— salvo que se le haya apagado la
   // comprobación previa. Sigue el enlace, que es exactamente por donde ocurrió el daño.
   const fake = tempRoot('ops-hook-purga-bin-')
-  fs.writeFileSync(path.join(fake, 'pnpm'), '#!/usr/bin/env bash\n'
+  fakeCommand(fake, 'pnpm', '#!/usr/bin/env bash\n'
     + 'if [ "${pnpm_config_verify_deps_before_run:-}" != "false" ]; then\n'
     + '  rm -f node_modules/marca.txt\n'
     + 'fi\n'
-    + 'exit 0\n', { mode: 0o755 })
+    + 'exit 0\n')
 
   // Árbol e índice difieren, que es cuando se materializa la copia y aparece el enlace.
   fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')

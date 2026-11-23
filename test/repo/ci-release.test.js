@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 // El número de versión se lee, no se calcula. La regla del repo es «un cambio en el protocolo, en las
 // reglas del sistema o en un guard sube minor aunque no toque una sola línea de código», o sea que mide
@@ -77,8 +78,8 @@ test('la release publica sólo lo que todavía no salió', { skip: process.platf
     down: 'echo "npm error code ECONNREFUSED" >&2; exit 1',
   }
   const attempt = ({ tagged, npm }) => {
-    fs.writeFileSync(path.join(bin, 'git'), `#!/usr/bin/env bash\nexit ${tagged ? 0 : 2}\n`, { mode: 0o755 })
-    fs.writeFileSync(path.join(bin, 'npm'), `#!/usr/bin/env bash\n${answers[npm]}\n`, { mode: 0o755 })
+    fakeCommand(bin, 'git', `#!/usr/bin/env bash\nexit ${tagged ? 0 : 2}\n`)
+    fakeCommand(bin, 'npm', `#!/usr/bin/env bash\n${answers[npm]}\n`)
     const out = path.join(repo, 'out')
     fs.rmSync(out, { force: true })
     const done = spawnSync('bash', ['-c', step], {
@@ -125,15 +126,15 @@ test('un publish que npm rechaza porque la versión ya salió sigue a la release
   const bin = path.join(repo, 'bin')
   fs.mkdirSync(bin)
   // `sleep` falso: la espera es entre consultas al registro, y acá no hay registro que esperar.
-  fs.writeFileSync(path.join(bin, 'sleep'), '#!/usr/bin/env bash\nexit 0\n', { mode: 0o755 })
+  fakeCommand(bin, 'sleep', '#!/usr/bin/env bash\nexit 0\n')
   const conflict = 'echo "npm error You cannot publish over the previously published versions: 1.2.3." >&2; exit 1'
   const run = ({ publish, view }) => {
     const calls = path.join(repo, 'calls')
     fs.writeFileSync(calls, '')
-    fs.writeFileSync(path.join(bin, 'npm'), [
+    fakeCommand(bin, 'npm', [
       '#!/usr/bin/env bash', `echo "$1" >> ${JSON.stringify(calls)}`,
       `case "$1" in publish) ${publish} ;; view) ${view} ;; esac`, '',
-    ].join('\n'), { mode: 0o755 })
+    ].join('\n'))
     const done = spawnSync('bash', ['-e', '-c', step], {
       cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VERSION: '1.2.3' },
     })

@@ -11,6 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 // La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
 // this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
@@ -142,11 +143,9 @@ test('la investigación usa la suscripción y cae a la API key sólo si falla',
   const dir = tempRoot('cauce-creds-')
   const seen = path.join(dir, 'visto.txt')
   // Anota la credencial de cada invocación; falla cuando se le pide desde el entorno de la prueba.
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\n`
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\n`
     + `echo "oauth=\${CLAUDE_CODE_OAUTH_TOKEN:-} key=\${ANTHROPIC_API_KEY:-}" >> ${JSON.stringify(seen)}\n`
-    + `exit "\${FALLA_OAUTH:-0}"\n`, { mode: 0o755 })
-  // El respaldo tiene que salir bien aunque el primero falle: la segunda invocación no lleva OAuth.
-  fs.writeFileSync(path.join(dir, 'claude-fallible'), '', { mode: 0o755 })
+    + `exit "\${FALLA_OAUTH:-0}"\n`)
 
   const run = (env) => {
     fs.writeFileSync(seen, '')
@@ -200,8 +199,8 @@ test('el resumen dice qué comando se negó, no sólo que fue Bash',
       { tool_name: 'Bash', tool_input: { command: 'npm ls --depth=0 | head' } },
     ],
   })
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`,
-    { mode: 0o755 })
+  // El JSON de una corrida, para medir el resumen del job sin gastar modelo.
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`)
 
   const done = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
@@ -243,8 +242,8 @@ test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
       'claude-opus-5': { webSearchRequests: 1 },
     },
   })
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`,
-    { mode: 0o755 })
+  // El JSON de una corrida, para medir el resumen del job sin gastar modelo.
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`)
 
   const done = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
@@ -271,8 +270,7 @@ test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
     duration_ms: 231000, num_turns: 33,
     modelUsage: { 'claude-opus-5': { inputTokens: 42, outputTokens: 17364 } },
   })
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${withoutField}\nJSON\n`,
-    { mode: 0o755 })
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${withoutField}\nJSON\n`)
   const mute = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
     env: {
@@ -297,9 +295,8 @@ test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
   const seen = path.join(dir, 'args.txt')
 
   // El falso guarda lo que recibe y devuelve un JSON válido, para que el paso termine bien.
-  fs.writeFileSync(path.join(dir, 'claude'),
-    `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > ${JSON.stringify(seen)}\necho '{"num_turns":1}'\n`,
-    { mode: 0o755 })
+  fakeCommand(dir, 'claude',
+    `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > ${JSON.stringify(seen)}\necho '{"num_turns":1}'\n`)
 
   const done = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',

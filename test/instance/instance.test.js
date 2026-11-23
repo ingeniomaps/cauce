@@ -12,6 +12,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
   const base = tempRoot('cauce-')
@@ -223,11 +224,8 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   fs.mkdirSync(repo)
   fs.mkdirSync(bin)
   const engine = path.resolve(__dirname, '..', '..')
-  fs.writeFileSync(
-    path.join(bin, 'npm'),
-    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${engine} node_modules/@ingeniomaps/cauce\n`,
-    { mode: 0o755 },
-  )
+  fakeCommand(bin, 'npm',
+    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${engine} node_modules/@ingeniomaps/cauce\n`)
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
   // Desde una terminal suelta: dentro de una sesión de Claude Code el cierre pide una nueva (caso 502).
@@ -257,7 +255,7 @@ test('init no disimula un npm install que falló', () => {
   const bin = path.join(base, 'bin')
   fs.mkdirSync(repo)
   fs.mkdirSync(bin)
-  fs.writeFileSync(path.join(bin, 'npm'), '#!/usr/bin/env bash\nexit 1\n', { mode: 0o755 })
+  fakeCommand(bin, 'npm', '#!/usr/bin/env bash\nexit 1\n')
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(process.execPath, [CLI, 'init', '--runner', 'claude', '--install'], {

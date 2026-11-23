@@ -558,6 +558,10 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   que se decide, a unos 0,24M tokens por caso, y no algo que queda para después. Si no se va a medir, se dice en el PR
   y el cambio no se entrega como si estuviera probado.
 
+- **Un doble de prueba sale de `test/support/fakes.js` y dice por qué existe** (R18). Hoy los dobles de este repo son
+  comandos falsos puestos delante en el `PATH`; `test/repo/doubles.test.js` frena el que se escriba a mano y el que no
+  tenga encima el comentario con su porqué.
+
 - **Un guard no decide con una lista de palabras permitidas.** Lo que la persona quiso lo lee el agente, que
   es quien entiende intención; un guard es un script y sólo ve palabras. Por eso un guard nunca exige que
   el mensaje traiga cierto verbo o cierta frase para dejar pasar: decide sólo la dirección segura —lo que

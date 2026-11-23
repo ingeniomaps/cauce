@@ -12,6 +12,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { execFileSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 // Que el informe exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
 // salió la primera corrida y `research-pr` lo publicó igual — un lunes eso son 29 PRs en blanco y nada
@@ -303,7 +304,8 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
     + "  *inventado*) printf 'ESTA URL NO DEBIO PEDIRSE\\n200' ;;\n"
     + '  *) printf \'%s\\n200\' "$const" ;;\n'
     + 'esac\n'
-  fs.writeFileSync(path.join(dir, 'curl'), fake, { mode: 0o755 })
+  // Cada clase de respuesta de una fuente —caída, cáscara, 202, lenta— sin salir a internet.
+  fakeCommand(dir, 'curl', fake)
 
   // El paso resuelve el directorio del cargo con `agents list`; se lo deja resolver y después se apunta
   // al falso, así el camino real sigue ejercitándose y las URLs son las de la prueba.
@@ -389,7 +391,7 @@ test('el barrido borra las ramas ya mergeadas, y sólo ésas', () => {
   // Cinco ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, una fuera de
   // `automation/` que el prefijo de la consulta no traería pero el script tiene que ignorar igual, y una
   // mergeada que otro borró entre listar y borrar —pasó en la primera corrida real y cortaba el resto—.
-  fs.writeFileSync(path.join(bin, 'gh'), `#!/usr/bin/env bash
+  fakeCommand(bin, 'gh', `#!/usr/bin/env bash
 case "$*" in
   *matching-refs*) printf '%s\\n' 'refs/heads/automation/ganada eee' 'refs/heads/automation/quieta aaa' \\
     'refs/heads/automation/movida bbb' 'refs/heads/automation/abierta ccc' 'refs/heads/fix/otra ddd' ;;
@@ -403,7 +405,7 @@ case "$*" in
   *"--method DELETE"*) echo "\${@: -1}" >> '${deletedList}' ;;
   *) echo "gh inesperado: $*" >&2; exit 1 ;;
 esac
-`, { mode: 0o755 })
+`)
   const script = path.resolve(__dirname, '..', '..', '.github', 'scripts', 'prune-merged-branches.sh')
   const result = spawnSync('bash', [script], {
     encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'o/r' },

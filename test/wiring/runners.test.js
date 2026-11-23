@@ -15,6 +15,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 const root = path.resolve(__dirname, '..', '..', 'automatization', 'runners')
 
@@ -161,7 +162,7 @@ test('doctor de Antigravity avisa cuando agy no es la versión en que se midiero
   const bin = path.join(base, 'bin')
   fs.mkdirSync(bin)
   const doctor = (version, body = `echo ${version}`) => {
-    fs.writeFileSync(path.join(bin, 'agy'), `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+    fakeCommand(bin, 'agy', `#!/bin/sh\n${body}\n`)
     const result = spawnSync(process.execPath, [path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js'),
       'automation', 'doctor', target, 'antigravity'], { encoding: 'utf8', env: { ...env, PATH: `${bin}:${env.PATH}` },
       timeout: 20000 })
