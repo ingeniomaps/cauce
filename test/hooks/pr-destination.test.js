@@ -57,6 +57,65 @@ test('el origin se lee de donde corre gh, por SSH o con credencial en la URL, y 
   const { root, app } = checkout('cauce-pr-destino-cd-')
   assert.doesNotThrow(() => execute('destructive', run(root, `cd ${app} && gh pr create --repo me/app --fill`)))
   blocked('destructive', run(root, `cd ${app} && gh pr create --repo org/app --fill`), FOREIGN)
+  // También desde una subcapa: antes resolvía la carpeta de la sesión, sin `origin`, y frenaba de más.
+  assert.doesNotThrow(() => execute('destructive', run(root, `(cd ${app} && gh pr create --repo me/app --fill)`)))
+  blocked('destructive', run(root, `(cd ${app} && gh pr create --repo org/app --fill)`), FOREIGN)
+  // Un `cd` en una subcapa que ya cerró no mueve al comando de después.
+  blocked('destructive', run(app, `(cd ${root} && ls); gh pr create --repo org/app --fill`), FOREIGN)
+  assert.doesNotThrow(() => execute('destructive', run(root, `( cd ${app} && gh pr create --repo me/app --fill )`)))
+  // El `cd` de afuera se suma al de la subcapa, y adentro cuenta el último.
+  const parent = path.dirname(root)
+  assert.doesNotThrow(() => execute('destructive',
+    run(parent, `cd ${path.basename(root)} && (cd app && gh pr create --repo me/app --fill)`)))
+  assert.doesNotThrow(() => execute('destructive', run(root, `(cd ${parent}; cd ${app}; gh pr create --repo me/app)`)))
+  const chained = `(cd ${path.basename(root)} && cd app && gh pr create --repo me/app)`
+  assert.doesNotThrow(() => execute('destructive', run(parent, chained)), 'los cd de la subcapa, en orden')
+  // Cada `gh pr create` desde su carpeta, y un `$(…)` cerrado adentro de la subcapa no la cierra.
+  blocked('destructive', run(app, `gh pr create --repo me/app; (cd ${root} && gh pr create --repo me/app)`),
+    /no tiene origin/)
+  blocked('destructive', run(root, `(cd ${app} && gh pr create --repo me/app); gh pr create --repo me/app`),
+    /no tiene origin/)
+  blocked('destructive', run(root, `(cd ${app} && x=$(pwd) && gh pr create --repo org/app)`), FOREIGN)
+  assert.doesNotThrow(() => execute('destructive', run(root, `(cd ${app} && x=$(pwd) && gh pr create --repo me/app)`)))
+  blocked('destructive', run(app, `(ls; cd ${root}); gh pr create --repo org/app --fill`), FOREIGN)
+  blocked('destructive', run(app, `echo "a; cd ${root}" && gh pr create --repo org/app --fill`), FOREIGN)
+  const { app: other } = checkout('cauce-pr-destino-otro-', 'https://github.com/org/app.git')
+  // Un `git -C` no mueve la carpeta del shell, y `gh` corre donde está: HEAD tomaba el `-C` y dejaba pasar esto.
+  blocked('destructive', run(app, `git -C ${other} status && gh pr create --repo org/app`), FOREIGN)
+  // Un `cd` con la ruta entre comillas mueve la carpeta igual, también después de un commit.
+  blocked('destructive', run(app, `git commit -qm x ; cd "${other}" && gh pr create --repo me/app`), FOREIGN)
+  // En un `bash -c` lo citado es código que corre: su `cd` cuenta.
+  blocked('destructive', run(app, `cd ${other} ; bash -c "cd ${app} && gh pr create --repo org/app"`), FOREIGN)
+  assert.doesNotThrow(() => execute('destructive', run(root, `bash -c 'cd ${app} && gh pr create --repo me/app'`)))
+  // Pero corre en un proceso hijo: su `cd` no mueve al shell de afuera, como tampoco uno en segundo plano o en una
+  // tubería.
+  for (const moved of [`bash -c 'cd ${other}';`, `sh -c "cd ${other}; true";`, `bash -lc 'echo ( ; cd ${other}';`,
+    `cd ${other} &`, `cd ${other} | true;`, `cd ${other} 2>/dev/null | true;`, `cd ${other} >/dev/null &`,
+    `true | cd ${other};`]) {
+    blocked('destructive', run(app, `${moved} gh pr create --repo org/app`), FOREIGN)
+  }
+  // `&>` es una redirección: ese `cd` sí mueve.
+  assert.doesNotThrow(() => execute('destructive', run(root, `cd ${app} &>/dev/null; gh pr create --repo me/app`)))
+  // Un `)` suelto adentro de un `-c` no cierra la subcapa de afuera.
+  assert.doesNotThrow(() => execute('destructive',
+    run(root, `(cd ${app} && bash -c 'echo )' && gh pr create --repo me/app)`)))
+  // Y el que corre adentro del `-c`, pero en otra llamada del mismo comando, tampoco.
+  blocked('destructive', run(app, `bash -c 'cd ${other} && gh pr create --repo org/app' ; gh pr create --repo org/app`),
+    FOREIGN)
+  // Lo citado que dice «gh pr create» no es una llamada, y no le presta su carpeta a la de verdad.
+  for (const quoted of ['echo "gh pr create"', "echo 'gh pr new'", 'printf %s "gh pr create --repo org/app"',
+    'grep -n "gh pr create" README.md', 'git commit -m "note: gh pr create"']) {
+    blocked('destructive', run(app, `cd ${other} && ${quoted} ; cd ${app} && gh pr create --repo org/app`), FOREIGN)
+  }
+  // Dos llamadas que dicen lo mismo, cada una desde su carpeta: frena si alguna no corre en su origin.
+  const twice = `cd ${other} && gh pr create --repo org/app ; cd ${app} && gh pr create --repo org/app`
+  blocked('destructive', run(app, twice), FOREIGN)
+  // Un `--title` entre comillas no cambia de dónde corre la llamada.
+  assert.doesNotThrow(() => execute('destructive', run(root, `cd ${app} && gh pr create --title "a b" --repo me/app`)))
+  blocked('destructive', run(root, `cd ${app} && gh pr create --title "a b" --repo org/app`), FOREIGN)
+  assert.doesNotThrow(() => execute('destructive', run(app, 'echo pr create')), 'sin gh no hay llamada')
+  // Un paréntesis entre comillas no abre una subcapa.
+  blocked('destructive', run(app, `echo "(cd ${root}" && gh pr create --repo org/app --fill`), FOREIGN)
 })
 
 test('sin origin no hay contra qué comprobar, y frena; un origin local no es el repositorio nombrado', () => {

@@ -20,6 +20,25 @@ test('guard-git-add exige stage explícito', () => {
   assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git add src/app.js' } }))
 })
 
+// Un `cd` en una subcapa o en un `$(…)` que ya cerró no mueve al comando de después: tomarlo hacía que el `git add -A`
+// del repositorio de la sesión se leyera como de otro, y dejaba de frenar (regresión hallada al cerrar el caso 540).
+test('un cd en una subcapa cerrada no saca al git add del repositorio de la sesión', () => {
+  const root = tempRoot('cauce-git-add-subcapa-')
+  initRepo(root)
+  const other = tempRoot('cauce-git-add-otro-')
+  initRepo(other)
+  const saved = process.env.CLAUDE_PROJECT_DIR
+  process.env.CLAUDE_PROJECT_DIR = root
+  try {
+    for (const command of [`(cd ${other} && ls); git add -A`, `x=$(cd ${other} && pwd); git add -A`]) {
+      blocked('git-add', { cwd: root, tool_input: { command } }, /Stagea rutas explícitas/)
+    }
+  } finally {
+    if (saved === undefined) delete process.env.CLAUDE_PROJECT_DIR
+    else process.env.CLAUDE_PROJECT_DIR = saved
+  }
+})
+
 // El salto de línea separa comandos igual que `;`, `&` y `|`, y las siete reglas que acotan «dentro de
 // este comando» sólo excluían los tres primeros. Cualquier bandera de una línea posterior se leía como
 // parte del comando de arriba: `git commit -m "x"` seguido de `ls -a` se bloqueaba como si stageara al
