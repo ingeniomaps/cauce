@@ -120,6 +120,26 @@ function options(leader, word, words) {
   return found
 }
 
+// Saca de adelante lo que va antes del verbo sin serlo: asignaciones, prefijos, sus banderas y sus valores, y devuelve
+// las mismas palabras, ya desde el verbo. Un `then cat .env` o un `timeout 5 cat .env` leen igual (caso 479), y un
+// guard que lleva su propia lista de prefijos deja pasar los que le faltan.
+function afterLeaders(words) {
+  const isLeader = (word) => LEADING.has(word) || VALUED.has(word)
+  let leader = ''
+  let loose = 0
+  while (words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]) || isLeader(words[0])
+    || (leader && words[0].startsWith('-')) || loose)) {
+    const word = words.shift()
+    if (isLeader(word)) {
+      leader = word
+      loose = POSITIONAL.get(word) || 0
+    } else if (word.startsWith('-')) {
+      if ((VALUED.get(leader) || []).includes(word)) words.shift()
+    } else if (loose && !word.includes('=')) loose -= 1
+  }
+  return words
+}
+
 module.exports = {
-  SAME_SHELL, LEADING, VALUED, POSITIONAL, MOVES, AWAY, RUNS, hidden, reads, output, options,
+  SAME_SHELL, LEADING, VALUED, POSITIONAL, MOVES, AWAY, RUNS, afterLeaders, hidden, reads, output, options,
 }

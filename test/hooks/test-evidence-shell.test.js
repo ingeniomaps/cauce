@@ -37,6 +37,7 @@ test('borrar por shell una prueba commiteada se frena, como sea que se la borre'
     'rm app/test/legado.test.js', 'rm -f app/test/legado.test.js', 'git -C app rm test/legado.test.js',
     'cd app && git rm -q test/legado.test.js', `rm ${app}/test/legado.test.js`, 'unlink app/test/legado.test.js',
     'rm app/src/suma.js app/test/legado.test.js', 'npm test; rm app/src/resta_test.go', 'sudo rm app/test/suma.test.js',
+    'setsid rm app/test/suma.test.js', 'stdbuf -oL rm app/test/suma.test.js', 'taskset 1 rm app/test/suma.test.js',
     // La carpeta entera, que es la forma más corta de quedarse sin pruebas.
     // Detrás de un commit en el mismo renglón también: el mensaje es dato, el `rm` que sigue no.
     'git -C app commit -m "chore: x" && rm app/test/legado.test.js',

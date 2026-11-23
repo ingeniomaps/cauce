@@ -406,7 +406,11 @@ test('la regla del destino resuelto ve prefijos y globs, y el cd sin resolver fr
   const root = tempRoot('ops-hook-rm-formas-')
   for (const command of ['sudo rm -rf .', '(rm -rf .)', 'time rm -rf .', 'X=1 rm -rf .', 'rm -rf ./*', 'rm -rf *',
     'rm --recursive -f .',
-    'cd $X && rm -rf .', 'cd $X && rm -rf ./*', 'cd "$DIR" && rm -rf ..']) {
+    'cd $X && rm -rf .', 'cd $X && rm -rf ./*', 'cd "$DIR" && rm -rf ..',
+    // Cada envoltorio que conoce `shell-wrappers.js`, con sus banderas y valores: la lista propia de este guard
+    // tenía ocho y dejaba pasar el resto.
+    'setsid rm -rf .', 'doas rm -rf .', 'stdbuf -oL rm -rf .', 'taskset 1 rm -rf .', 'ionice -c 3 rm -rf .',
+    'sudo -u nobody rm -rf .', 'env -u HOME rm -rf .']) {
     blocked('destructive', { cwd: root, tool_input: { command } }, /destino resuelto|carpeta personal|catastrófico/)
   }
   for (const command of ['cd "$DIR" && rm -rf node_modules', 'cd $X && cd /tmp/zz && rm -rf build', 'cd ~ && rm -rf x',

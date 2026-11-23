@@ -13,7 +13,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { asRun, commandOf, rawCommandOf, cwdOf, block, isCommit, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
-const { LEADING, VALUED, POSITIONAL } = require('./shell-wrappers')
+const { afterLeaders } = require('./shell-wrappers')
 const { REDIRECT } = require('./shell-writes')
 const { writes } = require('./shell-changes')
 const AP = require('./approval')
@@ -27,25 +27,7 @@ const RC = require('../core/remote-credentials')
 const READERS = new Set(['cat', 'tac', 'nl', 'head', 'tail', 'less', 'more', 'bat', 'sed', 'awk', 'grep', 'egrep',
   'fgrep', 'rg', 'strings', 'xxd', 'od', 'hexdump', 'base64', 'cut', 'sort', 'uniq', 'rev', 'paste', 'fold', 'pr',
   'dd', 'jq', 'yq', 'diff', 'cmp', 'source', '.', 'node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
-const isLeader = (word) => LEADING.has(word) || VALUED.has(word)
-
-// El verbo de un tramo, saltando lo que va delante sin serlo: asignaciones, prefijos, sus banderas y sus valores. Un
-// `then cat .env` o un `timeout 5 cat .env` leen igual (caso 479).
-function verbOf(words) {
-  let leader = ''
-  let loose = 0
-  while (words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]) || isLeader(words[0])
-    || (leader && words[0].startsWith('-')) || loose)) {
-    const word = words.shift()
-    if (isLeader(word)) {
-      leader = word
-      loose = POSITIONAL.get(word) || 0
-    } else if (word.startsWith('-')) {
-      if ((VALUED.get(leader) || []).includes(word)) words.shift()
-    } else if (loose && !word.includes('=')) loose -= 1
-  }
-  return words[0] || ''
-}
+const verbOf = (words) => afterLeaders(words)[0] || ''
 
 // `${VAR}` y `$VAR` son la misma expansión, y sólo la primera lleva llaves: la separación de palabras corta
 // ahí, así que de `ops/${O}/.env.infisical` quedaba suelto `/.env.infisical` —una ruta absoluta que el
