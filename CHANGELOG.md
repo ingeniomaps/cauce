@@ -90,11 +90,11 @@ diseño — eso vive en el commit y en el código.
 
 - **Un archivo que sobrescribe uno de reglas del sistema puede conservar las que no reemplaza** (caso 545). Hasta
   ahora, sobrescribir `process.md` retiraba las siete reglas del archivo, aunque la instancia quisiera cambiar dos, y lo
-  que escribía para conservarlas no le llegaba a ningún agente. `adopta: R3, R17, R28` en el frontmatter del archivo
+  que escribía para conservarlas no le llegaba a ningún agente. `adopts: R3, R17, R28` en el frontmatter del archivo
   propio hace que `automation install` copie esas secciones a `planning/rules/adopted/` y que el bloque de reglas las
   cargue. `check` deja de darlas por perdidas, avisa si lo copiado quedó viejo y falla si se adopta una regla que no
   existe o que el archivo propio redefine. **Qué hacer:** si tu instancia sobrescribe un archivo y conserva reglas «por
-  referencia», declaralas en `adopta:` y reinstalá el runner.
+  referencia», declaralas en `adopts:` y reinstalá el runner.
 
 ### Corregido
 

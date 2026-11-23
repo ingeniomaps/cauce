@@ -44,7 +44,7 @@ tuyo:
 
 ```markdown
 ---
-adopta: R3, R17, R28
+adopts: R3, R17, R28
 ---
 ```
 

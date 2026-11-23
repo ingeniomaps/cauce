@@ -4,7 +4,7 @@
 // propio reemplaza el archivo entero, y una instancia que sólo quería cambiar dos reglas perdía las demás: las
 // «adoptaba por referencia» en una tabla de prosa que el motor no lee, y no le llegaban a ningún agente.
 //
-// El archivo que sobrescribe las nombra en su frontmatter, `adopta: R3, R17, R28`, y acá se copia su texto del
+// El archivo que sobrescribe las nombra en su frontmatter, `adopts: R3, R17, R28`, y acá se copia su texto del
 // sistema a `planning/rules/adopted/<archivo>.md`. Va en un archivo porque un import trae un archivo entero y no
 // una sección, y va fuera de `system/` porque `upgrade` trata esa carpeta como suya entera.
 
@@ -22,10 +22,10 @@ const read = (file) => {
 }
 const RULE = /^##\s+([A-Z]\d+)\s+[—-]/
 
-// Sólo en el frontmatter: un «adopta:» en la prosa es una frase.
+// Sólo en el frontmatter: un «adopts:» en la prosa es una frase.
 function adoptsOf(text) {
   const front = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(String(text || ''))
-  const line = front && /^adopta[ \t]*:[ \t]*(.*)$/m.exec(front[1])
+  const line = front && /^adopts[ \t]*:[ \t]*(.*)$/m.exec(front[1])
   return line ? [...new Set(line[1].split(/[\s,]+/).filter(Boolean))] : []
 }
 
@@ -42,7 +42,7 @@ function sectionsOf(text) {
   return new Map([...sections].map(([id, lines]) => [id, lines.join('\n').trimEnd()]))
 }
 
-// Cada archivo propio que sobrescribe uno del sistema y declara `adopta:`, con lo que adopta.
+// Cada archivo propio que sobrescribe uno del sistema y declara `adopts:`, con lo que adopta.
 function declared(rules) {
   let names = []
   try { names = fs.readdirSync(rules).filter((one) => one.endsWith('.md') && one !== 'README.md') } catch { return [] }
@@ -92,7 +92,7 @@ function errorsOf(rules) {
   })
 }
 
-// Lo generado que no coincide con lo que se declara hoy: el sistema cambió con un `upgrade`, o el `adopta:` cambió.
+// Lo generado que no coincide con lo que se declara hoy: el sistema cambió con un `upgrade`, o el `adopts:` cambió.
 function staleOf(rules) {
   return declared(rules).filter((one) => one.system !== null && read(generated(rules, one.name)) !== render(one))
     .map((one) => `rules/${DIR}/${one.name} no coincide con lo que rules/${one.name} adopta de system/${one.name}; `

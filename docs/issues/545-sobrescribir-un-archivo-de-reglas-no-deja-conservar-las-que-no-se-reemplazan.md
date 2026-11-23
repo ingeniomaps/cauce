@@ -139,6 +139,11 @@ adentro se cortaría ahí, igual que `ruleIds`; hoy ningún archivo del sistema 
 caracteres, la marca cae fuera de los primeros 400 que mira `marked`. Ahí `install` se negaría sobre su propio
 generado. El más largo del sistema mide hoy 139; la salida, si hace falta, es buscar la marca después del frontmatter.
 
+**Lo que se cambió después** (2026-11-23, a pedido de Manuel): la clave pasó de `adopta:` a `adopts:`, antes de publicar
+0.124.0. Es una clave que lee el código, y esas se nombran en inglés (`AGENTS.md`, Convenciones). Lo de arriba conserva
+el nombre con que se decidió y se midió. `adopta:` deja de leerse: la prueba lo asierta, se vio en rojo con el código de
+antes, y la mutación que acepta las dos claves la pone roja. El CHANGELOG y el README de reglas ya dicen `adopts:`.
+
 ### Lista de cierre
 
 1. hecho: la reproducción de «Reproducción», antes y después en el banco.
