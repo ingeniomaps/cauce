@@ -594,9 +594,11 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   lugares sin decir por qué» compara párrafos de ocho palabras o más y marca desde 0.35 de solapamiento;
   lo que queda arriba sin ser copia se acepta en `ACCEPTED_PAIRS`, con su razón. Hasta el 2026-11-23 el
   umbral fue 0.45, y por debajo se acumularon 97 pares nuevos en dos meses, casi todos una prueba que
-  transcribía el porqué del código que cubre. Lo que sigue sin verse es la copia por debajo de 0.35 y el
-  comentario que repite el nombre de su propia prueba, que no repite a ningún otro y ninguna comparación
-  lo va a ver. Para mirar lo que la puerta deja pasar alcanza con reusar el tokenizador de esa prueba con
+  transcribía el porqué del código que cubre. Desde el mismo día, otra prueba marca dos comentarios que
+  comparten doce palabras seguidas, que es la oración copiada dentro de un párrafo que cambió alrededor:
+  había 127. Lo que sigue sin verse es la copia reescrita con otras palabras por debajo de 0.35 y el
+  comentario que repite el nombre que tiene al lado, que está en otro idioma y ninguna comparación lo va a
+  ver. Para mirar lo que la puerta deja pasar alcanza con reusar el tokenizador de esa prueba con
   el umbral en 0.22: lo propio no debería aparecer por encima de lo preexistente.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
