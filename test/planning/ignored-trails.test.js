@@ -24,23 +24,23 @@ const { spawnSync } = require('node:child_process')
 // Se reconoce el aviso por su forma y no por las rutas que nombra. Filtrar por la ruta deja pasar el
 // mensaje degenerado —«0 rastro(s) … ()»—, que es lo que un aviso roto produce cuando avisa de nada: la
 // prueba de «se calla» pasaba creyendo que no hubo aviso, y la mutación que avisa siempre sobrevivía.
-const RASTROS = /rastro\(s\) local\(es\)/
-const avisos = (planning) => JSON.parse(run(['check', planning, '--json']).stdout)
-  .warnings.filter((one) => RASTROS.test(one))
+const TRAILS = /rastro\(s\) local\(es\)/
+const warnings = (planning) => JSON.parse(run(['check', planning, '--json']).stdout)
+  .warnings.filter((one) => TRAILS.test(one))
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
-function instancia(prefix, modo = 'sidecar') {
+function instance(prefix, mode = 'sidecar') {
   const target = path.join(tempRoot(prefix), 'demo-ops')
-  assert.equal(run(['init', target, '--name', 'Demo', '--mode', modo, '--no-install']).status, 0)
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', mode, '--no-install']).status, 0)
   return { target, planning: path.join(target, 'planning') }
 }
 
 // Una raíz que **no** es una instancia, montada desde una que sí lo es: así el `planning/` es el real y lo
 // único que cambia es lo que la raíz declara de sí misma, que es justo lo que se está midiendo. `tocar`
 // recibe la ruta del `ops.config.json` y lo deja como el caso necesite.
-function sinModoReal(prefix, tocar) {
-  const { target, planning } = instancia(prefix)
-  tocar(path.join(target, 'ops.config.json'))
+function withoutRealMode(prefix, touch) {
+  const { target, planning } = instance(prefix)
+  touch(path.join(target, 'ops.config.json'))
   fs.writeFileSync(path.join(target, '.gitignore'), 'node_modules/\n')
   git(target, 'init', '-q')
   return planning
@@ -49,29 +49,29 @@ function sinModoReal(prefix, tocar) {
 // Las dos formas de callarse, juntas porque se confunden: no tener a quién preguntarle, y preguntarle y
 // que conteste que sí. Sin esta prueba, un aviso que saltara siempre daría el mismo verde que el correcto.
 test('el aviso se calla sin repositorio, y también cuando la línea está', () => {
-  const { target, planning } = instancia('cauce-rastros-cubiertos-')
+  const { target, planning } = instance('cauce-rastros-cubiertos-')
   fs.writeFileSync(path.join(target, '.gitignore'), '')
-  assert.deepEqual(avisos(planning), [], 'sin repositorio no se inventa un aviso')
+  assert.deepEqual(warnings(planning), [], 'sin repositorio no se inventa un aviso')
 
   // Con repositorio y con las líneas que el molde trae, tampoco hay nada que decir.
   fs.copyFileSync(path.resolve(__dirname, '..', '..', 'template', 'gitignore'),
     path.join(target, '.gitignore'))
   git(target, 'init', '-q')
-  assert.deepEqual(avisos(planning), [], 'cubiertos por el .gitignore que trae el molde')
+  assert.deepEqual(warnings(planning), [], 'cubiertos por el .gitignore que trae el molde')
 })
 
 // El caso: una instancia creada antes de que el rastro existiera no tiene su línea, y `upgrade` no se la
 // va a traer nunca. Lo que se mide es que `check` lo diga nombrando la ruta, que es lo que hay que pegar.
 test('check nombra el rastro que git no está ignorando', () => {
-  const { target, planning } = instancia('cauce-rastros-sin-linea-')
+  const { target, planning } = instance('cauce-rastros-sin-linea-')
   fs.writeFileSync(path.join(target, '.gitignore'), 'node_modules/\n')
   git(target, 'init', '-q')
 
-  const dichos = avisos(planning)
-  assert.equal(dichos.length, 1, `un solo aviso, con los cuatro adentro: ${JSON.stringify(dichos)}`)
-  for (const rastro of ['planning/.verify-log', 'planning/.push-log', 'planning/.grant-log',
+  const said = warnings(planning)
+  assert.equal(said.length, 1, `un solo aviso, con los cuatro adentro: ${JSON.stringify(said)}`)
+  for (const trail of ['planning/.verify-log', 'planning/.push-log', 'planning/.grant-log',
     'planning/.ops-approval']) {
-    assert.match(dichos[0], new RegExp(rastro.replace(/[.*]/g, '\\$&')), `nombra ${rastro}`)
+    assert.match(said[0], new RegExp(trail.replace(/[.*]/g, '\\$&')), `nombra ${trail}`)
   }
 
   // Y es advertencia, no error: el archivo es de la empresa y `check` no lo arregla.
@@ -80,58 +80,58 @@ test('check nombra el rastro que git no está ignorando', () => {
   // Cubrir uno solo deja de nombrarlo y sigue nombrando a los otros dos: el aviso mira el efecto, no el
   // texto del molde, así que una regla propia de la empresa alcanza.
   fs.appendFileSync(path.join(target, '.gitignore'), 'planning/.push-log\n')
-  const quedan = avisos(planning)
-  assert.doesNotMatch(quedan[0], /planning\/\.push-log/, 'cubierto por su regla, ya no se nombra')
-  assert.match(quedan[0], /planning\/\.grant-log/, 'y los que siguen sin cubrir se siguen nombrando')
+  const remaining = warnings(planning)
+  assert.doesNotMatch(remaining[0], /planning\/\.push-log/, 'cubierto por su regla, ya no se nombra')
+  assert.match(remaining[0], /planning\/\.grant-log/, 'y los que siguen sin cubrir se siguen nombrando')
 })
 
 // Las aprobaciones son locales desde el 445, y una instancia de antes puede tenerlas commiteadas. Ahí la línea del
 // `.gitignore` no alcanza —git sigue versionando lo que ya trackea— y el aviso tiene que decir la otra mitad.
 test('un archivo local ya versionado se nombra con cómo sacarlo del índice', () => {
-  const { target, planning } = instancia('cauce-rastros-versionado-')
+  const { target, planning } = instance('cauce-rastros-versionado-')
   fs.copyFileSync(path.resolve(__dirname, '..', '..', 'template', 'gitignore'), path.join(target, '.gitignore'))
   git(target, 'init', '-q')
   fs.writeFileSync(path.join(planning, '.ops-approval'), '/x/package.json\n')
   git(target, 'add', '-f', 'planning/.ops-approval')
 
-  const dichos = avisos(planning)
-  assert.equal(dichos.length, 1, JSON.stringify(dichos))
-  assert.match(dichos[0], /git versiona \(planning\/\.ops-approval\)/)
+  const said = warnings(planning)
+  assert.equal(said.length, 1, JSON.stringify(said))
+  assert.match(said[0], /git versiona \(planning\/\.ops-approval\)/)
   // Con la instancia nombrada, porque en sidecar se corre desde el workspace; y corrido tal cual, resuelve.
-  const dado = dichos[0].match(/(git -C .+ rm --cached -- planning\/\.ops-approval)/)
-  assert.ok(dado, dichos[0])
-  assert.equal(spawnSync('bash', ['-c', dado[1]], { cwd: path.dirname(target), encoding: 'utf8' }).status, 0)
+  const given = said[0].match(/(git -C .+ rm --cached -- planning\/\.ops-approval)/)
+  assert.ok(given, said[0])
+  assert.equal(spawnSync('bash', ['-c', given[1]], { cwd: path.dirname(target), encoding: 'utf8' }).status, 0)
   git(target, 'add', '-f', 'planning/.ops-approval')
-  assert.doesNotMatch(dichos[0], /agregá esas líneas/, 'la línea ya está: lo que falta es sacarlo del índice')
+  assert.doesNotMatch(said[0], /agregá esas líneas/, 'la línea ya está: lo que falta es sacarlo del índice')
 
   git(target, 'rm', '-q', '--cached', 'planning/.ops-approval')
-  assert.deepEqual(avisos(planning), [], 'fuera del índice y cubierto, no queda nada que decir')
+  assert.deepEqual(warnings(planning), [], 'fuera del índice y cubierto, no queda nada que decir')
 })
 
 // El molde de este repositorio: `ops.config.json` existe y su modo es el marcador que `init` sustituye.
 // Es la raíz que recibe el aviso cuando la puerta corre `check template/planning`, y la que lo hacía
 // hablar de tres rastros que ahí no pueden existir.
 test('el aviso calla sobre el molde, donde el modo todavía no está renderizado', () => {
-  const molde = path.resolve(__dirname, '..', '..', 'template', 'ops.config.json')
-  const planning = sinModoReal('cauce-rastros-molde-', (config) => fs.copyFileSync(molde, config))
-  assert.deepEqual(avisos(planning), [], 'el molde no es una instancia: no hay rastros de los que hablar')
+  const template = path.resolve(__dirname, '..', '..', 'template', 'ops.config.json')
+  const planning = withoutRealMode('cauce-rastros-molde-', (config) => fs.copyFileSync(template, config))
+  assert.deepEqual(warnings(planning), [], 'el molde no es una instancia: no hay rastros de los que hablar')
 })
 
 // Y la otra forma de no ser una instancia: `check` apuntado a un planning cuyo padre no declara nada. Sin
 // configuración no hay a quién atribuirle los rastros, y avisar ahí es inventar lo mismo que sin repositorio.
 test('el aviso calla en una raíz que no declara ninguna configuración', () => {
-  const planning = sinModoReal('cauce-rastros-sin-config-', (config) => fs.rmSync(config))
-  assert.deepEqual(avisos(planning), [], 'sin configuración no hay instancia a la que avisarle')
+  const planning = withoutRealMode('cauce-rastros-sin-config-', (config) => fs.rmSync(config))
+  assert.deepEqual(warnings(planning), [], 'sin configuración no hay instancia a la que avisarle')
 })
 
 // La tercera: este repositorio, donde se fabrica Cauce y el único `planning/` es el molde. Es la forma que
 // el caso perseguía, y la que quedaría sin fijar si sólo se midieran las otras dos.
 test('el aviso calla en el toolkit, donde se fabrica Cauce y no se lo consume', () => {
-  const planning = sinModoReal('cauce-rastros-toolkit-', (config) => {
-    const declarado = JSON.parse(fs.readFileSync(config, 'utf8'))
-    fs.writeFileSync(config, `${JSON.stringify({ ...declarado, mode: 'toolkit' }, null, 2)}\n`)
+  const planning = withoutRealMode('cauce-rastros-toolkit-', (config) => {
+    const declared = JSON.parse(fs.readFileSync(config, 'utf8'))
+    fs.writeFileSync(config, `${JSON.stringify({ ...declared, mode: 'toolkit' }, null, 2)}\n`)
   })
-  assert.deepEqual(avisos(planning), [], 'en el toolkit no hay instancia que pueda escribir un rastro')
+  assert.deepEqual(warnings(planning), [], 'en el toolkit no hay instancia que pueda escribir un rastro')
 })
 
 // Un `ops.config.json` que no se puede leer deja el modo sin establecer, y establecerlo **lanza** a
@@ -140,9 +140,9 @@ test('el aviso calla en el toolkit, donde se fabrica Cauce y no se lo consume', 
 // salida en 1. Que `avisos()` parsee la respuesta es la mitad de la aserción: si `check` se hubiera caído,
 // no habría JSON que leer.
 test('un config ilegible calla el aviso en vez de tumbar la corrida', () => {
-  const planning = sinModoReal('cauce-rastros-config-roto-',
+  const planning = withoutRealMode('cauce-rastros-config-roto-',
     (config) => fs.writeFileSync(config, '{ esto no es json'))
-  assert.deepEqual(avisos(planning), [], 'sin poder establecer el modo, se calla')
+  assert.deepEqual(warnings(planning), [], 'sin poder establecer el modo, se calla')
 })
 
 // En sidecar el `.gitignore` queda dentro de la instancia y el repositorio es el workspace de arriba.
@@ -156,9 +156,9 @@ test('en sidecar el aviso mira el repositorio del workspace, no la instancia', (
   assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
   const planning = path.join(target, 'planning')
 
-  assert.deepEqual(avisos(planning), [], 'el .gitignore de la instancia cubre sus rutas igual')
+  assert.deepEqual(warnings(planning), [], 'el .gitignore de la instancia cubre sus rutas igual')
 
   fs.writeFileSync(path.join(target, '.gitignore'), 'node_modules/\n')
-  assert.match(avisos(planning)[0] || '', /planning\/\.push-log/,
+  assert.match(warnings(planning)[0] || '', /planning\/\.push-log/,
     'y sin las líneas avisa, con el repositorio una carpeta más arriba')
 })

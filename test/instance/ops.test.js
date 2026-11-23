@@ -99,15 +99,15 @@ test('el CLI rechaza una bandera que no existe en vez de ignorarla', () => {
 // salir en silencio con 0 o morir con un TypeError. Se recorren los cuatro porque cada uno rompía por
 // un camino distinto según tuviera o no `.includes`.
 test('un nombre heredado de Object.prototype no es un comando', () => {
-  for (const heredado of ['constructor', 'toString', 'valueOf', 'hasOwnProperty']) {
-    const sin = run([heredado])
-    assert.equal(sin.status, 2, `${heredado} sin banderas tiene que fallar, no salir en silencio`)
-    assert.match(sin.stderr, new RegExp(`Comando desconocido: ${heredado}`))
+  for (const inherited of ['constructor', 'toString', 'valueOf', 'hasOwnProperty']) {
+    const without = run([inherited])
+    assert.equal(without.status, 2, `${inherited} sin banderas tiene que fallar, no salir en silencio`)
+    assert.match(without.stderr, new RegExp(`Comando desconocido: ${inherited}`))
 
     // Con una bandera se recorría `FLAGS[command].includes`, que acá no existe.
-    const con = run([heredado, '--json'])
-    assert.equal(con.status, 2, `${heredado} con bandera tiene que fallar por desconocido`)
-    assert.doesNotMatch(con.stderr, /is not a function/, 'y no reventar leyendo el método heredado')
+    const withIt = run([inherited, '--json'])
+    assert.equal(withIt.status, 2, `${inherited} con bandera tiene que fallar por desconocido`)
+    assert.doesNotMatch(withIt.stderr, /is not a function/, 'y no reventar leyendo el método heredado')
   }
 })
 
@@ -116,10 +116,10 @@ test('un nombre heredado de Object.prototype no es un comando', () => {
 // planning en …/-h»— y encima salía con 0. Pedir ayuda y recibir un error sobre un directorio inventado
 // es la peor forma de contestar, porque parece que el comando corrió.
 test('-h pide el uso en vez de hacerse pasar por un argumento', () => {
-  const corto = run(['check', '-h'])
-  assert.equal(corto.status, 0)
-  assert.match(corto.stdout, /^Uso:/)
-  assert.doesNotMatch(corto.stderr, /-h/, 'no queda como ruta ni como bandera desconocida')
+  const short = run(['check', '-h'])
+  assert.equal(short.status, 0)
+  assert.match(short.stdout, /^Uso:/)
+  assert.doesNotMatch(short.stderr, /-h/, 'no queda como ruta ni como bandera desconocida')
 
   // Y vale solo, igual que `--help`.
   assert.match(run(['-h']).stdout, /^Uso:/)
@@ -169,22 +169,22 @@ test('la línea de comandos se parsea una vez y se puede probar sin proceso', ()
 // wiring del runner se escribe adentro en vez de al lado, donde el dev abre su herramienta.
 test('init e init . eligen el mismo modo en el mismo directorio', () => {
   const base = tempRoot('cauce-punto-')
-  const modo = (nombre, args) => {
-    const dir = path.join(base, nombre, 'acme-ops')
+  const mode = (label, args) => {
+    const dir = path.join(base, label, 'acme-ops')
     fs.mkdirSync(dir, { recursive: true })
     const result = run(['init', ...args, '--no-install'], dir)
     assert.equal(result.status, 0, result.stderr)
     return JSON.parse(fs.readFileSync(path.join(dir, 'ops.config.json'), 'utf8'))
   }
-  const implicito = modo('sin-punto', [])
-  const explicito = modo('con-punto', ['.'])
-  assert.equal(implicito.mode, 'sidecar')
-  assert.equal(explicito.mode, implicito.mode, 'escribir el punto no cambia el modo')
-  assert.equal(explicito.workspaceRoots[0].path, implicito.workspaceRoots[0].path)
+  const implicit = mode('sin-punto', [])
+  const explicit = mode('con-punto', ['.'])
+  assert.equal(implicit.mode, 'sidecar')
+  assert.equal(explicit.mode, implicit.mode, 'escribir el punto no cambia el modo')
+  assert.equal(explicit.workspaceRoots[0].path, implicit.workspaceRoots[0].path)
 
   // Y el caso embebido sigue disponible donde el README lo documenta: pedido explícito.
-  const forzado = modo('forzado', ['.', '--mode', 'embedded'])
-  assert.equal(forzado.mode, 'embedded')
+  const forced = mode('forzado', ['.', '--mode', 'embedded'])
+  assert.equal(forced.mode, 'embedded')
 
   // Una carpeta que no nombra al toolkit sigue siendo embedded por defecto, igual que antes.
   const dir = path.join(base, 'apps', 'web')

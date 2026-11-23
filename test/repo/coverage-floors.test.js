@@ -31,32 +31,32 @@ const floors = () => JSON.parse(fs.readFileSync(REAL, 'utf8'))
 
 // Un lcov que hace medir a cada archivo su propio piso. Con cien como denominador el porcentaje sale
 // exacto —`Math.floor(hit / 100 * 100)`—, así que no hay redondeo que confunda un caso con otro.
-function lcovOf(registro) {
+function lcovOf(recordFile) {
   const record = (file, metrics) => `SF:${file}\nLF:100\nLH:${metrics.lines}\n`
     + `BRF:100\nBRH:${metrics.branches}\nFNF:100\nFNH:${metrics.functions}\nend_of_record\n`
-  return Object.entries(registro).map(([file, metrics]) => record(file, metrics)).join('')
+  return Object.entries(recordFile).map(([file, metrics]) => record(file, metrics)).join('')
 }
 
 // `cambiar` toca el registro **después** de escribir el lcov, así que mueve el piso y no lo medido, que
 // es lo que hace aparecer una distancia. `medir` es la otra mitad y corre antes: lo que saque de ahí deja
 // de estar en el lcov sin dejar de tener piso, que es el único caso que no se puede montar con el primero.
-function corrida(cambiar, medir = () => {}) {
+function run(change, measure = () => {}) {
   const dir = tempRoot('cauce-pisos-')
-  const registro = floors()
-  const medido = floors()
-  medir(medido)
+  const recordFile = floors()
+  const measured = floors()
+  measure(measured)
   const lcov = path.join(dir, 'medido.info')
-  fs.writeFileSync(lcov, lcovOf(medido))
-  cambiar(registro)
+  fs.writeFileSync(lcov, lcovOf(measured))
+  change(recordFile)
   const baseline = path.join(dir, 'baseline.json')
-  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+  fs.writeFileSync(baseline, `${JSON.stringify(recordFile, null, 2)}\n`)
   const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`], { encoding: 'utf8' })
   discard(dir)
   return { code: done.status, out: `${done.stdout || ''}${done.stderr || ''}` }
 }
 
 test('con cada archivo en su piso exacto, la puerta pasa', () => {
-  const { code, out } = corrida(() => {})
+  const { code, out } = run(() => {})
   assert.equal(code, 0, out)
   assert.match(out, /cobertura por archivo/)
 })
@@ -64,7 +64,7 @@ test('con cada archivo en su piso exacto, la puerta pasa', () => {
 // El lado que falla. Qué pérdida concreta quedaba pasando con un piso así de lejos —y con qué archivo se
 // midió— está en el encabezado de `coverage-files.js`, donde vive el umbral.
 test('un piso muy por debajo de lo que el archivo mide falla, y dice cuánto', () => {
-  const { code, out } = corrida((registro) => { registro['engine/cli/ops.js'].branches -= 30 })
+  const { code, out } = run((recordFile) => { recordFile['engine/cli/ops.js'].branches -= 30 })
   assert.equal(code, 1, out)
   assert.match(out, /engine\/cli\/ops\.js: branches/)
   assert.match(out, /30 puntos por encima de su piso/)
@@ -74,7 +74,7 @@ test('un piso muy por debajo de lo que el archivo mide falla, y dice cuánto', (
 // una puerta que frena de más, y ésa se apaga igual de rápido que la que no frena nunca. De dónde sale el
 // número y contra qué se midió está en el encabezado de `coverage-files.js`, al lado de la constante.
 test('una distancia de exactamente el umbral todavía pasa', () => {
-  const { code, out } = corrida((registro) => { registro['engine/cli/ops.js'].branches -= 25 })
+  const { code, out } = run((recordFile) => { recordFile['engine/cli/ops.js'].branches -= 25 })
   assert.equal(code, 0, out)
 })
 
@@ -82,9 +82,9 @@ test('una distancia de exactamente el umbral todavía pasa', () => {
 // obligarlo sería mandar a trabajar sobre algo que no va a moverse. Se acepta a mano y por escrito, al
 // lado del piso que excusa, igual que `JUSTIFIED` en `repo.test.js`.
 test('una razón escrita acepta la distancia', () => {
-  const { code, out } = corrida((registro) => {
-    registro['engine/cli/ops.js'].branches -= 30
-    registro['engine/cli/ops.js'].far = { branches: 'sus ramas de error sólo se ejercitan lanzando el comando' }
+  const { code, out } = run((recordFile) => {
+    recordFile['engine/cli/ops.js'].branches -= 30
+    recordFile['engine/cli/ops.js'].far = { branches: 'sus ramas de error sólo se ejercitan lanzando el comando' }
   })
   assert.equal(code, 0, out)
 })
@@ -94,12 +94,12 @@ test('una razón escrita acepta la distancia', () => {
 // por hecho que alguien la va a notar si se rompe, y el diff de un archivo generado no la delata.
 test('actualizar el registro no se lleva puesta la razón escrita', () => {
   const dir = tempRoot('cauce-pisos-update-')
-  const registro = floors()
+  const recordFile = floors()
   const lcov = path.join(dir, 'medido.info')
-  fs.writeFileSync(lcov, lcovOf(registro))
-  registro['engine/cli/ops.js'].far = { branches: 'sus ramas de error sólo se ejercitan lanzando el comando' }
+  fs.writeFileSync(lcov, lcovOf(recordFile))
+  recordFile['engine/cli/ops.js'].far = { branches: 'sus ramas de error sólo se ejercitan lanzando el comando' }
   const baseline = path.join(dir, 'baseline.json')
-  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+  fs.writeFileSync(baseline, `${JSON.stringify(recordFile, null, 2)}\n`)
 
   const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
   assert.equal(done.status, 0, `${done.stdout || ''}${done.stderr || ''}`)
@@ -107,7 +107,7 @@ test('actualizar el registro no se lleva puesta la razón escrita', () => {
   discard(dir)
   assert.deepEqual(after['engine/cli/ops.js'].far,
     { branches: 'sus ramas de error sólo se ejercitan lanzando el comando' })
-  assert.equal(after['engine/cli/ops.js'].branches, registro['engine/cli/ops.js'].branches,
+  assert.equal(after['engine/cli/ops.js'].branches, recordFile['engine/cli/ops.js'].branches,
     'el piso no se movió: lo único que esta prueba mira es que la razón sobreviva')
 })
 
@@ -115,8 +115,8 @@ test('actualizar el registro no se lleva puesta la razón escrita', () => {
 // falta —la razón está en `repo.test.js`, sobre `JUSTIFIED`, y ahí nombra a este registro como el caso
 // análogo—. Acá se prueba esa conducta para el piso, que es lo que aquel comentario da por existente.
 test('una razón que ya no hace falta falla, para que no quede anotada después de pagarla', () => {
-  const { code, out } = corrida((registro) => {
-    registro['engine/cli/ops.js'].far = { branches: 'una razón que quedó vieja' }
+  const { code, out } = run((recordFile) => {
+    recordFile['engine/cli/ops.js'].far = { branches: 'una razón que quedó vieja' }
   })
   assert.equal(code, 1, out)
   assert.match(out, /engine\/cli\/ops\.js: branches/)
@@ -126,7 +126,7 @@ test('una razón que ya no hace falta falla, para que no quede anotada después 
 // La razón de existir del archivo: una regresión de cobertura. `SLACK` vale 1, así que la caída tiene que
 // pasarse de la holgura para contar.
 test('un piso que baja más que la holgura falla, nombrando el archivo y los dos números', () => {
-  const { code, out } = corrida(() => {}, (medido) => { medido['engine/cli/ops.js'].branches -= 2 })
+  const { code, out } = run(() => {}, (measured) => { measured['engine/cli/ops.js'].branches -= 2 })
   assert.equal(code, 1, out)
   assert.match(out, /engine\/cli\/ops\.js: branches bajó de \d+% a \d+%/)
 })
@@ -134,13 +134,13 @@ test('un piso que baja más que la holgura falla, nombrando el archivo y los dos
 // La otra mitad del borde, y la que nadie escribe: dentro de la holgura **pasa**. Sin este caso, subir
 // `SLACK` a diez no rompería nada y la puerta dejaría de ver una regresión de nueve puntos.
 test('una caída de exactamente la holgura todavía pasa', () => {
-  const { code, out } = corrida(() => {}, (medido) => { medido['engine/cli/ops.js'].branches -= 1 })
+  const { code, out } = run(() => {}, (measured) => { measured['engine/cli/ops.js'].branches -= 1 })
   assert.equal(code, 0, out)
 })
 
 // Lo que evita que un módulo nuevo entre sin una sola prueba: está en el disco y nadie le registró piso.
 test('un archivo del motor sin piso registrado falla', () => {
-  const { code, out } = corrida((registro) => { delete registro['engine/cli/ops.js'] })
+  const { code, out } = run((recordFile) => { delete recordFile['engine/cli/ops.js'] })
   assert.equal(code, 1, out)
   assert.match(out, /engine\/cli\/ops\.js: sin piso registrado/)
 })
@@ -148,7 +148,7 @@ test('un archivo del motor sin piso registrado falla', () => {
 // Tiene piso y no aparece en la medición: o nadie lo carga, o el lcov se generó sobre otro árbol. Las dos
 // son razones para frenar, porque un piso que nadie mide no protege nada.
 test('un piso cuyo archivo no aparece en el lcov falla', () => {
-  const { code, out } = corrida(() => {}, (medido) => { delete medido['engine/cli/ops.js'] })
+  const { code, out } = run(() => {}, (measured) => { delete measured['engine/cli/ops.js'] })
   assert.equal(code, 1, out)
   assert.match(out, /engine\/cli\/ops\.js: tiene piso pero ningún test lo carga/)
 })
@@ -156,8 +156,8 @@ test('un piso cuyo archivo no aparece en el lcov falla', () => {
 // Y el huérfano: el archivo se borró y su piso quedó. `onDisk()` sólo devuelve `.js` bajo `engine/` y
 // `automatization/`, así que este nombre no puede aparecer ahí por accidente.
 test('un piso de un archivo que ya no existe falla', () => {
-  const { code, out } = corrida((registro) => {
-    registro['engine/borrado-hace-tiempo.js'] = { lines: 90, branches: 90, functions: 90 }
+  const { code, out } = run((recordFile) => {
+    recordFile['engine/borrado-hace-tiempo.js'] = { lines: 90, branches: 90, functions: 90 }
   })
   assert.equal(code, 1, out)
   assert.match(out, /engine\/borrado-hace-tiempo\.js: tiene piso y ya no existe/)
@@ -168,14 +168,14 @@ test('un piso de un archivo que ya no existe falla', () => {
 // registro de 68 que baja a 67 pasaría y el defecto seguiría entrando por ahí.
 test('actualizar con un archivo sin medir se niega en vez de borrarlo del registro', () => {
   const dir = tempRoot('cauce-pisos-perdido-')
-  const registro = floors()
-  const medido = floors()
-  const perdido = 'engine/cli/ops.js'
-  delete medido[perdido]
+  const recordFile = floors()
+  const measured = floors()
+  const lost = 'engine/cli/ops.js'
+  delete measured[lost]
   const lcov = path.join(dir, 'medido.info')
-  fs.writeFileSync(lcov, lcovOf(medido))
+  fs.writeFileSync(lcov, lcovOf(measured))
   const baseline = path.join(dir, 'baseline.json')
-  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+  fs.writeFileSync(baseline, `${JSON.stringify(recordFile, null, 2)}\n`)
 
   const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
   const out = `${done.stdout || ''}${done.stderr || ''}`
@@ -183,10 +183,10 @@ test('actualizar con un archivo sin medir se niega en vez de borrarlo del regist
   discard(dir)
 
   assert.equal(done.status, 1, out)
-  assert.match(out, new RegExp(perdido.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'y nombra el archivo perdido')
+  assert.match(out, new RegExp(lost.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'y nombra el archivo perdido')
   assert.doesNotMatch(out, /✓ piso registrado/, 'sin anunciar un registro que habría perdido pisos')
   // Lo que de verdad importa: el registro sigue entero. Negarse y escribir igual sería peor que no mirar.
-  assert.equal(Object.keys(after).length, Object.keys(registro).length,
+  assert.equal(Object.keys(after).length, Object.keys(recordFile).length,
     'el registro no se tocó: la negativa ocurre antes de escribir')
 })
 
@@ -195,14 +195,14 @@ test('actualizar con un archivo sin medir se niega en vez de borrarlo del regist
 // filtro por `onDisk()` esta negativa se volvería imposible de satisfacer al borrar un archivo del motor.
 test('actualizar tras retirar un archivo del motor sigue registrando', () => {
   const dir = tempRoot('cauce-pisos-retiro-')
-  const registro = floors()
+  const recordFile = floors()
   // Un piso de un archivo que no existe en `engine/` ni en `automatization/`: el retiro ya ocurrido.
-  registro['engine/se-retiro-de-verdad.js'] = { lines: 90, branches: 80, functions: 90 }
-  const medido = floors()
+  recordFile['engine/se-retiro-de-verdad.js'] = { lines: 90, branches: 80, functions: 90 }
+  const measured = floors()
   const lcov = path.join(dir, 'medido.info')
-  fs.writeFileSync(lcov, lcovOf(medido))
+  fs.writeFileSync(lcov, lcovOf(measured))
   const baseline = path.join(dir, 'baseline.json')
-  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+  fs.writeFileSync(baseline, `${JSON.stringify(recordFile, null, 2)}\n`)
 
   const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
   const out = `${done.stdout || ''}${done.stderr || ''}`
@@ -217,11 +217,11 @@ test('actualizar tras retirar un archivo del motor sigue registrando', () => {
 // —cada archivo del registro medido— sigue registrando sin ruido.
 test('actualizar con todo medido sigue registrando', () => {
   const dir = tempRoot('cauce-pisos-completo-')
-  const registro = floors()
+  const recordFile = floors()
   const lcov = path.join(dir, 'medido.info')
-  fs.writeFileSync(lcov, lcovOf(registro))
+  fs.writeFileSync(lcov, lcovOf(recordFile))
   const baseline = path.join(dir, 'baseline.json')
-  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+  fs.writeFileSync(baseline, `${JSON.stringify(recordFile, null, 2)}\n`)
 
   const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
   const out = `${done.stdout || ''}${done.stderr || ''}`
@@ -273,7 +273,7 @@ test('coverage.sh mide por el contenido del lcov, y sólo al registrar ignora el
 // La otra forma era un banco de juguete, y se descartó con números: `coverage.sh` abre con
 // `hooks-smoke.sh`, que baja por `run-hook.sh` a `engine/hooks/run.js` y sus seis módulos —unas 1.900
 // líneas del motor— sólo para que la línea 9 no reviente. Mediría peor y costaría más.
-const conSuite = (repo, salida) => {
+const withSuite = (repo, output) => {
   const bin = path.join(repo, 'bin')
   fs.mkdirSync(bin, { recursive: true })
   fs.writeFileSync(path.join(bin, 'node'), [
@@ -292,7 +292,7 @@ const conSuite = (repo, salida) => {
     `[ -n "$dest" ] && cat > "$dest" <<'LCOV'`,
     lcovOf(floors()).trimEnd(),
     'LCOV',
-    `exit ${salida}`,
+    `exit ${output}`,
     '',
   ].join('\n'), { mode: 0o755 })
   return `${bin}${path.delimiter}${process.env.PATH}`
@@ -316,38 +316,38 @@ test('una prueba en rojo frena la puerta, y al registrar un piso no', { skip: pr
   // corrida dentro de una copia que no lo tenga no hay de dónde copiar, y el salto lo dice en vez de
   // fallar por el entorno. Son **siete** las suites de este repositorio que no corren sin `.git`, ésta
   // incluida, y es la única que lo declara: las otras seis fallan con un mensaje que habla de otra cosa.
-  const enRepo = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: ROOT, encoding: 'utf8' })
-  if (enRepo.status !== 0) return
+  const inRepository = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: ROOT, encoding: 'utf8' })
+  if (inRepository.status !== 0) return
   const repo = tempRoot('cauce-148-')
   // La lista va a `tar` por stdin y no por `xargs`: con más rutas que el límite de argumentos, `xargs` parte
   // en dos `tar` y el `tar xf` de este lado sólo extrae el primero. Pasó al sumar veinte casos de una vez, y
   // la copia salió sin `test/tools/coverage.sh`.
-  const copiado = spawnSync('bash', ['-c',
-    `cd ${JSON.stringify(enRepo.stdout.trim())} && git ls-files -z | tar --null -T - -cf - `
+  const copied = spawnSync('bash', ['-c',
+    `cd ${JSON.stringify(inRepository.stdout.trim())} && git ls-files -z | tar --null -T - -cf - `
     + `| (cd ${JSON.stringify(repo)} && tar xf -)`],
   { encoding: 'utf8' })
-  assert.equal(copiado.status, 0, `no se pudo copiar el árbol trackeado: ${copiado.stderr}`)
-  const correr = (salida, ...args) => spawnSync('bash', ['test/tools/coverage.sh', ...args], {
-    cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: conSuite(repo, salida) },
+  assert.equal(copied.status, 0, `no se pudo copiar el árbol trackeado: ${copied.stderr}`)
+  const run = (output, ...args) => spawnSync('bash', ['test/tools/coverage.sh', ...args], {
+    cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: withSuite(repo, output) },
   })
-  const salida = (hecho) => `${hecho.stdout || ''}${hecho.stderr || ''}`
+  const output = (done) => `${done.stdout || ''}${done.stderr || ''}`
 
   // Suite en rojo, comprobando: corta antes de mirar cobertura, y dice de qué es el rojo.
-  const rojo = correr(1)
-  assert.notEqual(rojo.status, 0, 'con la suite en rojo la puerta tiene que frenar')
-  assert.match(salida(rojo), /pruebas en rojo/, 'y nombrar la suite, no la cobertura')
-  assert.doesNotMatch(salida(rojo), /piso de cobertura/, 'sin llegar a juzgar pisos sobre una suite rota')
+  const red = run(1)
+  assert.notEqual(red.status, 0, 'con la suite en rojo la puerta tiene que frenar')
+  assert.match(output(red), /pruebas en rojo/, 'y nombrar la suite, no la cobertura')
+  assert.doesNotMatch(output(red), /piso de cobertura/, 'sin llegar a juzgar pisos sobre una suite rota')
 
   // Suite en verde: el corte nuevo no se mete en el camino y la puerta de pisos decide como siempre.
-  const verde = correr(0)
-  assert.doesNotMatch(salida(verde), /pruebas en rojo/, 'una suite verde no dispara el corte')
-  assert.match(salida(verde), /cobertura por archivo/, 'y el veredicto vuelve a ser el de los pisos')
-  assert.equal(verde.status, 0, `con la suite verde y los pisos en su lugar, la puerta pasa: ${salida(verde)}`)
+  const green = run(0)
+  assert.doesNotMatch(output(green), /pruebas en rojo/, 'una suite verde no dispara el corte')
+  assert.match(output(green), /cobertura por archivo/, 'y el veredicto vuelve a ser el de los pisos')
+  assert.equal(green.status, 0, `con la suite verde y los pisos en su lugar, la puerta pasa: ${output(green)}`)
 
   // La mitad que el 144 ganó y que este arreglo no puede perder: registrar sigue siendo posible con la
   // suite en rojo, que es justo cuando hace falta —al agregar un archivo sin piso—.
-  const registrando = correr(1, '--update')
-  assert.equal(registrando.status, 0, `registrar un piso con la suite en rojo: ${salida(registrando)}`)
-  assert.match(salida(registrando), /piso registrado/, 'y el registro ocurre de verdad')
+  const recording = run(1, '--update')
+  assert.equal(recording.status, 0, `registrar un piso con la suite en rojo: ${output(recording)}`)
+  assert.match(output(recording), /piso registrado/, 'y el registro ocurre de verdad')
   discard(repo)
 })

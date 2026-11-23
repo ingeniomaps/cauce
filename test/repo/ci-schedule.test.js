@@ -16,11 +16,11 @@ function staging(source, variable) {
   const lines = source.split('\n')
   const at = lines.findIndex((line) => /^\s*changed="\$\(git ls-files/.test(line) && line.includes(variable))
   assert.ok(at >= 0, `el workflow no calcula qué cambió para ${variable}`)
-  const resto = lines.slice(at + 1)
+  const rest = lines.slice(at + 1)
   // `proposal=` va aunque no se stagee: es lo que el paso stageaba antes, así que sin definirla el
   // regreso al defecto fallaría por variable vacía en vez de por haber stageado de menos.
-  const proposal = resto.find((line) => /^\s*proposal="\$\(/.test(line))
-  const add = resto.find((line) => line.includes('git add'))
+  const proposal = rest.find((line) => /^\s*proposal="\$\(/.test(line))
+  const add = rest.find((line) => line.includes('git add'))
   assert.ok(proposal && add, `el workflow no resuelve y stagea la propuesta de ${variable}`)
   return [lines[at], proposal, add].map((line) => line.trim()).join('\n')
 }
@@ -60,12 +60,12 @@ test('un dispatch elige su fase y no arrastra el ensamblaje', () => {
 
   // Cada job mira la fase. Se lee el bloque de cada uno, no el archivo entero: una condición puesta en
   // el job equivocado dejaría pasar una aserción sobre el texto completo.
-  const bloque = (job) => source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
-  assert.match(bloque('research'), /inputs\.phase != 'propose'/)
-  assert.match(bloque('propose'), /inputs\.phase != 'research'/)
-  assert.match(bloque('propose-flows'), /inputs\.phase != 'research'/)
+  const block = (job) => source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
+  assert.match(block('research'), /inputs\.phase != 'propose'/)
+  assert.match(block('propose'), /inputs\.phase != 'research'/)
+  assert.match(block('propose-flows'), /inputs\.phase != 'research'/)
   for (const job of ['propose', 'propose-flows']) {
-    assert.match(bloque(job), /schedule == '17 7 1 \* \*'/, `${job} sigue corriendo por su cron`)
+    assert.match(block(job), /schedule == '17 7 1 \* \*'/, `${job} sigue corriendo por su cron`)
   }
 })
 
@@ -89,9 +89,9 @@ test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => 
 
   // Los tres de investigación tienen cadencia declarada; el del ensamblaje no está en la tabla, y por
   // eso ese día la lista sale vacía y `research` no arranca.
-  const tabla = source.slice(source.indexOf('const POR_CRON'), source.indexOf('const cadence'))
-  for (const cron of crones.slice(0, 2)) assert.ok(tabla.includes(cron), `${cron} elige a quién correr`)
-  assert.equal(tabla.includes('17 7 1 * *'), false, 'el del ensamblaje no investiga a nadie')
+  const table = source.slice(source.indexOf('const POR_CRON'), source.indexOf('const cadence'))
+  for (const cron of crones.slice(0, 2)) assert.ok(table.includes(cron), `${cron} elige a quién correr`)
+  assert.equal(table.includes('17 7 1 * *'), false, 'el del ensamblaje no investiga a nadie')
   assert.match(source, /needs\.discover\.outputs\.agents != '\[\]'/, 'y research no arranca con lista vacía')
   assert.match(source, /github\.event\.schedule == '17 7 1 \* \*'/, 'propose corre el día del ensamblaje')
 
@@ -114,8 +114,8 @@ test('el aprendizaje no enciende de más, aísla el fallo de un cargo y no se pi
   // la aserción de antes no los distinguía: prohibía la cadena en cualquier parte y salía en rojo por
   // un paso que no bloquea nada.
   const researchPr = source.split(/^  research-pr:$/m)[1].split(/^  [a-z-]+:$/m)[0]
-  const gateDelJob = (researchPr.match(/^ {4}if:.*$/m) || [''])[0]
-  assert.equal(/needs\.research\.result == 'success'/.test(gateDelJob), false, 'un cargo no bloquea a los demás')
+  const jobGate = (researchPr.match(/^ {4}if:.*$/m) || [''])[0]
+  assert.equal(/needs\.research\.result == 'success'/.test(jobGate), false, 'un cargo no bloquea a los demás')
 
   assert.match(source, /^concurrency:$/m, 'una sola corrida a la vez')
   assert.match(source, /cancel-in-progress: false/, 'y no se corta una que ya está abriendo PR')
@@ -153,8 +153,8 @@ test('la consolidación mensual no le nombra un período al CLI', () => {
 // por posiciones y no por texto porque el defecto no era lo que el paso decía sino en qué orden lo hacía.
 test('no se pide una firma por una propuesta que no decide nada', () => {
   const source = workflow('agent-learning')
-  const cuerpo = (ancla) => {
-    const start = source.indexOf(ancla)
+  const bodyText = (anchor) => {
+    const start = source.indexOf(anchor)
     const lines = source.slice(source.indexOf('run: |', start)).split('\n').slice(1)
     const body = []
     for (const line of lines) {
@@ -164,21 +164,21 @@ test('no se pide una firma por una propuesta que no decide nada', () => {
     return body.join('\n')
   }
 
-  const compone = cuerpo('Build monthly proposal from weekly reports')
-  assert.match(compone, /decided=false' >> "\$GITHUB_OUTPUT"/, 'el veredicto sale del paso que compone')
-  assert.match(compone, /decided=true' >> "\$GITHUB_OUTPUT"/)
+  const composes = bodyText('Build monthly proposal from weekly reports')
+  assert.match(composes, /decided=false' >> "\$GITHUB_OUTPUT"/, 'el veredicto sale del paso que compone')
+  assert.match(composes, /decided=true' >> "\$GITHUB_OUTPUT"/)
   assert.match(source, /id: proposal/, 'y el paso se nombra para que el siguiente lo lea')
   // Cuando el recorrido no corrió, el veredicto que manda sigue siendo el de este paso.
   assert.match(source, /DECIDED: \$\{\{ .*\|\| steps\.proposal\.outputs\.decided \}\}/)
 
-  const abre = cuerpo('Open proposal pull request')
-  const push = abre.indexOf('git push origin')
-  const corte = abre.indexOf('DECIDED')
-  const pr = abre.indexOf('gh pr create')
-  assert.ok(push > 0 && corte > 0 && pr > 0, 'los tres pasos existen')
-  assert.ok(push < corte, 'la rama se empuja igual: lleva el sello de lo que el ciclo consumió')
-  assert.ok(corte < pr, 'y sin cambio decidido no se llega a pedir la firma')
-  assert.equal(/grep -q 'sin cambio decidido'/.test(abre), false,
+  const opens = bodyText('Open proposal pull request')
+  const push = opens.indexOf('git push origin')
+  const cut = opens.indexOf('DECIDED')
+  const pr = opens.indexOf('gh pr create')
+  assert.ok(push > 0 && cut > 0 && pr > 0, 'los tres pasos existen')
+  assert.ok(push < cut, 'la rama se empuja igual: lleva el sello de lo que el ciclo consumió')
+  assert.ok(cut < pr, 'y sin cambio decidido no se llega a pedir la firma')
+  assert.equal(/grep -q 'sin cambio decidido'/.test(opens), false,
     'el paso que abre no vuelve a juzgarlo por su cuenta')
 })
 
@@ -193,18 +193,18 @@ test('no se pide una firma por una propuesta que no decide nada', () => {
 test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener ninguna', () => {
   const source = workflow('agent-learning')
   const dir = tempRoot('cauce-cron-')
-  const salida = path.join(dir, 'github-output')
+  const output = path.join(dir, 'github-output')
   const roles = JSON.stringify([
     { slug: 'un-mensual', cadence: 'mensual' },
     { slug: 'un-trimestral', cadence: 'trimestral' },
   ])
-  const correr = (env) => {
-    const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(roles)}`)
-    fs.writeFileSync(salida, '')
-    const hecho = spawnSync('bash', ['-c', cuerpo], {
-      cwd: dir, encoding: 'utf8', env: { ...process.env, ONLY: '', ...env, GITHUB_OUTPUT: salida },
+  const execute = (env) => {
+    const bodyText = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(roles)}`)
+    fs.writeFileSync(output, '')
+    const result = spawnSync('bash', ['-c', bodyText], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ONLY: '', ...env, GITHUB_OUTPUT: output },
     })
-    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+    return { ...result, written: fs.readFileSync(output, 'utf8') }
   }
 
   // Los dos crones que investigan, cada uno con su cohorte y ninguna otra.
@@ -212,20 +212,20 @@ test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener nin
     ['17 13 24 * *', 'un-mensual'],
     ['17 13 23 3,6,9,12 *', 'un-trimestral'],
   ]) {
-    const hecho = correr({ SCHEDULE: cron })
-    assert.equal(hecho.status, 0, `${cron} abortó: ${hecho.stderr}`)
-    assert.match(hecho.escrito, new RegExp(`^agents=\\["${slug}"\\]$`, 'm'), `${cron} elige sólo su cadencia`)
+    const result = execute({ SCHEDULE: cron })
+    assert.equal(result.status, 0, `${cron} abortó: ${result.stderr}`)
+    assert.match(result.written, new RegExp(`^agents=\\["${slug}"\\]$`, 'm'), `${cron} elige sólo su cadencia`)
   }
 
   // Y el del ensamblaje, que es el que rompía: lista vacía, sin abortar.
-  const ensamblaje = correr({ SCHEDULE: '17 7 1 * *' })
-  assert.equal(ensamblaje.status, 0,
-    `el cron del ensamblaje abortó discover, y con él los tres jobs que dependen: ${ensamblaje.stderr}`)
-  assert.match(ensamblaje.escrito, /^agents=\[\]$/m, 'ese día no se investiga, y eso no es un error')
+  const assembly = execute({ SCHEDULE: '17 7 1 * *' })
+  assert.equal(assembly.status, 0,
+    `el cron del ensamblaje abortó discover, y con él los tres jobs que dependen: ${assembly.stderr}`)
+  assert.match(assembly.written, /^agents=\[\]$/m, 'ese día no se investiga, y eso no es un error')
 
   // A mano sin slug sigue siendo un error si de verdad no hay cargos: es la única corrida que lo es.
-  const vacio = { ...correr({ SCHEDULE: '' }) }
-  assert.match(vacio.escrito, /^agents=\["un-mensual","un-trimestral"\]$/m,
+  const empty = { ...execute({ SCHEDULE: '' }) }
+  assert.match(empty.written, /^agents=\["un-mensual","un-trimestral"\]$/m,
     'a mano sin slug van todos, sin mirar cadencia')
 })
 
@@ -241,44 +241,44 @@ test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener nin
 test('el día del ensamblaje propose tiene a quién consolidar, que es cuando agents está vacía', () => {
   const source = workflow('agent-learning')
   const dir = tempRoot('cauce-consolidar-')
-  const salida = path.join(dir, 'github-output')
+  const output = path.join(dir, 'github-output')
   const roles = JSON.stringify([
     { slug: 'un-mensual', cadence: 'mensual' },
     { slug: 'un-trimestral', cadence: 'trimestral' },
   ])
-  const correr = (env) => {
-    const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(roles)}`)
-    fs.writeFileSync(salida, '')
-    const hecho = spawnSync('bash', ['-c', cuerpo], {
-      cwd: dir, encoding: 'utf8', env: { ...process.env, ONLY: '', ...env, GITHUB_OUTPUT: salida },
+  const execute = (env) => {
+    const bodyText = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(roles)}`)
+    fs.writeFileSync(output, '')
+    const result = spawnSync('bash', ['-c', bodyText], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ONLY: '', ...env, GITHUB_OUTPUT: output },
     })
-    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+    return { ...result, written: fs.readFileSync(output, 'utf8') }
   }
 
   // Las dos salidas del mismo paso y en la misma corrida: nadie investiga, todos se consolidan.
-  const ensamblaje = correr({ SCHEDULE: '17 7 1 * *' })
-  assert.match(ensamblaje.escrito, /^agents=\[\]$/m, 'ese día no se investiga')
-  assert.match(ensamblaje.escrito, /^consolidate=\["un-mensual","un-trimestral"\]$/m,
+  const assembly = execute({ SCHEDULE: '17 7 1 * *' })
+  assert.match(assembly.written, /^agents=\[\]$/m, 'ese día no se investiga')
+  assert.match(assembly.written, /^consolidate=\["un-mensual","un-trimestral"\]$/m,
     'y consolidar los quiere a todos: con la lista vacía, propose se queda sin matriz')
 
   // Consolidar no sigue el calendario de nadie, así que un cron de investigación tampoco lo recorta.
-  const mensual = correr({ SCHEDULE: '17 13 24 * *' })
-  assert.match(mensual.escrito, /^agents=\["un-mensual"\]$/m)
-  assert.match(mensual.escrito, /^consolidate=\["un-mensual","un-trimestral"\]$/m,
+  const monthly = execute({ SCHEDULE: '17 13 24 * *' })
+  assert.match(monthly.written, /^agents=\["un-mensual"\]$/m)
+  assert.match(monthly.written, /^consolidate=\["un-mensual","un-trimestral"\]$/m,
     'la cadencia elige quién investiga, no quién se consolida')
 
   // Un slug a mano sí manda, en los dos sentidos.
-  const uno = correr({ SCHEDULE: '', ONLY: 'un-mensual' })
-  assert.match(uno.escrito, /^consolidate=\["un-mensual"\]$/m, 'un dispatch con slug consolida ése y no los 53')
-  const recorrido = correr({ SCHEDULE: '', ONLY: 'change-review' })
-  assert.match(recorrido.escrito, /^consolidate=\[\]$/m,
+  const one = execute({ SCHEDULE: '', ONLY: 'un-mensual' })
+  assert.match(one.written, /^consolidate=\["un-mensual"\]$/m, 'un dispatch con slug consolida ése y no los 53')
+  const flow = execute({ SCHEDULE: '', ONLY: 'change-review' })
+  assert.match(flow.written, /^consolidate=\[\]$/m,
     'un slug que es de recorrido no le da cargos a propose, y ahí no tiene que arrancar')
 
   // Y el job la usa: la guarda contra el vacío **y** la matriz, que es donde entraba el defecto.
-  const bloque = source.split(/^  propose:$/m)[1].split(/^  [a-z-]+:$/m)[0]
-  assert.match(bloque, /needs\.discover\.outputs\.consolidate != '\[\]'/,
+  const block = source.split(/^  propose:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+  assert.match(block, /needs\.discover\.outputs\.consolidate != '\[\]'/,
     'propose no arranca con lista vacía, como research y propose-flows')
-  assert.match(bloque, /agent: \$\{\{ fromJSON\(needs\.discover\.outputs\.consolidate\) \}\}/,
+  assert.match(block, /agent: \$\{\{ fromJSON\(needs\.discover\.outputs\.consolidate\) \}\}/,
     'y su matriz sale de consolidate, no de quién investigó esta semana')
   assert.match(source, /^      consolidate: \$\{\{ steps\.list\.outputs\.consolidate \}\}$/m,
     'discover la declara como salida')
@@ -293,39 +293,39 @@ test('el día del ensamblaje propose tiene a quién consolidar, que es cuando ag
 test('un dispatch puede nombrar un recorrido, y sólo miente un slug que no es ninguno', () => {
   const source = workflow('agent-learning')
   const dir = tempRoot('cauce-dispatch-')
-  const salida = path.join(dir, 'github-output')
+  const output = path.join(dir, 'github-output')
 
   // Los dos pasos reales, con la consulta al CLI reemplazada por datos fijos: lo que se mide es el
   // filtro y el corte, no el catálogo, que avanza por su cuenta.
-  const correr = (anchor, datos, env) => {
-    const cuerpo = workflowStep(source, anchor).replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(datos)}`)
-    fs.writeFileSync(salida, '')
-    const hecho = spawnSync('bash', ['-c', cuerpo], {
-      cwd: dir, encoding: 'utf8', env: { ...process.env, ...env, GITHUB_OUTPUT: salida },
+  const execute = (anchor, data, env) => {
+    const bodyText = workflowStep(source, anchor).replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(data)}`)
+    fs.writeFileSync(output, '')
+    const result = spawnSync('bash', ['-c', bodyText], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ...env, GITHUB_OUTPUT: output },
     })
-    return { ...hecho, salida: fs.readFileSync(salida, 'utf8') }
+    return { ...result, output: fs.readFileSync(output, 'utf8') }
   }
   const roles = JSON.stringify([{ slug: 'un-cargo', cadence: 'mensual' }])
   const flows = JSON.stringify([{ slug: 'un-recorrido', pending: 2 }])
 
   // Un slug de recorrido: el paso de cargos ya no aborta, y devuelve la lista vacía que corresponde.
-  const cargos = correr('id: list', roles, { ONLY: 'un-recorrido', SCHEDULE: '' })
+  const cargos = execute('id: list', roles, { ONLY: 'un-recorrido', SCHEDULE: '' })
   assert.equal(cargos.status, 0, `el paso de cargos abortó: ${cargos.stderr}`)
-  assert.match(cargos.salida, /^agents=\[\]$/m, 'ningún cargo se llama así, y eso no es un error')
+  assert.match(cargos.output, /^agents=\[\]$/m, 'ningún cargo se llama así, y eso no es un error')
 
-  const recorridos = correr('id: flows', flows, { ONLY: 'un-recorrido', AGENTS: '[]' })
-  assert.equal(recorridos.status, 0, `el paso de recorridos abortó: ${recorridos.stderr}`)
-  assert.match(recorridos.salida, /^flows=\["un-recorrido"\]$/m, 'y el recorrido sí entra a su matriz')
+  const flowNames = execute('id: flows', flows, { ONLY: 'un-recorrido', AGENTS: '[]' })
+  assert.equal(flowNames.status, 0, `el paso de recorridos abortó: ${flowNames.stderr}`)
+  assert.match(flowNames.output, /^flows=\["un-recorrido"\]$/m, 'y el recorrido sí entra a su matriz')
 
   // Y un slug que no es ninguno de los dos sigue siendo un error, que es lo que el corte protege.
-  const ninguno = correr('id: flows', flows, { ONLY: 'no-existe', AGENTS: '[]' })
-  assert.notEqual(ninguno.status, 0, 'un slug inventado tiene que frenar la corrida')
-  assert.match(ninguno.stderr, /No existe el agente ni el recorrido "no-existe"/)
+  const none = execute('id: flows', flows, { ONLY: 'no-existe', AGENTS: '[]' })
+  assert.notEqual(none.status, 0, 'un slug inventado tiene que frenar la corrida')
+  assert.match(none.stderr, /No existe el agente ni el recorrido "no-existe"/)
 
   // Un cargo real no se frena por tener la lista de recorridos vacía: es el caso de todos los días.
-  const soloCargo = correr('id: flows', flows, { ONLY: 'un-cargo', AGENTS: '["un-cargo"]' })
-  assert.equal(soloCargo.status, 0, 'nombrar un cargo no exige que exista un recorrido igual')
-  assert.match(soloCargo.salida, /^flows=\[\]$/m)
+  const onlyRole = execute('id: flows', flows, { ONLY: 'un-cargo', AGENTS: '["un-cargo"]' })
+  assert.equal(onlyRole.status, 0, 'nombrar un cargo no exige que exista un recorrido igual')
+  assert.match(onlyRole.output, /^flows=\[\]$/m)
 })
 
 // Consolidar produce dos cosas y el PR tiene que llevar las dos: la propuesta, y el sello sobre lo que
@@ -342,12 +342,12 @@ test('un dispatch puede nombrar un recorrido, y sólo miente un slug que no es n
 test('un mes callado se anuncia en los dos jobs que consolidan', () => {
   const source = workflow('agent-learning')
   for (const job of ['propose', 'propose-flows']) {
-    const bloque = source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
-    const paso = bloque.split('- name: Say when there was nothing to propose')[1] || ''
-    assert.ok(paso, `${job} no avisa cuando no produjo nada`)
-    assert.match(paso.split('- name:')[0], /if: steps\.changes\.outputs\.changed != 'true'/,
+    const block = source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
+    const step = block.split('- name: Say when there was nothing to propose')[1] || ''
+    assert.ok(step, `${job} no avisa cuando no produjo nada`)
+    assert.match(step.split('- name:')[0], /if: steps\.changes\.outputs\.changed != 'true'/,
       `${job}: el aviso sale justo cuando no hubo cambios, que es cuando no se abre PR`)
-    assert.match(paso.split('- name:')[0], /::notice title=/,
+    assert.match(step.split('- name:')[0], /::notice title=/,
       `${job}: como anotación, que es lo único que se ve sin abrir la corrida`)
   }
 })
@@ -357,7 +357,7 @@ test('el PR de una propuesta lleva también el sello de lo que consumió', () =>
   const repo = tempRoot('cauce-staging-')
   const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' }).trim()
 
-  const casos = [
+  const cases = [
     {
       variable: '$AGENT', env: 'AGENT=probe', dir: 'agents/roles/system/probe',
       consumido: 'learning/reports/2099-01-07.md',
@@ -367,26 +367,26 @@ test('el PR de una propuesta lleva también el sello de lo que consumió', () =>
       consumido: 'evaluations/results/2099-01-07.md',
     },
   ]
-  for (const caso of casos) {
-    for (const rel of [caso.consumido, 'marca.md']) {
-      fs.mkdirSync(path.dirname(path.join(repo, caso.dir, rel)), { recursive: true })
-      fs.writeFileSync(path.join(repo, caso.dir, rel), '---\nstatus: draft\n---\n')
+  for (const caseName of cases) {
+    for (const rel of [caseName.consumido, 'marca.md']) {
+      fs.mkdirSync(path.dirname(path.join(repo, caseName.dir, rel)), { recursive: true })
+      fs.writeFileSync(path.join(repo, caseName.dir, rel), '---\nstatus: draft\n---\n')
     }
   }
   bash('git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm base')
 
-  for (const caso of casos) {
+  for (const caseName of cases) {
     // El estado que deja `learn --proposal`: la propuesta sin trackear y lo consumido ya sellado.
-    const propuesta = path.join(caso.dir, 'learning', 'proposals', '2099-01.md')
-    fs.mkdirSync(path.dirname(path.join(repo, propuesta)), { recursive: true })
-    fs.writeFileSync(path.join(repo, propuesta), '---\nstatus: proposed\n---\n')
-    const sellado = path.join(caso.dir, caso.consumido)
-    fs.writeFileSync(path.join(repo, sellado), '---\nstatus: consolidated\n---\n')
+    const proposal = path.join(caseName.dir, 'learning', 'proposals', '2099-01.md')
+    fs.mkdirSync(path.dirname(path.join(repo, proposal)), { recursive: true })
+    fs.writeFileSync(path.join(repo, proposal), '---\nstatus: proposed\n---\n')
+    const sealed = path.join(caseName.dir, caseName.consumido)
+    fs.writeFileSync(path.join(repo, sealed), '---\nstatus: consolidated\n---\n')
 
-    bash(`${caso.env}; period=2099-01\n${staging(source, caso.variable)}`)
+    bash(`${caseName.env}; period=2099-01\n${staging(source, caseName.variable)}`)
     const staged = bash('git diff --cached --name-only').split('\n').filter(Boolean).sort()
-    assert.deepEqual(staged, [propuesta, sellado].sort(),
-      `${caso.env}: la propuesta y el sello van juntos, y nada ajeno se cuela`)
+    assert.deepEqual(staged, [proposal, sealed].sort(),
+      `${caseName.env}: la propuesta y el sello van juntos, y nada ajeno se cuela`)
     bash('git -c user.email=t@t -c user.name=t commit -qm paso')
   }
 })
@@ -397,42 +397,42 @@ test('el PR de una propuesta lleva también el sello de lo que consumió', () =>
 test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron', () => {
   const source = workflow('agent-learning')
   const dir = tempRoot('cauce-cadencia-')
-  const salida = path.join(dir, 'github-output')
+  const output = path.join(dir, 'github-output')
 
-  const correr = (env) => {
-    const datos = JSON.stringify([
+  const execute = (env) => {
+    const data = JSON.stringify([
       { slug: 'trimestral-uno', cadence: 'trimestral' },
       { slug: 'trimestral-dos', cadence: 'trimestral' },
       { slug: 'mensual-uno', cadence: 'mensual' },
     ])
-    const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(datos)}`)
-    fs.writeFileSync(salida, '')
-    const hecho = spawnSync('bash', ['-c', cuerpo], {
+    const bodyText = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(data)}`)
+    fs.writeFileSync(output, '')
+    const result = spawnSync('bash', ['-c', bodyText], {
       cwd: dir,
       encoding: 'utf8',
-      env: { ...process.env, ONLY: '', CADENCE: '', SCHEDULE: '', ...env, GITHUB_OUTPUT: salida },
+      env: { ...process.env, ONLY: '', CADENCE: '', SCHEDULE: '', ...env, GITHUB_OUTPUT: output },
     })
-    return { ...hecho, salida: fs.readFileSync(salida, 'utf8') }
+    return { ...result, output: fs.readFileSync(output, 'utf8') }
   }
 
   // La cohorte pedida a mano es la misma que arma el cron de esa cadencia, y no la lista entera.
-  const aMano = correr({ CADENCE: 'trimestral' })
-  assert.equal(aMano.status, 0, aMano.stderr)
-  assert.match(aMano.salida, /^agents=\["trimestral-dos","trimestral-uno"\]$/m, 'sólo los de esa cadencia')
+  const byHand = execute({ CADENCE: 'trimestral' })
+  assert.equal(byHand.status, 0, byHand.stderr)
+  assert.match(byHand.output, /^agents=\["trimestral-dos","trimestral-uno"\]$/m, 'sólo los de esa cadencia')
 
-  const porCron = correr({ SCHEDULE: '17 13 23 3,6,9,12 *' })
+  const byCron = execute({ SCHEDULE: '17 13 23 3,6,9,12 *' })
   assert.equal(
-    aMano.salida.match(/^agents=.*$/m)[0], porCron.salida.match(/^agents=.*$/m)[0],
+    byHand.output.match(/^agents=.*$/m)[0], byCron.output.match(/^agents=.*$/m)[0],
     'pedirla a mano y que la traiga el cron tienen que dar la misma cohorte',
   )
 
   // Vacío sigue corriendo todos: el input no cambia ninguna corrida que ya existía.
-  const sinNada = correr({})
-  assert.match(sinNada.salida, /^agents=\["mensual-uno","trimestral-dos","trimestral-uno"\]$/m, 'vacío corre todos')
+  const withNothing = execute({})
+  assert.match(withNothing.output, /^agents=\["mensual-uno","trimestral-dos","trimestral-uno"\]$/m, 'vacío corre todos')
 
   // Y un slug es más específico que una cadencia: manda el slug.
-  const conSlug = correr({ ONLY: 'mensual-uno', CADENCE: 'trimestral' })
-  assert.match(conSlug.salida, /^agents=\["mensual-uno"\]$/m, 'el slug gana sobre la cadencia')
+  const withSlug = execute({ ONLY: 'mensual-uno', CADENCE: 'trimestral' })
+  assert.match(withSlug.output, /^agents=\["mensual-uno"\]$/m, 'el slug gana sobre la cadencia')
 })
 
 // El ciclo llegaba hasta la puerta de la decisión y no la cruzaba: `learn --proposal` consolida y deja
@@ -441,8 +441,8 @@ test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron
 // cierres lo difirieron sin que nadie lo tomara (caso 155).
 test('el job que consolida escribe el cambio concreto, y sólo cuando falta', () => {
   const source = workflow('agent-learning')
-  const bloque = (job) => source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
-  const propose = bloque('propose')
+  const block = (job) => source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
+  const propose = block('propose')
 
   assert.match(propose, /- name: Write the concrete change/, 'el paso existe en el job que consolida')
   // Sólo sobre lo que quedó sin decidir, y leyendo el veredicto que ya emitió `learn`: recalcularlo sería
@@ -457,7 +457,7 @@ test('el job que consolida escribe el cambio concreto, y sólo cuando falta', ()
     'se escribe antes de mirar qué cambió')
 
   // El espejo de recorridos no consolida propuestas de cargo, así que no le toca.
-  assert.equal(/Write the concrete change/.test(bloque('propose-flows')), false,
+  assert.equal(/Write the concrete change/.test(block('propose-flows')), false,
     'el job de recorridos no lo lleva')
 })
 
@@ -466,15 +466,15 @@ test('el job que consolida escribe el cambio concreto, y sólo cuando falta', ()
 test('proponer sin credencial avisa y deja el ciclo como estaba', () => {
   const source = workflow('agent-learning')
   const start = source.indexOf('- name: Write the concrete change')
-  const cuerpo = source.slice(source.indexOf('run: |', start)).split(/^      - name:/m)[0]
+  const bodyText = source.slice(source.indexOf('run: |', start)).split(/^      - name:/m)[0]
 
-  assert.match(cuerpo, /if \[ -z "\$OAUTH" \] && \[ -z "\$APIKEY" \]; then/, 'mira las dos credenciales')
-  assert.match(cuerpo, /::notice title=Sin credencial para proponer::/, 'y lo dice sin fallar')
-  assert.ok(cuerpo.indexOf('exit 0') > 0, 'sale en cero: el mes queda como antes, no roto')
+  assert.match(bodyText, /if \[ -z "\$OAUTH" \] && \[ -z "\$APIKEY" \]; then/, 'mira las dos credenciales')
+  assert.match(bodyText, /::notice title=Sin credencial para proponer::/, 'y lo dice sin fallar')
+  assert.ok(bodyText.indexOf('exit 0') > 0, 'sale en cero: el mes queda como antes, no roto')
   // La misma resolución que el job que investiga, y en el mismo orden: suscripción primero, API key como
   // respaldo. Es lo que vuelve falsa la objeción que difirió este caso dos veces — el workflow ya corría
   // un modelo, y lo que faltaba era conectarlo, no decidir de dónde sale la credencial.
-  assert.ok(cuerpo.indexOf('CLAUDE_CODE_OAUTH_TOKEN="$OAUTH"') < cuerpo.indexOf('ANTHROPIC_API_KEY="$APIKEY"'),
+  assert.ok(bodyText.indexOf('CLAUDE_CODE_OAUTH_TOKEN="$OAUTH"') < bodyText.indexOf('ANTHROPIC_API_KEY="$APIKEY"'),
     'la suscripción primero y la API key de respaldo')
 })
 

@@ -30,9 +30,9 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   // El bot no empuja ni taguea nada fuera de la rama del PR: lo que publica es el merge de una persona,
   // y un push del GITHUB_TOKEN no dispararía `release.yml`. Se mira lo que se ejecuta —las líneas que
   // empiezan con el comando—, no lo que el cuerpo del PR le cuenta a quien lo lee.
-  const empuja = source.split('\n').map((one) => one.trim())
+  const pushes = source.split('\n').map((one) => one.trim())
     .filter((one) => one.startsWith('git push') || one.startsWith('git tag'))
-  assert.deepEqual(empuja, ['git push --force-with-lease origin "$branch"'],
+  assert.deepEqual(pushes, ['git push --force-with-lease origin "$branch"'],
     'lo único que el workflow empuja es la rama del PR')
 
   // `--force-with-lease` se niega con «stale info» cuando no conoce el estado remoto de la rama, y la
@@ -41,9 +41,9 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   assert.match(source, /git fetch origin "\$branch"/, 'se trae la referencia antes de empujar con lease')
   // Por qué alcanza con el merge vive en `release.yml`, con su cita. El comentario envuelve, así que se
   // contrasta sobre el texto sin los saltos ni las almohadillas.
-  const prosa = workflow('release').split('\n').map((one) => one.replace(/^\s*#\s?/, '')).join(' ')
-  assert.match(prosa, /will not create a new workflow run/, 'deja escrito por qué, con su cita')
-  assert.match(prosa, /docs\.github\.com/, 'y de dónde salió')
+  const prose = workflow('release').split('\n').map((one) => one.replace(/^\s*#\s?/, '')).join(' ')
+  assert.match(prose, /will not create a new workflow run/, 'deja escrito por qué, con su cita')
+  assert.match(prose, /docs\.github\.com/, 'y de dónde salió')
   assert.match(source, /Falta el tag/, 'lo que sí hace es avisar cuando la versión quedó sin taguear')
 
   // Sólo hacia adelante. La condición era «distintas», y con `package.json` por delante del CHANGELOG
@@ -54,8 +54,8 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   // Los tags alcanzan: con `fetch-depth: 0` se traía el repo entero en cada push a main.
   assert.match(source, /fetch-tags: true/)
   // Sobre las líneas que se ejecutan: el comentario nombra `fetch-depth: 0` para decir qué se sacó.
-  const opciones = source.split('\n').map((one) => one.trim()).filter((one) => !one.startsWith('#'))
-  assert.equal(opciones.some((one) => /^fetch-depth:/.test(one)), false, 'sin clonar la historia completa')
+  const options = source.split('\n').map((one) => one.trim()).filter((one) => !one.startsWith('#'))
+  assert.equal(options.some((one) => /^fetch-depth:/.test(one)), false, 'sin clonar la historia completa')
 })
 
 // La release no vuelve a preguntar después del merge, y npm no republica una versión: lo que decide qué

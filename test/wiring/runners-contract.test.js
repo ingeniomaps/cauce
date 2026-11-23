@@ -135,7 +135,7 @@ test('ningún archivo instalable nombra una invocación que su runner no tiene',
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)
     const ownFiles = new Set(FLOWS.map(
-      (pase) => ((runner.commands && runner.commands.invocation) || '').replace('{name}', pase),
+      (pass) => ((runner.commands && runner.commands.invocation) || '').replace('{name}', pass),
     ))
     const dir = path.join(automation, 'runners', name)
     const copied = [

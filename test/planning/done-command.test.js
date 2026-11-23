@@ -11,7 +11,7 @@ const path = require('node:path')
 const P = require('../../engine/planning/parser')
 const CL = require('../../engine/planning/claims')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const TASK = '- [ ] **sumar** [lite] — Exportar sum. _Aceptación: sum(2, 3) da 5._ (epic: 001) (service: api)\n'
 const EPIC = `---
 epic: 001
@@ -54,8 +54,8 @@ critique: n/a — lite no corre crítica
 function instance(name, { queueIn = 'BACKLOG.md' } = {}) {
   const root = tempRoot(name)
   const dir = path.join(root, 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
-  fs.cpSync(path.join(MOLDE, '..', 'integrations'), path.join(root, 'integrations'), { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
+  fs.cpSync(path.join(TEMPLATE_PLANNING, '..', 'integrations'), path.join(root, 'integrations'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify(opsConfig()))
   fs.writeFileSync(path.join(dir, 'roadmap', 'epic-001-sumas.md'), EPIC)
   const queue = '## Hito h — Sumas\n\n' + TASK + '  nota indentada de la tarea\n'

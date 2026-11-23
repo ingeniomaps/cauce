@@ -62,8 +62,8 @@ test('si el árbol no se puede armar, la corrida para antes de planificar', asyn
   assert.match(result.detail, /T-1: la tomó otro/)
   assert.ok(!reached(asked, 'Plan') && !reached(asked, 'Build'), 'sin gastar en lo que no va a poder construir')
 
-  const sinRuta = await runFlow(inLine({ [WORKTREE]: { ok: true } }))
-  assert.equal(sinRuta.result.reason, 'worktree-failed', 'un sí sin dónde trabajar tampoco alcanza')
+  const withoutPath = await runFlow(inLine({ [WORKTREE]: { ok: true } }))
+  assert.equal(withoutPath.result.reason, 'worktree-failed', 'un sí sin dónde trabajar tampoco alcanza')
 })
 
 test('al retomar en una línea se vuelve al mismo árbol', async () => {

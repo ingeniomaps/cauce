@@ -14,29 +14,29 @@ const { spawnSync } = require('node:child_process')
 // El CLI que se le pega a un shell: lo que imprime el rechazo se corre como lo correría una persona.
 const CLI = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
 // El CLI hereda el entorno del proceso, así que la identidad se fija por variable y se restituye: sin
 // esto, una prueba le presta su dueño a la siguiente.
 //
 // Son dos y no una: `owner` es la persona y `runner` el árbol donde corre el agente. Por default van
 // juntas —una persona, una máquina—, y los casos que miden varios agentes las separan.
-function como(email, fn, runner = email) {
-  const previo = { owner: process.env.CAUCE_OWNER, runner: process.env.CAUCE_RUNNER }
+function as(email, fn, runner = email) {
+  const previous = { owner: process.env.CAUCE_OWNER, runner: process.env.CAUCE_RUNNER }
   process.env.CAUCE_OWNER = email
   process.env.CAUCE_RUNNER = runner
   try { return fn() } finally {
-    for (const [clave, valor] of [['CAUCE_OWNER', previo.owner], ['CAUCE_RUNNER', previo.runner]]) {
-      if (valor === undefined) delete process.env[clave]
-      else process.env[clave] = valor
+    for (const [key, value] of [['CAUCE_OWNER', previous.owner], ['CAUCE_RUNNER', previous.runner]]) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
     }
   }
 }
 
 // Un planning de trabajo con tres tareas promovidas y nada tomado.
-function planning(nombre) {
-  const dir = path.join(tempRoot(nombre), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+function planning(label) {
+  const dir = path.join(tempRoot(label), 'planning')
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido
 
 ## Hito uno — Primer resultado
@@ -51,40 +51,40 @@ function planning(nombre) {
 test('dos personas no reciben la misma tarea, y la segunda no puede pisar a la primera', () => {
   const dir = planning('cauce-claims-')
 
-  const tomada = como('ana@acme.com', () => run(['claim', dir, 'dashboard']))
-  assert.equal(tomada.status, 0, tomada.stderr)
-  assert.match(tomada.stdout, /tomada por ana@acme\.com/)
+  const taken = as('ana@acme.com', () => run(['claim', dir, 'dashboard']))
+  assert.equal(taken.status, 0, taken.stderr)
+  assert.match(taken.stdout, /tomada por ana@acme\.com/)
   // Un reclamo sin empujar no reserva nada, y el comando es el único lugar donde eso se puede decir.
-  assert.match(tomada.stdout, /commiteá claims\/dashboard\.md/)
+  assert.match(taken.stdout, /commiteá claims\/dashboard\.md/)
 
-  const luis = como('luis@acme.com', () => run(['context', dir]))
+  const luis = as('luis@acme.com', () => run(['context', dir]))
   assert.match(luis.stdout, /^TASK {3}boton/m, 'la tomada no se le ofrece')
   assert.match(luis.stdout, /^TAKEN {2}dashboard \(ana@acme\.com\)$/m)
   assert.match(luis.stdout, /^CLAIM {2}libre/m)
 
-  const pisar = como('luis@acme.com', () => run(['claim', dir, 'dashboard']))
-  assert.equal(pisar.status, 1)
-  assert.match(pisar.stderr, /la tomó ana@acme\.com/)
-  assert.match(pisar.stderr, /borrá claims\/dashboard\.md a mano/, 'y dice cómo, sin hacerlo por vos')
+  const overwrite = as('luis@acme.com', () => run(['claim', dir, 'dashboard']))
+  assert.equal(overwrite.status, 1)
+  assert.match(overwrite.stderr, /la tomó ana@acme\.com/)
+  assert.match(overwrite.stderr, /borrá claims\/dashboard\.md a mano/, 'y dice cómo, sin hacerlo por vos')
 
-  const ajeno = como('luis@acme.com', () => run(['release', dir, 'dashboard']))
-  assert.equal(ajeno.status, 1, 'soltar lo de otro tampoco')
-  assert.match(ajeno.stderr, /dashboard es de ana@acme\.com\. Si se abandonó, borrá claims\/dashboard\.md a mano/)
+  const foreign = as('luis@acme.com', () => run(['release', dir, 'dashboard']))
+  assert.equal(foreign.status, 1, 'soltar lo de otro tampoco')
+  assert.match(foreign.stderr, /dashboard es de ana@acme\.com\. Si se abandonó, borrá claims\/dashboard\.md a mano/)
 
-  const propio = como('ana@acme.com', () => run(['release', dir, 'dashboard']))
-  assert.equal(propio.status, 0, propio.stderr)
+  const own = as('ana@acme.com', () => run(['release', dir, 'dashboard']))
+  assert.equal(own.status, 0, own.stderr)
   assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false)
-  const despues = como('luis@acme.com', () => run(['context', dir]))
-  assert.match(despues.stdout, /^TASK {3}dashboard/m, 'soltada, vuelve a la cola')
+  const later = as('luis@acme.com', () => run(['context', dir]))
+  assert.match(later.stdout, /^TASK {3}dashboard/m, 'soltada, vuelve a la cola')
 })
 
 // Caso 412: el reclamo de una tarea ya en DONE lo suelta cualquiera, y uno de una tarea en curso de otro se sigue
 // negando, como arriba. El porqué, en `release` de `engine/cli/claims.js`.
 test('el reclamo de una tarea cerrada lo suelta quien la cerró, aunque la haya tomado otro', () => {
   const dir = planning('cauce-claims-cerrada-')
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard'])).status, 0)
-  const otro = { CAUCE_RUNNER: 'otro' }
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'boton'], undefined, otro)).status, 0)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard'])).status, 0)
+  const other = { CAUCE_RUNNER: 'otro' }
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'boton'], undefined, other)).status, 0)
   const backlog = path.join(dir, 'BACKLOG.md')
   fs.writeFileSync(backlog, fs.readFileSync(backlog, 'utf8').replace(/^- \[ \] \*\*dashboard\*\*.*\n/m, ''))
   fs.writeFileSync(path.join(dir, 'done', 'dashboard.md'), '- [x] **dashboard** — Grilla\n  acept: filtra por fecha\n'
@@ -93,14 +93,14 @@ test('el reclamo de una tarea cerrada lo suelta quien la cerró, aunque la haya 
   const checked = () => { const out = run(['check', dir]); return `${out.stdout}${out.stderr}` }
   assert.match(checked(), /dashboard ya está en DONE; soltala con `ops release`/)
 
-  const reviewer = como('luis@acme.com', () => run(['release', dir, 'dashboard']))
+  const reviewer = as('luis@acme.com', () => run(['release', dir, 'dashboard']))
   assert.equal(reviewer.status, 0, reviewer.stderr)
   assert.match(reviewer.stdout, /✓ dashboard soltada: ya estaba en DONE, el reclamo no reservaba nada/)
   assert.doesNotMatch(reviewer.stdout, /volvió a la cola/, 'no vuelve a ninguna cola')
   assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false)
   assert.doesNotMatch(checked(), /ya está en DONE/)
   // La que sigue en curso es de otro, y eso no cambió.
-  const foreign = como('luis@acme.com', () => run(['release', dir, 'boton']))
+  const foreign = as('luis@acme.com', () => run(['release', dir, 'boton']))
   assert.equal(foreign.status, 1)
   assert.match(foreign.stderr, /boton es de ana@acme\.com/)
 })
@@ -109,10 +109,10 @@ test('la cola tomada entera no se anuncia como cola vacía', () => {
   const dir = planning('cauce-tomada-')
   for (const slug of ['dashboard', 'boton', 'reportes']) {
     // Un runner lleva una tarea, así que tres tareas tomadas son tres runners.
-    const tomada = como('ana@acme.com', () => run(['claim', dir, slug]), `wt-${slug}`)
-    assert.equal(tomada.status, 0, tomada.stderr)
+    const taken = as('ana@acme.com', () => run(['claim', dir, slug]), `wt-${slug}`)
+    assert.equal(taken.status, 0, taken.stderr)
   }
-  const luis = como('luis@acme.com', () => run(['context', dir]))
+  const luis = as('luis@acme.com', () => run(['context', dir]))
   assert.match(luis.stdout, /sin tarea disponible/)
   // Sin esto, «no hay trabajo» y «el trabajo lo tiene tu compañera» se leen igual, y la respuesta
   // correcta a cada una es distinta: buscar otra cosa, o hablar con ella.
@@ -124,22 +124,22 @@ test('la cola tomada entera no se anuncia como cola vacía', () => {
 // recibiría la tarea del primero como propia y los dos construirían lo mismo — sin que nada falle.
 test('dos agentes en la misma máquina no se llevan la tarea del otro', () => {
   const dir = planning('cauce-dos-agentes-')
-  const mismaPersona = 'manuel@acme.com'
+  const samePerson = 'manuel@acme.com'
 
-  const primera = como(mismaPersona, () => run(['claim', dir, 'dashboard']), '/w/dashboard')
-  assert.equal(primera.status, 0, primera.stderr)
+  const first = as(samePerson, () => run(['claim', dir, 'dashboard']), '/w/dashboard')
+  assert.equal(first.status, 0, first.stderr)
 
-  const segundo = como(mismaPersona, () => run(['context', dir]), '/w/boton')
-  assert.match(segundo.stdout, /^TASK {3}boton/m, 'el segundo agente no recibe lo del primero')
-  assert.match(segundo.stdout, /^CLAIM {2}libre/m, 'y sabe que todavía no es suya')
-  assert.match(segundo.stdout, /^TAKEN {2}dashboard/m)
+  const second = as(samePerson, () => run(['context', dir]), '/w/boton')
+  assert.match(second.stdout, /^TASK {3}boton/m, 'el segundo agente no recibe lo del primero')
+  assert.match(second.stdout, /^CLAIM {2}libre/m, 'y sabe que todavía no es suya')
+  assert.match(second.stdout, /^TAKEN {2}dashboard/m)
 
   // Y compartir el id —porque nadie puso CAUCE_RUNNER— deja de ser silencioso: en vez de llevarse la
   // tarea del otro, el segundo intento choca contra el mutex del runner y el mensaje dice qué hacer.
-  const mismoId = como(mismaPersona, () => run(['claim', dir, 'boton']), '/w/dashboard')
-  assert.equal(mismoId.status, 1)
-  assert.match(mismoId.stderr, /este runner ya tiene dashboard/)
-  assert.match(mismoId.stderr, /CAUCE_RUNNER/)
+  const sameId = as(samePerson, () => run(['claim', dir, 'boton']), '/w/dashboard')
+  assert.equal(sameId.status, 1)
+  assert.match(sameId.stderr, /este runner ya tiene dashboard/)
+  assert.match(sameId.stderr, /CAUCE_RUNNER/)
 })
 
 // La carrera de verdad: dos procesos pidiendo la misma tarea a la vez. No se puede escenificar desde
@@ -151,21 +151,21 @@ test('dos reclamos simultáneos de la misma tarea los gana uno solo', async () =
   const { spawn } = require('node:child_process')
   const cli = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
 
-  const pedir = (runner) => new Promise((resolve) => {
+  const ask = (runner) => new Promise((resolve) => {
     const env = { ...process.env, CAUCE_OWNER: 'manuel@acme.com', CAUCE_RUNNER: runner }
     delete env.NODE_TEST_CONTEXT
-    const hijo = spawn(process.execPath, [cli, 'claim', dir, 'dashboard'], { env, encoding: 'utf8' })
+    const child = spawn(process.execPath, [cli, 'claim', dir, 'dashboard'], { env, encoding: 'utf8' })
     let err = ''
-    hijo.stderr.on('data', (chunk) => { err += chunk })
-    hijo.on('close', (code) => resolve({ code, err }))
+    child.stderr.on('data', (chunk) => { err += chunk })
+    child.on('close', (code) => resolve({ code, err }))
   })
 
-  const [a, b] = await Promise.all([pedir('/w/uno'), pedir('/w/dos')])
-  const ganadores = [a, b].filter((one) => one.code === 0)
-  assert.equal(ganadores.length, 1, `ganaron ${ganadores.length}: ${JSON.stringify([a, b])}`)
+  const [a, b] = await Promise.all([ask('/w/uno'), ask('/w/dos')])
+  const winners = [a, b].filter((one) => one.code === 0)
+  assert.equal(winners.length, 1, `ganaron ${winners.length}: ${JSON.stringify([a, b])}`)
 
-  const reclamo = fs.readFileSync(path.join(dir, 'claims', 'dashboard.md'), 'utf8')
-  const runners = ['/w/uno', '/w/dos'].filter((one) => reclamo.includes(`runner: ${one}`))
+  const claim = fs.readFileSync(path.join(dir, 'claims', 'dashboard.md'), 'utf8')
+  const runners = ['/w/uno', '/w/dos'].filter((one) => claim.includes(`runner: ${one}`))
   assert.equal(runners.length, 1, 'y el archivo quedó con un solo runner adentro')
 })
 
@@ -176,49 +176,49 @@ test('sin reclamos y sin WIP en disco, check no dice nada de ninguno de los dos'
   assert.equal(fs.existsSync(path.join(dir, 'wip', 'cualquiera.md')), false)
 
   const check = JSON.parse(run(['check', dir, '--json']).stdout)
-  const suyo = (one) => /claims|WIP/.test(one)
-  assert.deepEqual(check.errors.filter(suyo), [], 'la ausencia de los dos archivos no es un error')
-  assert.deepEqual(check.warnings.filter(suyo), [], 'y tampoco se avisa')
+  const theirs = (one) => /claims|WIP/.test(one)
+  assert.deepEqual(check.errors.filter(theirs), [], 'la ausencia de los dos archivos no es un error')
+  assert.deepEqual(check.warnings.filter(theirs), [], 'y tampoco se avisa')
 })
 
 test('solo se toma trabajo promovido, y sin identidad no se toma nada', () => {
   const dir = planning('cauce-claims-bordes-')
-  const inventada = como('ana@acme.com', () => run(['claim', dir, 'no-existe']))
-  assert.equal(inventada.status, 2)
-  assert.match(inventada.stderr, /no está en BACKLOG/)
+  const invented = as('ana@acme.com', () => run(['claim', dir, 'no-existe']))
+  assert.equal(invented.status, 2)
+  assert.match(invented.stderr, /no está en BACKLOG/)
+  for (const command of ['claim', 'release']) {
+    const withoutSlug = as('ana@acme.com', () => run([command, dir]))
+    assert.equal(withoutSlug.status, 2, `${command} sin tarea`)
+    assert.match(withoutSlug.stderr, /Falta el slug/)
 
-  for (const comando of ['claim', 'release']) {
-    const sinSlug = como('ana@acme.com', () => run([comando, dir]))
-    assert.equal(sinSlug.status, 2, `${comando} sin tarea`)
-    assert.match(sinSlug.stderr, /Falta el slug/)
     // Y sin decir dónde: los dos toman el directorio actual, que es como se los corre parado adentro.
-    const sinDir = como('ana@acme.com', () => run([comando], dir))
-    assert.equal(sinDir.status, 2, `${comando} desde adentro del planning`)
-    assert.match(sinDir.stderr, /Falta el slug/)
+    const withoutDir = as('ana@acme.com', () => run([command], dir))
+    assert.equal(withoutDir.status, 2, `${command} desde adentro del planning`)
+    assert.match(withoutDir.stderr, /Falta el slug/)
   }
-  const sueltaLibre = como('ana@acme.com', () => run(['release', dir, 'dashboard']))
-  assert.equal(sueltaLibre.status, 2)
-  assert.match(sueltaLibre.stderr, /no está tomada por nadie/)
+  const releasedFree = as('ana@acme.com', () => run(['release', dir, 'dashboard']))
+  assert.equal(releasedFree.status, 2)
+  assert.match(releasedFree.stderr, /no está tomada por nadie/)
 
   // Volver a tomar lo propio no falla: un runner que reintenta después de una interrupción tiene que
   // poder correr el mismo comando sin que el segundo intento parezca un error.
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard'])).status, 0)
-  const otraVez = como('ana@acme.com', () => run(['claim', dir, 'dashboard']))
-  assert.equal(otraVez.status, 0, otraVez.stderr)
-  assert.match(otraVez.stdout, /ya era tuya desde \d{4}-\d{2}-\d{2}/)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard'])).status, 0)
+  const again = as('ana@acme.com', () => run(['claim', dir, 'dashboard']))
+  assert.equal(again.status, 0, again.stderr)
+  assert.match(again.stdout, /ya era tuya desde \d{4}-\d{2}-\d{2}/)
 
   // Una máquina sin identidad de git: se apagan las dos configuraciones que `git config` consultaría.
   // Es la única forma de llegar a esa rama sin depender de cómo esté configurada la máquina que corre
   // la prueba — y `CAUCE_OWNER` vacío no sirve, porque una variable vacía es una variable sin poner.
-  const previo = { ...process.env }
+  const previous = { ...process.env }
   process.env.GIT_CONFIG_GLOBAL = '/dev/null'
   process.env.GIT_CONFIG_SYSTEM = '/dev/null'
   delete process.env.CAUCE_OWNER
-  const anonima = run(['claim', dir, 'reportes'])
-  process.env.GIT_CONFIG_GLOBAL = previo.GIT_CONFIG_GLOBAL || ''
-  process.env.GIT_CONFIG_SYSTEM = previo.GIT_CONFIG_SYSTEM || ''
-  assert.equal(anonima.status, 2, anonima.stdout)
-  assert.match(anonima.stderr, /No sé quién sos/)
+  const anonymous = run(['claim', dir, 'reportes'])
+  process.env.GIT_CONFIG_GLOBAL = previous.GIT_CONFIG_GLOBAL || ''
+  process.env.GIT_CONFIG_SYSTEM = previous.GIT_CONFIG_SYSTEM || ''
+  assert.equal(anonymous.status, 2, anonymous.stdout)
+  assert.match(anonymous.stderr, /No sé quién sos/)
 })
 
 // Lo que sigue a una tarea en vuelo es trabajo de quien la tiene. El orden del BACKLOG lo decía solo
@@ -233,18 +233,18 @@ test('lo que depende de una tarea en vuelo no se le ofrece a otro runner', () =>
 - [ ] **pantalla** [lite] — Pantalla. _Aceptación: muestra._ (service: web) (depende: modelo)
 - [ ] **suelta** [lite] — Otra. _Aceptación: anda._ (service: api)
 `)
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'modelo']), '/w/ana').status, 0)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'modelo']), '/w/ana').status, 0)
 
-  const luis = como('luis@acme.com', () => run(['context', dir]), '/w/luis')
+  const luis = as('luis@acme.com', () => run(['context', dir]), '/w/luis')
   assert.match(luis.stdout, /^TASK {3}suelta/m, 'recibe la que no depende de nada')
   assert.match(luis.stdout, /^WAIT {3}pantalla: espera a modelo \(ana@acme\.com\)$/m,
     'y sabe por qué la que sigue no está disponible, y de quién es')
 
   // Tampoco puede reservarla saltándose el orden: reservar lo que no se puede empezar traba la cola y
   // deja a ese runner sin poder tomar otra cosa.
-  const adelantarse = como('luis@acme.com', () => run(['claim', dir, 'pantalla']), '/w/luis')
-  assert.equal(adelantarse.status, 1)
-  assert.match(adelantarse.stderr, /depende de modelo, que todavía no está en DONE/)
+  const ahead = as('luis@acme.com', () => run(['claim', dir, 'pantalla']), '/w/luis')
+  assert.equal(ahead.status, 1)
+  assert.match(ahead.stderr, /depende de modelo, que todavía no está en DONE/)
 })
 
 test('check nombra la dependencia que no existe y el ciclo entero', () => {
@@ -278,17 +278,17 @@ test('context puede acotarse a un hito, y avisa si el hito no existe', () => {
 
 - [ ] **endpoint** [lite] — Endpoint. _Aceptación: responde._ (service: api)
 `)
-  const global = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  const global = as('ana@acme.com', () => run(['context', dir]), '/w/ana')
   assert.match(global.stdout, /^TASK {3}grilla/m, 'sin acotar manda la primera de la cola entera')
 
-  const acotado = como('luis@acme.com', () => run(['context', dir, '--hito', 'backend']), '/w/luis')
-  assert.match(acotado.stdout, /^TASK {3}endpoint/m)
-  assert.doesNotMatch(acotado.stdout, /grilla/, 'y no cuenta lo que pasa en el otro hito')
+  const bounded = as('luis@acme.com', () => run(['context', dir, '--hito', 'backend']), '/w/luis')
+  assert.match(bounded.stdout, /^TASK {3}endpoint/m)
+  assert.doesNotMatch(bounded.stdout, /grilla/, 'y no cuenta lo que pasa en el otro hito')
 
   // Un hito mal escrito devolvería «sin tarea disponible», indistinguible de un hito terminado.
-  const roto = como('luis@acme.com', () => run(['context', dir, '--hito', 'bakend']), '/w/luis')
-  assert.equal(roto.status, 2)
-  assert.match(roto.stderr, /el hito bakend no existe\. Hay: frontend, backend/)
+  const broken = as('luis@acme.com', () => run(['context', dir, '--hito', 'bakend']), '/w/luis')
+  assert.equal(broken.status, 2)
+  assert.match(broken.stderr, /el hito bakend no existe\. Hay: frontend, backend/)
 })
 
 // Encontrado corriendo un equipo de verdad, no en una prueba: `--hito` sobre otro hito le ofrecía a
@@ -306,18 +306,18 @@ test('acotar por hito no esconde la tarea que ya tenés', () => {
 
 - [ ] **boton** [lite] — Botón. _Aceptación: exporta._ (service: web)
 `)
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'endpoint']), '/w/ana').status, 0)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'endpoint']), '/w/ana').status, 0)
 
-  const acotado = como('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
-  assert.match(acotado.stdout, /^TASK {3}endpoint/m, 'devuelve la suya, no una del hito pedido')
-  assert.match(acotado.stdout, /^HITO {3}frontend no se aplica: ya tenés endpoint tomada$/m,
+  const bounded = as('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
+  assert.match(bounded.stdout, /^TASK {3}endpoint/m, 'devuelve la suya, no una del hito pedido')
+  assert.match(bounded.stdout, /^HITO {3}frontend no se aplica: ya tenés endpoint tomada$/m,
     'y dice por qué el filtro no se aplicó, en vez de ignorarlo en silencio')
 
   // Sin reclamo abierto el filtro sí acota: lo que no puede es taparte lo que ya sostenés.
-  assert.equal(como('ana@acme.com', () => run(['release', dir, 'endpoint']), '/w/ana').status, 0)
-  const libre = como('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
-  assert.match(libre.stdout, /^TASK {3}boton/m)
-  assert.doesNotMatch(libre.stdout, /^HITO/m)
+  assert.equal(as('ana@acme.com', () => run(['release', dir, 'endpoint']), '/w/ana').status, 0)
+  const free = as('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
+  assert.match(free.stdout, /^TASK {3}boton/m)
+  assert.doesNotMatch(free.stdout, /^HITO/m)
 })
 
 // Volver al día siguiente y volver como un segundo agente se ven idénticos desde el archivo, y las dos
@@ -325,29 +325,29 @@ test('acotar por hito no esconde la tarea que ya tenés', () => {
 // nuevo deja dos construyendo lo mismo. Lo único correcto es decir cuál es cuál y que decida una persona.
 test('tu propio reclamo desde otro runner se reconoce, no se resuelve solo', () => {
   const dir = planning('cauce-retomar-')
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ayer').status, 0)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ayer').status, 0)
 
   // Ana vuelve sin reponer su id: la tarea sigue siendo suya y el mensaje lo dice, con el id que repone.
-  const hoy = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/hoy')
-  assert.equal(hoy.status, 1)
-  assert.match(hoy.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde el runner \/w\/ayer/)
+  const today = as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/hoy')
+  assert.equal(today.status, 1)
+  assert.match(today.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde el runner \/w\/ayer/)
   // Y manda a preguntar, no a decidir: las dos salidas automáticas rompen trabajo.
-  assert.match(hoy.stderr, /Preguntá si se retoma esa sesión/)
-  assert.match(hoy.stderr, /o si es otro agente en paralelo, que toma otra tarea/)
-  assert.match(hoy.stderr, /ops runners/, 'y dice dónde ver lo que hay abierto')
+  assert.match(today.stderr, /Preguntá si se retoma esa sesión/)
+  assert.match(today.stderr, /o si es otro agente en paralelo, que toma otra tarea/)
+  assert.match(today.stderr, /ops runners/, 'y dice dónde ver lo que hay abierto')
 
   // Soltarla desde el id de hoy frena igual, y dice lo mismo que `claim`: es tuya, y con qué id se suelta (caso 432).
-  const suelta = como('ana@acme.com', () => run(['release', dir, 'dashboard']), '/w/hoy')
-  assert.equal(suelta.status, 1)
-  assert.match(suelta.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde el runner \/w\/ayer/)
-  assert.match(suelta.stderr, /CAUCE_RUNNER=\/w\/ayer/)
-  assert.doesNotMatch(suelta.stderr, /es de ana@acme\.com/)
+  const released = as('ana@acme.com', () => run(['release', dir, 'dashboard']), '/w/hoy')
+  assert.equal(released.status, 1)
+  assert.match(released.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde el runner \/w\/ayer/)
+  assert.match(released.stderr, /CAUCE_RUNNER=\/w\/ayer/)
+  assert.doesNotMatch(released.stderr, /es de ana@acme\.com/)
 
   // Un id con un espacio, y una instancia bajo una carpeta con otro: el comando que imprime sale citado y, pegado
   // entero en un shell desde donde se corrió, suelta (caso 432).
   const spaced = planning('cauce retomar espacio-')
-  assert.equal(como('ana@acme.com', () => run(['claim', spaced, 'boton']), '/w/mis repos').status, 0)
-  const refused = como('ana@acme.com', () => run(['release', spaced, 'boton']), '/w/hoy')
+  assert.equal(as('ana@acme.com', () => run(['claim', spaced, 'boton']), '/w/mis repos').status, 0)
+  const refused = as('ana@acme.com', () => run(['release', spaced, 'boton']), '/w/hoy')
   const printed = (refused.stderr.match(/soltala con su id: (.+)$/m) || [])[1] || ''
   assert.match(printed, /^CAUCE_RUNNER='\/w\/mis repos' node tools\/ops\.js release '[^']+' boton$/)
   const pasted = spawnSync('bash', ['-c', printed.replace('node tools/ops.js', `"${process.execPath}" "${CLI}"`)],
@@ -355,18 +355,18 @@ test('tu propio reclamo desde otro runner se reconoce, no se resuelve solo', () 
       env: { ...process.env, CAUCE_OWNER: 'ana@acme.com', NODE_TEST_CONTEXT: '' } })
   assert.equal(pasted.status, 0, pasted.stderr)
 
-  const visto = como('ana@acme.com', () => run(['context', dir]), '/w/hoy')
-  assert.match(visto.stdout, /^TAKEN {2}dashboard \(ana@acme\.com — vos, desde otro runner\)$/m)
+  const seen = as('ana@acme.com', () => run(['context', dir]), '/w/hoy')
+  assert.match(seen.stdout, /^TAKEN {2}dashboard \(ana@acme\.com — vos, desde otro runner\)$/m)
 
   // Con el id repuesto, retoma sin ceremonia.
-  const retomada = como('ana@acme.com', () => run(['context', dir]), '/w/ayer')
-  assert.match(retomada.stdout, /^TASK {3}dashboard/m)
-  assert.match(retomada.stdout, /^CLAIM {2}tuya desde el reclamo/m)
+  const resumed = as('ana@acme.com', () => run(['context', dir]), '/w/ayer')
+  assert.match(resumed.stdout, /^TASK {3}dashboard/m)
+  assert.match(resumed.stdout, /^CLAIM {2}tuya desde el reclamo/m)
 
   // Y el reclamo de otra persona sigue diciéndose como lo que es.
-  const ajeno = como('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis')
-  assert.match(ajeno.stderr, /la tomó ana@acme\.com/)
-  assert.doesNotMatch(ajeno.stderr, /vos/)
+  const foreign = as('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis')
+  assert.match(foreign.stderr, /la tomó ana@acme\.com/)
+  assert.doesNotMatch(foreign.stderr, /vos/)
 })
 
 
@@ -376,25 +376,25 @@ test('tu propio reclamo desde otro runner se reconoce, no se resuelve solo', () 
 // deducirlo del reclamo, que es justo lo que el reclamo existe para no tener que hacer.
 test('claim deja escrito el id con el que se vuelve', () => {
   const dir = planning('cauce-claim-id-')
-  const hecho = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
-  assert.equal(hecho.status, 0)
-  assert.match(hecho.stdout, /export CAUCE_RUNNER=\/w\/ana/, 'el id con el que se retoma esta sesión')
+  const done = as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
+  assert.equal(done.status, 0)
+  assert.match(done.stdout, /export CAUCE_RUNNER=\/w\/ana/, 'el id con el que se retoma esta sesión')
 })
 
 test('dos agentes en una instancia sidecar no comparten el plan', () => {
   const dir = planning('cauce-wip-sidecar-')
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
   fs.mkdirSync(path.join(dir, 'wip'), { recursive: true })
   fs.writeFileSync(path.join(dir, 'wip', 'w-ana.md'),
     '---\ntask: dashboard\nphase: Build\nservice: web\n---\n\n## Plan aprobado\n1. [x] Uno\n2. [ ] Dos\n')
 
-  const suyo = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
-  assert.match(suyo.stdout, /^TASK {3}dashboard/m)
-  assert.match(suyo.stdout, /^WIP {4}Build · 1✓\/1○$/m, 'ana retoma su plan donde lo dejó')
+  const theirs = as('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(theirs.stdout, /^TASK {3}dashboard/m)
+  assert.match(theirs.stdout, /^WIP {4}Build · 1✓\/1○$/m, 'ana retoma su plan donde lo dejó')
 
-  const otro = como('luis@acme.com', () => run(['context', dir]), '/w/luis')
-  assert.doesNotMatch(otro.stdout, /^TASK {3}dashboard/m, 'luis no recibe la tarea que ana construye')
-  assert.match(otro.stdout, /^WIP {4}idle$/m, 'ni el plan de ana como si fuera suyo')
+  const other = as('luis@acme.com', () => run(['context', dir]), '/w/luis')
+  assert.doesNotMatch(other.stdout, /^TASK {3}dashboard/m, 'luis no recibe la tarea que ana construye')
+  assert.match(other.stdout, /^WIP {4}idle$/m, 'ni el plan de ana como si fuera suyo')
 })
 
 // Las tres respuestas que un agente necesita para preguntar bien: ninguno, varios con su tarea, y —la que
@@ -404,13 +404,13 @@ test('runners dice quién tiene trabajo abierto, y calla cuando no hay', () => {
   const dir = planning('cauce-runners-')
   assert.match(run(['runners', dir]).stdout, /ningún runner tiene trabajo abierto/)
 
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/uno').status, 0)
-  assert.equal(como('luis@acme.com', () => run(['claim', dir, 'boton']), '/w/dos').status, 0)
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/uno').status, 0)
+  assert.equal(as('luis@acme.com', () => run(['claim', dir, 'boton']), '/w/dos').status, 0)
 
-  const lista = run(['runners', dir])
-  assert.match(lista.stdout, /^\/w\/uno\s+dashboard\s+\(ana@acme\.com, desde \d{4}-\d{2}-\d{2}; sin commits/m)
-  assert.match(lista.stdout, /^\/w\/dos\s+boton\s+\(luis@acme\.com/m)
-  assert.match(lista.stdout, /2 runner\(s\) con trabajo abierto/)
+  const list = run(['runners', dir])
+  assert.match(list.stdout, /^\/w\/uno\s+dashboard\s+\(ana@acme\.com, desde \d{4}-\d{2}-\d{2}; sin commits/m)
+  assert.match(list.stdout, /^\/w\/dos\s+boton\s+\(luis@acme\.com/m)
+  assert.match(list.stdout, /2 runner\(s\) con trabajo abierto/)
 
   const json = JSON.parse(run(['runners', dir, '--json']).stdout)
   assert.deepEqual(json.map((one) => one.runner).sort(), ['/w/dos', '/w/uno'])
@@ -429,24 +429,24 @@ test('runners dice quién tiene trabajo abierto, y calla cuando no hay', () => {
 // cerró para las líneas: lo que uno no ofrece, el otro no reserva.
 test('claim no reserva una tarea con acción humana pendiente, y sí cuando la fila se resolvió', () => {
   const dir = planning('cauce-humana-')
-  const tabla = (estado) => fs.writeFileSync(path.join(dir, 'HUMAN_ACTIONS.md'), `# Acciones humanas
+  const table = (state) => fs.writeFileSync(path.join(dir, 'HUMAN_ACTIONS.md'), `# Acciones humanas
 
 | Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
 |---|---|---|---|
-| dashboard | ${estado} | Ready | Elegir el proveedor de email y dejar la credencial en el entorno. |
+| dashboard | ${state} | Ready | Elegir el proveedor de email y dejar la credencial en el entorno. |
 `)
-  tabla('pendiente')
-  const contexto = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
-  assert.match(contexto.stdout, /^SKIP {3}dashboard/m, 'context la saltea')
+  table('pendiente')
+  const context = as('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(context.stdout, /^SKIP {3}dashboard/m, 'context la saltea')
+  const take = as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
+  assert.equal(take.status, 1, take.stdout)
+  assert.match(take.stderr, /dashboard espera una acción humana/)
+  assert.match(take.stderr, /Elegir el proveedor de email/, 'y dice cuál')
 
-  const tomar = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
-  assert.equal(tomar.status, 1, tomar.stdout)
-  assert.match(tomar.stderr, /dashboard espera una acción humana/)
-  assert.match(tomar.stderr, /Elegir el proveedor de email/, 'y dice cuál')
   assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false, 'no quedó reservada')
 
-  tabla('resuelta 2026-10-08')
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
+  table('resuelta 2026-10-08')
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
 })
 
 // `context` honra el WIP propio aunque la tarea tenga una acción humana abierta —el plan en vuelo manda—, así
@@ -476,11 +476,11 @@ lane: lite
 ## Plan aprobado
 1. [ ] Paso
 `)
-  const contexto = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
-  assert.match(contexto.stdout, /^TASK {3}dashboard/m, 'context la ofrece: el WIP manda')
-  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0,
+  const context = as('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(context.stdout, /^TASK {3}dashboard/m, 'context la ofrece: el WIP manda')
+  assert.equal(as('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0,
     'y claim la deja retomar')
-  assert.equal(como('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis').status, 1, 'otro runner no')
+  assert.equal(as('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis').status, 1, 'otro runner no')
 })
 
 // Sin identidad de git los dos dueños son la cadena vacía, y la vacía no es nadie: un reclamo sin dueño no es «tuyo», y
@@ -490,9 +490,9 @@ test('sin identidad, un reclamo sin dueño no se toma por propio', () => {
   const dir = planning('cauce-sin-dueno-')
   fs.writeFileSync(path.join(dir, 'claims', 'dashboard.md'),
     '---\ntask: dashboard\nowner: \nrunner: /w/otro\nstarted: 2026-10-01\nservice: web\n---\n')
-  const nadie = { CAUCE_OWNER: '', CAUCE_RUNNER: '/w/hoy', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
-  const suelta = run(['release', dir, 'dashboard'], undefined, nadie)
-  assert.equal(suelta.status, 1)
-  assert.doesNotMatch(suelta.stderr, /la tenés vos|soltala con su id/, suelta.stderr)
-  assert.doesNotMatch(run(['context', dir], undefined, nadie).stdout, /vos, desde otro runner/)
+  const nobody = { CAUCE_OWNER: '', CAUCE_RUNNER: '/w/hoy', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+  const released = run(['release', dir, 'dashboard'], undefined, nobody)
+  assert.equal(released.status, 1)
+  assert.doesNotMatch(released.stderr, /la tenés vos|soltala con su id/, released.stderr)
+  assert.doesNotMatch(run(['context', dir], undefined, nobody).stdout, /vos, desde otro runner/)
 })

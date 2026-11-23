@@ -18,80 +18,80 @@ const R = require('../../engine/core/repos')
 // user.email` — y ahí la prueba pasa a depender de cómo esté configurada la máquina: verde en una con
 // identidad global y roja en CI, que no tiene ninguna. Es el mismo tropiezo por el que `mount` fija la
 // identidad en el repositorio (`test/support/worktree-bench.js`).
-function como(runner, fn, owner = 'prueba@acme.com') {
-  const previo = { runner: process.env.CAUCE_RUNNER, owner: process.env.CAUCE_OWNER }
+function as(runner, fn, owner = 'prueba@acme.com') {
+  const previous = { runner: process.env.CAUCE_RUNNER, owner: process.env.CAUCE_OWNER }
   process.env.CAUCE_RUNNER = runner
   process.env.CAUCE_OWNER = owner
   try { return fn() } finally {
-    for (const [clave, valor] of [['CAUCE_RUNNER', previo.runner], ['CAUCE_OWNER', previo.owner]]) {
-      if (valor === undefined) delete process.env[clave]
-      else process.env[clave] = valor
+    for (const [key, value] of [['CAUCE_RUNNER', previous.runner], ['CAUCE_OWNER', previous.owner]]) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
     }
   }
 }
 
 test('prepara un árbol por tarea sin clonar, y entrega el id del runner', () => {
   const { repo, planning } = mount('cauce-wt-')
-  const hecho = como('/w/otro', () => run(['worktree', planning, 'alta']))
-  assert.equal(hecho.status, 0, hecho.stderr)
+  const done = as('/w/otro', () => run(['worktree', planning, 'alta']))
+  assert.equal(done.status, 0, done.stderr)
 
-  const arbol = `${repo}-alta`
-  assert.ok(fs.existsSync(path.join(arbol, 'api', 'main.go')), 'el árbol trae los archivos')
+  const tree = `${repo}-alta`
+  assert.ok(fs.existsSync(path.join(tree, 'api', 'main.go')), 'el árbol trae los archivos')
   // Lo que separa un worktree de un clon: no hay un segundo `.git` con su propia historia, hay un
   // puntero al del repositorio original.
-  assert.equal(fs.statSync(path.join(arbol, '.git')).isFile(), true, '.git es un puntero, no un repo')
-  assert.equal(git(arbol, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'task/alta')
+  assert.equal(fs.statSync(path.join(tree, '.git')).isFile(), true, '.git es un puntero, no un repo')
+  assert.equal(git(tree, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'task/alta')
   assert.equal(git(repo, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'main',
     'y el árbol original no cambió de rama, que es lo que pisaría al otro agente')
 
-  assert.match(hecho.stdout, new RegExp(`export CAUCE_RUNNER=${arbol}`))
+  assert.match(done.stdout, new RegExp(`export CAUCE_RUNNER=${tree}`))
 
   // Sin reclamo lo dice: los guards abren el árbol de una tarea reclamada (caso 360).
-  assert.match(hecho.stdout, /alta no está reclamada/)
+  assert.match(done.stdout, /alta no está reclamada/)
   const { execute } = require('../../engine/hooks/run')
   const ops = path.dirname(planning)
-  const escribe = () => execute('workspace-boundary',
-    { cwd: ops, tool_input: { file_path: path.join(arbol, 'api', 'nuevo.go') } })
-  assert.throws(escribe, /fuera de las raíces/, 'la raíz acá es el repositorio, y el árbol queda al lado')
-  assert.equal(como('/w/otro', () => run(['claim', planning, 'alta'])).status, 0)
-  assert.doesNotThrow(escribe, 'reclamada, el árbol que este comando armó es escribible')
-  assert.doesNotMatch(como('/w/otro', () => run(['worktree', planning, 'alta'])).stdout, /no está reclamada/)
+  const writes = () => execute('workspace-boundary',
+    { cwd: ops, tool_input: { file_path: path.join(tree, 'api', 'nuevo.go') } })
+  assert.throws(writes, /fuera de las raíces/, 'la raíz acá es el repositorio, y el árbol queda al lado')
+  assert.equal(as('/w/otro', () => run(['claim', planning, 'alta'])).status, 0)
+  assert.doesNotThrow(writes, 'reclamada, el árbol que este comando armó es escribible')
+  assert.doesNotMatch(as('/w/otro', () => run(['worktree', planning, 'alta'])).stdout, /no está reclamada/)
 
   // Repetir no rompe ni crea un segundo árbol: devuelve el que ya existe para esa rama.
-  const otra = como('/w/otro', () => run(['worktree', planning, 'alta']))
-  assert.equal(otra.status, 0, otra.stderr)
-  assert.match(otra.stdout, /^=/)
-  const listados = git(repo, 'worktree', 'list').stdout.trim().split('\n')
-  assert.equal(listados.length, 2, `un árbol principal y uno de la tarea: ${listados.join(' | ')}`)
+  const other = as('/w/otro', () => run(['worktree', planning, 'alta']))
+  assert.equal(other.status, 0, other.stderr)
+  assert.match(other.stdout, /^=/)
+  const listed = git(repo, 'worktree', 'list').stdout.trim().split('\n')
+  assert.equal(listed.length, 2, `un árbol principal y uno de la tarea: ${listed.join(' | ')}`)
 })
 
 test('vuelve a montar sobre la rama que quedó, y lo dice en JSON para un workflow', () => {
   const { repo, planning } = mount('cauce-wt-rehacer-')
-  assert.equal(como('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
-  const arbol = `${repo}-alta`
+  assert.equal(as('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
+  const tree = `${repo}-alta`
   // Sacar el árbol no borra la rama, y ahí está el trabajo: rehacerlo tiene que retomar esa rama y no
   // empezar una nueva, o lo hecho queda huérfano sin que nada lo diga.
-  git(repo, 'worktree', 'remove', arbol)
-  assert.equal(fs.existsSync(arbol), false)
+  git(repo, 'worktree', 'remove', tree)
+  assert.equal(fs.existsSync(tree), false)
 
-  const otra = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
-  assert.equal(otra.status, 0, otra.stderr)
-  const json = JSON.parse(otra.stdout)
+  const other = as('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(other.status, 0, other.stderr)
+  const json = JSON.parse(other.stdout)
   assert.deepEqual(
     { branch: json.branch, path: json.path, runner: json.runner, reused: json.reused },
-    { branch: 'task/alta', path: arbol, runner: arbol, reused: false },
+    { branch: 'task/alta', path: tree, runner: tree, reused: false },
   )
-  assert.equal(git(arbol, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'task/alta')
+  assert.equal(git(tree, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'task/alta')
 })
 
 test('no prepara un árbol para la tarea que tomó otro', () => {
   const { planning } = mount('cauce-wt-ajeno-')
-  const tomada = como('/w/ana', () => run(['claim', planning, 'alta']))
-  assert.equal(tomada.status, 0, tomada.stderr)
+  const taken = as('/w/ana', () => run(['claim', planning, 'alta']))
+  assert.equal(taken.status, 0, taken.stderr)
 
-  const ajeno = como('/w/luis', () => run(['worktree', planning, 'alta']))
-  assert.equal(ajeno.status, 1)
-  assert.match(ajeno.stderr, /la tomó/)
+  const foreign = as('/w/luis', () => run(['worktree', planning, 'alta']))
+  assert.equal(foreign.status, 1)
+  assert.match(foreign.stderr, /la tomó/)
 })
 
 test('sin repositorio para el servicio, lo dice en vez de adivinar', () => {
@@ -102,9 +102,9 @@ test('sin repositorio para el servicio, lo dice en vez de adivinar', () => {
 
 - [ ] **alta** [lite] — Alta. _Aceptación: x._ (service: no-existe)
 `)
-  const roto = como('/w/uno', () => run(['worktree', planning, 'alta']))
-  assert.equal(roto.status, 2)
-  assert.match(roto.stderr, /no encontré el repositorio/)
+  const broken = as('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.equal(broken.status, 2)
+  assert.match(broken.stderr, /no encontré el repositorio/)
 })
 
 // Lo que separa una tarea larga de una abandonada no es cuánto hace que se tomó: es si su rama se movió.
@@ -113,27 +113,27 @@ test('sin repositorio para el servicio, lo dice en vez de adivinar', () => {
 // pasa el mapa ya hecho.
 test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () => {
   const { repo, planning } = mount('cauce-vivo-')
-  const viejo = '2020-01-01'
+  const old = '2020-01-01'
   fs.mkdirSync(path.join(planning, 'claims'), { recursive: true })
   fs.writeFileSync(path.join(planning, 'claims', 'alta.md'),
-    `---\ntask: alta\nowner: ana@acme.com\nrunner: /w/ana\nstarted: ${viejo}\nservice: api\n---\n`)
+    `---\ntask: alta\nowner: ana@acme.com\nrunner: /w/ana\nstarted: ${old}\nservice: api\n---\n`)
 
-  const sinRama = JSON.parse(run(['check', planning, '--json']).stdout).warnings
+  const withoutBranch = JSON.parse(run(['check', planning, '--json']).stdout).warnings
     .filter((one) => /alta/.test(one))
-  assert.equal(sinRama.length, 1, `esperaba un aviso: ${JSON.stringify(sinRama)}`)
-  assert.match(sinRama[0], /la rama de la tarea no tiene commits/)
+  assert.equal(withoutBranch.length, 1, `esperaba un aviso: ${JSON.stringify(withoutBranch)}`)
+  assert.match(withoutBranch[0], /la rama de la tarea no tiene commits/)
 
   // La misma tarea, con trabajo de hoy en su rama: deja de avisar aunque el reclamo sea de 2020.
   git(repo, 'branch', 'task/alta')
-  const arbol = `${repo}-alta`
-  git(repo, 'worktree', 'add', '-q', arbol, 'task/alta')
-  fs.writeFileSync(path.join(arbol, 'api', 'nuevo.go'), 'package main\n')
-  git(arbol, 'add', 'api/nuevo.go')
-  git(arbol, 'commit', '-q', '-m', 'avance')
+  const tree = `${repo}-alta`
+  git(repo, 'worktree', 'add', '-q', tree, 'task/alta')
+  fs.writeFileSync(path.join(tree, 'api', 'nuevo.go'), 'package main\n')
+  git(tree, 'add', 'api/nuevo.go')
+  git(tree, 'commit', '-q', '-m', 'avance')
 
-  const conAvance = JSON.parse(run(['check', planning, '--json']).stdout).warnings
+  const withProgress = JSON.parse(run(['check', planning, '--json']).stdout).warnings
     .filter((one) => /alta/.test(one))
-  assert.deepEqual(conAvance, [], 'una tarea que avanza no se apura por llevar tiempo tomada')
+  assert.deepEqual(withProgress, [], 'una tarea que avanza no se apura por llevar tiempo tomada')
 })
 
 // El defecto que apareció corriendo una sesión de equipo, no en una prueba: una rama recién creada hereda
@@ -142,14 +142,14 @@ test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () =
 // y sin excluir el tronco no separaba nada — no avisaba nunca sobre una tarea que ya tiene worktree.
 test('un commit del tronco no cuenta como avance de la tarea', () => {
   const { repo, planning } = mount('cauce-avance-')
-  assert.equal(como('/w/ana', () => run(['worktree', planning, 'alta'])).status, 0)
-  const arbol = `${repo}-alta`
+  assert.equal(as('/w/ana', () => run(['worktree', planning, 'alta'])).status, 0)
+  const tree = `${repo}-alta`
 
   assert.equal(R.lastCommit(repo, 'task/alta'), '', 'la rama recién creada no avanzó nada')
 
-  fs.writeFileSync(path.join(arbol, 'api', 'nuevo.go'), 'package main\n')
-  git(arbol, 'add', 'api/nuevo.go')
-  git(arbol, 'commit', '-q', '-m', 'avance de la tarea')
+  fs.writeFileSync(path.join(tree, 'api', 'nuevo.go'), 'package main\n')
+  git(tree, 'add', 'api/nuevo.go')
+  git(tree, 'commit', '-q', '-m', 'avance de la tarea')
   assert.match(R.lastCommit(repo, 'task/alta'), /^\d{4}-\d{2}-\d{2}$/, 'un commit propio sí')
 
   // Y un commit nuevo en el tronco tampoco: avanzó el proyecto, no la tarea.
@@ -165,13 +165,13 @@ test('un commit del tronco no cuenta como avance de la tarea', () => {
 test('preparar un árbol en modo embedded avisa que la instancia se duplica', () => {
   const { planning } = mount('cauce-wt-embedded-')
   const config = path.join(planning, '..', 'ops.config.json')
-  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
-  fs.writeFileSync(config, JSON.stringify({ ...leido, mode: 'embedded' }, null, 2))
+  const read = JSON.parse(fs.readFileSync(config, 'utf8'))
+  fs.writeFileSync(config, JSON.stringify({ ...read, mode: 'embedded' }, null, 2))
 
-  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta']))
-  assert.equal(hecho.status, 0, hecho.stderr)
-  assert.match(hecho.stdout, /los reclamos no se ven entre árboles hasta mergear/)
-  assert.match(hecho.stdout, /Para varios agentes, mode: sidecar/)
+  const done = as('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.equal(done.status, 0, done.stderr)
+  assert.match(done.stdout, /los reclamos no se ven entre árboles hasta mergear/)
+  assert.match(done.stdout, /Para varios agentes, mode: sidecar/)
 })
 
 // Las dos mitades de la ambigüedad, que `reposFor` explica: que se nombre en vez de elegirse, y que no
@@ -179,28 +179,28 @@ test('preparar un árbol en modo embedded avisa que la instancia se duplica', ()
 test('un servicio que existe en dos repositorios se nombra en vez de elegirse', () => {
   const { base, repo, planning } = mount('cauce-wt-multi-')
   // Un segundo repositorio con el mismo nombre de servicio adentro.
-  const otro = path.join(base, 'segundo')
-  fs.mkdirSync(path.join(otro, 'api'), { recursive: true })
-  fs.writeFileSync(path.join(otro, 'api', 'main.go'), 'package main\n')
-  git(otro, 'init', '-q', '-b', 'main')
-  git(otro, 'config', 'user.email', 'test@test'); git(otro, 'config', 'user.name', 'test')
-  git(otro, 'add', 'api/main.go'); git(otro, 'commit', '-q', '-m', 'base')
+  const other = path.join(base, 'segundo')
+  fs.mkdirSync(path.join(other, 'api'), { recursive: true })
+  fs.writeFileSync(path.join(other, 'api', 'main.go'), 'package main\n')
+  git(other, 'init', '-q', '-b', 'main')
+  git(other, 'config', 'user.email', 'test@test'); git(other, 'config', 'user.name', 'test')
+  git(other, 'add', 'api/main.go'); git(other, 'commit', '-q', '-m', 'base')
 
   const config = path.join(planning, '..', 'ops.config.json')
-  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  const read = JSON.parse(fs.readFileSync(config, 'utf8'))
   fs.writeFileSync(config, JSON.stringify({
-    ...leido, workspaceRoots: [{ name: 'main', path: '../producto' }, { name: 'otro', path: '../segundo' }],
+    ...read, workspaceRoots: [{ name: 'main', path: '../producto' }, { name: 'otro', path: '../segundo' }],
   }, null, 2))
 
-  const ambiguo = como('/w/uno', () => run(['worktree', planning, 'alta']))
-  assert.equal(ambiguo.status, 2)
-  assert.match(ambiguo.stderr, /api existe en más de un repositorio/)
-  assert.match(ambiguo.stderr, new RegExp(`${repo}.*${otro}`), 'y nombra los dos candidatos')
+  const ambiguous = as('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.equal(ambiguous.status, 2)
+  assert.match(ambiguous.stderr, /api existe en más de un repositorio/)
+  assert.match(ambiguous.stderr, new RegExp(`${repo}.*${other}`), 'y nombra los dos candidatos')
   assert.equal(fs.existsSync(`${repo}-alta`), false, 'sin haber creado ninguno')
 
   // Y la degradación del aviso de avance: sin poder resolver el repositorio, no inventa una fecha.
   assert.equal(R.repoOf(path.join(planning, '..'), 'api'), '')
-  assert.deepEqual(R.reposFor(path.join(planning, '..'), 'api').sort(), [otro, repo].sort())
+  assert.deepEqual(R.reposFor(path.join(planning, '..'), 'api').sort(), [other, repo].sort())
 })
 
 // Caso 254. La raíz declarada ya es el repositorio y la tarea lo nombra por su nombre: es como una
@@ -209,8 +209,8 @@ test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
   const { base, repo, planning } = mount('cauce-wt-raiz-')
   const ops = path.join(planning, '..')
   const config = path.join(ops, 'ops.config.json')
-  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
-  const declare = (workspaceRoots) => fs.writeFileSync(config, JSON.stringify({ ...leido, workspaceRoots }, null, 2))
+  const read = JSON.parse(fs.readFileSync(config, 'utf8'))
+  const declare = (workspaceRoots) => fs.writeFileSync(config, JSON.stringify({ ...read, workspaceRoots }, null, 2))
   const queue = (service) => fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
 
 ## Hito uno — Primero
@@ -229,9 +229,9 @@ test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
   assert.deepEqual(R.reposFor(ops, 'no-existe'), [])
 
   queue('producto')
-  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
-  assert.equal(hecho.status, 0, hecho.stderr)
-  assert.equal(JSON.parse(hecho.stdout).repo, repo, 'y el árbol se monta en ese repositorio')
+  const done = as('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(done.status, 0, done.stderr)
+  assert.equal(JSON.parse(done.stdout).repo, repo, 'y el árbol se monta en ese repositorio')
   assert.equal(fs.existsSync(path.join(base, 'producto-alta')), true)
 })
 
@@ -241,8 +241,8 @@ test('con una raíz que es una carpeta de repositorios, el servicio resuelve a s
   const { base, repo, planning } = mount('cauce-wt-contenedor-')
   const ops = path.join(planning, '..')
   const config = path.join(ops, 'ops.config.json')
-  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
-  fs.writeFileSync(config, JSON.stringify({ ...leido, workspaceRoots: [{ name: 'main', path: '..' }] }, null, 2))
+  const read = JSON.parse(fs.readFileSync(config, 'utf8'))
+  fs.writeFileSync(config, JSON.stringify({ ...read, workspaceRoots: [{ name: 'main', path: '..' }] }, null, 2))
   assert.notEqual(git(base, 'rev-parse', '--show-toplevel').status, 0, 'la carpeta que los contiene no es un repo')
   assert.deepEqual(R.reposFor(ops, 'producto'), [repo])
   assert.deepEqual(R.reposFor(ops, 'producto/api'), [repo], 'y una carpeta dentro de él, al mismo')
@@ -254,16 +254,16 @@ test('con una raíz que es una carpeta de repositorios, el servicio resuelve a s
 
 - [ ] **alta** [lite] — Alta. _Aceptación: x._ (service: producto)
 `)
-  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
-  assert.equal(hecho.status, 0, hecho.stderr)
-  assert.equal(JSON.parse(hecho.stdout).repo, repo)
+  const done = as('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(done.status, 0, done.stderr)
+  assert.equal(JSON.parse(done.stdout).repo, repo)
 })
 
 // Caso 274: las dos formas de llegar al repositorio, derecho y por el enlace de una línea. El porqué de
 // dónde queda el árbol está junto a `target`, en el comando.
 test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónde trabajar adentro', () => {
   const { repo, planning } = mount('cauce-wt-work-')
-  const plain = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  const plain = JSON.parse(as('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
   assert.equal(plain.path, `${repo}-alta`)
   assert.equal(plain.work, path.join(`${repo}-alta`, 'api'), 'el servicio vive en api/, adentro del repo')
   assert.ok(fs.existsSync(path.join(plain.work, 'main.go')))
@@ -274,7 +274,7 @@ test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónd
   fs.cpSync(path.join(linked.planning, '..'), path.join(home, 'producto-ops'), { recursive: true })
   fs.symlinkSync(linked.repo, path.join(home, 'producto'), 'dir')
   const ops = path.join(home, 'producto-ops')
-  const tree = JSON.parse(como('/w/dos', () => run(['worktree', path.join(ops, 'planning'), 'alta', '--json'])).stdout)
+  const tree = JSON.parse(as('/w/dos', () => run(['worktree', path.join(ops, 'planning'), 'alta', '--json'])).stdout)
   assert.equal(tree.path, path.join(home, 'producto-alta'), 'al lado del enlace, adentro de la carpeta de la línea')
   assert.equal(tree.work, path.join(home, 'producto-alta', 'api'))
   assert.equal(fs.realpathSync(tree.repo), fs.realpathSync(linked.repo), 'y es un árbol del repositorio original')
@@ -287,15 +287,15 @@ test('si la rama ya tiene un árbol en otro lado, se niega en vez de entregarlo'
   const { base, repo, planning } = mount('cauce-wt-en-otro-lado-')
   const elsewhere = path.join(base, 'en-cualquier-lado')
   assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'task/alta', elsewhere).status, 0)
-  const negado = como('/w/uno', () => run(['worktree', planning, 'alta']))
-  assert.notEqual(negado.status, 0)
-  assert.match(negado.stderr, /ya tiene un árbol en .*en-cualquier-lado.*no es donde se arma/s)
-  assert.match(negado.stderr, /git worktree move/, 'y dice cómo seguir')
+  const denied = as('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.notEqual(denied.status, 0)
+  assert.match(denied.stderr, /ya tiene un árbol en .*en-cualquier-lado.*no es donde se arma/s)
+  assert.match(denied.stderr, /git worktree move/, 'y dice cómo seguir')
 
   // Movido a su lugar, se retoma.
   assert.equal(git(repo, 'worktree', 'move', elsewhere, `${repo}-alta`).status, 0)
-  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
-  assert.equal(JSON.parse(hecho.stdout).reused, true)
+  const done = as('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(JSON.parse(done.stdout).reused, true)
 })
 
 // Con la rama de la tarea puesta en el checkout principal, «el árbol» es el repositorio mismo: está dentro
@@ -303,7 +303,7 @@ test('si la rama ya tiene un árbol en otro lado, se niega en vez de entregarlo'
 test('la rama de la tarea puesta en el checkout principal se entrega', () => {
   const { repo, planning } = mount('cauce-wt-principal-')
   git(repo, 'checkout', '-q', '-b', 'task/alta')
-  const json = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  const json = JSON.parse(as('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
   assert.equal(fs.realpathSync(json.path), fs.realpathSync(repo))
   assert.equal(json.reused, true)
 })
@@ -311,20 +311,20 @@ test('la rama de la tarea puesta en el checkout principal se entrega', () => {
 // Borrado a mano, git lo sigue listando hasta que se poda. No es un árbol que retomar: se arma de nuevo.
 test('un árbol borrado a mano se vuelve a armar en vez de romper', () => {
   const { repo, planning } = mount('cauce-wt-borrado-')
-  assert.equal(como('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
-  const arbol = `${repo}-alta`
-  for (const name of fs.readdirSync(path.join(arbol, 'api'))) fs.unlinkSync(path.join(arbol, 'api', name))
-  fs.rmdirSync(path.join(arbol, 'api'))
-  fs.unlinkSync(path.join(arbol, '.git'))
-  fs.rmdirSync(arbol)
+  assert.equal(as('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
+  const tree = `${repo}-alta`
+  for (const name of fs.readdirSync(path.join(tree, 'api'))) fs.unlinkSync(path.join(tree, 'api', name))
+  fs.rmdirSync(path.join(tree, 'api'))
+  fs.unlinkSync(path.join(tree, '.git'))
+  fs.rmdirSync(tree)
   // Otro árbol del mismo repositorio que hoy no está —un volumen desmontado— no pierde su registro por esto.
-  const ausente = path.join(path.dirname(repo), 'en-otro-volumen')
-  assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'otra', ausente).status, 0)
-  fs.renameSync(ausente, `${ausente}-desmontado`)
-  const otra = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
-  assert.equal(otra.status, 0, otra.stderr)
-  assert.equal(JSON.parse(otra.stdout).reused, false)
-  assert.ok(fs.existsSync(path.join(arbol, 'api', 'main.go')))
+  const missing = path.join(path.dirname(repo), 'en-otro-volumen')
+  assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'otra', missing).status, 0)
+  fs.renameSync(missing, `${missing}-desmontado`)
+  const other = as('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(other.status, 0, other.stderr)
+  assert.equal(JSON.parse(other.stdout).reused, false)
+  assert.ok(fs.existsSync(path.join(tree, 'api', 'main.go')))
   assert.match(git(repo, 'worktree', 'list', '--porcelain').stdout, /en-otro-volumen\n/, 'el otro sigue registrado')
 })
 
@@ -344,9 +344,9 @@ test('el checkout principal vale aunque la raíz sea una carpeta suya, y una ra�
 - [ ] **alta** [lite] — Alta. _Aceptación: rechaza duplicado._ (service: .)
 `)
   git(repo, 'checkout', '-q', '-b', 'task/alta')
-  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
-  assert.equal(hecho.status, 0, hecho.stderr)
-  assert.equal(fs.realpathSync(JSON.parse(hecho.stdout).path), fs.realpathSync(repo))
+  const done = as('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(done.status, 0, done.stderr)
+  assert.equal(fs.realpathSync(JSON.parse(done.stdout).path), fs.realpathSync(repo))
 })
 
 // Un enlace puesto donde va el árbol, hacia uno armado en otro lado: los guards no lo abren, así que no
@@ -356,9 +356,9 @@ test('un enlace donde va el árbol no lo vuelve el árbol de la tarea', () => {
   const far = path.join(base, 'lejos')
   assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'task/alta', far).status, 0)
   fs.symlinkSync(far, `${repo}-alta`, 'dir')
-  const negado = como('/w/uno', () => run(['worktree', planning, 'alta']))
-  assert.notEqual(negado.status, 0)
-  assert.match(negado.stderr, /ya tiene un árbol en .*lejos/s)
+  const denied = as('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.notEqual(denied.status, 0)
+  assert.match(denied.stderr, /ya tiene un árbol en .*lejos/s)
 })
 
 // Una raíz vecina cuyo nombre empieza igual que el repositorio no es el repositorio: comparar por el
@@ -370,6 +370,6 @@ test('una raíz vecina con el nombre parecido no se toma por el repositorio del 
   const config = JSON.parse(fs.readFileSync(file, 'utf8'))
   config.workspaceRoots = [{ name: 'docs', path: '../producto-docs' }, { name: 'main', path: '../producto' }]
   fs.writeFileSync(file, JSON.stringify(config, null, 2))
-  const hecho = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
-  assert.equal(hecho.work, path.join(`${repo}-alta`, 'api'))
+  const done = JSON.parse(as('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  assert.equal(done.work, path.join(`${repo}-alta`, 'api'))
 })

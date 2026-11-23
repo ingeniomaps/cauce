@@ -55,8 +55,8 @@ test('withoutTask saca la línea y sus notas indentadas, y nada más', () => {
   assert.equal(left, '## Hito h — H\n\n- [ ] **otra** — A. _Aceptación: a._ (service: api)\n'
     + '- [ ] **tercera** — C. _Aceptación: c._ (service: api)\n')
   assert.equal(CL.withoutTask(queue, 'no-esta'), queue, 'sin la tarea el texto no cambia')
-  const sumarMas = '## Hito h — H\n\n- [ ] **sumar-mas** — B. _Aceptación: b._ (service: api)\n'
-  assert.equal(CL.withoutTask(sumarMas, 'sumar'), sumarMas, 'un slug que empieza igual no es la tarea')
+  const addMore = '## Hito h — H\n\n- [ ] **sumar-mas** — B. _Aceptación: b._ (service: api)\n'
+  assert.equal(CL.withoutTask(addMore, 'sumar'), addMore, 'un slug que empieza igual no es la tarea')
   // Lo que la cola no lee no se toca: el hito de ejemplo comentado del molde y una sección que no es un hito.
   const real = '- [ ] **sumar** — B. _Aceptación: b._ (service: api)\n'
   const commented = `<!--\n## Hito ejemplo — E\n\n${real}-->\n\n## Notas\n\n${real}\n## Hito h — H\n\n${real}`

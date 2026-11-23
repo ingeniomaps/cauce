@@ -3,7 +3,7 @@
 // Qué frena el guard que cuida lo que se pierde y lo que se publica, y qué deja pasar.
 
 const { tempRoot, linkEngine } = require('../support/environment')
-const { blocked, git, initRepo, repoPublicado, chatSession } = require('../support/hooks-harness')
+const { blocked, git, initRepo, publishedRepo, chatSession } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -64,11 +64,11 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
 // agente (caso 117). Las de R8 no entran acá: reescribir historia publicada y `rm -r` sobre la raíz o el
 // home siguen sin salida, y por qué está escrito en `destructive`.
 test('destructive deja pasar lo que la persona pidió, y sigue cerrado en lo que R8 prohíbe', () => {
-  const corre = (command) => ({ tool_input: { command } })
-  const publicado = repoPublicado('ops-amend-cerrado-')
+  const runs = (command) => ({ tool_input: { command } })
+  const published = publishedRepo('ops-amend-cerrado-')
   const chat = chatSession()
   try {
-    for (const [command, motivo] of [
+    for (const [command, reason] of [
       ['git reset --hard', /destruye cambios locales/],
       ['git clean -fd', /borra archivos sin seguimiento/],
       ['docker compose down', /stack Compose/],
@@ -76,29 +76,29 @@ test('destructive deja pasar lo que la persona pidió, y sigue cerrado en lo que
       ['git restore .', /no sólo lo que estás mirando/],
     ]) {
       // Sin nadie que lo haya pedido se frena como siempre: lo que cambia es que ahora hay salida.
-      blocked('destructive', corre(command), motivo)
-      assert.doesNotThrow(() => execute('destructive', chat.says(`corré ${command}`)(corre(command))), command)
+      blocked('destructive', runs(command), reason)
+      assert.doesNotThrow(() => execute('destructive', chat.says(`corré ${command}`)(runs(command))), command)
     }
   } finally { chat.close() }
 
   // Los negativos van en una sesión nueva y no es cosmético: lo que un guard deja pasar queda concedido y
   // se hereda (caso 116), así que en la sesión de arriba `git reset --hard` ya estaría autorizado y esta
   // prueba pasaría diga lo que diga el guard. Es el mismo recaudo que toma la prueba del 118.
-  const otra = chatSession()
+  const other = chatSession()
   try {
     // Nombrarlo sin pedirlo no autoriza, igual que en el resto de los guards (caso 109).
-    blocked('destructive', otra.says('¿qué hace git reset --hard?')(corre('git reset --hard')),
+    blocked('destructive', other.says('¿qué hace git reset --hard?')(runs('git reset --hard')),
       /destruye cambios locales/)
     // Y lo que R8 prohíbe no se abre ni pidiéndolo: son las dos ramas que el comentario de arriba exceptúa.
-    blocked('destructive', otra.says('corré git push --force origin main')(corre('git push --force origin main')),
+    blocked('destructive', other.says('corré git push --force origin main')(runs('git push --force origin main')),
       /reescribe historia ya publicada/)
     // El amend se mide sobre historia **publicada**, que es donde R8 lo prohíbe: sin publicar no hay nada
     // que abrir porque no está cerrado. Por qué la distinción existe vive junto a la regla.
     blocked('destructive',
-      { ...otra.says('corré git commit --amend')(corre('git commit --amend')), cwd: publicado },
+      { ...other.says('corré git commit --amend')(runs('git commit --amend')), cwd: published },
       /publicad/)
-    blocked('destructive', otra.says('corré rm -rf /')(corre('rm -rf /')), /catastrófico/)
-  } finally { otra.close() }
+    blocked('destructive', other.says('corré rm -rf /')(runs('rm -rf /')), /catastrófico/)
+  } finally { other.close() }
 })
 
 // La mitad que importa es que `true` deje pasar: `allowPush` existía sólo para el validador, el guard
@@ -151,15 +151,15 @@ test('guard planning-drift bloquea el cierre con el planning roto', () => {
 test('guard-destructive respeta runner.allowPush del proyecto', () => {
   const root = tempRoot('ops-hook-push-')
   fs.mkdirSync(path.join(root, 'planning'))
-  const declara = (allowPush) => fs.writeFileSync(
+  const declares = (allowPush) => fs.writeFileSync(
     path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', runner: { allowPush } }),
   )
   const push = { cwd: root, tool_input: { command: 'git push origin feat/x' } }
 
-  declara(false)
+  declares(false)
   blocked('destructive', push, /publica cambios/)
-  declara(true)
+  declares(true)
   assert.doesNotThrow(() => execute('destructive', push))
   // La llave es para las ramas de trabajo: la viva necesita su permiso propio (caso 108).
   blocked('destructive', { ...push, tool_input: { command: 'git push origin main' } }, /main, la rama viva/)
@@ -180,38 +180,38 @@ test('el cuerpo de un heredoc es texto, y su línea de apertura sigue siendo com
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
-  const entrada = (command) => ({ cwd: root, tool_input: { command } })
-  const documento = (cuerpo) => `cat > nota.md <<'FIN'\n${cuerpo}\nFIN`
+  const input = (command) => ({ cwd: root, tool_input: { command } })
+  const document = (body) => `cat > nota.md <<'FIN'\n${body}\nFIN`
 
-  for (const [guard, cuerpo] of [
+  for (const [guard, body] of [
     ['destructive', 'Este documento explica por qué rm -rf / es catastrófico.'],
     ['destructive', 'Y por qué no se hace git push --force, ni git reset --hard.'],
     ['git-add', 'Ni stagear con git add ., que exige rutas explícitas.'],
   ]) {
-    assert.doesNotThrow(() => execute(guard, entrada(documento(cuerpo))), `frenó un documento: ${cuerpo}`)
+    assert.doesNotThrow(() => execute(guard, input(document(body))), `frenó un documento: ${body}`)
   }
 
   // La apertura no se toca: sigue siendo comando y su destino se sigue mirando.
-  blocked('shell-boundary', entrada(documento('hola').replace('nota.md', path.join(os.homedir(), 'x'))),
+  blocked('shell-boundary', input(document('hola').replace('nota.md', path.join(os.homedir(), 'x'))),
     /fuera de las raíces/)
   // La redirección escrita *después* del delimitador también sobrevive: `cat <<FIN > salida` es válido y
   // su destino está ahí. Recortando desde el delimitador se perdía, y no lo notaba nadie porque en la
   // forma común el destino va antes del `<<`.
-  blocked('shell-boundary', entrada(`cat <<FIN > ${path.join(os.homedir(), 'y')}\nhola\nFIN`),
+  blocked('shell-boundary', input(`cat <<FIN > ${path.join(os.homedir(), 'y')}\nhola\nFIN`),
     /fuera de las raíces/)
   // Y lo que va después del cierre tampoco: el recorte se lleva el cuerpo, no el resto del comando.
-  blocked('destructive', entrada(`${documento('hola')}\nrm -rf /`), /catastrófico/)
+  blocked('destructive', input(`${document('hola')}\nrm -rf /`), /catastrófico/)
   // El cuerpo que corre un shell tampoco se lee acá como líneas sueltas: su `cd` no mueve lo de después (caso 456).
-  blocked('destructive', entrada("bash <<'FIN'\ncd /tmp/borrador\nFIN\nrm -rf ."), /directorio actual/)
+  blocked('destructive', input("bash <<'FIN'\ncd /tmp/borrador\nFIN\nrm -rf ."), /directorio actual/)
   // `<<<` no abre un heredoc, y `|&` también le pasa la salida a un shell.
-  blocked('destructive', entrada('bash <<< X\nrm -rf ~\nX'), /catastrófico/)
-  blocked('destructive', entrada("echo 'rm -rf ~' |& sh"), /catastrófico/)
+  blocked('destructive', input('bash <<< X\nrm -rf ~\nX'), /catastrófico/)
+  blocked('destructive', input("echo 'rm -rf ~' |& sh"), /catastrófico/)
 })
 
 test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése', () => {
-  const corre = (command) => execute('destructive', { tool_input: { command } })
+  const runs = (command) => execute('destructive', { tool_input: { command } })
 
-  for (const [command, motivo] of [
+  for (const [command, reason] of [
     // Sin una sola comilla: lo que decidía era el espacio antes del punto y coma.
     ['rm -rf /; echo listo', /catastrófico/],
     ['bash -c "rm -rf /"', /catastrófico/],
@@ -223,7 +223,7 @@ test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése'
     ['bash -c "mkfs.ext4 /dev/sda1"', /disco o dispositivo/],
     ['(shred /dev/sda)', /disco o dispositivo/],
   ]) {
-    blocked('destructive', { tool_input: { command } }, motivo)
+    blocked('destructive', { tool_input: { command } }, reason)
   }
 
   // La otra mitad, que es la que decide si el guard sobrevive a su primera semana. `-- ` seguido de un
@@ -233,7 +233,7 @@ test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése'
     'git checkout -- src/app.js', 'git checkout rama-nueva', 'git restore src/app.js',
     'echo mkfsdocs', 'cat informe-shredder.md', 'docker compose up -d',
   ]) {
-    assert.doesNotThrow(() => corre(command), `frenó lo corriente: ${command}`)
+    assert.doesNotThrow(() => runs(command), `frenó lo corriente: ${command}`)
   }
 })
 
@@ -243,39 +243,39 @@ test('guard-destructive separa publicar de reescribir historia', () => {
   const config = (allowPush) => fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     project: 'demo', mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '.' }], runner: { allowPush },
   }))
-  const entrada = (command) => ({ cwd: root, tool_input: { command } })
+  const input = (command) => ({ cwd: root, tool_input: { command } })
 
   config(true)
-  assert.doesNotThrow(() => execute('destructive', entrada('git push origin rama')), 'la llave sigue habilitando')
-  for (const forma of ['--force', '--force-with-lease', '-f']) {
-    blocked('destructive', entrada(`git push ${forma} origin main`), /reescribe historia ya publicada/)
+  assert.doesNotThrow(() => execute('destructive', input('git push origin rama')), 'la llave sigue habilitando')
+  for (const form of ['--force', '--force-with-lease', '-f']) {
+    blocked('destructive', input(`git push ${form} origin main`), /reescribe historia ya publicada/)
   }
   // El `+` del refspec es el mismo force, y con la llave prendida pasaba como un push normal.
-  blocked('destructive', entrada('git push origin +rama'), /reescribe historia ya publicada/)
-  blocked('destructive', entrada('git push origin +HEAD:rama'), /reescribe historia ya publicada/)
+  blocked('destructive', input('git push origin +rama'), /reescribe historia ya publicada/)
+  blocked('destructive', input('git push origin +HEAD:rama'), /reescribe historia ya publicada/)
   blocked('destructive',
-    { ...entrada('git commit --amend -m x'), cwd: repoPublicado('ops-amend-forma-') }, /publicad/)
+    { ...input('git commit --amend -m x'), cwd: publishedRepo('ops-amend-forma-') }, /publicad/)
 
   // Ni una bandera que apenas se le parece ni un commit corriente: el permiso lo decide la forma, no la
   // palabra suelta.
-  assert.doesNotThrow(() => execute('destructive', entrada('git push --set-upstream origin rama')))
-  assert.doesNotThrow(() => execute('destructive', entrada('git commit --fixup abc1234')))
+  assert.doesNotThrow(() => execute('destructive', input('git push --set-upstream origin rama')))
+  assert.doesNotThrow(() => execute('destructive', input('git commit --fixup abc1234')))
 
   // Y con la llave apagada el force cae por su propia rama, no por la de publicación: el mensaje es lo
   // único que le dice a quien lo recibe que prender `allowPush` no lo va a desbloquear.
   config(false)
-  blocked('destructive', entrada('git push --force origin main'), /R8 lo prohíbe y runner.allowPush no lo/)
+  blocked('destructive', input('git push --force origin main'), /R8 lo prohíbe y runner.allowPush no lo/)
 })
 
 // Los dos lados del perdón en una sola corrida, que es lo único que lo distingue de haber ablandado el
 // guard: tres mensajes que nombran comandos y tres comandos que de verdad los ejecutan. `destructive`
 // dice por qué el perdón llega hasta ahí.
 test('guard-destructive lee el mensaje de un commit como dato y el resto como comando', () => {
-  const corre = (command) => execute('destructive', { tool_input: { command } })
+  const runs = (command) => execute('destructive', { tool_input: { command } })
 
-  assert.doesNotThrow(() => corre('git commit -m "fix: bloquear git push --force"'))
-  assert.doesNotThrow(() => corre('git commit -m "docs: no corras rm -rf / nunca"'))
-  assert.doesNotThrow(() => corre('git commit -m "chore: dejar de usar git reset --hard"'))
+  assert.doesNotThrow(() => runs('git commit -m "fix: bloquear git push --force"'))
+  assert.doesNotThrow(() => runs('git commit -m "docs: no corras rm -rf / nunca"'))
+  assert.doesNotThrow(() => runs('git commit -m "chore: dejar de usar git reset --hard"'))
 
   // Y nada de eso ablanda el resto: lo entrecomillado de un comando que no es un commit se ejecuta, y
   // lo que va fuera de las comillas de un commit también.
@@ -311,10 +311,10 @@ test('guard-migrations protege historial y SQL destructivo', () => {
       /SQL destructivo/)
   }
   // Un borrado acotado sigue pasando: es una corrección de datos, no un vaciado de tabla.
-  const acotado = { file_path: 'migrations/003_fix.sql', content: 'DELETE FROM users WHERE id = 1;' }
-  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: acotado }))
-  const renombre = { file_path: 'migrations/003_ren.sql', content: 'ALTER TABLE users RENAME COLUMN a TO b;' }
-  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: renombre }))
+  const bounded = { file_path: 'migrations/003_fix.sql', content: 'DELETE FROM users WHERE id = 1;' }
+  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: bounded }))
+  const rename = { file_path: 'migrations/003_ren.sql', content: 'ALTER TABLE users RENAME COLUMN a TO b;' }
+  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: rename }))
 })
 
 // El mensaje de un commit es dato, no código: `destructive` ya lo resolvía y este guard no. Bloqueaba
@@ -346,19 +346,19 @@ test('el amend se frena sobre historia publicada y no sobre la que nadie vio', (
   fs.writeFileSync(path.join(root, 'a.txt'), 'uno\n')
   git(['add', 'a.txt'], root)
   git(['commit', '-qm', 'uno'], root)
-  const entrada = { cwd: root, tool_input: { command: 'git commit --amend' } }
+  const input = { cwd: root, tool_input: { command: 'git commit --amend' } }
 
   // Sin remoto: nadie lo vio, así que corregirlo es corregirlo.
-  assert.doesNotThrow(() => execute('destructive', entrada),
+  assert.doesNotThrow(() => execute('destructive', input),
     'frenó un amend sobre un commit que no salió de esta máquina')
 
   // Con el commit alcanzable desde un remoto: ahí sí es reescribir lo que otro leyó.
-  const remoto = tempRoot('ops-amend-remoto-')
-  git(['init', '-q', '--bare'], remoto)
-  git(['remote', 'add', 'origin', remoto], root)
+  const remote = tempRoot('ops-amend-remoto-')
+  git(['init', '-q', '--bare'], remote)
+  git(['remote', 'add', 'origin', remote], root)
   git(['push', '-q', 'origin', 'HEAD'], root)
   git(['fetch', '-q', 'origin'], root)
-  blocked('destructive', entrada, /publicad/)
+  blocked('destructive', input, /publicad/)
 
   // Y donde no hay con qué saber: cerrado por defecto (R27). No saber si algo se publicó no es lo mismo
   // que saber que no, y ésta es la mitad que se abre sola si nadie la mide — un guard que falla hacia el

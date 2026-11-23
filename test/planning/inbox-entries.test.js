@@ -12,7 +12,7 @@ const { spawnSync } = require('node:child_process')
 const P = require('../../engine/planning/parser')
 const IN = require('../../engine/planning/inbox')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const entry = (slug) => `- **${slug}** — Algo que decidir. (autobuild · Review · 2026-10-01)\n`
 const write = (dir, file, text) => {
   fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true })
@@ -21,7 +21,7 @@ const write = (dir, file, text) => {
 
 function planning(name) {
   const dir = path.join(tempRoot(name), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   return dir
 }
 

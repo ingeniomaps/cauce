@@ -13,8 +13,8 @@ const { spawnSync } = require('node:child_process')
 const R = require('../../engine/core/repos')
 
 // Un repositorio con un commit y la instancia al lado, que es el layout que `reposFor` recorre.
-function instancia(prefijo, { abbrev }) {
-  const base = tempRoot(prefijo)
+function instance(prefix, { abbrev }) {
+  const base = tempRoot(prefix)
   const repo = path.join(base, 'producto')
   fs.mkdirSync(repo, { recursive: true })
   const git = (...args) => {
@@ -49,17 +49,17 @@ test('el aviso de commits sin anotar no depende de cuánto mida el hash abreviad
     set: new Set(),
   }
   for (const abbrev of [7, 8, 12]) {
-    const { ops } = instancia(`ops-cobertura-${abbrev}-`, { abbrev })
-    const avisos = R.coverageWarnings(ops, done)
-    assert.equal(avisos.length, 1, `con abbrev=${abbrev} el aviso no salió: ${JSON.stringify(avisos)}`)
-    assert.match(avisos[0], /1 commit\(s\) desde 2000-01-01/, `abbrev=${abbrev}`)
+    const { ops } = instance(`ops-cobertura-${abbrev}-`, { abbrev })
+    const warnings = R.coverageWarnings(ops, done)
+    assert.equal(warnings.length, 1, `con abbrev=${abbrev} el aviso no salió: ${JSON.stringify(warnings)}`)
+    assert.match(warnings[0], /1 commit\(s\) desde 2000-01-01/, `abbrev=${abbrev}`)
   }
 })
 
 // Y la otra mitad: el commit que una entrada sí nombra no se cuenta. Sin esto, «el aviso sale» se
 // cumpliría con un filtro que no filtra nada.
 test('un commit que una entrada de DONE nombra no entra en el aviso', () => {
-  const { ops } = instancia('ops-cobertura-anotado-', { abbrev: 8 })
+  const { ops } = instance('ops-cobertura-anotado-', { abbrev: 8 })
   const repo = path.join(path.dirname(ops), 'producto')
   const sha = spawnSync('git', ['-C', repo, 'log', '-1', '--format=%H'], { encoding: 'utf8' }).stdout.trim()
   const done = { entries: [{ fecha: '2000-01-01', commit: sha }], set: new Set() }
@@ -104,7 +104,7 @@ test('un commit que sólo toca el planning no cuenta como trabajo sin anotar', (
 // El aviso nombra los commits que cuenta, con su asunto, hasta cinco, y dice cuántos más hay: sin eso, quien lo leía
 // tenía que buscarlos a mano en `git log` (caso 504).
 test('el aviso nombra hasta cinco commits sin anotar y cuenta el resto', () => {
-  const { ops } = instancia('ops-cobertura-nombra-', { abbrev: 7 })
+  const { ops } = instance('ops-cobertura-nombra-', { abbrev: 7 })
   const repo = path.join(path.dirname(ops), 'producto')
   const git = (...args) => spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).stdout.trim()
   const done = { entries: [{ fecha: '2000-01-01', commit: '' }], set: new Set() }
@@ -156,10 +156,10 @@ test('un commit anterior a la instancia no cuenta, aunque sea del mismo día', (
   fs.writeFileSync(path.join(repo, 'b.js'), '2\n')
   git('add', 'b.js')
   at(`${today}T00:00:03Z`, 'commit', '-q', '-m', 'feat: lo de después')
-  const [aviso] = R.coverageWarnings(repo, done)
-  assert.match(aviso, /1 commit\(s\)/, 'lo de después de instalar sí, y el que la instala no')
-  assert.match(aviso, /feat: lo de después/)
-  assert.doesNotMatch(aviso, /initial/, 'y el anterior no')
+  const [warning] = R.coverageWarnings(repo, done)
+  assert.match(warning, /1 commit\(s\)/, 'lo de después de instalar sí, y el que la instala no')
+  assert.match(warning, /feat: lo de después/)
+  assert.doesNotMatch(warning, /initial/, 'y el anterior no')
 })
 
 // En sidecar dentro del repositorio, la carpeta de la instancia entera es su propio estado: antes sólo se salteaba

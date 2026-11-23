@@ -15,11 +15,11 @@ const { spawnSync } = require('node:child_process')
 
 const HOOK = path.resolve(__dirname, '..', '..', '.claude', 'hooks', 'gh-identity.js')
 
-function correr(command) {
-  const hecho = spawnSync(process.execPath, [HOOK], {
+function run(command) {
+  const done = spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify({ tool_input: { command } }), encoding: 'utf8',
   })
-  return { bloqueado: hecho.status === 2, salida: hecho.status, stderr: hecho.stderr }
+  return { blocked: done.status === 2, exitCode: done.status, stderr: done.stderr }
 }
 
 test('un `gh` sin credencial se bloquea', () => {
@@ -30,7 +30,7 @@ test('un `gh` sin credencial se bloquea', () => {
     'echo hola; gh pr merge 1',
     'GH_TOKEN2=x gh pr list',
   ]) {
-    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+    assert.equal(run(command).blocked, true, `debería bloquear: ${command}`)
   }
 })
 
@@ -44,7 +44,7 @@ test('un `gh` con la credencial en la misma línea pasa', () => {
     'gh --version',
     'gh --help',
   ]) {
-    assert.equal(correr(command).bloqueado, false, `no debería bloquear: ${command}`)
+    assert.equal(run(command).blocked, false, `no debería bloquear: ${command}`)
   }
 })
 
@@ -61,7 +61,7 @@ test('un `GH_TOKEN` vacío, sin el `.env` cargado antes, o un `GITHUB_TOKEN` se 
     'GITHUB_TOKEN=x gh run list',
     'set -a; . ./.env; set +a; GITHUB_TOKEN="$GITHUB_PAT_CAUCE" gh api user',
   ]) {
-    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+    assert.equal(run(command).blocked, true, `debería bloquear: ${command}`)
   }
 })
 
@@ -75,8 +75,8 @@ test('un `gh` que es texto de búsqueda, y no un comando, no se bloquea', () => 
     'echo "usá: gh api user"',
     'rg "gh auth login" docs/',
   ]) {
-    const hecho = correr(command)
-    assert.equal(hecho.bloqueado, false, `no debería bloquear: ${command}\n${hecho.stderr}`)
+    const done = run(command)
+    assert.equal(done.blocked, false, `no debería bloquear: ${command}\n${done.stderr}`)
   }
 })
 
@@ -88,14 +88,14 @@ test('un `gh` escondido dentro de un ejecutor sigue bloqueándose', () => {
     "sh -c 'gh api user'",
     'eval "gh run list"',
   ]) {
-    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+    assert.equal(run(command).blocked, true, `debería bloquear: ${command}`)
   }
 })
 
 // Un guard que no entiende su entrada bloquea, nunca permite.
 test('una entrada que no se entiende bloquea en vez de dejar pasar', () => {
-  const hecho = spawnSync(process.execPath, [HOOK], { input: 'no soy json', encoding: 'utf8' })
-  assert.equal(hecho.status, 2, 'stdin ilegible tiene que bloquear')
+  const done = spawnSync(process.execPath, [HOOK], { input: 'no soy json', encoding: 'utf8' })
+  assert.equal(done.status, 2, 'stdin ilegible tiene que bloquear')
 })
 
 // Lo destapó el commit que arregló el caso del ejecutor: su mensaje **explicaba** esa forma, la palabra
@@ -111,8 +111,8 @@ test('un comando citado dentro de un heredoc es texto, no una invocación', () =
     'EOF',
     'git commit -F msg.txt',
   ].join('\n')
-  const hecho = correr(heredoc)
-  assert.equal(hecho.bloqueado, false, `no debería bloquear un heredoc de prosa\n${hecho.stderr}`)
+  const done = run(heredoc)
+  assert.equal(done.blocked, false, `no debería bloquear un heredoc de prosa\n${done.stderr}`)
 })
 // El hueco que dejaba sacar todo heredoc del análisis: cuando quien lo recibe es un shell, ese cuerpo
 // sí se ejecuta. Lo decide la línea que abre el heredoc, no el heredoc.
@@ -122,16 +122,16 @@ test('un heredoc que alimenta un shell sí es un comando', () => {
     'sh <<EOF\ngh api user\nEOF',
     "bash -s <<'EOF'\ncd /tmp\ngh run list\nEOF",
   ]) {
-    const hecho = correr(command)
-    assert.equal(hecho.bloqueado, true, `debería bloquear:\n${command}`)
+    const done = run(command)
+    assert.equal(done.blocked, true, `debería bloquear:\n${command}`)
   }
 })
 
 // El control del caso de arriba: si la regla se afinara de más, esto empezaría a fallar y avisaría
 // que lo ganado en precisión se pagó frenando el uso normal.
 test('el mismo cuerpo escrito a un archivo sigue siendo texto', () => {
-  const hecho = correr("cat > script.sh <<'EOF'\ngh pr list\nEOF")
-  assert.equal(hecho.bloqueado, false, `no debería bloquear:\n${hecho.stderr}`)
+  const done = run("cat > script.sh <<'EOF'\ngh pr list\nEOF")
+  assert.equal(done.blocked, false, `no debería bloquear:\n${done.stderr}`)
 })
 // Un `.sh` en un nombre de archivo no es un shell. Con la excepción del ejecutor buscando la palabra
 // suelta, ese punto alcanzaba para apagar el vaciado de comillas y bloquear una lectura inocua: el
@@ -141,8 +141,8 @@ test('un archivo .sh nombrado no convierte el texto en un comando', () => {
     'cat deploy.sh | grep "gh pr create"',
     'grep -n "gh auth" scripts/release.sh',
   ]) {
-    const hecho = correr(command)
-    assert.equal(hecho.bloqueado, false, `no debería bloquear: ${command}`)
+    const done = run(command)
+    assert.equal(done.blocked, false, `no debería bloquear: ${command}`)
   }
 })
 
@@ -156,7 +156,7 @@ test('cambiar el remoto a SSH o empujar a una URL SSH se bloquea', () => {
     'cd /tmp && git -C repo push "git@github.com:ingeniomaps/cauce.git" main',
     'bash -c "git remote set-url origin git@github.com:ingeniomaps/cauce.git"',
   ]) {
-    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+    assert.equal(run(command).blocked, true, `debería bloquear: ${command}`)
   }
 })
 
@@ -168,8 +168,8 @@ test('empujar por el remoto de siempre, o nombrar una URL SSH en un texto, pasa'
     'git commit -m "docs: ssh is git@github.com:ingeniomaps/cauce.git" && git push origin fix/x',
     'grep -n "git@github.com" docs/README.md',
   ]) {
-    const hecho = correr(command)
-    assert.equal(hecho.bloqueado, false, `no debería bloquear: ${command}\n${hecho.stderr}`)
+    const done = run(command)
+    assert.equal(done.blocked, false, `no debería bloquear: ${command}\n${done.stderr}`)
   }
 })
 
@@ -183,9 +183,9 @@ test('cambiar la identidad o la credencial de gh se bloquea aunque lleve GH_TOKE
     'GH_TOKEN=x gh auth setup-git',
     'GH_TOKEN=x gh auth logout',
   ]) {
-    assert.equal(correr(command).bloqueado, true, `debería bloquear: ${command}`)
+    assert.equal(run(command).blocked, true, `debería bloquear: ${command}`)
   }
-  assert.equal(correr('set -a; . ./.env; set +a; GH_TOKEN="$GITHUB_PAT_CAUCE" gh api user -q .login').bloqueado, false)
+  assert.equal(run('set -a; . ./.env; set +a; GH_TOKEN="$GITHUB_PAT_CAUCE" gh api user -q .login').blocked, false)
 })
 
 // Aprobar una corrida o una review es la API con la credencial del proyecto, nunca un botón: el navegador abre la

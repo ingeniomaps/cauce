@@ -15,8 +15,8 @@ const path = require('node:path')
 
 // Una instancia de verdad y no un directorio a mano: lo que este comando promete es leer lo que `init`
 // deja, así que fabricar el fixture le sacaría al verde justamente lo que tiene que sostener.
-function instance(prefijo, mode = 'sidecar') {
-  const base = tempRoot(prefijo)
+function instance(prefix, mode = 'sidecar') {
+  const base = tempRoot(prefix)
   const target = path.join(base, 'demo-ops')
   const created = run(['init', target, '--name', 'Demo', '--mode', mode])
   assert.equal(created.status, 0, created.stderr)
@@ -87,12 +87,12 @@ test('contract separa el límite que se obedece de la prosa que lo explica', () 
   assert.equal(value.boundaries.length, 3,
     `enuncian tres; llegaron ${value.boundaries.length}:\n  ${value.boundaries.join('\n  ')}`)
   for (const one of value.boundaries) assert.match(one, /^(El runner|Debe|Nunca)/, one)
-  const junto = value.boundaries.join(' ')
-  assert.doesNotMatch(junto, /Eso rige sin que nadie/, 'un conector no es un límite')
-  assert.doesNotMatch(junto, /^Autonomía/, 'el encabezado tampoco, y se pegaba al primero')
-  assert.doesNotMatch(junto, /BR-OPS-002/, 'razonar sobre una regla no es enunciarla')
+  const joined = value.boundaries.join(' ')
+  assert.doesNotMatch(joined, /Eso rige sin que nadie/, 'un conector no es un límite')
+  assert.doesNotMatch(joined, /^Autonomía/, 'el encabezado tampoco, y se pegaba al primero')
+  assert.doesNotMatch(joined, /BR-OPS-002/, 'razonar sobre una regla no es enunciarla')
   // El tamaño es la mitad del punto: esto se reenvía por subagente, no se lee una vez.
-  assert.ok(junto.length < 800, `tiene que caber en el preámbulo, y mide ${junto.length} B`)
+  assert.ok(joined.length < 800, `tiene que caber en el preámbulo, y mide ${joined.length} B`)
 })
 
 // El molde no declara excepciones —su sección explica cómo escribirlas—, así que ninguna es el resultado
@@ -101,9 +101,9 @@ test('contract separa el límite que se obedece de la prosa que lo explica', () 
 test('contract no toma por excepción del proyecto la instrucción del molde', () => {
   const root = instance('cauce-contract-molde-')
   const { value } = contractOf(root)
-  const junto = value.boundaries.join(' ')
-  assert.doesNotMatch(junto, /Acá va lo que este proyecto amplía/, 'eso le habla a quien escribe')
-  assert.doesNotMatch(junto, /Eso no depende del proyecto/)
+  const joined = value.boundaries.join(' ')
+  assert.doesNotMatch(joined, /Acá va lo que este proyecto amplía/, 'eso le habla a quien escribe')
+  assert.doesNotMatch(joined, /Eso no depende del proyecto/)
 })
 
 test('contract no inventa un gate ni lo omite: sale de las raíces que declaran verify', () => {
@@ -192,29 +192,29 @@ test('contract dice qué archivo falta en vez de contestar un contrato a medias'
 // Leer el contrato no puede cambiarlo: el comando lo corre un recorrido en cada arranque.
 test('contract no escribe nada', () => {
   const root = instance('cauce-contract-solo-lectura-')
-  const antes = run(['contract', root, '--json'])
-  assert.equal(antes.status, 0, antes.stderr)
-  const huella = fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')
-  const despues = run(['contract', root, '--json'])
-  assert.equal(despues.stdout, antes.stdout, 'dos lecturas seguidas dan lo mismo')
-  assert.equal(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'), huella)
+  const earlier = run(['contract', root, '--json'])
+  assert.equal(earlier.status, 0, earlier.stderr)
+  const footprint = fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')
+  const later = run(['contract', root, '--json'])
+  assert.equal(later.stdout, earlier.stdout, 'dos lecturas seguidas dan lo mismo')
+  assert.equal(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'), footprint)
 })
 
 // Un límite que el proyecto escribe y ningún agente recibe es el modo de fallo caro de este comando: la
 // lista sale más corta y se lee igual de completa, así que nadie lo nota hasta que un agente hace lo que
 // ese límite prohibía (caso 157). Se cierra por dos lados —una marca que se lee en vez de deducirse, y un
 // aviso para lo que no entre por ninguno— y los dos se prueban acá.
-const conExcepcion = (root, texto) => {
+const withException = (root, text) => {
   const file = path.join(root, 'organization', 'workspace.md')
-  fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8')}\n${texto}\n`)
+  fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8')}\n${text}\n`)
 }
 
 test('un límite declarado bajo ### Límites llega sin imitar la gramática del molde', () => {
   const root = instance('cauce-contract-marcado-')
-  const antes = contractOf(root).value.boundaries.length
-  conExcepcion(root, '### Límites\n\n- En `api/` no se tocan migraciones sin aprobación de datos.')
+  const earlier = contractOf(root).value.boundaries.length
+  withException(root, '### Límites\n\n- En `api/` no se tocan migraciones sin aprobación de datos.')
   const { value } = contractOf(root)
-  assert.equal(value.boundaries.length, antes + 1, `llegó: ${value.boundaries.join(' | ')}`)
+  assert.equal(value.boundaries.length, earlier + 1, `llegó: ${value.boundaries.join(' | ')}`)
   assert.ok(value.boundaries.some((one) => /migraciones/.test(one)), 'y es el que el proyecto escribió')
 })
 
@@ -229,8 +229,8 @@ test('el molde no declara ningún límite vivo, para que su ejemplo no se obedez
   assert.equal(value.boundaries.length, 3, 'siguen siendo los tres que enuncia AGENTS.md')
   // Y el archivo del molde lo tiene comentado, que es lo único que lo sostiene: descomentarlo lo
   // convierte en un límite de verdad, y eso tiene que ser una decisión de quien lo escribe.
-  const texto = fs.readFileSync(path.join(root, 'organization', 'workspace.md'), 'utf8')
-  assert.match(texto, /<!--\s*-\s+En `api\/`/, 'el ejemplo vive comentado en el molde')
+  const text = fs.readFileSync(path.join(root, 'organization', 'workspace.md'), 'utf8')
+  assert.match(text, /<!--\s*-\s+En `api\/`/, 'el ejemplo vive comentado en el molde')
 })
 
 // La rama que nadie ejercía: un `ops.config.json` ilegible tiene que nombrar el error de JSON en vez de
@@ -247,20 +247,20 @@ test('contract dice qué tiene de malo un ops.config.json ilegible', () => {
 // citado y no sólo que haya un aviso: sin la cita, quien lo lee no sabe cuál de sus límites se perdió.
 test('check nombra el párrafo del proyecto que no llega a los agentes', () => {
   const root = instance('cauce-contract-aviso-')
-  conExcepcion(root, 'En `api/` no se tocan migraciones sin aprobación de datos.')
+  withException(root, 'En `api/` no se tocan migraciones sin aprobación de datos.')
   // Los avisos de `check` salen por `stderr` —`console.warn`—, no por `stdout`, que lleva el veredicto.
   // Buscarlos en el canal equivocado deja la prueba en rojo sobre un aviso que sí se emitió.
-  const hecho = run(['check', path.join(root, 'planning')])
-  assert.match(hecho.stderr, /workspace\.md/, hecho.stderr)
-  assert.match(hecho.stderr, /migraciones/, 'cita el párrafo perdido, no sólo su cantidad')
+  const done = run(['check', path.join(root, 'planning')])
+  assert.match(done.stderr, /workspace\.md/, done.stderr)
+  assert.match(done.stderr, /migraciones/, 'cita el párrafo perdido, no sólo su cantidad')
 })
 
 // Y no avisa del molde intacto, que es lo que lo vuelve un aviso y no ruido: uno que salta siempre se
 // termina apagando, y con él se apaga el día que de verdad había algo.
 test('check no avisa sobre la prosa que el molde trae', () => {
   const root = instance('cauce-contract-silencio-')
-  const hecho = run(['check', path.join(root, 'planning')])
-  assert.equal(/no llegan a los agentes/.test(hecho.stderr), false, hecho.stderr)
+  const done = run(['check', path.join(root, 'planning')])
+  assert.equal(/no llegan a los agentes/.test(done.stderr), false, done.stderr)
 })
 
 // Hacer lo que el 157 pide subía el aviso en dos en vez de bajarlo; por qué, en `marked()` y en el
@@ -271,22 +271,22 @@ test('check no avisa sobre la prosa que el molde trae', () => {
 // el suyo al final del archivo.
 test('declarar un límite lo saca del aviso, y la prosa de afuera sigue entrando', () => {
   const root = instance('cauce-contract-declarado-')
-  conExcepcion(root, 'Esto lo escribió el proyecto y es un límite que nadie declaró todavía.')
-  conExcepcion(root, '### Límites\n\nLo de arriba es la razón, para una persona; esto es lo que viaja.\n\n'
+  withException(root, 'Esto lo escribió el proyecto y es un límite que nadie declaró todavía.')
+  withException(root, '### Límites\n\nLo de arriba es la razón, para una persona; esto es lo que viaja.\n\n'
     + '- En `api/` no se tocan migraciones sin aprobación de datos.\n- No se empuja a la rama viva.')
-  const hecho = run(['check', path.join(root, 'planning')])
+  const done = run(['check', path.join(root, 'planning')])
 
-  assert.match(hecho.stderr, /Esto lo escribió el proyecto/, 'la prosa de afuera sigue avisando')
-  assert.equal(/migraciones/.test(hecho.stderr), false, 'una viñeta declarada no es un límite perdido')
-  assert.equal(/Lo de arriba es la razón/.test(hecho.stderr), false,
+  assert.match(done.stderr, /Esto lo escribió el proyecto/, 'la prosa de afuera sigue avisando')
+  assert.equal(/migraciones/.test(done.stderr), false, 'una viñeta declarada no es un límite perdido')
+  assert.equal(/Lo de arriba es la razón/.test(done.stderr), false,
     'ni la prosa que presenta el bloque, que es la que sube el número al adoptarlo')
-  assert.match(hecho.stderr, /1 párrafo\(s\)/, 'y queda contado el único que de verdad no llega')
+  assert.match(done.stderr, /1 párrafo\(s\)/, 'y queda contado el único que de verdad no llega')
 
   // La otra mitad del caso: el aviso mandaba a imitar la gramática, que es justo lo que el 157 existe
   // para no tener que hacer. Se asercia por ausencia porque cambiar el texto es una quita —el camino
   // viejo deja de recomendarse— y lo nuevo podría aparecer con lo viejo todavía puesto.
-  assert.match(hecho.stderr, /va como viñeta bajo `### Límites`/, 'manda al camino declarado')
-  assert.equal(/porque no arrancan con «El runner»/.test(hecho.stderr), false,
+  assert.match(done.stderr, /va como viñeta bajo `### Límites`/, 'manda al camino declarado')
+  assert.equal(/porque no arrancan con «El runner»/.test(done.stderr), false,
     'y ya no manda a imitar la gramática, que es el camino que el 157 vino a evitar')
 })
 
@@ -296,37 +296,37 @@ test('declarar un límite lo saca del aviso, y la prosa de afuera sigue entrando
 // pidiéndolo, o el aviso callado sobre un límite que sigue cortado (caso 168).
 test('un límite escrito en dos líneas viaja entero y no vuelve como párrafo perdido', () => {
   const root = instance('cauce-contract-dos-lineas-')
-  const antes = contractOf(root).value.boundaries.length
-  conExcepcion(root, '### Límites\n\n'
+  const earlier = contractOf(root).value.boundaries.length
+  withException(root, '### Límites\n\n'
     + '- **Escrituras a la tienda real** —crear, editar o borrar productos, pedidos o\n'
     + '  configuración— no las hace un runner, aunque la tarea esté promovida.\n'
     + '- **Una viñeta de una línea** llega entera, como siempre.')
   const { value } = contractOf(root)
 
-  assert.equal(value.boundaries.length, antes + 2, `llegaron: ${value.boundaries.join(' | ')}`)
-  const cortada = value.boundaries.find((one) => /Escrituras a la tienda real/.test(one))
-  assert.match(cortada, /no las hace un runner, aunque la tarea esté promovida\.$/,
+  assert.equal(value.boundaries.length, earlier + 2, `llegaron: ${value.boundaries.join(' | ')}`)
+  const cut = value.boundaries.find((one) => /Escrituras a la tienda real/.test(one))
+  assert.match(cut, /no las hace un runner, aunque la tarea esté promovida\.$/,
     'el límite llega hasta el final: lo que decide está en la segunda línea')
 
   // Y el aviso deja de reclamar la continuación de algo que sí se declaró.
-  const hecho = run(['check', path.join(root, 'planning')])
-  assert.doesNotMatch(hecho.stderr, /no llegan a los agentes/,
-    `avisó sobre una viñeta declarada: ${hecho.stderr}`)
+  const done = run(['check', path.join(root, 'planning')])
+  assert.doesNotMatch(done.stderr, /no llegan a los agentes/,
+    `avisó sobre una viñeta declarada: ${done.stderr}`)
 })
 
 // Por qué se descuenta está junto a `limits` (caso 203). Entre las dos primeras listas sólo cambia cómo
 // empieza la primera viñeta, que era lo que decidía la copia; la tercera cruza este caso con el 168.
 test('una lista declarada llega una vez, empiece como empiece su primera viñeta', () => {
-  for (const lista of [
+  for (const list of [
     '- El runner no toca migraciones en `api/` sin aprobación de datos.\n- Nunca publica en `main`.',
     '- En `api/` el runner no toca migraciones sin aprobación de datos.\n- Nunca publica en `main`.',
     '- El runner no toca migraciones en `api/` sin aprobación\n  de datos.\n- Nunca publica en `main`.',
   ]) {
     const root = instance('cauce-contract-lista-')
-    const antes = contractOf(root).value.boundaries.length
-    conExcepcion(root, `### Límites\n\n${lista}`)
+    const earlier = contractOf(root).value.boundaries.length
+    withException(root, `### Límites\n\n${list}`)
     const { boundaries } = contractOf(root).value
-    assert.equal(boundaries.length, antes + 2, `llegaron:\n  ${boundaries.join('\n  ')}`)
+    assert.equal(boundaries.length, earlier + 2, `llegaron:\n  ${boundaries.join('\n  ')}`)
     for (const one of boundaries) {
       assert.equal(boundaries.some((other) => other !== one && other.includes(one)), false,
         `«${one}» llegó también dentro de otro límite`)
@@ -339,22 +339,22 @@ test('una lista declarada llega una vez, empiece como empiece su primera viñeta
 // como declarada—, así que un párrafo que nadie declaró pasaría a regir sobre cada subagente.
 test('una línea en blanco cierra la viñeta: lo que sigue no se pega al último límite', () => {
   const root = instance('cauce-contract-blanco-')
-  conExcepcion(root, '### Límites\n\n'
+  withException(root, '### Límites\n\n'
     + '- En `api/` no se tocan migraciones sin aprobación de datos.\n'
     + '\n'
     + 'Esto es prosa que nadie declaró como límite.')
   const { value } = contractOf(root)
 
-  const declarado = value.boundaries.find((one) => /migraciones/.test(one))
-  assert.ok(declarado, `no llegó el declarado: ${value.boundaries.join(' | ')}`)
-  assert.doesNotMatch(declarado, /prosa que nadie declaró/, 'la prosa de abajo no es parte del límite')
+  const declared = value.boundaries.find((one) => /migraciones/.test(one))
+  assert.ok(declared, `no llegó el declarado: ${value.boundaries.join(' | ')}`)
+  assert.doesNotMatch(declared, /prosa que nadie declaró/, 'la prosa de abajo no es parte del límite')
   assert.equal(value.boundaries.some((one) => /prosa que nadie declaró/.test(one)), false,
     'ni llega como un límite propio')
 
   // Y sigue avisándose, que es la mitad que el plegado podría haber apagado sin que nada lo note.
-  const hecho = run(['check', path.join(root, 'planning')])
-  assert.match(hecho.stderr, /no llegan a los agentes/)
-  assert.match(hecho.stderr, /prosa que nadie declaró/, 'y cita el párrafo que de verdad se pierde')
+  const done = run(['check', path.join(root, 'planning')])
+  assert.match(done.stderr, /no llegan a los agentes/)
+  assert.match(done.stderr, /prosa que nadie declaró/, 'y cita el párrafo que de verdad se pierde')
 })
 
 // Caso 394: lo que recibe el recorrido para leer `/autobuild <nombre>`, en los dos estados de la instancia.

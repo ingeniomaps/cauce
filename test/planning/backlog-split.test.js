@@ -15,14 +15,14 @@ const SR = require('../../engine/planning/structure')
 const BK = require('../../engine/planning/backlog')
 const { splitBacklog } = BK
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const task = (slug) => `- [ ] **${slug}** [lite] — Algo. _Aceptación: se observa._ (service: app)`
 const milestone = (slug, order, tasks = [slug]) => `---\norder: ${order}\n---\n\n## Hito ${slug} — Título\n\n`
   + `${tasks.map(task).join('\n')}\n`
 
 function planning(name) {
   const dir = path.join(tempRoot(name), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   return dir
 }
 const write = (dir, file, text) => {
@@ -70,11 +70,11 @@ test('partir deja la prosa en BACKLOG.md y cada hito en su archivo, con el orden
 
 // El porqué está en `splitBacklog`; acá se mide sobre el molde real, que es donde el defecto mordía.
 test('partir deja lo comentado donde está: el ejemplo del molde no se vuelve cola', () => {
-  const molde = fs.readFileSync(path.join(MOLDE, 'BACKLOG.md'), 'utf8')
-  assert.match(molde, /<!--\n## Hito primer-resultado/, 'el molde sigue trayendo su ejemplo comentado')
-  const { backlog, files } = splitBacklog(molde)
+  const template = fs.readFileSync(path.join(TEMPLATE_PLANNING, 'BACKLOG.md'), 'utf8')
+  assert.match(template, /<!--\n## Hito primer-resultado/, 'el molde sigue trayendo su ejemplo comentado')
+  const { backlog, files } = splitBacklog(template)
   assert.deepEqual(files, [])
-  assert.equal(backlog, `${molde.trimEnd()}\n`)
+  assert.equal(backlog, `${template.trimEnd()}\n`)
 
   const { files: [one] } = splitBacklog(`## Hito a — A\n\n${task('ta')}\n<!--\nnota\n-->\n`)
   assert.match(one.text, /<!--\nnota\n-->/, 'un comentario adentro de un hito se queda con su hito')

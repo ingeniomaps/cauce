@@ -49,26 +49,26 @@ test('un número de regla tiene una sola definición', () => {
   fs.writeFileSync(path.join(rules, 'system', 'commits.md'), '# Commits\n\n## R8 — Un commit por naturaleza\n\nx\n')
   fs.writeFileSync(path.join(rules, 'system', 'process.md'), '# Proceso\n\n## R1 — Pensar antes de editar\n\nx\n')
   fs.writeFileSync(path.join(rules, 'README.md'), '# Reglas\n\n## R99 — no es una regla, es prosa del índice\n')
-  const propia = (name, body) => fs.writeFileSync(path.join(rules, name), body)
+  const own = (name, body) => fs.writeFileSync(path.join(rules, name), body)
 
   assert.deepEqual(SR.validateRules(root), [], 'sólo system/, y el README no cuenta')
 
   // El override declarado: mismo nombre de archivo, y por eso puede redefinir sus números.
-  propia('commits.md', '# Mis commits\n\n## R8 — Lo hacemos distinto\n\nx\n')
+  own('commits.md', '# Mis commits\n\n## R8 — Lo hacemos distinto\n\nx\n')
   assert.deepEqual(SR.validateRules(root), [])
 
   // Un archivo nuevo que usa R crea una segunda definición que nadie declaró.
   fs.rmSync(path.join(rules, 'commits.md'))
-  propia('mias.md', '# Mías\n\n## R8 — Otra cosa distinta\n\nx\n')
+  own('mias.md', '# Mías\n\n## R8 — Otra cosa distinta\n\nx\n')
   assert.deepEqual(SR.validateRules(root), [
     'rules/mias.md: R8 ya lo define rules/system/commits.md; una regla propia se numera P1..Pn, '
     + 'o vive en un archivo con el mismo nombre para declarar el override',
   ])
 
   // Numerada como propia, pasa; repetida entre dos archivos propios, no.
-  propia('mias.md', '# Mías\n\n## P1 — Lo nuestro\n\nx\n')
+  own('mias.md', '# Mías\n\n## P1 — Lo nuestro\n\nx\n')
   assert.deepEqual(SR.validateRules(root), [])
-  propia('otras.md', '# Otras\n\n## P1 — Lo nuestro también\n\nx\n')
+  own('otras.md', '# Otras\n\n## P1 — Lo nuestro también\n\nx\n')
   assert.deepEqual(SR.validateRules(root), ['rules/otras.md: P1 ya lo define rules/mias.md'])
 })
 
@@ -78,9 +78,9 @@ test('un ADR declara su estado, sus secciones y un nombre con id', () => {
   const root = tempRoot('ops-adr-')
   const adr = path.join(root, 'adr')
   fs.mkdirSync(path.join(adr, 'system'), { recursive: true })
-  const cuerpo = (estado) => `# ADR-001 — Algo
+  const body = (state) => `# ADR-001 — Algo
 
-**Estado:** ${estado}
+**Estado:** ${state}
 **Fecha:** 2026-08-22
 **Responsable:** Equipo
 
@@ -100,31 +100,31 @@ x
 
 x
 `
-  const escribir = (name, texto) => fs.writeFileSync(path.join(adr, name), texto)
+  const write = (name, text) => fs.writeFileSync(path.join(adr, name), text)
 
-  escribir('001-algo.md', cuerpo('Aceptado'))
+  write('001-algo.md', body('Aceptado'))
   assert.deepEqual(SR.validateAdr(root), [])
-  for (const estado of ['Propuesto', 'Obsoleto', 'Reemplazada por [002](002-otra.md)',
+  for (const state of ['Propuesto', 'Obsoleto', 'Reemplazada por [002](002-otra.md)',
     'Reemplazada por [ADR-007](007-otra.md) (2026-07-31)']) {
-    escribir('001-algo.md', cuerpo(estado))
-    assert.deepEqual(SR.validateAdr(root), [], estado)
+    write('001-algo.md', body(state))
+    assert.deepEqual(SR.validateAdr(root), [], state)
   }
 
   // El menú de la plantilla, publicado tal cual: es el caso medido.
-  escribir('001-algo.md', cuerpo('Propuesto | Aceptado | Obsoleto | Reemplazada por [NNN](./NNN-slug.md)'))
+  write('001-algo.md', body('Propuesto | Aceptado | Obsoleto | Reemplazada por [NNN](./NNN-slug.md)'))
   assert.deepEqual(SR.validateAdr(root),
     ['adr/001-algo.md: el estado sigue siendo el menú de la plantilla; elegí uno'])
 
-  escribir('001-algo.md', cuerpo('Vigente'))
+  write('001-algo.md', body('Vigente'))
   assert.match(SR.validateAdr(root)[0], /estado "Vigente" fuera de Propuesto \| Aceptado \| Obsoleto/)
 
   // Una sección que falta deja la decisión sin lo que la sostiene.
-  escribir('001-algo.md', cuerpo('Aceptado').replace('## Consecuencias\n\nx\n', ''))
+  write('001-algo.md', body('Aceptado').replace('## Consecuencias\n\nx\n', ''))
   assert.deepEqual(SR.validateAdr(root), ['adr/001-algo.md: falta ## Consecuencias'])
 
   // Y el nombre lleva el id, que es de lo que depende reconocer un override.
-  escribir('001-algo.md', cuerpo('Aceptado'))
-  escribir('decision-sobre-cache.md', cuerpo('Aceptado'))
+  write('001-algo.md', body('Aceptado'))
+  write('decision-sobre-cache.md', body('Aceptado'))
   assert.deepEqual(SR.validateAdr(root), [
     'adr/decision-sobre-cache.md: nadie lo lee como decisión. Una ADR se nombra NNN-<slug>.md, '
     + 'y la del sistema <ID>-NNN-<slug>.md en system/.',
@@ -132,7 +132,7 @@ x
   fs.rmSync(path.join(adr, 'decision-sobre-cache.md'))
 
   // Dos decisiones con el mismo número dejan de poder citarse.
-  escribir('001-otra.md', cuerpo('Aceptado'))
+  write('001-otra.md', body('Aceptado'))
   assert.deepEqual(SR.validateAdr(root), ['adr/001-otra.md: 001 ya lo usa adr/001-algo.md'])
 })
 
@@ -168,40 +168,40 @@ test('check avisa cuando dos secciones de una épica compiten por el mismo rol',
   const root = tempRoot('ops-secciones-')
   const roadmap = path.join(root, 'roadmap')
   fs.mkdirSync(roadmap, { recursive: true })
-  const epica = (cuerpo) => `---\nepic: 001\ntitle: Demo\nstatus: open\nservice: app\n---\n\n`
-    + `# Épica 001 — Demo\n\n## Resultado\n\nAlgo.\n\n${cuerpo}`
+  const epic = (body) => `---\nepic: 001\ntitle: Demo\nstatus: open\nservice: app\n---\n\n`
+    + `# Épica 001 — Demo\n\n## Resultado\n\nAlgo.\n\n${body}`
 
-  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica(
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epic(
     '## Criterios de aceptación\n\n- suelto\n\n## Criterios\n\n- **C1** — real\n\n'
     + '## Historias\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
-  const avisos = SR.competingSections(root)
-  assert.equal(avisos.length, 1, 'una épica con dos secciones de criterios se reporta')
-  assert.match(avisos[0], /epic-001-demo\.md/)
-  assert.match(avisos[0], /Criterios de aceptación/, 'nombra la que se ignora, no la que gana')
+  const warnings = SR.competingSections(root)
+  assert.equal(warnings.length, 1, 'una épica con dos secciones de criterios se reporta')
+  assert.match(warnings[0], /epic-001-demo\.md/)
+  assert.match(warnings[0], /Criterios de aceptación/, 'nombra la que se ignora, no la que gana')
 
   // Una épica sana no dice nada, y un título con sufijo tampoco: es la única de su rol.
-  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica(
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epic(
     '## Criterios\n\n- **C1** — real\n\n'
     + '## Historias (Tareas)\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
   assert.deepEqual(SR.competingSections(root), [])
 })
 
 // Caso 519: qué viñetas de «Historias» avisa `unreadStories`, sobre qué épicas, y que el aviso llegue a `check`.
-const epica = (historias, head = 'epic: 001\nstatus: closed') => `---\n${head}\ntitle: Demo\nservice: app\n---\n\n`
-  + `# Épica — Demo\n\n## Criterios\n\n- **C1** — real\n\n## Historias\n\n${historias}\n## Riesgos\n\n- Ninguno\n`
+const epic = (stories, head = 'epic: 001\nstatus: closed') => `---\n${head}\ntitle: Demo\nservice: app\n---\n\n`
+  + `# Épica — Demo\n\n## Criterios\n\n- **C1** — real\n\n## Historias\n\n${stories}\n## Riesgos\n\n- Ninguno\n`
 test('el aviso nombra una línea de historia que el parser no lee', () => {
   const root = tempRoot('ops-historia-ilegible-')
   const roadmap = path.join(root, 'roadmap')
   fs.mkdirSync(roadmap, { recursive: true })
-  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica('- [x] **a** (→ C1) — uno. (service: app)\n'
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epic('- [x] **a** (→ C1) — uno. (service: app)\n'
     + '* [~] **cancelada** (→ C1) — dos. (service: app)\n- [ x] **mal** (→ C1) — tres. (service: app)\n'))
-  const avisos = SR.unreadStories(root)
-  assert.equal(avisos.length, 2, avisos.join('\n'))
-  assert.match(avisos[0], /epic-001-demo\.md.*cancelada.*\[ \] o \[x\]/)
-  assert.match(avisos[1], /mal/)
+  const warnings = SR.unreadStories(root)
+  assert.equal(warnings.length, 2, warnings.join('\n'))
+  assert.match(warnings[0], /epic-001-demo\.md.*cancelada.*\[ \] o \[x\]/)
+  assert.match(warnings[1], /mal/)
 
   // Las casillas que la gramática lee, y la viñeta sin casilla, no avisan; tampoco una fuera de «Historias».
-  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica('- [x] **a** (→ C1) — uno. (service: app)\n'
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epic('- [x] **a** (→ C1) — uno. (service: app)\n'
     + '* [ ] **b** (→ C1) — dos. (service: app)\n- [X] **c** (→ C1) — tres. (service: app)\n'
     + '- **d** (→ C1) — cuatro. (service: app)\n')
     .replace('## Riesgos\n\n- Ninguno', '## Riesgos\n\n- [~] **e** prosa'))
@@ -212,7 +212,7 @@ test('el aviso recorre las épicas que lee el parser, también la graduada, y no
   const roadmap = path.join(tempRoot('ops-historia-epicas-'), 'roadmap')
   fs.mkdirSync(path.join(roadmap, 'epic-002-grad'), { recursive: true })
   const write = (name, slug, head) => fs.writeFileSync(path.join(roadmap, name),
-    epica(`* [~] **${slug}** — x. (service: app)\n`, head))
+    epic(`* [~] **${slug}** — x. (service: app)\n`, head))
   write('epic-002-grad/spec.md', 'graduada')
   write('epic-003-old.md.bak', 'vieja')
   write('epic-004-plantilla.md', 'molde', 'epic: 004\nstatus: template')
@@ -280,14 +280,14 @@ test('check avisa la derogada sin reemplazo y frena la cita rota', () => {
     + `${extra}\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n`
     + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
   fs.writeFileSync(file, rule())
-  const aviso = run(['check', path.join(target, 'planning')])
-  assert.equal(aviso.status, 0, aviso.stderr)
-  assert.match(`${aviso.stdout}${aviso.stderr}`, /vieja\.md: está derogada y no dice qué rige en su lugar/)
+  const warning = run(['check', path.join(target, 'planning')])
+  assert.equal(warning.status, 0, warning.stderr)
+  assert.match(`${warning.stdout}${warning.stderr}`, /vieja\.md: está derogada y no dice qué rige en su lugar/)
 
   fs.writeFileSync(file, rule('> **Reemplazada por:** BR-DEMO-777'))
-  const rota = run(['check', path.join(target, 'planning')])
-  assert.equal(rota.status, 1)
-  assert.match(`${rota.stdout}${rota.stderr}`, /la reemplaza BR-DEMO-777, que no existe/)
+  const broken = run(['check', path.join(target, 'planning')])
+  assert.equal(broken.status, 1)
+  assert.match(`${broken.stdout}${broken.stderr}`, /la reemplaza BR-DEMO-777, que no existe/)
 })
 
 // Caso 213. Si rige y si alguien la confirmó son dos preguntas. Que falte la segunda avisa —las reglas de
@@ -324,12 +324,12 @@ test('check avisa la regla sin verificación y rechaza una ratificada sin autori
     + `${extra}\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n`
     + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
   fs.writeFileSync(file, rule())
-  const aviso = run(['check', path.join(target, 'planning')])
-  assert.equal(aviso.status, 0, aviso.stderr)
-  assert.match(`${aviso.stdout}${aviso.stderr}`, /regla\.md: no declara su verificación/)
+  const warning = run(['check', path.join(target, 'planning')])
+  assert.equal(warning.status, 0, warning.stderr)
+  assert.match(`${warning.stdout}${warning.stderr}`, /regla\.md: no declara su verificación/)
 
   fs.writeFileSync(file, rule('> **Verificación:** ratificada'))
-  const rota = run(['check', path.join(target, 'planning')])
-  assert.equal(rota.status, 1)
-  assert.match(`${rota.stdout}${rota.stderr}`, /no dice quién la confirmó/)
+  const broken = run(['check', path.join(target, 'planning')])
+  assert.equal(broken.status, 1)
+  assert.match(`${broken.stdout}${broken.stderr}`, /no dice quién la confirmó/)
 })

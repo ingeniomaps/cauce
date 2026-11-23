@@ -289,14 +289,14 @@ test('doctor avisa el guard que no está y el que el runner también registra', 
 })
 
 // El aviso de un guard que deja pasar llega a la sesión (caso 466): con un 0 se perdía todo lo que había dicho.
-const AVISA = 'cat >/dev/null\necho "falta el sello" >&2\nexit 0'
+const WARNS = 'cat >/dev/null\necho "falta el sello" >&2\nexit 0'
 const hookRun = (target, command, group = 'pre-shell') => spawnSync(process.execPath,
   [path.join(__dirname, '..', '..', 'engine', 'hooks', 'run.js'), group], {
     input: JSON.stringify(shell(target, command)), encoding: 'utf8', env: { ...process.env, OPS_ROOT: target },
   })
 
 test('lo que dice por stderr un guard que sale 0 le llega a la sesión sin frenar', () => {
-  withGuards('cauce-guards-aviso-', { 'avisa.sh': AVISA }, { 'pre-shell': ['guards/avisa.sh'] }, ({ target }) => {
+  withGuards('cauce-guards-aviso-', { 'avisa.sh': WARNS }, { 'pre-shell': ['guards/avisa.sh'] }, ({ target }) => {
     assert.deepEqual(executeAll(['pre-shell'], shell(target, 'ls')), ['[guards/avisa.sh] falta el sello'])
     const result = hookRun(target, 'ls')
     assert.equal(result.status, 0)
@@ -309,16 +309,16 @@ test('lo que dice por stderr un guard que sale 0 le llega a la sesión sin frena
 })
 
 test('un guard que sale 0 callado no agrega nada a la salida del hook', () => {
-  const calla = 'cat >/dev/null\nexit 0'
-  withGuards('cauce-guards-calla-', { 'calla.sh': calla }, { 'pre-shell': ['guards/calla.sh'] }, ({ target }) => {
+  const silent = 'cat >/dev/null\nexit 0'
+  withGuards('cauce-guards-calla-', { 'calla.sh': silent }, { 'pre-shell': ['guards/calla.sh'] }, ({ target }) => {
     assert.deepEqual(executeAll(['pre-shell'], shell(target, 'ls')), [])
     assert.equal(hookRun(target, 'ls').stdout, '', 'Claude Code lee esta salida como la decisión del hook')
   })
 })
 
 test('el aviso se recorta: un guard ruidoso no se lleva el contexto de la sesión', () => {
-  const ruidoso = 'cat >/dev/null\nhead -c 9000 /dev/zero | tr "\\0" x >&2\nexit 0'
-  withGuards('cauce-guards-ruido-', { 'r.sh': ruidoso }, { 'pre-shell': ['guards/r.sh'] }, ({ target }) => {
+  const noisy = 'cat >/dev/null\nhead -c 9000 /dev/zero | tr "\\0" x >&2\nexit 0'
+  withGuards('cauce-guards-ruido-', { 'r.sh': noisy }, { 'pre-shell': ['guards/r.sh'] }, ({ target }) => {
     const [notice] = executeAll(['pre-shell'], shell(target, 'ls'))
     assert.ok(notice.length < 2100, `midió ${notice.length}`)
     assert.match(notice, /recortado/)
@@ -326,7 +326,7 @@ test('el aviso se recorta: un guard ruidoso no se lleva el contexto de la sesió
 })
 
 test('un guard que frena gana sobre el aviso de otro', () => {
-  const scripts = { 'avisa.sh': AVISA, 'frena.sh': 'cat >/dev/null\necho no >&2\nexit 2' }
+  const scripts = { 'avisa.sh': WARNS, 'frena.sh': 'cat >/dev/null\necho no >&2\nexit 2' }
   withGuards('cauce-guards-gana-', scripts, { 'pre-shell': ['guards/avisa.sh', 'guards/frena.sh'] }, ({ target }) => {
     const result = hookRun(target, 'ls')
     assert.equal(result.status, 2)
@@ -345,7 +345,7 @@ test('el aviso viaja junto con el diálogo que abre otro guard, en un solo JSON'
 })
 
 test('el puente de Antigravity inyecta el aviso antes del siguiente turno, una vez y por conversación', () => {
-  withGuards('cauce-guards-agy-turno-', { 'avisa.sh': AVISA }, { 'pre-shell': ['guards/avisa.sh'] },
+  withGuards('cauce-guards-agy-turno-', { 'avisa.sh': WARNS }, { 'pre-shell': ['guards/avisa.sh'] },
     ({ workspace, env }) => {
       const call = (event, input) => JSON.parse(spawnSync(process.execPath,
         [path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js'), event],

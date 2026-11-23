@@ -12,7 +12,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const learning = require('../../engine/agents/learning')
-const { installedProject, writeSkill, firmarPropuesta } = require('../support/agents-fixtures')
+const { installedProject, writeSkill, signProposal } = require('../support/agents-fixtures')
 
 
 // Una recomendación de diez líneas llegaba como una y el ciclo corría verde entregando casi nada: la
@@ -27,9 +27,9 @@ const { installedProject, writeSkill, firmarPropuesta } = require('../support/ag
 // representar a un informe commiteado — `Collect report` frena el que vuelve sin contenido, así que en
 // producción no llega ninguno así. Los casos que sólo necesitan «hay material pendiente» lo llenan con
 // esto, para no medir la guarda nueva sin querer.
-function withRecommendation(file, texto = 'Cambiar algo (cierra H1).') {
+function withRecommendation(file, contents = 'Cambiar algo (cierra H1).') {
   const text = fs.readFileSync(file, 'utf8')
-  fs.writeFileSync(file, text.replace(/\n## Recomendación[^\S\n]*\n/, `\n## Recomendación\n\n${texto}\n`))
+  fs.writeFileSync(file, text.replace(/\n## Recomendación[^\S\n]*\n/, `\n## Recomendación\n\n${contents}\n`))
   return file
 }
 
@@ -42,40 +42,40 @@ test('un mes sin nada que proponer no abre documento, y no se lleva los informes
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const reports = path.join(own, 'learning', 'reports')
   fs.mkdirSync(reports, { recursive: true })
-  const informe = (fecha, recomendacion) => {
-    fs.writeFileSync(path.join(reports, `${fecha}.md`),
-      `---\nagent: probe\ndate: ${fecha}\nstatus: draft\n---\n\n## Hallazgos\n\nH1. Algo cambió.\n\n`
-      + `## Recomendación\n${recomendacion}\n\n## Preguntas abiertas\n\nNinguna.\n`)
-    return path.join(reports, `${fecha}.md`)
+  const reportText = (date, recommendation) => {
+    fs.writeFileSync(path.join(reports, `${date}.md`),
+      `---\nagent: probe\ndate: ${date}\nstatus: draft\n---\n\n## Hallazgos\n\nH1. Algo cambió.\n\n`
+      + `## Recomendación\n${recommendation}\n\n## Preguntas abiertas\n\nNinguna.\n`)
+    return path.join(reports, `${date}.md`)
   }
-  const estado = (file) => (fs.readFileSync(file, 'utf8').match(/^status: (\S+)$/m) || [])[1]
+  const state = (file) => (fs.readFileSync(file, 'utf8').match(/^status: (\S+)$/m) || [])[1]
 
   // Dos informes con hallazgos y sin nada que proponer.
-  const callados = [informe('2099-01-07', ''), informe('2099-01-14', '\n')]
-  const huella = () => filesBelow(target).sort().map((file) => `${file}:${fs.statSync(file).size}`)
-  const antes = huella()
-  const quieto = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
-  assert.equal(quieto.file, '', 'no se abre documento cuando ninguno propone un cambio')
+  const silenced = [reportText('2099-01-07', ''), reportText('2099-01-14', '\n')]
+  const footprint = () => filesBelow(target).sort().map((file) => `${file}:${fs.statSync(file).size}`)
+  const earlier = footprint()
+  const quiet = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
+  assert.equal(quiet.file, '', 'no se abre documento cuando ninguno propone un cambio')
   // Lo que traduce «no se abre documento» en «no se abre PR»: `Detect changes` mira el árbol, así que
   // basta un archivo tocado para que el ciclo publique uno vacío. Es la mitad que hace falta afirmar
   // aparte — el resultado puede decir que no abrió nada y el árbol haber cambiado igual.
-  assert.deepEqual(huella(), antes, 'no se escribe nada, que es lo que evita el PR sin contenido')
-  assert.equal(quieto.quiet, 2, 'y se dice cuántos informes había, que no es lo mismo que no haber tenido')
-  for (const file of callados) {
-    assert.equal(estado(file), 'draft', 'no se sellan: sellar abriría un PR de puros sellos')
+  assert.deepEqual(footprint(), earlier, 'no se escribe nada, que es lo que evita el PR sin contenido')
+  assert.equal(quiet.quiet, 2, 'y se dice cuántos informes había, que no es lo mismo que no haber tenido')
+  for (const file of silenced) {
+    assert.equal(state(file), 'draft', 'no se sellan: sellar abriría un PR de puros sellos')
   }
 
   // Y el mes que uno sí propone algo, los callados entran con él como histórico.
-  informe('2099-01-21', '\n1. Cambiar algo (cierra H1).')
-  const abierta = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
-  assert.equal(abierta.created, true, 'una sola recomendación alcanza para abrir')
-  assert.equal(abierta.reports, 3, 'y se lleva los tres, no sólo el que propuso')
-  const texto = fs.readFileSync(abierta.file, 'utf8')
-  assert.match(texto, /Cambiar algo/, 'la recomendación real llega')
-  assert.equal((texto.match(/Sin recomendación registrada\./g) || []).length, 2,
+  reportText('2099-01-21', '\n1. Cambiar algo (cierra H1).')
+  const opened = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
+  assert.equal(opened.created, true, 'una sola recomendación alcanza para abrir')
+  assert.equal(opened.reports, 3, 'y se lleva los tres, no sólo el que propuso')
+  const contents = fs.readFileSync(opened.file, 'utf8')
+  assert.match(contents, /Cambiar algo/, 'la recomendación real llega')
+  assert.equal((contents.match(/Sin recomendación registrada\./g) || []).length, 2,
     'y los callados quedan como histórico, no descartados')
-  for (const file of callados) {
-    assert.equal(estado(file), 'consolidated', 'ahí sí se sellan, junto con la propuesta que los llevó')
+  for (const file of silenced) {
+    assert.equal(state(file), 'consolidated', 'ahí sí se sellan, junto con la propuesta que los llevó')
   }
 })
 
@@ -108,7 +108,7 @@ test('una propuesta aplicada no se puede volver a aplicar', () => {
   assert.equal(learning.proposalState(fs.readFileSync(file, 'utf8')), 'proposed')
   assert.equal(learning.evaluate(target, 'probe').pending, 1, 'cuenta como pendiente')
 
-  firmarPropuesta(file)
+  signProposal(file)
   const sealed = learning.seal(target, 'probe', '2099-06')
   assert.equal(sealed.already, false)
   assert.equal(learning.proposalState(fs.readFileSync(file, 'utf8')), 'applied')
@@ -124,7 +124,7 @@ test('sellar un cargo en el toolkit lo anota en el CHANGELOG, y en una empresa n
   const sealAt = (root, dir, options) => {
     withRecommendation(learning.prepareReport(root, 'probe', new Date('2099-06-10T00:00:00Z')).file)
     learning.prepareProposal(root, 'probe', new Date('2099-06-15T00:00:00Z'))
-    firmarPropuesta(path.join(dir, 'learning', 'proposals', '2099-06.md'))
+    signProposal(path.join(dir, 'learning', 'proposals', '2099-06.md'))
     return learning.seal(root, 'probe', '2099-06', 'agent', options)
   }
 
@@ -163,7 +163,7 @@ test('un status que se adelantó no deja el cuerpo diciendo lo contrario', () =>
   withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
   learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
   const file = path.join(own, 'learning', 'proposals', '2099-06.md')
-  firmarPropuesta(file)
+  signProposal(file)
 
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^status:.*$/m, 'status: applied'))
   assert.equal(learning.seal(target, 'probe', '2099-06').already, false, 'el cuerpo todavía no está sellado')
@@ -184,7 +184,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
 
   assert.equal(learning.prepareProposal(target, 'probe', now).created, false, 'no abre otra si hay pendiente')
 
-  firmarPropuesta(base.file)
+  signProposal(base.file)
   learning.seal(target, 'probe', '2099-06')
 
   // La propuesta base consumió y selló el único informe, así que acá no queda nada que corregir. Sin
@@ -205,7 +205,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
     'la corregida queda sellada donde está, no se reabre')
   assert.equal(learning.prepareProposal(target, 'probe', now).created, false, 'y r3 espera a que r2 se aplique')
 
-  firmarPropuesta(revision.file)
+  signProposal(revision.file)
   const sealed = learning.seal(target, 'probe', '2099-06')
   assert.equal(path.basename(sealed.file), '2099-06-r2.md', 'el período sella la vigente, no la base')
   assert.equal(sealed.already, false, 'y la revisión no queda sin sellar, que es como se reaplica')
@@ -220,27 +220,27 @@ test('un informe atrasado entra en la próxima propuesta, y mientras tanto se ve
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const reports = path.join(own, 'learning', 'reports')
   fs.mkdirSync(reports, { recursive: true })
-  const escribir = (fecha, texto) => fs.writeFileSync(path.join(reports, `${fecha}.md`),
-    `---\nagent: probe\ndate: ${fecha}\nstatus: draft\n---\n\n## Recomendación\n\n${texto}\n`)
+  const write = (date, contents) => fs.writeFileSync(path.join(reports, `${date}.md`),
+    `---\nagent: probe\ndate: ${date}\nstatus: draft\n---\n\n## Recomendación\n\n${contents}\n`)
 
-  escribir('2099-01-07', 'Lo de enero.')
-  const enero = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
-  assert.equal(enero.reports, 1)
+  write('2099-01-07', 'Lo de enero.')
+  const january = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
+  assert.equal(january.reports, 1)
   assert.deepEqual(learning.evaluate(target, 'probe').warnings, [], 'consolidado, nada pendiente')
 
   // El que llega tarde: enero ya tiene su propuesta y esa no lo va a tomar.
-  escribir('2099-01-28', 'Lo que llegó tarde.')
+  write('2099-01-28', 'Lo que llegó tarde.')
   assert.match(learning.evaluate(target, 'probe').warnings.join('\n'),
     /1 informe\(s\) sin consolidar \(2099-01-28\.md\): entran en la próxima propuesta/,
     'mientras espera, se ve')
 
   // Y la próxima lo toma, sin volver a traer el que ya entró.
-  const febrero = learning.prepareProposal(target, 'probe', new Date('2099-03-01T13:17:00Z'), '2099-02')
-  assert.equal(path.basename(febrero.file), '2099-02.md')
-  assert.equal(febrero.reports, 1, 'sólo el atrasado')
-  const texto = fs.readFileSync(febrero.file, 'utf8')
-  assert.match(texto, /Lo que llegó tarde\./)
-  assert.equal(texto.includes('Lo de enero.'), false, 'el sello impide que el mismo hallazgo entre dos veces')
+  const february = learning.prepareProposal(target, 'probe', new Date('2099-03-01T13:17:00Z'), '2099-02')
+  assert.equal(path.basename(february.file), '2099-02.md')
+  assert.equal(february.reports, 1, 'sólo el atrasado')
+  const contents = fs.readFileSync(february.file, 'utf8')
+  assert.match(contents, /Lo que llegó tarde\./)
+  assert.equal(contents.includes('Lo de enero.'), false, 'el sello impide que el mismo hallazgo entre dos veces')
   assert.deepEqual(learning.evaluate(target, 'probe').warnings, [])
 })
 
@@ -255,8 +255,8 @@ test('la propuesta consolida el período que se le nombra, no el mes en que se l
   }
 
   // El día 1 del mes siguiente, que es cuando corre el cron.
-  const corrida = new Date('2099-02-01T13:17:00Z')
-  const result = learning.prepareProposal(target, 'probe', corrida, '2099-01')
+  const run = new Date('2099-02-01T13:17:00Z')
+  const result = learning.prepareProposal(target, 'probe', run, '2099-01')
   assert.equal(result.reports, 5, 'los cinco informes del mes que cerró')
   assert.equal(path.basename(result.file), '2099-01.md', 'y la propuesta lleva ese período')
   const text = fs.readFileSync(result.file, 'utf8')
@@ -269,11 +269,11 @@ test('la propuesta consolida el período que se le nombra, no el mes en que se l
   // Hace falta un informe de febrero para verlo: los de enero quedaron sellados por la consolidación
   // de arriba, y sin ninguno pendiente ya no se abre propuesta.
   withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-02-01T00:00:00Z')).file)
-  const sinPeriodo = learning.prepareProposal(target, 'probe', corrida)
-  assert.equal(path.basename(sinPeriodo.file), '2099-02.md')
-  assert.equal(sinPeriodo.reports, 1, 'el de febrero, no los de enero que ya entraron')
+  const withoutPeriod = learning.prepareProposal(target, 'probe', run)
+  assert.equal(path.basename(withoutPeriod.file), '2099-02.md')
+  assert.equal(withoutPeriod.reports, 1, 'el de febrero, no los de enero que ya entraron')
 
-  assert.throws(() => learning.prepareProposal(target, 'probe', corrida, 'enero'), /período inválido/)
+  assert.throws(() => learning.prepareProposal(target, 'probe', run, 'enero'), /período inválido/)
 })
 
 // La costura, que es donde falló todo. Cada pieza del ciclo tenía su prueba y ninguna cubría el paso
@@ -291,57 +291,57 @@ test('el ciclo de aprendizaje llega del informe semanal al contrato', () => {
     + '  - name: Norma de ejemplo\n    url: https://example.org/x\n    tier: standard\n')
   const bash = (script) => execFileSync('bash', ['-c', script], { cwd: target, encoding: 'utf8' }).trim()
   // El repositorio como lo encuentra el job: todo versionado, y el informe todavía sin existir.
-  const versionado = fs.readdirSync(target).filter((name) => !['.git', 'node_modules'].includes(name))
-  bash('git init -q . && git add ' + versionado.map((name) => JSON.stringify(name)).join(' ')
+  const tracked = fs.readdirSync(target).filter((name) => !['.git', 'node_modules'].includes(name))
+  bash('git init -q . && git add ' + tracked.map((name) => JSON.stringify(name)).join(' ')
     + ' && git -c user.email=t@t -c user.name=t commit -qm base')
 
   // ── Lunes: la investigación semanal ───────────────────────────────────────────────────────────
   assert.equal(run(['learn', 'probe'], target).status, 0, 'el andamiaje del informe')
   const reports = path.join(own, 'learning', 'reports')
-  const informe = fs.readdirSync(reports)[0]
-  const stamp = informe.slice(0, -3)
+  const reportText = fs.readdirSync(reports)[0]
+  const stamp = reportText.slice(0, -3)
   // Lo que el modelo escribe: una recomendación bajo el título que la consolidación lee.
-  fs.writeFileSync(path.join(reports, informe), fs.readFileSync(path.join(reports, informe), 'utf8')
+  fs.writeFileSync(path.join(reports, reportText), fs.readFileSync(path.join(reports, reportText), 'utf8')
     .replace('## Recomendación\n', '## Recomendación\n\n1. Rotar el token (cierra H1).\n'))
 
   const detect = workflowStep(yml, 'id: changes')
   // Fuera del repositorio: adentro, el chequeo de más abajo lo contaría como un archivo colado.
-  const salida = path.join(tempRoot('cauce-output-'), 'github-output')
-  bash(`export GITHUB_OUTPUT=${JSON.stringify(salida)}\n${detect}`)
-  assert.match(fs.readFileSync(salida, 'utf8'), /^changed=true$/m, 'el informe recién escrito es un cambio')
+  const output = path.join(tempRoot('cauce-output-'), 'github-output')
+  bash(`export GITHUB_OUTPUT=${JSON.stringify(output)}\n${detect}`)
+  assert.match(fs.readFileSync(output, 'utf8'), /^changed=true$/m, 'el informe recién escrito es un cambio')
 
   const report = bash(`AGENT=probe; stamp=${stamp}\n${workflowCommand(yml, 'report')}\nprintf '%s' "$report"`)
-  assert.equal(report, `agents/roles/probe/learning/reports/${informe}`, 'y el paso lo encuentra por su ruta')
+  assert.equal(report, `agents/roles/probe/learning/reports/${reportText}`, 'y el paso lo encuentra por su ruta')
 
   // El chequeo que exige el informe y nada más, con `reports/` estrenándose.
-  const sobra = bash(`dest=${JSON.stringify(report)}\n${workflowCommand(yml, 'otros')}\nprintf '%s' "$otros"`)
-  assert.equal(sobra, '', 'nada más que publicar')
+  const leftover = bash(`dest=${JSON.stringify(report)}\n${workflowCommand(yml, 'otros')}\nprintf '%s' "$otros"`)
+  assert.equal(leftover, '', 'nada más que publicar')
   bash(`git add ${report} && git -c user.email=t@t -c user.name=t commit -qm informe`)
 
   // ── La consolidación mensual ──────────────────────────────────────────────────────────────────
   const period = stamp.slice(0, 7)
   assert.equal(run(['learn', 'probe', '--proposal'], target).status, 0)
   const proposals = path.join(own, 'learning', 'proposals')
-  const propuesta = fs.readFileSync(path.join(proposals, `${period}.md`), 'utf8')
-  assert.match(propuesta, /Rotar el token \(cierra H1\)/, 'la recomendación del lunes llega a la propuesta')
+  const proposal = fs.readFileSync(path.join(proposals, `${period}.md`), 'utf8')
+  assert.match(proposal, /Rotar el token \(cierra H1\)/, 'la recomendación del lunes llega a la propuesta')
 
-  const paso = `AGENT=probe; period=${period}\n${workflowCommand(yml, 'changed')}\n`
+  const step = `AGENT=probe; period=${period}\n${workflowCommand(yml, 'changed')}\n`
     + `${workflowCommand(yml, 'proposal')}\n`
-  const encontrada = bash(`${paso}printf '%s' "$proposal"`)
-  assert.equal(encontrada, `agents/roles/probe/learning/proposals/${period}.md`, 'y el paso la encuentra')
+  const found = bash(`${step}printf '%s' "$proposal"`)
+  assert.equal(found, `agents/roles/probe/learning/proposals/${period}.md`, 'y el paso la encuentra')
 
   // Y lo que el paso stagea es el cambio entero, no sólo la propuesta. Consolidar **sella** el informe
   // que consume, y ese sello viaja en el mismo PR o no viaja: stageando sólo la propuesta se quedaba en
   // el runner, el informe seguía en `draft` en la rama base, y la consolidación del mes siguiente lo
   // volvía a leer. El mismo hallazgo dos veces, que es contra lo que el sello existe.
-  const staged = bash(`${paso}printf '%s\\n' "$changed"`).split('\n').filter(Boolean).sort()
+  const staged = bash(`${step}printf '%s\\n' "$changed"`).split('\n').filter(Boolean).sort()
   assert.deepEqual(staged, [
     `agents/roles/probe/learning/proposals/${period}.md`,
-    `agents/roles/probe/learning/reports/${informe}`,
+    `agents/roles/probe/learning/reports/${reportText}`,
   ], 'el informe sellado viaja con la propuesta, y nada más se cuela')
 
   // ── Y el informe queda marcado, así que nada lo reclama ni se consolida dos veces ─────────────
-  assert.match(fs.readFileSync(path.join(reports, informe), 'utf8'), /^status: consolidated$/m)
+  assert.match(fs.readFileSync(path.join(reports, reportText), 'utf8'), /^status: consolidated$/m)
   assert.deepEqual(learning.evaluate(target, 'probe').warnings, [])
 })
 
@@ -356,9 +356,9 @@ test('la consolidación automática se lleva lo pendiente y no abre una revisió
     '---\nagent: probe\ndate: 2099-01-26\nstatus: draft\n---\n\n## Recomendación\n\nLo de enero.\n')
 
   // Enero ya tiene su propuesta, firmada y aplicada: el escenario en que el cron abría la revisión.
-  const enero = learning.prepareProposal(target, 'probe', new Date('2099-01-20T00:00:00Z'))
-  assert.equal(path.basename(enero.file), '2099-01.md')
-  firmarPropuesta(enero.file)
+  const january = learning.prepareProposal(target, 'probe', new Date('2099-01-20T00:00:00Z'))
+  assert.equal(path.basename(january.file), '2099-01.md')
+  signProposal(january.file)
   learning.seal(target, 'probe', '2099-01')
   // Y el informe llegó después de esa firma, así que no entró en ella.
   fs.writeFileSync(path.join(reports, '2099-01-26.md'),
@@ -382,21 +382,21 @@ test('sin informes pendientes no se abre propuesta', () => {
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const proposals = path.join(own, 'learning', 'proposals')
 
-  const vacia = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
-  assert.equal(vacia.created, false)
-  assert.equal(vacia.reports, 0)
-  assert.equal(vacia.file, '', 'no hay archivo porque no se escribió ninguno')
+  const empty = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
+  assert.equal(empty.created, false)
+  assert.equal(empty.reports, 0)
+  assert.equal(empty.file, '', 'no hay archivo porque no se escribió ninguno')
   assert.equal(fs.existsSync(proposals) && fs.readdirSync(proposals).length, 0, 'el directorio queda vacío')
   // Cuántos callados había, que acá son cero. Se fija porque es lo único que distinguía este caso del
   // camino que lo atiende, y `catalog` lo lee para decidir qué línea imprime.
-  assert.equal(vacia.quiet, 0, 'sin informes no hay ninguno callado, que no es lo mismo que no saberlo')
+  assert.equal(empty.quiet, 0, 'sin informes no hay ninguno callado, que no es lo mismo que no saberlo')
 
   // Con un informe pendiente sí se abre, y lo consolida.
   withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
-  const abierta = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
-  assert.equal(abierta.created, true)
-  assert.equal(abierta.reports, 1)
-  assert.ok(fs.existsSync(abierta.file))
+  const opened = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
+  assert.equal(opened.created, true)
+  assert.equal(opened.reports, 1)
+  assert.ok(fs.existsSync(opened.file))
 })
 
 // Firmar y aplicar son actos separados a propósito —OPS-004—, así que entre uno y otro una propuesta
@@ -412,20 +412,20 @@ test('una propuesta firmada y sin aplicar se ve distinta de una que espera firma
   fs.writeFileSync(path.join(reports, '2099-01-07.md'),
     '---\nagent: probe\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo que proponer.\n')
 
-  const propuesta = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
-  const avisos = () => learning.evaluate(target, 'probe').warnings.join('\n')
+  const proposal = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
+  const warnings = () => learning.evaluate(target, 'probe').warnings.join('\n')
 
   // Sin firmar: está sin aplicar, y eso es correcto — espera a una persona.
   assert.equal(learning.evaluate(target, 'probe').pending, 1, 'cuenta como pendiente')
-  assert.equal(/firmada\(s\) sin aplicar/.test(avisos()), false,
+  assert.equal(/firmada\(s\) sin aplicar/.test(warnings()), false,
     'sin firma no hay nada detenido: espera una decisión')
 
   // Firmada como lo hace `sign-proposal.yml`: el estado en el cuerpo, no en el frontmatter.
-  fs.writeFileSync(propuesta.file, fs.readFileSync(propuesta.file, 'utf8')
+  fs.writeFileSync(proposal.file, fs.readFileSync(proposal.file, 'utf8')
     .replace('- Estado: pendiente', '- Estado: aprobada')
     .replace('- Responsable: por definir', '- Responsable: @quien-firma'))
 
   assert.equal(learning.evaluate(target, 'probe').pending, 1, 'sigue sin aplicar, el frontmatter no cambió')
-  assert.match(avisos(), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\): la autorización ya está/,
+  assert.match(warnings(), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\): la autorización ya está/,
     'y ahora se ve que el trabajo está detenido, no esperando')
 })

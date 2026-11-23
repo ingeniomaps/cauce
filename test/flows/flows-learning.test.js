@@ -19,7 +19,7 @@ const CLI = path.join(ROOT, 'engine', 'cli', 'ops.js')
 // Firma las tres líneas, como `sign-proposal.yml`. Antes dejaba «Estado: pendiente» y la firma
 // simulada no se parecía a la real: `seal` no mira ese campo, así que nada fallaba, pero el estado
 // «firmada y sin aplicar» no existía en ninguna prueba.
-const firmar = (file) => fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+const sign = (file) => fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
   .replace('- Estado: pendiente', '- Estado: aprobada')
   .replace('- Responsable: por definir', '- Responsable: Quien Firma')
   .replace(/Por definir\. Lo que se corrige es el recorrido/, 'Se endurece el gate de la primera etapa'))
@@ -65,47 +65,47 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
     stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
     guardrails: ['x'], completion: ['x'],
   }))
-  const registro = path.join(dir, 'evaluations', 'results', '2099-01-07.md')
-  fs.writeFileSync(registro, '---\nteam: probe\ndate: 2099-01-07\npassed: 1\ntotal: 2\n---\n\n'
+  const record = path.join(dir, 'evaluations', 'results', '2099-01-07.md')
+  fs.writeFileSync(record, '---\nteam: probe\ndate: 2099-01-07\npassed: 1\ntotal: 2\n---\n\n'
     + '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
     + '### 02-dos\n\n- Veredicto: no pasa\n\nEl gate dejó pasar la etapa sin su evidencia.\n')
 
-  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
-  assert.equal(propuesta.findings, 1, 'entra el veredicto en contra, no el que pasó')
-  const texto = fs.readFileSync(propuesta.file, 'utf8')
-  assert.match(texto, /### 02-dos — 2099-01-07/, 'el hallazgo cita el caso y la corrida')
-  assert.match(texto, /El gate dejó pasar la etapa sin su evidencia/, 'y trae su contraste')
-  assert.equal(texto.includes('01-uno'), false, 'el caso que pasó no pide cambio')
-  assert.match(texto, /^automatic_apply: false$/m)
+  const proposal = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  assert.equal(proposal.findings, 1, 'entra el veredicto en contra, no el que pasó')
+  const text = fs.readFileSync(proposal.file, 'utf8')
+  assert.match(text, /### 02-dos — 2099-01-07/, 'el hallazgo cita el caso y la corrida')
+  assert.match(text, /El gate dejó pasar la etapa sin su evidencia/, 'y trae su contraste')
+  assert.equal(text.includes('01-uno'), false, 'el caso que pasó no pide cambio')
+  assert.match(text, /^automatic_apply: false$/m)
 
   // La corrida consumida queda sellada, así que no vuelve a entrar por una segunda propuesta.
-  assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
+  assert.match(fs.readFileSync(record, 'utf8'), /^status: consolidated$/m)
   // Un fixture en «Evaluación» con la línea de una firma no la vuelve firmada (caso 507).
-  fs.writeFileSync(propuesta.file, fs.readFileSync(propuesta.file, 'utf8')
+  fs.writeFileSync(proposal.file, fs.readFileSync(proposal.file, 'utf8')
     .replace(/^(## Evaluación\n)/m, '$1\n```markdown\n- Estado: aprobada\n```\n'))
   assert.doesNotMatch(L.evaluateTeam(root, 'probe').warnings.join('\n'), /firmada\(s\) sin aplicar/,
     'una pendiente se contó como firmada por su fixture')
-  firmar(propuesta.file)
+  sign(proposal.file)
   // Entre firmar y aplicar el recorrido queda con la decisión tomada y el trabajo detenido, que no es
   // lo mismo que esperar una firma. Sin esto los dos estados se contaban juntos en `pending`.
-  const firmada = L.evaluateTeam(root, 'probe')
-  assert.equal(firmada.pending, 1, 'firmada sigue sin aplicar: el frontmatter no lo cambia la firma')
-  assert.match(firmada.warnings.join('\n'), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\)/,
+  const signed = L.evaluateTeam(root, 'probe')
+  assert.equal(signed.pending, 1, 'firmada sigue sin aplicar: el frontmatter no lo cambia la firma')
+  assert.match(signed.warnings.join('\n'), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\)/,
     'y se ve que está detenida, no esperando')
   L.seal(root, 'probe', '2099-01', 'flow')
   // Sin corridas nuevas no hay qué corregir, y entonces no se abre documento. Antes se abría uno para
   // decir «el recorrido aguantó lo que se le midió»: nadie firma eso, y una firma humana es lo que
   // cuesta. Es la misma regla que gobierna a un cargo — un documento que no puede nombrar un cambio
   // no se escribe—, y acá se comprobaba lo contrario.
-  const siguiente = L.prepareProposal(root, 'probe', new Date('2099-02-28T00:00:00Z'), '', 'flow')
-  assert.equal(siguiente.created, false, 'sin veredictos en contra no se abre nada')
-  assert.equal(siguiente.file, '', 'y no queda archivo que el job lea como propuesta y mande a PR')
+  const next = L.prepareProposal(root, 'probe', new Date('2099-02-28T00:00:00Z'), '', 'flow')
+  assert.equal(next.created, false, 'sin veredictos en contra no se abre nada')
+  assert.equal(next.file, '', 'y no queda archivo que el job lea como propuesta y mande a PR')
 
-  const estado = L.evaluateTeam(root, 'probe')
-  assert.deepEqual(estado.errors, [])
-  assert.equal(estado.proposals, 1, 'sólo la de enero, que es la única que tuvo algo que decir')
-  assert.equal(estado.pending, 0, 'y quedó aplicada')
-  assert.match(estado.warnings.join('\n'), /sin learning\/HISTORY\.md/)
+  const state = L.evaluateTeam(root, 'probe')
+  assert.deepEqual(state.errors, [])
+  assert.equal(state.proposals, 1, 'sólo la de enero, que es la única que tuvo algo que decir')
+  assert.equal(state.pending, 0, 'y quedó aplicada')
+  assert.match(state.warnings.join('\n'), /sin learning\/HISTORY\.md/)
 })
 
 // El ciclo entero, que ninguna prueba recorría: proponer, firmar, sellar y quedar registrado.
@@ -124,38 +124,38 @@ test('el ciclo de un recorrido se cierra: propone lo vivo, exige firma y deja hi
     stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
     guardrails: ['x'], completion: ['x'],
   }))
-  const corrida = (name, cuerpo) => fs.writeFileSync(
+  const run = (name, body) => fs.writeFileSync(
     path.join(dir, 'evaluations', 'results', name),
-    `---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 2\n---\n\n${cuerpo}`)
+    `---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 2\n---\n\n${body}`)
 
   // Dos corridas: un caso que falló y después se arregló, y otro que sigue rojo en las dos.
-  corrida('2099-01-07.md', '### 01-arreglado\n\n- Veredicto: no pasa\n\nFallaba por A.\n\n'
+  run('2099-01-07.md', '### 01-arreglado\n\n- Veredicto: no pasa\n\nFallaba por A.\n\n'
     + '### 02-vivo\n\n- Veredicto: no pasa\n\nPrimera vez.\n')
-  corrida('2099-01-08.md', '### 01-arreglado\n\n- Veredicto: pasa\n\nYa no falla.\n\n'
+  run('2099-01-08.md', '### 01-arreglado\n\n- Veredicto: pasa\n\nYa no falla.\n\n'
     + '### 02-vivo\n\n- Veredicto: no pasa\n\nSigue rojo con el arreglo puesto.\n')
 
-  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
-  const texto = fs.readFileSync(propuesta.file, 'utf8')
+  const proposal = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  const text = fs.readFileSync(proposal.file, 'utf8')
 
   // Uno, no tres. Volcar todo «no pasa» de toda corrida pedía corregir lo ya corregido y repetía el
   // mismo caso una vez por corrida: sobre las cuatro de incident-review daban seis para un solo rojo.
-  assert.equal(propuesta.findings, 1, 'sólo entra el caso que sigue rojo')
-  assert.equal(texto.includes('01-arreglado'), false, 'el que se arregló no manda a arreglarlo de nuevo')
-  assert.match(texto, /Sigue rojo con el arreglo puesto/, 'y del que vive entra su contraste más nuevo')
-  assert.equal(texto.includes('Primera vez'), false, 'no el viejo')
-  assert.match(texto, /falló en 2 corridas de esta tanda/, 'con cuántas veces: separa varianza de medición')
+  assert.equal(proposal.findings, 1, 'sólo entra el caso que sigue rojo')
+  assert.equal(text.includes('01-arreglado'), false, 'el que se arregló no manda a arreglarlo de nuevo')
+  assert.match(text, /Sigue rojo con el arreglo puesto/, 'y del que vive entra su contraste más nuevo')
+  assert.equal(text.includes('Primera vez'), false, 'no el viejo')
+  assert.match(text, /falló en 2 corridas de esta tanda/, 'con cuántas veces: separa varianza de medición')
 
   // Sin firma no se sella. Un cargo llega acá después de `agent-promote`, que ya la exige; un recorrido
   // no tiene ese workflow, así que `--applied` sellaba lo que nadie decidió y el documento quedaba
   // diciendo `applied` en el frontmatter y «Estado: pendiente» en el cuerpo.
   assert.throws(() => L.seal(root, 'probe', '2099-01', 'flow'), /no la decidió nadie/)
 
-  firmar(propuesta.file)
+  sign(proposal.file)
   L.seal(root, 'probe', '2099-01', 'flow')
-  const aplicada = fs.readFileSync(propuesta.file, 'utf8')
-  assert.match(aplicada, /^status: applied$/m)
-  assert.match(aplicada, /^- Estado: aplicada$/m, 'y el cuerpo deja de contradecir al frontmatter')
-  assert.equal(aplicada.endsWith('\n'), true, 'sin comerse el salto final del archivo')
+  const applied = fs.readFileSync(proposal.file, 'utf8')
+  assert.match(applied, /^status: applied$/m)
+  assert.match(applied, /^- Estado: aplicada$/m, 'y el cuerpo deja de contradecir al frontmatter')
+  assert.equal(applied.endsWith('\n'), true, 'sin comerse el salto final del archivo')
 
   // Y queda registrado, que es lo que la plantilla del historial promete y nadie escribía.
   assert.match(fs.readFileSync(path.join(dir, 'learning', 'HISTORY.md'), 'utf8'),
@@ -179,8 +179,8 @@ test('sellar no exige que el historial exista', () => {
     '---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 1\n---\n\n'
     + '### 01-uno\n\n- Veredicto: no pasa\n\nEl gate dejó pasar la etapa.\n')
 
-  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
-  firmar(propuesta.file)
+  const proposal = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  sign(proposal.file)
   assert.equal(L.seal(root, 'probe', '2099-01', 'flow').already, false)
   assert.equal(fs.existsSync(path.join(dir, 'learning', 'HISTORY.md')), false, 'y no lo inventa')
 })
@@ -201,22 +201,22 @@ test('la re-corrida del mismo día entra al ciclo, y entra después de la primer
     stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
     guardrails: ['x'], completion: ['x'],
   }))
-  const registro = (name, caso, detalle) => {
+  const record = (name, caseName, detail) => {
     const file = path.join(dir, 'evaluations', 'results', name)
     fs.writeFileSync(file, `---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 1\n---\n\n`
-      + `### ${caso}\n\n- Veredicto: no pasa\n\n${detalle}\n`)
+      + `### ${caseName}\n\n- Veredicto: no pasa\n\n${detail}\n`)
     return file
   }
-  const primera = registro('2099-01-07.md', '01-uno', 'La primera corrida.')
-  const segunda = registro('2099-01-07-2.md', '02-dos', 'La re-corrida, con el arreglo puesto.')
+  const first = record('2099-01-07.md', '01-uno', 'La primera corrida.')
+  const second = record('2099-01-07-2.md', '02-dos', 'La re-corrida, con el arreglo puesto.')
 
-  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
-  assert.equal(propuesta.findings, 2, 'las dos corridas del día entran')
-  const texto = fs.readFileSync(propuesta.file, 'utf8')
-  assert.match(texto, /La re-corrida, con el arreglo puesto/, 'la segunda no se pierde')
-  assert.ok(texto.indexOf('La primera corrida') < texto.indexOf('La re-corrida'),
+  const proposal = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  assert.equal(proposal.findings, 2, 'las dos corridas del día entran')
+  const text = fs.readFileSync(proposal.file, 'utf8')
+  assert.match(text, /La re-corrida, con el arreglo puesto/, 'la segunda no se pierde')
+  assert.ok(text.indexOf('La primera corrida') < text.indexOf('La re-corrida'),
     'y va después de la primera: `-` ordena antes que `.` si se compara el nombre crudo')
-  for (const file of [primera, segunda]) {
+  for (const file of [first, second]) {
     assert.match(fs.readFileSync(file, 'utf8'), /^status: consolidated$/m, 'las dos quedan selladas')
   }
 })
@@ -237,10 +237,10 @@ test('learn sobre un recorrido sin --proposal dice qué corresponde, y no abre u
   }))
 
   const out = run(['learn', 'probe', '--flow'], root)
-  const salida = `${out.stdout}${out.stderr}`
+  const output = `${out.stdout}${out.stderr}`
   assert.equal(out.status, 2, 'es un uso que no existe, no un éxito silencioso')
-  assert.doesNotMatch(salida, /SKILL\.md/, 'no manda a crear un cargo: lo que se pidió fue un recorrido')
-  assert.match(salida, /--proposal/, 'y dice con qué comando sí se aprende de las corridas')
+  assert.doesNotMatch(output, /SKILL\.md/, 'no manda a crear un cargo: lo que se pidió fue un recorrido')
+  assert.match(output, /--proposal/, 'y dice con qué comando sí se aprende de las corridas')
   assert.equal(fs.existsSync(path.join(dir, 'learning', 'reports')), false,
     'ni deja un informe que su propia propuesta no va a leer')
 })
@@ -264,8 +264,8 @@ test('y con --proposal el mismo recorrido sí abre su propuesta desde el CLI', (
     + '# Casos adversariales — 2099-01-07\n\n### 01-uno\n\n- Veredicto: no pasa\n\nEl gate no frenó.\n')
 
   const out = run(['learn', 'probe', '--flow', '--proposal'], root)
-  const salida = `${out.stdout}${out.stderr}`
-  assert.doesNotMatch(salida, /es un recorrido: aprende de sus corridas/, 'la negativa no alcanza a este uso')
+  const output = `${out.stdout}${out.stderr}`
+  assert.doesNotMatch(output, /es un recorrido: aprende de sus corridas/, 'la negativa no alcanza a este uso')
   assert.equal(out.status, 0, 'el ciclo de un recorrido se abre desde el CLI, no sólo desde la API')
   assert.equal(fs.existsSync(path.join(dir, 'learning', 'proposals')), true,
     'y el veredicto en contra llega a una propuesta')

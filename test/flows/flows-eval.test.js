@@ -20,15 +20,15 @@ const CLI = path.join(ROOT, 'engine', 'cli', 'ops.js')
 // existan, que los agentes existan, que los gates estén escritos—, así que nadie comprobaba nunca
 // que un `exitGate` frenara lo que dice frenar.
 test('los casos de un recorrido se leen como los de un cargo', () => {
-  const casos = EV.list(ROOT, 'technical-design', 'flow')
-  assert.ok(casos.length >= 4, 'el recorrido declara sus casos')
-  for (const caso of casos) {
-    assert.ok(caso.request.trim(), `${caso.id}: sin solicitud`)
-    assert.equal(caso.expected.length, 4, `${caso.id}: cuatro comportamientos, como en todo el catálogo`)
+  const cases = EV.list(ROOT, 'technical-design', 'flow')
+  assert.ok(cases.length >= 4, 'el recorrido declara sus casos')
+  for (const caseName of cases) {
+    assert.ok(caseName.request.trim(), `${caseName.id}: sin solicitud`)
+    assert.equal(caseName.expected.length, 4, `${caseName.id}: cuatro comportamientos, como en todo el catálogo`)
   }
 
-  const prohibido = EV.behaviors(ROOT, 'technical-design', 'flow').forbidden
-  assert.ok(prohibido.includes('security_turned_into_an_approval'), 'la conducta prohibida llega a quien juzga')
+  const forbidden = EV.behaviors(ROOT, 'technical-design', 'flow').forbidden
+  assert.ok(forbidden.includes('security_turned_into_an_approval'), 'la conducta prohibida llega a quien juzga')
 
   // El registro vive junto al recorrido, no junto a un cargo.
   assert.match(EV.resultsDir(ROOT, 'technical-design', 'flow').replace(ROOT, ''),
@@ -50,28 +50,28 @@ test('cambiar el flow.json de un recorrido envejece sus veredictos', () => {
     '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
   fs.writeFileSync(path.join(dir, 'evaluations', 'results', '2099-01-07.md'),
     '---\nflow: probe\n---\n\n### 01-uno\n\n- Veredicto: pasa\n\nx\n')
-  const contrato = path.join(dir, 'flow.json')
-  fs.writeFileSync(contrato, JSON.stringify({ schemaVersion: 1, slug: 'probe' }))
+  const contract = path.join(dir, 'flow.json')
+  fs.writeFileSync(contract, JSON.stringify({ schemaVersion: 1, slug: 'probe' }))
 
   // El repositorio es lo que fecha el contrato: sin commit no hay fecha, y sin fecha no hay aviso.
   // `%cs` lee la fecha del committer, no la del autor, así que `--date` no alcanza: se fija por entorno.
-  const git = (fecha, ...args) => spawnSync('git', ['-C', root, ...args],
-    { encoding: 'utf8', env: { ...process.env, GIT_COMMITTER_DATE: fecha, GIT_AUTHOR_DATE: fecha } })
-  const inicial = '2099-01-01T00:00:00'
-  git(inicial, 'init', '-q')
-  git(inicial, 'config', 'user.email', 'probe@example.test')
-  git(inicial, 'config', 'user.name', 'Probe')
-  git(inicial, 'add', '-A')
-  git(inicial, 'commit', '-qm', 'contrato inicial')
+  const git = (date, ...args) => spawnSync('git', ['-C', root, ...args],
+    { encoding: 'utf8', env: { ...process.env, GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } })
+  const initial = '2099-01-01T00:00:00'
+  git(initial, 'init', '-q')
+  git(initial, 'config', 'user.email', 'probe@example.test')
+  git(initial, 'config', 'user.name', 'Probe')
+  git(initial, 'add', '-A')
+  git(initial, 'commit', '-qm', 'contrato inicial')
 
   assert.equal(EV.validate(root, 'probe', 'flow').warnings.some((one) => /contrato cambió/.test(one)),
     false, 'un contrato anterior a la corrida no envejece nada')
 
   // Se le agrega una dimensión al contrato, después de que el caso se midiera.
-  fs.writeFileSync(contrato, JSON.stringify({ schemaVersion: 1, slug: 'probe', completion: ['algo más'] }))
-  const despues = '2099-02-01T00:00:00'
-  git(despues, 'add', '-A')
-  git(despues, 'commit', '-qm', 'una dimensión más')
+  fs.writeFileSync(contract, JSON.stringify({ schemaVersion: 1, slug: 'probe', completion: ['algo más'] }))
+  const later = '2099-02-01T00:00:00'
+  git(later, 'add', '-A')
+  git(later, 'commit', '-qm', 'una dimensión más')
 
   assert.match(EV.validate(root, 'probe', 'flow').warnings.join('\n'),
     /el contrato cambió el 2099-02-01, después de 1 de 1 veredicto\(s\) \(01-uno\)/,
@@ -93,20 +93,20 @@ test('el veredicto se compone sobre todas las corridas, no sale de la última', 
     fs.writeFileSync(path.join(dir, 'evaluations', 'cases', `${id}.md`),
       '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
   }
-  const corrida = (name, cuerpo) => fs.writeFileSync(
-    path.join(dir, 'evaluations', 'results', name), `---\nflow: probe\n---\n${cuerpo}`)
+  const run = (name, body) => fs.writeFileSync(
+    path.join(dir, 'evaluations', 'results', name), `---\nflow: probe\n---\n${body}`)
 
   // La primera midió dos y uno falló; la segunda re-corrió sólo ése y ahora pasa.
-  corrida('2099-01-07.md', '\n### 01-uno\n\n- Veredicto: pasa\n\nx\n\n### 02-dos\n\n- Veredicto: no pasa\n\ny\n')
-  corrida('2099-01-09.md', '\n### 02-dos\n\n- Veredicto: pasa\n\nya no falla\n')
+  run('2099-01-07.md', '\n### 01-uno\n\n- Veredicto: pasa\n\nx\n\n### 02-dos\n\n- Veredicto: no pasa\n\ny\n')
+  run('2099-01-09.md', '\n### 02-dos\n\n- Veredicto: pasa\n\nya no falla\n')
 
-  const estado = EV.composed(root, 'probe', 'flow')
-  assert.equal(estado.total, 2, 'dos casos tienen veredicto, aunque ninguna corrida midiera los dos')
-  assert.equal(estado.passed, 2, 'y el re-corrido cuenta con su veredicto nuevo')
-  assert.deepEqual(estado.failed, [])
+  const state = EV.composed(root, 'probe', 'flow')
+  assert.equal(state.total, 2, 'dos casos tienen veredicto, aunque ninguna corrida midiera los dos')
+  assert.equal(state.passed, 2, 'y el re-corrido cuenta con su veredicto nuevo')
+  assert.deepEqual(state.failed, [])
   // Lo compuesto es tan viejo como su parte más rancia: `01-uno` no se volvió a medir desde el 7.
-  assert.equal(estado.oldest, '2099-01-07')
-  assert.equal(estado.newest, '2099-01-09')
+  assert.equal(state.oldest, '2099-01-07')
+  assert.equal(state.newest, '2099-01-09')
 
   const runs = EV.validate(root, 'probe', 'flow')
   assert.match(runs.warnings.join('\n'), /2 de 3 caso\(s\) con veredicto: sin medir 03-tres/,
@@ -133,15 +133,15 @@ test('un recorrido sin casos lo dice', () => {
   // esta prueba: primero cuando `incident-review` ganó casos, y hoy cuando `defect-triage` ganó su
   // primer registro. El ejemplo tiene que ser del tamaño de lo que la prueba mide, no del catálogo,
   // que avanza por su cuenta.
-  const conCasos = path.join(root, 'flows', 'con-casos')
-  fs.mkdirSync(path.join(conCasos, 'evaluations', 'cases'), { recursive: true })
-  fs.writeFileSync(path.join(conCasos, 'FLOW.md'), '# Con casos\n')
-  fs.writeFileSync(path.join(conCasos, 'flow.json'), JSON.stringify({ schemaVersion: 1, slug: 'con-casos' }))
-  fs.writeFileSync(path.join(conCasos, 'evaluations', 'cases', '01-uno.md'),
+  const withCases = path.join(root, 'flows', 'con-casos')
+  fs.mkdirSync(path.join(withCases, 'evaluations', 'cases'), { recursive: true })
+  fs.writeFileSync(path.join(withCases, 'FLOW.md'), '# Con casos\n')
+  fs.writeFileSync(path.join(withCases, 'flow.json'), JSON.stringify({ schemaVersion: 1, slug: 'con-casos' }))
+  fs.writeFileSync(path.join(withCases, 'evaluations', 'cases', '01-uno.md'),
     '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
-  const medido = EV.validate(root, 'con-casos', 'flow')
-  assert.match(medido.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
-  assert.equal(medido.cases, 1)
+  const measured = EV.validate(root, 'con-casos', 'flow')
+  assert.match(measured.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
+  assert.equal(measured.cases, 1)
 })
 
 // Caso 480.
@@ -158,8 +158,8 @@ test('cada veredicto vence por su contrato o por su caso, y el resto sigue vigen
   fs.writeFileSync(path.join(dir, 'flow.json'), JSON.stringify({ schemaVersion: 1, slug: 'probe' }))
   const record = (day, ids) => fs.writeFileSync(path.join(dir, 'evaluations', 'results', `${day}.md`),
     `---\nflow: probe\n---\n\n${ids.map((id) => `### ${id}\n\n- Veredicto: pasa\n\nx\n`).join('\n')}`)
-  const git = (fecha, ...args) => spawnSync('git', ['-C', root, ...args],
-    { encoding: 'utf8', env: { ...process.env, GIT_COMMITTER_DATE: fecha, GIT_AUTHOR_DATE: fecha } })
+  const git = (date, ...args) => spawnSync('git', ['-C', root, ...args],
+    { encoding: 'utf8', env: { ...process.env, GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } })
   git('2099-01-01T00:00:00', 'init', '-q')
   git('2099-01-01T00:00:00', 'config', 'user.email', 'probe@example.test')
   git('2099-01-01T00:00:00', 'config', 'user.name', 'Probe')
@@ -193,10 +193,10 @@ test('cada veredicto vence por su contrato o por su caso, y el resto sigue vigen
   record('2099-01-25', ['03-tres'])
   runs = EV.validate(root, 'probe', 'flow')
   assert.deepEqual(runs.state.stale, ['01-uno', '02-dos', '04-cuatro'])
-  const aviso = runs.warnings.join('\n')
-  assert.match(aviso,
+  const warning = runs.warnings.join('\n')
+  assert.match(warning,
     /el contrato cambió el 2099-01-20, después de 3 de 4 veredicto\(s\) \(01-uno, 02-dos, 04-cuatro\)/)
-  assert.doesNotMatch(aviso, /el veredicto más viejo es/, 'ya no compara contra el más viejo')
+  assert.doesNotMatch(warning, /el veredicto más viejo es/, 'ya no compara contra el más viejo')
   assert.equal(EV.summary(runs.state),
     '4/4 pasan (2099-01-06…2099-01-25), 1 vigente(s): 3 mide(n) una versión anterior')
   assert.equal(EV.summary({ ...runs.state, stale: [] }), '4/4 pasan (2099-01-06…2099-01-25)', 'sin vencidos, nada más')

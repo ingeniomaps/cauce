@@ -61,8 +61,8 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
   // Nombres que la herramienta escribe sola y que la lista original no cubría. Los encontró la
   // investigación semanal del cargo de seguridad corriendo el guard sobre trece nombres: `.env`
   // bloqueaba y `.npmrc`, `.netrc` e `id_rsa` pasaban, que es donde vive el token de publicación.
-  for (const credencial of ['.npmrc', '.netrc', 'id_rsa', 'id_ed25519', '.pypirc', 'credentials']) {
-    blocked('secrets', { tool_input: { file_path: `/project/${credencial}` } },
+  for (const credential of ['.npmrc', '.netrc', 'id_rsa', 'id_ed25519', '.pypirc', 'credentials']) {
+    blocked('secrets', { tool_input: { file_path: `/project/${credential}` } },
       /credenciales que su herramienta mantiene/)
   }
   // Tapa un caso conocido, no vuelve completo al guard: sigue decidiendo por el nombre del archivo.
@@ -107,14 +107,14 @@ test('los guards de archivo dejan pasar el archivo que la persona nombró', () =
   } finally { chat.close() }
 
   // En sesión nueva, por lo mismo que en `destructive`: lo concedido arriba se hereda y taparía el negativo.
-  const otra = chatSession()
+  const other = chatSession()
   try {
     // Nombrar sin pedir no autoriza, y la negación revoca: las dos mitades que el 109 y el 116 fijaron.
-    blocked('secrets', otra.says('¿el /project/.env.production tiene algo raro?')(at('/project/.env.production')),
+    blocked('secrets', other.says('¿el /project/.env.production tiene algo raro?')(at('/project/.env.production')),
       /parece contener secretos/)
-    blocked('secrets', otra.says('no toques /project/.env.production')(at('/project/.env.production')),
+    blocked('secrets', other.says('no toques /project/.env.production')(at('/project/.env.production')),
       /parece contener secretos/)
-  } finally { otra.close() }
+  } finally { other.close() }
 })
 
 // El guard decide sobre el contenido entrante, así que hay dos ejes que se pueden romper por separado:
@@ -204,14 +204,15 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'embedded' }))
   fs.writeFileSync(path.join(root, 'migrations', '001_init.sql'), 'create table pedidos (id serial);\n')
 
-  const sobre = (cuerpo) => ({
+  const envelope = (body) => ({
     cwd: root,
     tool_name: 'apply_patch',
-    tool_input: { command: `*** Begin Patch\n${cuerpo}\n*** End Patch` },
+    tool_input: { command: `*** Begin Patch\n${body}\n*** End Patch` },
   })
-  blocked('migrations', sobre('*** Update File: migrations/001_init.sql\n@@\n+alter table pedidos add column x int;'),
+  blocked('migrations',
+    envelope('*** Update File: migrations/001_init.sql\n@@\n+alter table pedidos add column x int;'),
     /no hay repositorio con el que saber/)
-  blocked('secrets', sobre('*** Add File: .env\n+AWS_SECRET_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'),
+  blocked('secrets', envelope('*** Add File: .env\n+AWS_SECRET_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'),
     /parece contener secretos/)
 
   // Un comando de shell no es un parche: sin el encabezado, `command` no se lee como contenido.
@@ -228,12 +229,12 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
 test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archivo', () => {
   const root = tempRoot('ops-hook-migrations-alcance-')
   fs.mkdirSync(path.join(root, 'migrations'))
-  for (const fuera of [
+  for (const outside of [
     { file_path: 'docs/adr/003-particionar-pedidos.md', content: 'La migración corre `DROP TABLE pedidos;`.' },
     { file_path: 'src/repo.js', content: '// nunca hacer DELETE FROM pedidos;' },
     { file_path: 'docs/runbook.md', content: 'Paso 4: TRUNCATE sesiones;' },
   ]) {
-    assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: fuera }), fuera.file_path)
+    assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: outside }), outside.file_path)
   }
   // Y el guard sigue haciendo su trabajo donde le toca. Se asercia el nombre del archivo dentro del
   // mensaje y no sólo el motivo: es lo que separa este bloqueo de los tres de arriba.
@@ -259,15 +260,15 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
     JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
   git(['add', 'package.json', 'app.js'], root)
-  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    `${rutas.map((one) => path.join(fs.realpathSync(root), one)).join('\n')}\n`)
+  const approve = (...files) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `${files.map((one) => path.join(fs.realpathSync(root), one)).join('\n')}\n`)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
   blocked('verify', commit, /Verify falló/)
   // Aprobar una parte no alcanza: el objeto es el conjunto, no cada archivo por separado.
-  aprobar('app.js')
+  approve('app.js')
   blocked('verify', commit, /Verify falló/)
-  aprobar('app.js', 'package.json')
+  approve('app.js', 'package.json')
   assert.doesNotThrow(() => execute('verify', commit), 'el conjunto entero aprobado pasa')
   // Y en cuanto se suma un archivo, la aprobación deja de cubrirlo.
   fs.writeFileSync(path.join(root, 'otro.js'), 'module.exports = 1\n')

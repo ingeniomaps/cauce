@@ -44,17 +44,17 @@ test('un informe sin contenido no abre PR', () => {
 // que falla es pérdida real.
 test('un informe que se hizo y no llegó se anuncia; uno que nunca existió no', () => {
   const source = workflow('agent-learning')
-  const bloque = source.split(/^  research-pr:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+  const block = source.split(/^  research-pr:$/m)[1].split(/^  [a-z-]+:$/m)[0]
 
   // Las dos mitades. Sin la primera avisaría también por cada cargo que ya está en rojo, y un aviso
   // que repite lo que otro job grita se termina ignorando igual que el rojo semanal.
-  assert.match(bloque, /needs\.research\.result == 'success'\s*&&\s*steps\.fetch\.outcome == 'failure'/,
+  assert.match(block, /needs\.research\.result == 'success'\s*&&\s*steps\.fetch\.outcome == 'failure'/,
     'el aviso mira que la investigación entera haya salido bien, no sólo que este download falle')
-  assert.match(bloque, /::warning title=/, 'y sale como anotación, no como una línea más de log')
+  assert.match(block, /::warning title=/, 'y sale como anotación, no como una línea más de log')
 
   // La tolerancia sigue en pie: es lo que impide que un cargo roto bloquee a los otros.
-  assert.match(bloque, /continue-on-error: true/, 'un cargo que falla no se lleva los PR de los demás')
-  assert.match(bloque, /if: steps\.fetch\.outcome == 'success'/, 'y el PR sigue abriéndose sólo con informe')
+  assert.match(block, /continue-on-error: true/, 'un cargo que falla no se lleva los PR de los demás')
+  assert.match(block, /if: steps\.fetch\.outcome == 'success'/, 'y el PR sigue abriéndose sólo con informe')
 
   // Lo que vuelve cierta la implicación de arriba, y por eso se afirma acá: si `Prepare report`
   // dependiera de una condición, `research` podría salir verde sin subir nada y el aviso mentiría.
@@ -75,8 +75,8 @@ test('un informe que se hizo y no llegó se anuncia; uno que nunca existió no',
 // pasaría igual una aserción sobre el texto.
 test('un título renombrado no pasa por una recomendación ausente', { skip: process.platform === 'win32' }, () => {
   const source = workflow('agent-learning')
-  const paso = workflowStep(source, 'id: collect')
-  assert.ok(paso.includes('Recomendación'), 'no se encontró el paso que valida el informe')
+  const step = workflowStep(source, 'id: collect')
+  assert.ok(step.includes('Recomendación'), 'no se encontró el paso que valida el informe')
 
   const repo = tempRoot('cauce-collect-')
   const dir = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning', 'reports')
@@ -90,33 +90,33 @@ test('un título renombrado no pasa por una recomendación ausente', { skip: pro
   const stamp = new Date().toISOString().slice(0, 10)
   // El frontmatter va completo porque el mismo paso valida `status` y `propone`; romperlos es lo que
   // mide el test de al lado, que es donde se lee qué se está midiendo.
-  const informe = (recomendacion) => ['---', 'agent: probe', 'status: draft', 'propone: si', '---', '',
+  const report = (recommendation) => ['---', 'agent: probe', 'status: draft', 'propone: si', '---', '',
     '## Fuentes consultadas', '', '1. Una fuente.', '',
-    '## Hallazgos', '', 'H1. Algo cambió.', '', recomendacion, '', '## Preguntas abiertas', '', 'Ninguna.',
+    '## Hallazgos', '', 'H1. Algo cambió.', '', recommendation, '', '## Preguntas abiertas', '', 'Ninguna.',
   ].join('\n')
-  const correr = (texto) => {
-    fs.writeFileSync(path.join(dir, `${stamp}.md`), texto)
-    const salida = path.join(repo, 'github-output')
-    fs.writeFileSync(salida, '')
-    const hecho = bash(paso, { GITHUB_OUTPUT: salida })
-    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+  const execute = (text) => {
+    fs.writeFileSync(path.join(dir, `${stamp}.md`), text)
+    const output = path.join(repo, 'github-output')
+    fs.writeFileSync(output, '')
+    const result = bash(step, { GITHUB_OUTPUT: output })
+    return { ...result, written: fs.readFileSync(output, 'utf8') }
   }
 
-  const bueno = correr(informe('## Recomendación\n\n1. Cambiar algo (cierra H1).'))
-  assert.equal(bueno.status, 0, `un informe completo tiene que pasar: ${bueno.stderr}`)
-  assert.match(bueno.escrito, /^path=agents\/.*\.md$/m, 'y deja la ruta para el artifact')
+  const good = execute(report('## Recomendación\n\n1. Cambiar algo (cierra H1).'))
+  assert.equal(good.status, 0, `un informe completo tiene que pasar: ${good.stderr}`)
+  assert.match(good.written, /^path=agents\/.*\.md$/m, 'y deja la ruta para el artifact')
 
   // El caso legítimo, que es la mitad de la decisión: sin nada que proponer, el informe igual entra.
-  const sinNada = correr(informe('## Recomendación'))
-  assert.equal(sinNada.status, 0,
-    `encontrar cosas y no proponer cambios es un resultado, no un error: ${sinNada.stderr}`)
-  assert.match(sinNada.escrito, /^path=/m, 'el histórico se guarda igual')
+  const withNothing = execute(report('## Recomendación'))
+  assert.equal(withNothing.status, 0,
+    `encontrar cosas y no proponer cambios es un resultado, no un error: ${withNothing.stderr}`)
+  assert.match(withNothing.written, /^path=/m, 'el histórico se guarda igual')
 
   // Y el defecto, que hoy salía indistinguible del caso de arriba.
-  for (const roto of ['## Recomendaciones', '## Recomendación final', '### Recomendación']) {
-    const hecho = correr(informe(roto))
-    assert.notEqual(hecho.status, 0, `«${roto}» tiene que frenar el PR`)
-    assert.match(hecho.stderr, /Recomendación/, `y decir por qué: ${hecho.stderr}`)
+  for (const broken of ['## Recomendaciones', '## Recomendación final', '### Recomendación']) {
+    const result = execute(report(broken))
+    assert.notEqual(result.status, 0, `«${broken}» tiene que frenar el PR`)
+    assert.match(result.stderr, /Recomendación/, `y decir por qué: ${result.stderr}`)
   }
 })
 
@@ -168,24 +168,24 @@ test('el primer informe de un cargo no aborta su publicación', () => {
 
   // Un cargo como los del catálogo: `learning/` versionado por sus fuentes, y `reports/` estrenándose.
   const repo = tempRoot('cauce-first-')
-  const rol = 'agents/roles/system/probe'
-  fs.mkdirSync(path.join(repo, rol, 'learning', 'reports'), { recursive: true })
-  fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'x\n')
-  fs.writeFileSync(path.join(repo, rol, 'learning', 'sources.yaml'), 'version: 1\n')
+  const role = 'agents/roles/system/probe'
+  fs.mkdirSync(path.join(repo, role, 'learning', 'reports'), { recursive: true })
+  fs.writeFileSync(path.join(repo, role, 'SKILL.md'), 'x\n')
+  fs.writeFileSync(path.join(repo, role, 'learning', 'sources.yaml'), 'version: 1\n')
   const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
-  bash(`git init -q . && git add ${rol}/SKILL.md ${rol}/learning/sources.yaml`
+  bash(`git init -q . && git add ${role}/SKILL.md ${role}/learning/sources.yaml`
     + ' && git -c user.email=t@t -c user.name=t commit -qm base')
-  const dest = `${rol}/learning/reports/2099-01-07.md`
+  const dest = `${role}/learning/reports/2099-01-07.md`
   fs.writeFileSync(path.join(repo, dest), 'informe\n')
 
   // La línea real del workflow: lo que sobra además del informe, que tiene que ser nada.
-  const sobra = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
-  assert.equal(sobra, '', 'el informe recién creado es lo único que hay, y el chequeo lo reconoce')
+  const leftover = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
+  assert.equal(leftover, '', 'el informe recién creado es lo único que hay, y el chequeo lo reconoce')
 
   // Y sigue detectando lo que de verdad sobra: el freno existe para que un agente no cuele otro archivo.
-  fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'reescrito por el agente\n')
-  const conIntruso = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
-  assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
+  fs.writeFileSync(path.join(repo, role, 'SKILL.md'), 'reescrito por el agente\n')
+  const withIntruder = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
+  assert.match(withIntruder, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
 
 // Los dos campos del frontmatter que el ciclo lee después de publicar, y que fallan callados: el informe
@@ -193,7 +193,7 @@ test('el primer informe de un cargo no aborta su publicación', () => {
 // costó cuatro recomendaciones el 2026-09-07 y no se vio hasta comparar los veinte frontmatters.
 test('el frontmatter que vuelve se comprueba, no se supone', { skip: process.platform === 'win32' }, () => {
   const source = workflow('agent-learning')
-  const paso = workflowStep(source, 'id: collect')
+  const step = workflowStep(source, 'id: collect')
 
   const repo = tempRoot('cauce-frontmatter-')
   const dir = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning', 'reports')
@@ -205,42 +205,42 @@ test('el frontmatter que vuelve se comprueba, no se supone', { skip: process.pla
   bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
 
   const stamp = new Date().toISOString().slice(0, 10)
-  const correr = (frente) => {
-    fs.writeFileSync(path.join(dir, `${stamp}.md`), ['---', 'agent: probe', ...frente, '---', '',
+  const execute = (front) => {
+    fs.writeFileSync(path.join(dir, `${stamp}.md`), ['---', 'agent: probe', ...front, '---', '',
       '## Fuentes consultadas', '', '1. Una fuente.', '',
       '## Hallazgos', '', 'H1. Algo cambió.', '',
       '## Recomendación', '', 'Nada que tocar.', '', '## Preguntas abiertas', '', 'Ninguna.'].join('\n'))
-    const salida = path.join(repo, 'github-output')
-    fs.writeFileSync(salida, '')
-    return bash(paso, { GITHUB_OUTPUT: salida })
+    const output = path.join(repo, 'github-output')
+    fs.writeFileSync(output, '')
+    return bash(step, { GITHUB_OUTPUT: output })
   }
 
-  for (const propone of ['si', 'no']) {
-    const hecho = correr(['status: draft', `propone: ${propone}`])
-    assert.equal(hecho.status, 0, `«propone: ${propone}» es una respuesta válida: ${hecho.stderr}`)
+  for (const proposes of ['si', 'no']) {
+    const result = execute(['status: draft', `propone: ${proposes}`])
+    assert.equal(result.status, 0, `«propone: ${proposes}» es una respuesta válida: ${result.stderr}`)
   }
 
   // Un informe sellado de entrada no entra a ninguna propuesta: `pendingReports` saltea lo consolidado.
-  const sellado = correr(['status: consolidated', 'propone: si'])
-  assert.notEqual(sellado.status, 0, 'un informe que vuelve sellado tiene que frenar')
-  assert.match(sellado.stderr, /status: draft/, `y decir cuál es el campo: ${sellado.stderr}`)
+  const sealed = execute(['status: consolidated', 'propone: si'])
+  assert.notEqual(sealed.status, 0, 'un informe que vuelve sellado tiene que frenar')
+  assert.match(sealed.stderr, /status: draft/, `y decir cuál es el campo: ${sealed.stderr}`)
 
   // Sin contestar no se puede decidir si el PR se mergea solo, y el default del molde es no contestarlo.
-  for (const sin of [['status: draft', 'propone: por-completar'], ['status: draft'],
+  for (const without of [['status: draft', 'propone: por-completar'], ['status: draft'],
     ['status: draft', 'propone: quizás']]) {
-    const hecho = correr(sin)
-    assert.notEqual(hecho.status, 0, `«${sin.join(', ')}» tiene que frenar`)
-    assert.match(hecho.stderr, /propone/, `y nombrar el campo: ${hecho.stderr}`)
+    const result = execute(without)
+    assert.notEqual(result.status, 0, `«${without.join(', ')}» tiene que frenar`)
+    assert.match(result.stderr, /propone/, `y nombrar el campo: ${result.stderr}`)
   }
 })
 
 // Caso 246.
 test('todo informe se mergea solo: la decisión humana es la firma de la propuesta', () => {
-  const paso = workflowStep(workflow('agent-learning'), 'Open research pull request')
+  const step = workflowStep(workflow('agent-learning'), 'Open research pull request')
 
-  assert.match(paso, /gh pr merge .*--auto/, 'se arma con auto-merge, no con un merge directo')
-  assert.equal(/grep -qx 'propone: no'/.test(paso), false, 'el auto-merge no depende del campo')
-  const merge = paso.match(/^( *)gh pr merge .*$/m)
+  assert.match(step, /gh pr merge .*--auto/, 'se arma con auto-merge, no con un merge directo')
+  assert.equal(/grep -qx 'propone: no'/.test(step), false, 'el auto-merge no depende del campo')
+  const merge = step.match(/^( *)gh pr merge .*$/m)
   assert.equal(merge[1], '', 'ni de ninguna otra condición: va al nivel del paso, no dentro de un if')
   // Acá no se pide el borrado de la rama, y es a propósito: `--delete-branch` borra «after merge», y
   // con `--auto` el comando sale al armar —el merge cae horas después, sin `gh`—, así que la bandera
@@ -256,8 +256,8 @@ test('todo informe se mergea solo: la decisión humana es la firma de la propues
 // Se ejecuta el paso con un `curl` falso en vez de salir a la red: lo que se mide es qué hace con los
 // códigos que recibe, y depender de internet haría que la prueba fallara por razones ajenas.
 test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platform === 'win32' }, () => {
-  const paso = workflowStep(workflow('agent-learning'), 'Check declared sources are reachable')
-  assert.ok(paso.includes('sourceUrls') && paso.includes('documentUrls'),
+  const step = workflowStep(workflow('agent-learning'), 'Check declared sources are reachable')
+  assert.ok(step.includes('sourceUrls') && step.includes('documentUrls'),
     'lee las URLs del motor y no con un grep propio')
 
   const dir = tempRoot('cauce-fuentes-')
@@ -265,11 +265,11 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   // Un cargo falso con las cuatro carpetas que importan. Los dominios son inventados a propósito: el
   // patrón decía `*iso.org*` y el cargo real que la prueba usaba lo citaba, así que el día que el catálogo
   // cambió de ficha —caso 063— esto se puso rojo sin que el paso hubiera cambiado.
-  const cargo = path.join(dir, 'cargo')
-  fs.mkdirSync(path.join(cargo, 'learning'), { recursive: true })
-  fs.mkdirSync(path.join(cargo, 'references'), { recursive: true })
-  fs.mkdirSync(path.join(cargo, 'evaluations', 'cases'), { recursive: true })
-  const fuentes = (cuerpo) => fs.writeFileSync(path.join(cargo, 'learning', 'sources.yaml'), cuerpo)
+  const role = path.join(dir, 'cargo')
+  fs.mkdirSync(path.join(role, 'learning'), { recursive: true })
+  fs.mkdirSync(path.join(role, 'references'), { recursive: true })
+  fs.mkdirSync(path.join(role, 'evaluations', 'cases'), { recursive: true })
+  const fuentes = (body) => fs.writeFileSync(path.join(role, 'learning', 'sources.yaml'), body)
   fuentes('version: 1\nsources:\n'
     + '  - name: Sana\n    url: https://sana.example/x\n    tier: standard\n'
     + '  - name: Bloqueada\n    url: https://bloqueado.example/x\n    tier: standard\n'
@@ -277,14 +277,14 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
     + '  - name: Norma 4242\n    url: https://revive.example/4242\n    why: r\n    since: 2026-01-01\n'
     + '  - name: Norma 7777\n    url: https://corta.example/7777\n    why: r\n    since: 2026-01-01\n'
     + '  - name: Norma 8888\n    url: https://cromo.example/8888\n    why: r\n    since: 2026-01-01\n')
-  fs.writeFileSync(path.join(cargo, 'references', 'metodo.md'), '[m](https://muerta.example/x)\n')
-  fs.writeFileSync(path.join(cargo, 'SKILL.md'), 'ver https://otra-sana.example/x\n')
-  fs.writeFileSync(path.join(cargo, 'evaluations', 'cases', 'uno.md'), 'https://inventado.example/x\n')
+  fs.writeFileSync(path.join(role, 'references', 'metodo.md'), '[m](https://muerta.example/x)\n')
+  fs.writeFileSync(path.join(role, 'SKILL.md'), 'ver https://otra-sana.example/x\n')
+  fs.writeFileSync(path.join(role, 'evaluations', 'cases', 'uno.md'), 'https://inventado.example/x\n')
 
   // Las clases que la medición del catálogo separó: un dominio que bloquea a un bot y no a un navegador,
   // una página que se movió, un 202 —«vuelve más tarde»— y una cáscara que responde 200 con casi nada. El
   // cuerpo va antes del código porque así lo pide `curl -w`.
-  const falso = '#!/usr/bin/env bash\n'
+  const fake = '#!/usr/bin/env bash\n'
     + 'todo="$*"\n'
     + 'for arg in "$@"; do url="$arg"; done\n'
     + `const='${'palabra '.repeat(80)}'\n`
@@ -303,16 +303,16 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
     + "  *inventado*) printf 'ESTA URL NO DEBIO PEDIRSE\\n200' ;;\n"
     + '  *) printf \'%s\\n200\' "$const" ;;\n'
     + 'esac\n'
-  fs.writeFileSync(path.join(dir, 'curl'), falso, { mode: 0o755 })
+  fs.writeFileSync(path.join(dir, 'curl'), fake, { mode: 0o755 })
 
   // El paso resuelve el directorio del cargo con `agents list`; se lo deja resolver y después se apunta
   // al falso, así el camino real sigue ejercitándose y las URLs son las de la prueba.
-  const conCargo = (texto) => texto.replace('[ -n "$dir" ] || exit 0',
-    `[ -n "$dir" ] || exit 0\n          dir=${JSON.stringify(cargo)}`)
+  const withRole = (text) => text.replace('[ -n "$dir" ] || exit 0',
+    `[ -n "$dir" ] || exit 0\n          dir=${JSON.stringify(role)}`)
   const summary = path.join(dir, 'summary.txt')
-  const correr = (texto) => {
+  const execute = (text) => {
     fs.writeFileSync(summary, '')
-    return spawnSync('bash', ['-c', conCargo(texto)], {
+    return spawnSync('bash', ['-c', withRole(text)], {
       cwd: repo,
       encoding: 'utf8',
       env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, OPS: 'engine/cli/ops.js',
@@ -320,20 +320,20 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
     })
   }
 
-  const salida = correr(paso)
-  assert.equal(salida.status, 0, `avisa y no falla la corrida: ${salida.stderr}`)
-  const escrito = fs.readFileSync(summary, 'utf8')
-  assert.match(escrito, /\| URLs declaradas \| 4 \|/, 'cuenta sources.yaml, references/ y SKILL.md')
-  assert.match(escrito, /\| necesitaron un segundo intento \| 1 \|/,
+  const output = execute(step)
+  assert.equal(output.status, 0, `avisa y no falla la corrida: ${output.stderr}`)
+  const written = fs.readFileSync(summary, 'utf8')
+  assert.match(written, /\| URLs declaradas \| 4 \|/, 'cuenta sources.yaml, references/ y SKILL.md')
+  assert.match(written, /\| necesitaron un segundo intento \| 1 \|/,
     'y dice cuántas sólo respondieron al reintento, aunque hayan terminado sanas')
-  assert.match(escrito, /\| sin contenido legible \| 1 \|/, 'la bloqueada no cuenta: el reintento la abrió')
-  assert.match(escrito, /muerta\.example.*→ 404 · references\/metodo\.md/,
+  assert.match(written, /\| sin contenido legible \| 1 \|/, 'la bloqueada no cuenta: el reintento la abrió')
+  assert.match(written, /muerta\.example.*→ 404 · references\/metodo\.md/,
     'nombrando cuál, con qué código y en qué archivo está escrita')
-  assert.match(salida.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
+  assert.match(output.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
 
   // Un caso adversarial necesita una URL que no resuelva, así que comprobarla mide el fixture. Es una
   // aserción de ausencia porque `evaluations/` no aparece en ninguna salida cuando se lo saltea bien.
-  assert.equal(/inventado\.example/.test(escrito + salida.stdout), false,
+  assert.equal(/inventado\.example/.test(written + output.stdout), false,
     'las URLs que un caso inventa no se comprueban')
 
   // Una pendiente se reporta **sólo** cuando vuelve a servir el documento, no cuando el host contesta:
@@ -341,31 +341,31 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   // —cientos de palabras de navegación sin la marca del documento, que fue lo que pasó de verdad con la
   // ficha de IEEE 1028— y `cascara` el que ni llega al umbral. Las dos son aserciones de ausencia: un
   // aviso de más acá es el que enseña a ignorar el resto.
-  assert.match(escrito, /\| pendientes que ya responden \| 1 \|/, 'una sola vuelve a servir')
-  assert.match(escrito, /revive\.example\/4242.*ya se puede declarar/, 'y dice cuál y qué hacer')
-  assert.equal(/corta\.example\/7777/.test(escrito), false,
+  assert.match(written, /\| pendientes que ya responden \| 1 \|/, 'una sola vuelve a servir')
+  assert.match(written, /revive\.example\/4242.*ya se puede declarar/, 'y dice cuál y qué hacer')
+  assert.equal(/corta\.example\/7777/.test(written), false,
     'la que trae su marca y nada más no llega al umbral, y no se anuncia')
-  assert.equal(/cromo\.example\/8888/.test(escrito), false,
+  assert.equal(/cromo\.example\/8888/.test(written), false,
     'ni la que responde con el armazón del sitio y no con el documento')
 
   // Las dos clases que un chequeo por código solo daría por buenas.
-  for (const [host, esperado, porque] of [
+  for (const [host, expected, because] of [
     ['eur-lex.europa.eu', /202\(sin-contenido\)/, 'un 202 es «vuelve más tarde», no contenido'],
     ['cascara.example', /200\(\d+-palabras\)/, 'y un 200 con una cáscara tampoco sirve'],
   ]) {
     fuentes(`version: 1\nsources:\n  - name: F\n    url: https://${host}/x\n    tier: standard\n`)
-    const corrida = correr(paso)
-    assert.equal(corrida.status, 0, corrida.stderr)
-    assert.match(fs.readFileSync(summary, 'utf8'), esperado, porque)
+    const runResult = execute(step)
+    assert.equal(runResult.status, 0, runResult.stderr)
+    assert.match(fs.readFileSync(summary, 'utf8'), expected, because)
   }
 
   // Sin ninguna rota no hay nada que anunciar: un aviso que sale siempre se termina ignorando.
   fuentes('version: 1\nsources:\n  - name: F\n    url: https://sana.example/x\n    tier: standard\n')
-  fs.writeFileSync(path.join(cargo, 'references', 'metodo.md'), '[m](https://otra-sana.example/y)\n')
-  const limpio = correr(paso)
-  assert.equal(limpio.status, 0)
+  fs.writeFileSync(path.join(role, 'references', 'metodo.md'), '[m](https://otra-sana.example/y)\n')
+  const clean = execute(step)
+  assert.equal(clean.status, 0)
   assert.equal(/sin contenido legible/.test(fs.readFileSync(summary, 'utf8')), false)
-  assert.equal(/::warning/.test(limpio.stdout), false, 'y no se avisa de una falta que no existe')
+  assert.equal(/::warning/.test(clean.stdout), false, 'y no se avisa de una falta que no existe')
 })
 
 // El borrado es manual y por qué lo dice `.github/scripts/prune-merged-branches.sh`. Esto avisa si vuelve
@@ -373,9 +373,9 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
 test('ningún workflow borra ramas: eso se hace a mano, una vez por tanda', () => {
   const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
   for (const name of fs.readdirSync(dir)) {
-    const fuente = fs.readFileSync(path.join(dir, name), 'utf8')
-    assert.doesNotMatch(fuente, /--method DELETE .*git\/refs\/heads/, `${name} no borra ramas`)
-    assert.doesNotMatch(fuente, /types:\s*\[closed\]/, `${name} no corre en cada cierre de PR`)
+    const source = fs.readFileSync(path.join(dir, name), 'utf8')
+    assert.doesNotMatch(source, /--method DELETE .*git\/refs\/heads/, `${name} no borra ramas`)
+    assert.doesNotMatch(source, /types:\s*\[closed\]/, `${name} no corre en cada cierre de PR`)
   }
 })
 
@@ -384,7 +384,7 @@ test('ningún workflow borra ramas: eso se hace a mano, una vez por tanda', () =
 test('el barrido borra las ramas ya mergeadas, y sólo ésas', () => {
   const dir = tempRoot('cauce-prune-')
   const bin = path.join(dir, 'bin')
-  const borradas = path.join(dir, 'borradas')
+  const deletedList = path.join(dir, 'borradas')
   fs.mkdirSync(bin)
   // Cinco ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, una fuera de
   // `automation/` que el prefijo de la consulta no traería pero el script tiene que ignorar igual, y una
@@ -400,18 +400,18 @@ case "$*" in
   *"--head automation/movida"*) echo zzz ;;
   *"--head automation/abierta"*) echo '' ;;
   *"--head fix/otra"*) echo ddd ;;
-  *"--method DELETE"*) echo "\${@: -1}" >> '${borradas}' ;;
+  *"--method DELETE"*) echo "\${@: -1}" >> '${deletedList}' ;;
   *) echo "gh inesperado: $*" >&2; exit 1 ;;
 esac
 `, { mode: 0o755 })
   const script = path.resolve(__dirname, '..', '..', '.github', 'scripts', 'prune-merged-branches.sh')
-  const hecho = spawnSync('bash', [script], {
+  const result = spawnSync('bash', [script], {
     encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'o/r' },
   })
-  assert.equal(hecho.status, 0, hecho.stderr)
-  const borrado = fs.existsSync(borradas) ? fs.readFileSync(borradas, 'utf8').trim().split('\n') : []
-  assert.deepEqual(borrado, ['repos/o/r/git/refs/heads/automation/quieta'], 'sólo la mergeada que no se movió')
-  assert.match(hecho.stdout, /automation\/movida cambió después de su merge/, 'y la movida se dice, no se borra')
-  assert.doesNotMatch(hecho.stdout, /abierta/, 'y una con el PR abierto no es noticia: no se mergeó')
-  assert.match(hecho.stdout, /automation\/ganada ya no estaba/, 'y la que otro borró antes no corta el barrido')
+  assert.equal(result.status, 0, result.stderr)
+  const deleted = fs.existsSync(deletedList) ? fs.readFileSync(deletedList, 'utf8').trim().split('\n') : []
+  assert.deepEqual(deleted, ['repos/o/r/git/refs/heads/automation/quieta'], 'sólo la mergeada que no se movió')
+  assert.match(result.stdout, /automation\/movida cambió después de su merge/, 'y la movida se dice, no se borra')
+  assert.doesNotMatch(result.stdout, /abierta/, 'y una con el PR abierto no es noticia: no se mergeó')
+  assert.match(result.stdout, /automation\/ganada ya no estaba/, 'y la que otro borró antes no corta el barrido')
 })

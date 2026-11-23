@@ -170,11 +170,11 @@ test('ningún comentario cita algo que dejó de existir',
         if (!defined.has(hit[1]) && !FOREIGN.has(hit[1])) dangling.push(`${file}:${i + 1}: \`${hit[1]}\` no existe`)
       }
       for (const hit of line.matchAll(CITED_AT)) {
-        const [, name, cita] = hit
-        const target = tracked.includes(cita) ? cita : tracked.find((one) => one.endsWith(`/${cita}`))
-        if (!target) { dangling.push(`${file}:${i + 1}: ${cita} no existe`); continue }
+        const [, name, quote] = hit
+        const target = tracked.includes(quote) ? quote : tracked.find((one) => one.endsWith(`/${quote}`))
+        if (!target) { dangling.push(`${file}:${i + 1}: ${quote} no existe`); continue }
         const body = fs.readFileSync(path.join(root, target), 'utf8')
-        if (!new RegExp(`\\b${name}\\b`).test(body)) dangling.push(`${file}:${i + 1}: ${name} ya no está en ${cita}`)
+        if (!new RegExp(`\\b${name}\\b`).test(body)) dangling.push(`${file}:${i + 1}: ${name} ya no está en ${quote}`)
       }
     })
   }

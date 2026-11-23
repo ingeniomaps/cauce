@@ -53,9 +53,9 @@ test.after(() => {
 })
 
 test('bench suelto es una instancia de verdad, no un directorio vacío', () => {
-  const hecho = build('suelto')
-  assert.equal(hecho.status, 0, hecho.stderr)
-  const dir = benchDir(hecho, TOOLKIT)
+  const done = build('suelto')
+  assert.equal(done.status, 0, done.stderr)
+  const dir = benchDir(done, TOOLKIT)
 
   assert.equal(fs.existsSync(path.join(dir, 'ops.config.json')), true)
   // El motor ya viene enlazado: el banco promete una instancia donde el CLI funciona, así que enlazarlo
@@ -69,20 +69,20 @@ test('bench suelto es una instancia de verdad, no un directorio vacío', () => {
 // el motor, no una línea que se le parece. Se comprueba con `context`, que es quien la ofrece, y no
 // leyendo el archivo — el archivo se ve bien en los dos casos.
 test('bench tarea deja una tarea que el motor reconoce, reclamada y con plan', () => {
-  const hecho = build('tarea')
-  assert.equal(hecho.status, 0, hecho.stderr)
-  const dir = benchDir(hecho, TOOLKIT)
+  const done = build('tarea')
+  assert.equal(done.status, 0, done.stderr)
+  const dir = benchDir(done, TOOLKIT)
 
   // Con el id que el banco escribió, que es el que imprime por `stderr`. La suite fija `CAUCE_RUNNER` en
   // `/w/prueba` para todas sus pruebas, así que sin esto `context` busca el WIP de ese runner y contesta
   // que no hay ninguno — el banco estaría bien y la medición miraría otro lado.
-  const contexto = run(['context', path.join(dir, 'planning'), '--json'], undefined, { CAUCE_RUNNER: dir })
-  assert.equal(contexto.status, 0, contexto.stderr)
-  const estado = JSON.parse(contexto.stdout)
-  assert.ok(estado.task, `la tarea tiene que estar en la cola: ${contexto.stdout.slice(0, 200)}`)
-  assert.equal(estado.claimed, true, 'y reclamada, que es lo que un guard de plan mira')
-  assert.ok(estado.wip, 'con WIP activo')
-  assert.ok(estado.wip.pending > 0, 'y con un paso pendiente, o Build no tendría nada que hacer')
+  const context = run(['context', path.join(dir, 'planning'), '--json'], undefined, { CAUCE_RUNNER: dir })
+  assert.equal(context.status, 0, context.stderr)
+  const state = JSON.parse(context.stdout)
+  assert.ok(state.task, `la tarea tiene que estar en la cola: ${context.stdout.slice(0, 200)}`)
+  assert.equal(state.claimed, true, 'y reclamada, que es lo que un guard de plan mira')
+  assert.ok(state.wip, 'con WIP activo')
+  assert.ok(state.wip.pending > 0, 'y con un paso pendiente, o Build no tendría nada que hacer')
 })
 
 // Los dos repositorios son lo que `sidecar` promete, y para qué hacen falta lo dice `populate`. Acá se
@@ -90,9 +90,9 @@ test('bench tarea deja una tarea que el motor reconoce, reclamada y con plan', (
 // `sidecar` se escribe igual sin que el segundo repositorio exista, y ahí el banco miente sin fallar.
 // Por qué van como hermanos también está en `populate` (caso 352).
 test('bench sidecar deja instancia y producto como repositorios hermanos', () => {
-  const hecho = build('sidecar')
-  assert.equal(hecho.status, 0, hecho.stderr)
-  const dir = benchDir(hecho, TOOLKIT)
+  const done = build('sidecar')
+  assert.equal(done.status, 0, done.stderr)
+  const dir = benchDir(done, TOOLKIT)
   const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).stdout.trim()
 
   const config = JSON.parse(fs.readFileSync(path.join(dir, 'ops.config.json'), 'utf8'))
@@ -121,19 +121,19 @@ test('un banco con trabajo sin recoger no se rehace sin que alguien lo diga', ()
   const dir = benchDir(build('suelto'), TOOLKIT)
   fs.writeFileSync(path.join(dir, 'planning', 'MEDICION.md'), 'lo que devolvió la corrida\n')
 
-  const sinForce = run(['bench', 'suelto'], TOOLKIT)
-  assert.notEqual(sinForce.status, 0, 'no se rehace encima de trabajo sin recoger')
-  assert.match(sinForce.stderr, /sin recoger/)
-  assert.match(sinForce.stderr, /--force/, 'y dice cómo seguir, o la negativa deja varado')
+  const withoutForce = run(['bench', 'suelto'], TOOLKIT)
+  assert.notEqual(withoutForce.status, 0, 'no se rehace encima de trabajo sin recoger')
+  assert.match(withoutForce.stderr, /sin recoger/)
+  assert.match(withoutForce.stderr, /--force/, 'y dice cómo seguir, o la negativa deja varado')
   assert.equal(fs.existsSync(path.join(dir, 'planning', 'MEDICION.md')), true,
     'y sobre todo: no lo borró antes de negarse')
 })
 
 test('un escenario que no existe se niega nombrando los que hay', () => {
-  const hecho = build('no-existe')
-  assert.notEqual(hecho.status, 0)
-  for (const nombre of ['suelto', 'tarea', 'sidecar']) {
-    assert.match(hecho.stderr, new RegExp(nombre), `nombra ${nombre}`)
+  const done = build('no-existe')
+  assert.notEqual(done.status, 0)
+  for (const label of ['suelto', 'tarea', 'sidecar']) {
+    assert.match(done.stderr, new RegExp(label), `nombra ${label}`)
   }
 })
 
@@ -141,12 +141,12 @@ test('un escenario que no existe se niega nombrando los que hay', () => {
 // Es la misma premisa que en el de evaluación, y acá pesa igual — una medición sobre restos de otra se
 // lee igual que una limpia.
 test('cada corrida recibe un banco nuevo', () => {
-  const primero = build('suelto')
-  const dir = benchDir(primero, TOOLKIT)
+  const first = build('suelto')
+  const dir = benchDir(first, TOOLKIT)
   fs.writeFileSync(path.join(dir, 'planning', 'INBOX.md'), 'lo que dejó la corrida anterior\n')
 
-  const segundo = build('suelto')
-  assert.equal(benchDir(segundo, TOOLKIT), dir, 'el mismo escenario usa el mismo lugar')
+  const second = build('suelto')
+  assert.equal(benchDir(second, TOOLKIT), dir, 'el mismo escenario usa el mismo lugar')
   assert.doesNotMatch(fs.readFileSync(path.join(dir, 'planning', 'INBOX.md'), 'utf8'),
     /corrida anterior/, 'y nace limpio')
 })
@@ -160,9 +160,9 @@ test('bench es del toolkit; una instancia recibe la salida que le corresponde', 
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar', '--no-install']).status, 0)
   linkEngine(target)
 
-  const hecho = run(['bench', 'suelto'], target)
-  assert.notEqual(hecho.status, 0, 'en una instancia no se arma un banco')
-  assert.match(hecho.stderr, /toolkit/)
+  const done = run(['bench', 'suelto'], target)
+  assert.notEqual(done.status, 0, 'en una instancia no se arma un banco')
+  assert.match(done.stderr, /toolkit/)
 })
 
 // Se comprueba sobre el repositorio del producto y no sobre la instancia: la instancia nacía limpia aunque
@@ -178,18 +178,18 @@ test('el producto del sidecar también nace limpio, no sólo la instancia', () =
 
   fs.writeFileSync(path.join(app, 'marca.txt'), 'lo que dejó la corrida anterior\n')
   assert.match(run(['bench', 'sidecar'], TOOLKIT).stderr, /sin recoger/, 'el trabajo en el producto también cuenta')
-  const rehecho = benchDir(build('sidecar'), TOOLKIT)
-  assert.equal(fs.existsSync(path.join(path.dirname(rehecho), 'app', 'marca.txt')), false,
+  const rebuilt = benchDir(build('sidecar'), TOOLKIT)
+  assert.equal(fs.existsSync(path.join(path.dirname(rebuilt), 'app', 'marca.txt')), false,
     'el producto se rehace con el banco')
 
   // Lo que se borra es la carpeta entera, así que todo lo que una corrida dejó en ella es trabajo sin
   // recoger: lo escrito en la instancia, el árbol de una tarea, una nota suelta.
   const refused = () => run(['bench', 'sidecar'], TOOLKIT)
-  fs.writeFileSync(path.join(rehecho, 'planning', 'MEDICION.md'), 'lo medido\n')
+  fs.writeFileSync(path.join(rebuilt, 'planning', 'MEDICION.md'), 'lo medido\n')
   assert.match(refused().stderr, /sin recoger/, 'la instancia sucia')
-  fs.rmSync(path.join(rehecho, 'planning', 'MEDICION.md'))
+  fs.rmSync(path.join(rebuilt, 'planning', 'MEDICION.md'))
   for (const left of ['app-tarea-medida', 'NOTAS.md']) {
-    const stray = path.join(path.dirname(rehecho), left)
+    const stray = path.join(path.dirname(rebuilt), left)
     if (left.endsWith('.md')) fs.writeFileSync(stray, 'x\n')
     else fs.mkdirSync(stray)
     const said = refused()
@@ -208,10 +208,10 @@ test('el producto del sidecar también nace limpio, no sólo la instancia', () =
 // por `stderr` justamente por eso, y esto lo fija.
 test('la ruta sale sola por stdout, aunque el escenario tenga algo más que decir', () => {
   for (const scenario of ['suelto', 'tarea', 'sidecar']) {
-    const hecho = build(scenario)
-    assert.equal(hecho.status, 0, hecho.stderr)
-    assert.equal(hecho.stdout.trim().split('\n').length, 1,
-      `${scenario} imprimió más de una línea: ${JSON.stringify(hecho.stdout)}`)
+    const done = build(scenario)
+    assert.equal(done.status, 0, done.stderr)
+    assert.equal(done.stdout.trim().split('\n').length, 1,
+      `${scenario} imprimió más de una línea: ${JSON.stringify(done.stdout)}`)
   }
   // Y el dato auxiliar no se pierde: sigue estando, en el canal que no contamina la ruta.
   assert.match(build('tarea').stderr, /export CAUCE_RUNNER=/)

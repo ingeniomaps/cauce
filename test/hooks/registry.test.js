@@ -65,7 +65,7 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
   const root = tempRoot('ops-failopen-')
   fs.mkdirSync(path.join(root, 'planning'))
   const config = path.join(root, 'ops.config.json')
-  const afuera = { cwd: root, tool_input: { file_path: '/etc/passwd' } }
+  const outside = { cwd: root, tool_input: { file_path: '/etc/passwd' } }
   const engine = {
     cwd: root,
     tool_input: { file_path: path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'x.js') },
@@ -74,7 +74,7 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
   fs.writeFileSync(config, JSON.stringify({
     project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], runner: {},
   }))
-  blocked('workspace-boundary', afuera, /fuera de las raíces/)
+  blocked('workspace-boundary', outside, /fuera de las raíces/)
   blocked('engine', engine, /pertenece al motor de Cauce/)
 
   // Una configuración que parsea pero trae un tipo cambiado no es «no se puede leer»: el guard sigue
@@ -84,12 +84,12 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
     project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }],
     writableOutsideRoots: '/etc', runner: {},
   }))
-  blocked('workspace-boundary', afuera, /fuera de las raíces/)
+  blocked('workspace-boundary', outside, /fuera de las raíces/)
 
   fs.writeFileSync(config, '{"project":"x",,"mode":"embedded"}')
   for (const guard of ['workspace-boundary', 'engine']) {
     assert.throws(
-      () => execute(guard, afuera),
+      () => execute(guard, outside),
       (error) => error.blocked === true && /no se puede leer/.test(error.message),
       `${guard} permitió con la configuración rota`,
     )

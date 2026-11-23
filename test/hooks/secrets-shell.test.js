@@ -5,7 +5,7 @@
 // propias pruebas, y lo que comparte con aquélla es sólo el ayudante del chat.
 
 const {
-  blocked, chatSession, messageOf, planFirstRoot, pasteApproval, WIP_CON_PLAN,
+  blocked, chatSession, messageOf, planFirstRoot, pasteApproval, WIP_WITH_PLAN,
 } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -19,7 +19,7 @@ const { execute, executeAll } = require('../../engine/hooks/run')
 // ruta, buscar en el código el nombre de un archivo de entorno frenaba como si se lo abriera. Las dos mitades
 // van juntas: el patrón pasa, y el archivo que viene después se sigue frenando.
 test('secrets-shell no toma por un archivo el patrón de una búsqueda', () => {
-  const root = planFirstRoot('ops-hook-patron-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-patron-', WIP_WITH_PLAN)
   const runs = (command) => ({ cwd: root, tool_input: { command } })
   for (const command of [
     // Los tres que frenaron recorridos reales.
@@ -40,7 +40,7 @@ test('secrets-shell no toma por un archivo el patrón de una búsqueda', () => {
 // Leer una credencial por shell, en cualquier runner (caso 104): lo que la muestra se frena, lo que sólo la
 // nombra pasa, y lo que la persona pidió en el chat también.
 test('secrets-shell frena leer una credencial por shell y deja pasar lo demás', () => {
-  const root = planFirstRoot('ops-hook-lee-shell-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-lee-shell-', WIP_WITH_PLAN)
   const runs = (command) => ({ cwd: root, tool_input: { command } })
   for (const command of ['cat .env', 'head -3 ./.env', 'grep TOKEN .env', 'sed -n 1p .env', 'source .env',
     '. .env', 'wc -l < .env', 'cat id_ed25519 | base64', 'X=1 cat .env', 'echo $(cat .npmrc)',
@@ -86,7 +86,7 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
 // heredoc es dato. Bajo un `cd` que no se resuelve no hay ruta que aprobar, así que se frena pidiéndola.
 test('secrets-shell juzga la escritura de una credencial aunque el comando commitee, y no la ubica bajo un cd perdido',
   () => {
-    const root = planFirstRoot('ops-hook-escribe-commit-', WIP_CON_PLAN)
+    const root = planFirstRoot('ops-hook-escribe-commit-', WIP_WITH_PLAN)
     const runs = (command) => ({ cwd: root, tool_input: { command } })
     for (const command of ['git commit -m wip && echo "//r/:_authToken=x" > .npmrc',
       'echo "//r/:_authToken=x" > .npmrc && git commit -m wip']) {
@@ -121,7 +121,7 @@ test('secrets-shell juzga la escritura de una credencial aunque el comando commi
 // Casos 405 y 402. Escribir una credencial desde el shell frena igual que con las herramientas de edición, y
 // por lo que es —una escritura—: el destino de un `>` ya no se lee como lo que el comando lee.
 test('secrets-shell frena escribir una credencial por shell como escritura, y no como lectura', () => {
-  const root = planFirstRoot('ops-hook-escribe-shell-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-escribe-shell-', WIP_WITH_PLAN)
   const runs = (command) => ({ cwd: root, tool_input: { command } })
   for (const command of ['echo "//r/:_authToken=x" > .npmrc', 'cat > .npmrc <<EOF\n//r/:_authToken=x\nEOF',
     'printf x >> ~/.netrc', 'tee .pypirc < plantilla', 'cp clave id_ed25519', 'cd sub && echo x > credentials',
@@ -164,7 +164,7 @@ test('secrets-shell frena escribir una credencial por shell como escritura, y no
 // la escritura. Resuelta desde la de la sesión, el bloqueo nombraba un archivo que el comando no lee, y aprobar el que
 // sí lee no lo destrababa.
 test('secrets-shell resuelve una lectura desde el cd del mismo comando', () => {
-  const root = planFirstRoot('ops-hook-lectura-cd-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-lectura-cd-', WIP_WITH_PLAN)
   const portal = path.join(root, 'portal')
   require('node:fs').mkdirSync(portal)
   const runs = (command) => ({ cwd: portal, tool_input: { command } })
@@ -209,7 +209,7 @@ test('secrets-shell resuelve una lectura desde el cd del mismo comando', () => {
 // Del mismo caso: una identidad declarada en `organization/secrets.json` se reconoce por su ruta, y la ruta se resuelve
 // desde el `cd` del comando como el resto de la lectura. Resuelta desde la sesión, `cd .. && cat local-dev.env` pasaba.
 test('una identidad declarada se reconoce también después de un cd', () => {
-  const root = planFirstRoot('ops-hook-identidad-cd-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-identidad-cd-', WIP_WITH_PLAN)
   const fs = require('node:fs')
   fs.mkdirSync(path.join(root, 'organization'), { recursive: true })
   fs.writeFileSync(path.join(root, 'organization', 'secrets.json'),

@@ -116,11 +116,11 @@ service: app
 |---|---|---|---|
 | primera | ✅ COMPLETADO 2026-08-10 | Ready | Ya se hizo |
 `)
-  const inventado = JSON.parse(run(['check', planning, '--json']).stdout)
-  assert.equal(inventado.ok, false, 'un estado fuera del vocabulario es un error, no un silencio')
+  const invented = JSON.parse(run(['check', planning, '--json']).stdout)
+  assert.equal(invented.ok, false, 'un estado fuera del vocabulario es un error, no un silencio')
   assert.ok(
-    inventado.errors.some((error) => /HUMAN_ACTIONS primera: estado .* fuera de pendiente \| resuelta/.test(error)),
-    `el error nombra la fila y el vocabulario: ${JSON.stringify(inventado.errors)}`,
+    invented.errors.some((error) => /HUMAN_ACTIONS primera: estado .* fuera de pendiente \| resuelta/.test(error)),
+    `el error nombra la fila y el vocabulario: ${JSON.stringify(invented.errors)}`,
   )
   assert.deepEqual(
     JSON.parse(run(['context', planning, '--json']).stdout).humanActions.map((action) => action.task),
@@ -225,8 +225,8 @@ El proveedor puede marcar si su oferta compite.
   fs.appendFileSync(path.join(planning, 'BACKLOG.md'), '\n## Hito catalogo — Catálogo\n\n'
     + '- [ ] **marcar-oferta** [lite] — La oferta declara si compite. (→ C1) (epic: 001) (service: api)\n')
 
-  const salida = run(['context', planning]).stdout
-  assert.match(salida, /CTX\s+- Sin esa marca el ruteo no distingue/, 'la sección viaja en la salida de texto')
+  const output = run(['context', planning]).stdout
+  assert.match(output, /CTX\s+- Sin esa marca el ruteo no distingue/, 'la sección viaja en la salida de texto')
   const json = JSON.parse(run(['context', planning, '--json']).stdout)
   assert.match(json.epic.context, /Sin esa marca el ruteo/)
   assert.doesNotMatch(json.epic.context, /Contexto relevante/, 'el encabezado no es contenido')
@@ -245,11 +245,11 @@ test('tree no muta archivos de estado', () => {
   const planning = path.resolve(__dirname, '..', '..', 'template', 'planning')
   // La cola, que es el archivo de estado que el molde sí trae: los planes viven en `wip/` y no viajan,
   // así que en el molde no hay ninguno que mirar.
-  const cola = path.join(planning, 'BACKLOG.md')
-  const before = fs.readFileSync(cola, 'utf8')
+  const queue = path.join(planning, 'BACKLOG.md')
+  const before = fs.readFileSync(queue, 'utf8')
   const result = run(['tree', planning, '--no-color'])
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(fs.readFileSync(cola, 'utf8'), before)
+  assert.equal(fs.readFileSync(queue, 'utf8'), before)
 })
 
 // Una parada sin nombre obliga a leer el estado entero para saber qué pasó, y en la salida de texto
@@ -258,19 +258,19 @@ test('tree no muta archivos de estado', () => {
 // que venían de antes, y vive en el motor para que la prosa del protocolo no se le despegue.
 test('una parada se nombra con el vocabulario del protocolo', () => {
   const P = require('../../engine/planning/stops')
-  const protocolo = fs.readFileSync(
+  const protocol = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'template', 'planning', 'PROTOCOL.md'), 'utf8',
   )
-  const seccion = protocolo.split(/^##\s+/m).find((parte) => /^Razones de parada/.test(parte))
-  assert.ok(seccion, 'PROTOCOL.md documenta las razones de parada')
-  const documentadas = [...seccion.matchAll(/`([a-z]+(?:-[a-z]+)+)`/g)].map((match) => match[1])
+  const section = protocol.split(/^##\s+/m).find((part) => /^Razones de parada/.test(part))
+  assert.ok(section, 'PROTOCOL.md documenta las razones de parada')
+  const documented = [...section.matchAll(/`([a-z]+(?:-[a-z]+)+)`/g)].map((match) => match[1])
   assert.deepEqual(
-    [...new Set(documentadas)].sort(),
+    [...new Set(documented)].sort(),
     [...P.STOP_REASONS, ...Object.keys(P.DEPRECATED_STOP_REASONS)].sort(),
     'la prosa y el motor enumeran el mismo vocabulario',
   )
   // Y las mismas familias: la familia es lo que dice en qué tramo paró, y una que la prosa no nombra no se lee.
-  for (const family of Object.keys(P.STOP_FAMILIES)) assert.match(seccion, new RegExp(`\\*\\*${family}\\*\\*`), family)
+  for (const family of Object.keys(P.STOP_FAMILIES)) assert.match(section, new RegExp(`\\*\\*${family}\\*\\*`), family)
 
   const base = tempRoot('cauce-parada-')
   const planning = path.join(base, 'planning')
@@ -282,8 +282,8 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
 - [ ] **alta-email-nuevo** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)
 `)
 
-  const vacio = run(['context', planning])
-  assert.match(vacio.stdout, /^TASK\s+alta-email-nuevo/m, 'sin bloqueos, entrega la tarea')
+  const empty = run(['context', planning])
+  assert.match(empty.stdout, /^TASK\s+alta-email-nuevo/m, 'sin bloqueos, entrega la tarea')
 
   fs.writeFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), `# Acciones humanas
 
@@ -291,20 +291,20 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
 |---|---|---|---|
 | alta-email-nuevo | pendiente | Ready | Crear la cuenta SMTP y dejar el token en \`.env\`. |
 `)
-  const trabado = run(['context', planning])
-  assert.match(trabado.stdout, /^BLOCKED\s+blocked-on-human — alta-email-nuevo: Crear la cuenta SMTP/m)
+  const stuck = run(['context', planning])
+  assert.match(stuck.stdout, /^BLOCKED\s+blocked-on-human — alta-email-nuevo: Crear la cuenta SMTP/m)
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, 'blocked-on-human')
 
   fs.writeFileSync(path.join(planning, 'BACKLOG.md'), '# Backlog promovido\n')
-  const sinCola = run(['context', planning])
-  assert.match(sinCola.stdout, /^TASK\s+\(sin tarea disponible\)/m,
+  const withoutQueue = run(['context', planning])
+  assert.match(withoutQueue.stdout, /^TASK\s+\(sin tarea disponible\)/m,
     'la cola vacía sigue siendo otra cosa que una cola trabada')
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, '')
 
   // Y sin tarea las acciones humanas salen igual, que es el estado de una instancia recién arrancada:
   // `onboard` deja filas pendientes y ninguna tarea. Lo destapó una corrida de `technical-design` sobre
   // su banco: siete filas pendientes y `context` no nombró ninguna.
-  assert.match(sinCola.stdout, /^HUMAN\s+alta-email-nuevo: Crear la cuenta SMTP/m,
+  assert.match(withoutQueue.stdout, /^HUMAN\s+alta-email-nuevo: Crear la cuenta SMTP/m,
     'lo que toca es que una persona desbloquee, y eso es lo que el comando existe para decir')
 })
 
@@ -342,7 +342,7 @@ test('la aceptación con un identificador adentro llega entera', () => {
 // prueba: cubría dos, el arreglo vivía en esos dos, y los otros nueve siguieron contestando un hecho del
 // dominio sobre un directorio que no existe —cuatro de ellos con exit 0— hasta que costó una corrida
 // (caso 075). La lista se escribe entera para que agregar un comando y olvidarse se vea acá.
-const RECIBEN_PLANNING = [
+const RECEIVE_PLANNING = [
   ['context'], ['tree'], ['check'], ['evidence'], ['recurring'], ['lessons'], ['runners'], ['adopt'],
   ['claim', 'una-tarea'], ['release', 'una-tarea'], ['worktree', 'una-tarea'], ['archive', 'human-actions'],
 ]
@@ -350,39 +350,39 @@ const RECIBEN_PLANNING = [
 test('un planning que no se puede leer no contesta como uno vacío', () => {
   const base = tempRoot('cauce-context-ausente-')
 
-  for (const [comando, ...resto] of RECIBEN_PLANNING) {
+  for (const [command, ...restArgs] of RECEIVE_PLANNING) {
     // Se arma con la raíz repetida a propósito: es la forma que toma el error real, y la que hace que la
     // ruta escrita y la resuelta no coincidan. Por qué eso pasa, en `planningRoot`.
-    const ausente = path.join(base, 'ops', 'ops', 'planning')
-    const noExiste = run([comando, ausente, ...resto])
-    assert.notEqual(noExiste.status, 0, `${comando} sobre una ruta inexistente tiene que fallar`)
-    assert.equal(noExiste.stdout.trim(), '', `${comando} no imprime un estado que se lea como válido`)
+    const missingPath = path.join(base, 'ops', 'ops', 'planning')
+    const notFound = run([command, missingPath, ...restArgs])
+    assert.notEqual(notFound.status, 0, `${command} sobre una ruta inexistente tiene que fallar`)
+    assert.equal(notFound.stdout.trim(), '', `${command} no imprime un estado que se lea como válido`)
     // Contra `path.resolve` y no contra lo que se escribió: es la única forma de que la aserción falle si
     // el mensaje vuelve a nombrar la ruta cruda, que es lo que no sirve.
-    assert.match(noExiste.stderr, new RegExp(path.resolve(ausente).replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')),
-      `${comando} nombra la ruta resuelta: ${noExiste.stderr}`)
+    assert.match(notFound.stderr, new RegExp(path.resolve(missingPath).replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')),
+      `${command} nombra la ruta resuelta: ${notFound.stderr}`)
     // Y dice **cuál** de las dos cosas pasó. Sin esto la comprobación de existencia era inobservable: un
     // directorio que no existe tampoco tiene BACKLOG.md, así que la segunda tapaba a la primera y sacar
     // la primera no ponía nada en rojo. Son diagnósticos distintos —una ruta mal resuelta contra un
     // directorio que no es un planning— y el primero es el que este caso vino a nombrar.
-    assert.match(noExiste.stderr, /no existe el planning/,
-      `${comando} dice que la ruta no existe, no que le falte un archivo: ${noExiste.stderr}`)
+    assert.match(notFound.stderr, /no existe el planning/,
+      `${command} dice que la ruta no existe, no que le falte un archivo: ${notFound.stderr}`)
 
     // Y existir no alcanza: un directorio cualquiera contestaba cola vacía igual de bien.
-    const vacio = path.join(base, `dir-${comando}`)
-    fs.mkdirSync(vacio, { recursive: true })
-    const sinBacklog = run([comando, vacio, ...resto])
-    assert.notEqual(sinBacklog.status, 0, `${comando} sobre un directorio sin BACKLOG.md tiene que fallar`)
-    assert.match(sinBacklog.stderr, /BACKLOG\.md/, `y decir qué falta: ${sinBacklog.stderr}`)
+    const empty = path.join(base, `dir-${command}`)
+    fs.mkdirSync(empty, { recursive: true })
+    const withoutBacklog = run([command, empty, ...restArgs])
+    assert.notEqual(withoutBacklog.status, 0, `${command} sobre un directorio sin BACKLOG.md tiene que fallar`)
+    assert.match(withoutBacklog.stderr, /BACKLOG\.md/, `y decir qué falta: ${withoutBacklog.stderr}`)
   }
 
   // Lo que no debe cambiar: un planning de verdad y sin trabajo en cola sigue contestando cola vacía,
   // que es la mitad legítima de la distinción.
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Ausente', '--mode', 'sidecar']).status, 0)
-  const bueno = run(['context', path.join(target, 'planning'), '--json'])
-  assert.equal(bueno.status, 0, `un planning recién creado se lee sin error: ${bueno.stderr}`)
-  assert.equal(JSON.parse(bueno.stdout).queued, 0, 'y su cola está vacía, que es un estado válido')
+  const good = run(['context', path.join(target, 'planning'), '--json'])
+  assert.equal(good.status, 0, `un planning recién creado se lee sin error: ${good.stderr}`)
+  assert.equal(JSON.parse(good.stdout).queued, 0, 'y su cola está vacía, que es un estado válido')
 })
 
 // `autobuild` dejó de promover una épica al BACKLOG —`open` es «candidata editable que aún no fue
@@ -395,19 +395,19 @@ test('sin cola, context nombra la próxima épica sin promover', () => {
   assert.equal(run(['init', target, '--name', 'Next', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
   fs.mkdirSync(path.join(target, 'app'))
-  const epica = (num, status) => fs.writeFileSync(
+  const epic = (num, status) => fs.writeFileSync(
     path.join(planning, 'roadmap', `epic-${num}-demo.md`),
     `---\nepic: ${num}\ntitle: Épica ${num}\nstatus: ${status}\nservice: app\n---\n\n`
     + `# Épica ${num} — Épica ${num}\n\n## Criterios\n\n- **C1** — Se observa.\n\n`
     + `## Contexto relevante\n\n- Vive en app/.\n\n## Historias\n\n`
     + `- [ ] **h-${num}** (→ C1) — Hacer algo. (service: app)\n`,
   )
-  epica('003', 'open')
-  epica('002', 'closed')
+  epic('003', 'open')
+  epic('002', 'closed')
 
-  const sinCola = JSON.parse(run(['context', planning, '--json']).stdout)
-  assert.equal(sinCola.task, null, 'el escenario es sin tarea en cola')
-  assert.equal(sinCola.nextEpic && sinCola.nextEpic.num, '003', 'la próxima open, no la cerrada')
+  const withoutQueue = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.equal(withoutQueue.task, null, 'el escenario es sin tarea en cola')
+  assert.equal(withoutQueue.nextEpic && withoutQueue.nextEpic.num, '003', 'la próxima open, no la cerrada')
   assert.match(run(['context', planning]).stdout, /^EPIC\s+003:.*sin promover$/m,
     'y se ve sin pedir --json, que es como se lee en una corrida')
 
@@ -415,9 +415,9 @@ test('sin cola, context nombra la próxima épica sin promover', () => {
   // aviso que sale siempre deja de leerse. Que aparezca es la señal.
   fs.writeFileSync(path.join(planning, 'BACKLOG.md'),
     '# Backlog\n\n## Hito demo — Demo\n\n- [ ] **h-003** [full] — Hacer algo. (→ C1) (service: app) (epic: 003)\n')
-  const conCola = JSON.parse(run(['context', planning, '--json']).stdout)
-  assert.equal(conCola.task.slug, 'h-003', 'ahora sí hay tarea')
-  assert.equal(conCola.nextEpic, null, 'y la épica deja de nombrarse')
+  const withQueue = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.equal(withQueue.task.slug, 'h-003', 'ahora sí hay tarea')
+  assert.equal(withQueue.nextEpic, null, 'y la épica deja de nombrarse')
 })
 
 // Por qué el WIP lleva el carril, en `parseWip`. Acá se fijan las dos direcciones, que separadas no
@@ -442,9 +442,9 @@ lane: express
 ## Plan aprobado
 1. [x] Implementar
 `)
-  const conCarril = JSON.parse(run(['context', planning, '--json']).stdout)
-  assert.equal(conCarril.task.slug, 'alta')
-  assert.equal(conCarril.task.tier, 'express', 'el cierre todavía sabe con qué carril corrió')
+  const withLane = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.equal(withLane.task.slug, 'alta')
+  assert.equal(withLane.task.tier, 'express', 'el cierre todavía sabe con qué carril corrió')
 
   writeWip(planning, `---
 task: alta
@@ -473,17 +473,17 @@ test('el checkpoint de hito lo dice su contenido, no su presencia', () => {
   assert.equal(run(['init', target, '--name', 'Gate', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
   const gate = path.join(planning, 'AWAITING_REVIEW.md')
-  const bloqueo = () => JSON.parse(run(['context', planning, '--json']).stdout).blocked
+  const blockedState = () => JSON.parse(run(['context', planning, '--json']).stdout).blocked
 
   fs.writeFileSync(gate, '---\nstatus: pendiente\n---\n\n# Checkpoint\n\nRevisar el hito demo.\n')
-  assert.equal(bloqueo(), 'awaiting-review', 'pendiente frena, que es para lo que se escribe')
+  assert.equal(blockedState(), 'awaiting-review', 'pendiente frena, que es para lo que se escribe')
 
   fs.writeFileSync(gate, '---\nstatus: resuelta\n---\n\n# Checkpoint\n\nRevisar el hito demo.\n')
-  assert.equal(bloqueo(), '', 'resuelta destraba sin que nadie tenga que acordarse de borrar el archivo')
+  assert.equal(blockedState(), '', 'resuelta destraba sin que nadie tenga que acordarse de borrar el archivo')
   assert.equal(fs.existsSync(gate), true, 'y el archivo se queda, que es lo que deja leer qué se revisó')
 
   // Cerrado por defecto (R27): el archivo de una instancia anterior no trae `status`, y hasta que alguien
   // se lo agregue tiene que seguir frenando. Abrirlo sería destrabar en silencio al actualizar.
   fs.writeFileSync(gate, '# Checkpoint\n\nRevisar el hito demo.\n')
-  assert.equal(bloqueo(), 'awaiting-review', 'sin status frena igual')
+  assert.equal(blockedState(), 'awaiting-review', 'sin status frena igual')
 })

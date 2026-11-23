@@ -30,10 +30,10 @@ test('perder la carrera por una tarea no rompe la corrida ni la construye igual'
 // carrera **no** frena, y ésta que quedarse pegado **sí**. Un recorrido que frena siempre pasaría la
 // segunda, y uno que no frena nunca pasaría la primera.
 test('un reclamo que falla sobre la misma tarea para, en vez de reintentar sin fin', async () => {
-  const pegado = { ...baseScript()[KEY.context], claimed: false }
+  const stuck = { ...baseScript()[KEY.context], claimed: false }
   const { result, phases } = await runFlow(
     { [KEY.claim]: { claimed: false, details: 'T-1 no está en BACKLOG: sólo se toma trabajo ya promovido.' } },
-    { contexts: [pegado, pegado, pegado] },
+    { contexts: [stuck, stuck, stuck] },
   )
   assert.equal(result.reason, 'claim-stuck', `no frenó: ${JSON.stringify(result).slice(0, 160)}`)
   assert.match(result.detail, /no está en BACKLOG/,
@@ -48,13 +48,13 @@ test('un reclamo que falla sobre la misma tarea para, en vez de reintentar sin f
 // una parada que frenara siempre pasaría igual.
 test('perder la carrera con cola pendiente sigue con la tarea que quedó libre', async () => {
   const base = baseScript()[KEY.context]
-  const otra = { ...base, slug: 'T-2', claimed: false }
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const otherTask = { ...base, slug: 'T-2', claimed: false }
+  const empty = { ...base, hasTask: false, queued: 0 }
   const { result, phases } = await runFlow(
     { [KEY.claim]: { claimed: false, details: 'la tomó otro' }, 'Claim|claim:T-2': { claimed: true } },
     // La primera lectura es la que arranca la corrida: T-1. La segunda es la de después del reclamo
     // perdido, y ahí la cola ya ofrece la que quedó libre.
-    { contexts: [base, otra, vacio, vacio] },
+    { contexts: [base, otherTask, empty, empty] },
   )
   assert.equal(result.reason, undefined, `frenó: ${JSON.stringify(result).slice(0, 140)}`)
   assert.equal(phases.filter((one) => one === 'Claim').length, 2,
@@ -66,22 +66,22 @@ test('perder la carrera con cola pendiente sigue con la tarea que quedó libre',
 // vueltas que lo hacen lo dicen, y por eso se miden juntas: cubrir una sola deja la otra en silencio.
 test('cambiar de tarea a mitad de corrida se dice, en las dos vueltas que lo hacen', async () => {
   const base = baseScript()[KEY.context]
-  const otra = { ...base, slug: 'T-2', claimed: false }
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const otherTask = { ...base, slug: 'T-2', claimed: false }
+  const empty = { ...base, hasTask: false, queued: 0 }
 
-  const carrera = await runFlow(
+  const race = await runFlow(
     { [KEY.claim]: { claimed: false, details: 'la tomó otro' }, 'Claim|claim:T-2': { claimed: true } },
-    { contexts: [base, otra, vacio, vacio] },
+    { contexts: [base, otherTask, empty, empty] },
   )
-  assert.ok(carrera.said.some((text) => text.includes('T-1') && text.includes('sigue con T-2')),
-    `la carrera perdida no dijo con qué sigue: ${JSON.stringify(carrera.said)}`)
+  assert.ok(race.said.some((text) => text.includes('T-1') && text.includes('sigue con T-2')),
+    `la carrera perdida no dijo con qué sigue: ${JSON.stringify(race.said)}`)
 
-  const partida = await runFlow(
+  const split = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [{ ...base, claimed: true }, { ...otra, claimed: true }, vacio, vacio] },
+    { contexts: [{ ...base, claimed: true }, { ...otherTask, claimed: true }, empty, empty] },
   )
-  assert.ok(partida.said.some((text) => text.includes('T-1') && text.includes('sigue con T-2')),
-    `la partición no dijo con qué sigue: ${JSON.stringify(partida.said)}`)
+  assert.ok(split.said.some((text) => text.includes('T-1') && text.includes('sigue con T-2')),
+    `la partición no dijo con qué sigue: ${JSON.stringify(split.said)}`)
 })
 
 // Por qué una tarea partida tiene que soltar su reserva está en la rama que la parte
@@ -91,21 +91,21 @@ test('cambiar de tarea a mitad de corrida se dice, en las dos vueltas que lo hac
 // `split-not-applied`, que es donde el reemplazo no ocurre (caso 163).
 test('una tarea partida suelta su reclamo antes de seguir', async () => {
   const base = baseScript()[KEY.context]
-  const otra = { ...base, slug: 'T-2', claimed: true }
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const otherTask = { ...base, slug: 'T-2', claimed: true }
+  const empty = { ...base, hasTask: false, queued: 0 }
 
   const { prompts, asked } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [{ ...base, claimed: true }, otra, vacio, vacio] },
+    { contexts: [{ ...base, claimed: true }, otherTask, empty, empty] },
   )
 
-  const soltar = prompts.find((one) => one.key.startsWith('Decompose|') && /\brelease\b/.test(one.prompt))
-  assert.ok(soltar, `la partición no soltó el reclamo: ${JSON.stringify(asked)}`)
-  assert.match(soltar.prompt, /\bT-1\b/, 'y suelta la tarea partida, no otra')
+  const release = prompts.find((one) => one.key.startsWith('Decompose|') && /\brelease\b/.test(one.prompt))
+  assert.ok(release, `la partición no soltó el reclamo: ${JSON.stringify(asked)}`)
+  assert.match(release.prompt, /\bT-1\b/, 'y suelta la tarea partida, no otra')
 
   // El orden se compara sobre `asked` y no sobre el fuente: las dos llamadas se leen seguidas en el
   // archivo y eso no dice cuál corrió primero si una queda dentro de una rama que no se tomó.
-  assert.ok(asked.indexOf('Decompose|split') < asked.indexOf(soltar.key),
+  assert.ok(asked.indexOf('Decompose|split') < asked.indexOf(release.key),
     `soltó antes de reemplazar el BACKLOG: ${JSON.stringify(asked)}`)
 })
 
@@ -115,10 +115,10 @@ test('una tarea partida suelta su reclamo antes de seguir', async () => {
 // suelta no reciba una instrucción sobre un roadmap que no la contiene (caso 169).
 test('partir una tarea de una épica actualiza también sus historias', async () => {
   const base = baseScript()[KEY.context]
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const empty = { ...base, hasTask: false, queued: 0 }
   const { prompts } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [{ ...base, claimed: true }, { ...base, slug: 'T-2', claimed: true }, vacio, vacio] },
+    { contexts: [{ ...base, claimed: true }, { ...base, slug: 'T-2', claimed: true }, empty, empty] },
   )
   const split = prompts.find((one) => one.key === 'Decompose|split').prompt
   assert.match(split, /E1/, 'la consigna nombra la épica de la tarea que parte')
@@ -129,10 +129,10 @@ test('partir una tarea de una épica actualiza también sus historias', async ()
 // suelta se parte sin nombrar ninguna.
 test('partir una tarea sin épica no manda a tocar ningún roadmap', async () => {
   const base = { ...baseScript()[KEY.context], epic: '' }
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const empty = { ...base, hasTask: false, queued: 0 }
   const { prompts } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [{ ...base, claimed: true }, { ...base, slug: 'T-2', claimed: true }, vacio, vacio] },
+    { contexts: [{ ...base, claimed: true }, { ...base, slug: 'T-2', claimed: true }, empty, empty] },
   )
   const split = prompts.find((one) => one.key === 'Decompose|split').prompt
   assert.doesNotMatch(split, /[Hh]istoria/, 'sin épica no hay lista de historias que arreglar')
@@ -144,11 +144,11 @@ test('partir una tarea sin épica no manda a tocar ningún roadmap', async () =>
 // perdió la carrera. Por eso la parada mira las dos cosas y no sólo el slug.
 test('un reclamo mal reportado no frena si el estado dice que la tarea es nuestra', async () => {
   const base = baseScript()[KEY.context]
-  const nuestra = { ...base, claimed: true }
-  const vacio = { ...base, hasTask: false, queued: 0 }
+  const ours = { ...base, claimed: true }
+  const empty = { ...base, hasTask: false, queued: 0 }
   const { result, phases } = await runFlow(
     { [KEY.claim]: { claimed: false, details: 'no supe leer el exit code' } },
-    { contexts: [{ ...base, claimed: false }, nuestra, vacio] },
+    { contexts: [{ ...base, claimed: false }, ours, empty] },
   )
   assert.equal(result.reason, undefined, `frenó: ${JSON.stringify(result).slice(0, 160)}`)
   assert.ok(phases.includes('Build'), 'y construyó la tarea que ya tenía reservada')
@@ -157,10 +157,10 @@ test('un reclamo mal reportado no frena si el estado dice que la tarea es nuestr
 // Lo que se mide es la cola, no la escritura. Una escritura pedida a un agente siempre «sale bien», así
 // que un corte escrito sobre ella pasaría en verde sin comprobar nada; el porqué está en el recorrido.
 test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async () => {
-  const grande = { ...baseScript()[KEY.context], claimed: true }
+  const big = { ...baseScript()[KEY.context], claimed: true }
   const { result, prompts } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [grande, grande, grande] },
+    { contexts: [big, big, big] },
   )
   assert.equal(result.reason, 'split-not-applied', `no frenó: ${JSON.stringify(result).slice(0, 160)}`)
   assert.match(result.detail, /la escritura no ocurrió como se pidió/)
@@ -175,10 +175,10 @@ test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async (
 // Caso 385: partir pide slugs nuevos, y si una parte reusó el de la partida la parada lo dice. El porqué, en
 // `autobuild.js`, junto a la relectura de la cola después de partir.
 test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada lo dice', async () => {
-  const grande = { ...baseScript()[KEY.context], claimed: true }
+  const big = { ...baseScript()[KEY.context], claimed: true }
   const { result, prompts } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [grande, { ...grande, queued: grande.queued + 1 }] },
+    { contexts: [big, { ...big, queued: big.queued + 1 }] },
   )
   const split = prompts.find((one) => one.key === 'Decompose|split')
   assert.ok(split, 'no hubo partición')
@@ -191,7 +191,7 @@ test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada
   // Y si la cola creció con todas las partes, el slug no lo reusó nadie: la partida quedó al lado de sus partes.
   const left = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
-    { contexts: [grande, { ...grande, queued: grande.queued + 2 }] },
+    { contexts: [big, { ...big, queued: big.queued + 2 }] },
   )
   assert.match(left.result.detail, /T-1 quedó en ella: sacala/)
   assert.doesNotMatch(left.result.detail, /reus[oó]/)
@@ -199,10 +199,10 @@ test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada
   // Una cola que creció a medias no es «no ocurrió», y una estimación sin subtareas no revienta la corrida.
   const partial = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b', 'T-1c'] } },
-    { contexts: [grande, { ...grande, queued: grande.queued + 1 }] },
+    { contexts: [big, { ...big, queued: big.queued + 1 }] },
   )
   assert.match(partial.result.detail, /creció en 1 de 3/)
-  const none = await runFlow({ [KEY.decompose]: { hours: 12, needsSplit: true } }, { contexts: [grande, grande] })
+  const none = await runFlow({ [KEY.decompose]: { hours: 12, needsSplit: true } }, { contexts: [big, big] })
   assert.equal(none.result.reason, 'split-not-applied', JSON.stringify(none.result).slice(0, 160))
 })
 // Qué distingue una cola ocupada de una terminada, y por qué importa, está junto a la guarda que las
@@ -213,15 +213,15 @@ test('partir pide slugs nuevos, y si una parte reusó el de la partida la parada
 // Lo que la mutación deja ver es la conducta vieja entera — `phases: [Triage, Pick, Closing]` y
 // `done: []`, una corrida que informa que no había nada que hacer.
 test('una cola reclamada por otro runner se dice, en vez de cerrar como si estuviera vacía', async () => {
-  const ocupada = { ...baseScript()[KEY.context], hasTask: false, queued: 2 }
-  const { result } = await runFlow({}, { contexts: [ocupada] })
+  const busy = { ...baseScript()[KEY.context], hasTask: false, queued: 2 }
+  const { result } = await runFlow({}, { contexts: [busy] })
   assert.equal(result.reason, 'queue-unavailable', `no lo dijo: ${JSON.stringify(result).slice(0, 200)}`)
   assert.match(result.detail, /2/, 'y dice cuántas hay, que es lo que separa esto de una cola vacía')
 })
 
 test('una cola vacía cierra en silencio, como antes', async () => {
-  const vacia = { ...baseScript()[KEY.context], hasTask: false, queued: 0 }
-  const { result } = await runFlow({}, { contexts: [vacia] })
+  const empty = { ...baseScript()[KEY.context], hasTask: false, queued: 0 }
+  const { result } = await runFlow({}, { contexts: [empty] })
   assert.notEqual(result.reason, 'queue-unavailable', 'sin cola no hay nada que avisar')
 })
 
@@ -232,30 +232,30 @@ test('una cola vacía cierra en silencio, como antes', async () => {
 // sobre una tarea que nadie puede tomar; sin la segunda, soltarlo siempre abandonaría el trabajo que la
 // corrida dejó a medias en disco, que es lo contrario de lo que el reclamo dice.
 test('las paradas que bloquean antes de construir sueltan el reclamo, y las de después no', async () => {
-  const suelta = (written) => written.some((text) => /ops\.js release/.test(text))
+  const released = (written) => written.some((text) => /ops\.js release/.test(text))
 
-  const noLista = await runFlow({ [KEY.ready]: { ready: false, reason: 'falta decidir el proveedor' } })
-  assert.equal(noLista.result.reason, 'not-ready')
-  assert.ok(suelta(noLista.written), 'not-ready suelta: no hay WIP y la fila acaba de bloquear la tarea')
+  const notReady = await runFlow({ [KEY.ready]: { ready: false, reason: 'falta decidir el proveedor' } })
+  assert.equal(notReady.result.reason, 'not-ready')
+  assert.ok(released(notReady.written), 'not-ready suelta: no hay WIP y la fila acaba de bloquear la tarea')
 
   // Por la otra puerta del mismo registro: un plan bloqueado no se corrige, así que para sin replan.
-  const planMuerto = await runFlow({
+  const deadPlan = await runFlow({
     [KEY.critique]: {
       verdict: 'bloqueado', consulted: ['api/alta.go'],
       concerns: [{ detail: 'la aceptación pide dos resultados distintos', blocking: true }],
     },
   })
-  assert.equal(planMuerto.result.reason, 'plan-blocked')
-  assert.ok(suelta(planMuerto.written), 'y el plan que nadie aprueba también: Critique corre antes del WIP')
+  assert.equal(deadPlan.result.reason, 'plan-blocked')
+  assert.ok(released(deadPlan.written), 'y el plan que nadie aprueba también: Critique corre antes del WIP')
 
   // Y la de después: acá el WIP existe y el reclamo es lo que dice de quién es ese trabajo.
-  const trasConstruir = await runFlow({
+  const afterBuild = await runFlow({
     [KEY.verify]: {
       passed: false, commands: ['npm test'], details: 'rompió dos casos', uncovered: [],
     },
   })
-  assert.equal(trasConstruir.result.reason, 'verify-failed')
-  assert.ok(!suelta(trasConstruir.written), 'lo construido no se abandona soltando su reserva')
+  assert.equal(afterBuild.result.reason, 'verify-failed')
+  assert.ok(!released(afterBuild.written), 'lo construido no se abandona soltando su reserva')
 })
 
 // Caso 293. «Sólo esta tarea» se le pidió a una corrida real y el recorrido siguió con la siguiente: el agente

@@ -6,7 +6,7 @@
 const { tempRoot } = require('../support/environment')
 const {
   blocked, git, initRepo, chatSession,
-  messageOf, planFirstRoot, pasteApproval, WIP_CON_PLAN,
+  messageOf, planFirstRoot, pasteApproval, WIP_WITH_PLAN,
 } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -22,7 +22,7 @@ const { execute } = require('../../engine/hooks/run')
 // Cada `chat.says` invalida al anterior —la llamada trae el id del mensaje que la originó—, así que el
 // orden de acá no es cosmético: lo que se afirma sobre un mensaje se afirma mientras sea el último.
 test('la aprobación sólo recibe las líneas que la persona nombró en su mensaje', () => {
-  const root = planFirstRoot('ops-hook-aprobacion-contenido-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-aprobacion-contenido-', WIP_WITH_PLAN)
   const approval = path.join(root, 'planning', '.ops-approval')
   const writes = (content) => ({ cwd: root, tool_input: { file_path: approval, content } })
   const chat = chatSession()
@@ -131,7 +131,7 @@ test('lo concedido no abre un gate de commit, y gobernanza no interroga a la per
     const sub = chat.says('commiteá planning/rules/process.md')
     blocked('governance', ((extra) => sub({ agent_id: 'a1', ...extra }))(commit(governed)), /gobernanza protegida/)
     // Lo que no es un gate de commit sigue valiendo mientras la sesión siga: eso no se tocó (caso 116).
-    const reader = planFirstRoot('ops-hook-gate-contraste-', WIP_CON_PLAN)
+    const reader = planFirstRoot('ops-hook-gate-contraste-', WIP_WITH_PLAN)
     const reads = (call) => call({ cwd: reader, tool_input: { file_path: path.join(reader, '.env') } })
     assert.doesNotThrow(() => execute('secrets-read', reads(chat.says('leé el .env'))))
     assert.doesNotThrow(() => execute('secrets-read', reads(chat.says('seguí con lo tuyo'))))
@@ -188,7 +188,7 @@ test('en sidecar el bloqueo nombra el archivo que el guard lee, y pegar ahí des
   delete process.env.CLAUDE_PROJECT_DIR
   delete process.env.GEMINI_PROJECT_DIR
   try {
-    const embedded = planFirstRoot('ops-hook-embedded-aprueba-', WIP_CON_PLAN)
+    const embedded = planFirstRoot('ops-hook-embedded-aprueba-', WIP_WITH_PLAN)
     assert.match(messageOf('secrets-read', read(embedded, '.env')),
       /que pegue ella tal cual en planning\/\.ops-approval estas líneas/)
     const loose = tempRoot('ops-hook-sin-raiz-')
@@ -213,7 +213,7 @@ test('el hook de mensaje nunca frena ni imprime, reciba lo que reciba', () => {
 // El vocabulario de `chat.js` del lado de quien autoriza (caso 118). Qué palabra entra y por qué se decide
 // ahí; acá se mide el borde contra el 109.
 test('una autorización dicha con el verbo de autorizar pasa; el sustantivo solo no', () => {
-  const root = planFirstRoot('ops-hook-chat-autoriza-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-autoriza-', WIP_WITH_PLAN)
   const opened = []
   // Cada mensaje en su propia sesión: lo que uno autoriza sigue valiendo en los que siguen (caso 116), así
   // que con una sola sesión el primero que pasa deja pasar a todos y la prueba queda verde diga lo que diga
@@ -253,7 +253,7 @@ test('una autorización dicha con el verbo de autorizar pasa; el sustantivo solo
 // Lo que un bloqueo ofrece pegar tiene que ser la línea que después funciona (casos 089 y 118). El porqué
 // vive en `secrets-shell.js`; acá se mide.
 test('un bloqueo no ofrece pegar una ruta que el shell no expandió, y sigue habiendo salida', () => {
-  const root = planFirstRoot('ops-hook-lee-shell-variable-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-lee-shell-variable-', WIP_WITH_PLAN)
   const runs = (command) => ({ cwd: root, tool_input: { command } })
 
   const message = messageOf('secrets-shell', runs('cat ops/$O/.env.infisical'))
@@ -290,7 +290,7 @@ test('un bloqueo no ofrece pegar una ruta que el shell no expandió, y sigue hab
 // respuestas son las que dio la persona en la sesión real, y ninguna nombra nada: la intención la juzga el
 // agente, y lo que se comprueba acá es que la confirmación alcanza y que no alcanza para otra línea.
 test('confirmar la lectura de una credencial deja al agente escribir esa línea, y ninguna otra', () => {
-  const root = planFirstRoot('ops-hook-lectura-permanente-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-lectura-permanente-', WIP_WITH_PLAN)
   const env = path.join(root, '.env')
   const approval = path.join(root, 'planning', '.ops-approval')
   const reads = (call) => call({ cwd: root, tool_input: { command: `grep -m1 '^TOKEN=' ${env} | cut -d= -f2-` } })
@@ -320,7 +320,7 @@ test('confirmar la lectura de una credencial deja al agente escribir esa línea,
 // El otro camino: el agente intenta escribir la aprobación sin que se la hayan nombrado. El bloqueo pedía
 // «confirmando el bloqueo» y no anotaba nada, así que el «sí» siguiente volvía a frenar (caso 202).
 test('un sí al bloqueo de la aprobación aprueba las líneas que mostró', () => {
-  const root = planFirstRoot('ops-hook-aprobacion-confirmada-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-aprobacion-confirmada-', WIP_WITH_PLAN)
   const approval = path.join(root, 'planning', '.ops-approval')
   const writes = (call, content = 'src/x.js\n') => call({ cwd: root, tool_input: { file_path: approval, content } })
   const chat = chatSession()
@@ -336,7 +336,7 @@ test('un sí al bloqueo de la aprobación aprueba las líneas que mostró', () =
 // Caso 427: la aprobación que llega sin `tool_input` —el archivo de primer nivel, un parche suelto o la invocación a
 // mano con `OPS_HOOK_FILE`— se frena como cualquier otra, y no tira el guard con un error que no es un bloqueo.
 test('una escritura a la aprobación sin tool_input se frena como cualquier otra', () => {
-  const root = planFirstRoot('ops-hook-aprobacion-sin-tool-input-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-aprobacion-sin-tool-input-', WIP_WITH_PLAN)
   const approval = path.join(root, 'planning', '.ops-approval')
   blocked('workspace-boundary', { cwd: root, file_path: approval, content: 'src/x.js\n' }, /aprobarse solo/)
   const patch = '*** Begin Patch\n*** Add File: planning/.ops-approval\n+src/x.js\n*** End Patch\n'
@@ -355,7 +355,7 @@ test('una escritura a la aprobación sin tool_input se frena como cualquier otra
 // sin nada que confirmar dejaba a la persona editando a mano lo que le había pedido al agente (caso 374). La
 // otra vía, con el archivo nombrado, ya la dejaba pasar; ésta es la que no.
 test('editar sólo comentarios de la aprobación pasa sin nombrarla, y agregar una ruta sigue frenando', () => {
-  const root = planFirstRoot('ops-hook-aprobacion-comentario-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-aprobacion-comentario-', WIP_WITH_PLAN)
   const approval = path.join(root, 'planning', '.ops-approval')
   fs.writeFileSync(approval, '# aprobado mientras dure el hito\nsrc/x.js\n')
   const edit = (call, old_string, new_string) =>
@@ -390,7 +390,7 @@ test('editar sólo comentarios de la aprobación pasa sin nombrarla, y agregar u
 // el shell no resolvió —no hay línea que escribir— y una sesión fuera de toda instancia, donde no hay
 // archivo de aprobación.
 test('no se ofrece dejar permanente lo que no se puede o no se debe escribir', () => {
-  const root = planFirstRoot('ops-hook-lectura-sin-oferta-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-lectura-sin-oferta-', WIP_WITH_PLAN)
   const approval = path.join(root, 'planning', '.ops-approval')
   const runs = (call, command) => call({ cwd: root, tool_input: { command } })
   const writes = (call, content) => call({ cwd: root, tool_input: { file_path: approval, content } })

@@ -46,9 +46,9 @@ test('si no se puede determinar o contesta algo fuera de la lista, sube igual', 
 })
 
 test('sin superficies declaradas, o fuera de express, no se pregunta', async () => {
-  const sinTabla = await runFlow({}, { lane: 'express' })
-  assert.ok(!sinTabla.asked.includes(CHECK), 'preguntó sin nada que decidir')
-  assert.ok(!sinTabla.phases.includes('Review'))
+  const withoutTable = await runFlow({}, { lane: 'express' })
+  assert.ok(!withoutTable.asked.includes(CHECK), 'preguntó sin nada que decidir')
+  assert.ok(!withoutTable.phases.includes('Review'))
   for (const lane of ['directo', 'lite', 'full']) {
     const { asked } = await runFlow(withSurfaces({ critical: SURFACE }), { lane })
     assert.ok(!asked.includes(CHECK), `${lane} ya pasa por Review y preguntó igual`)
@@ -64,30 +64,30 @@ test('el clasificador y el revisor reciben las superficies', async () => {
 })
 
 test('lo que Review dice de las superficies llega a done/, también cuando no toca ninguna', async () => {
-  const toca = await runFlow({ ...withSurfaces({ critical: '' }),
+  const touches = await runFlow({ ...withSurfaces({ critical: '' }),
     [KEY.review]: { ...baseScript()[KEY.review], critical: SURFACE } })
   const named = SURFACE.replace(/[()]/g, '\\$&')
-  assert.match(doneFacts(toca), new RegExp(`review=[^;]*toca la superficie crítica ${named}`))
+  assert.match(doneFacts(touches), new RegExp(`review=[^;]*toca la superficie crítica ${named}`))
 
   const no = await runFlow({ ...withSurfaces({ critical: '' }),
     [KEY.review]: { ...baseScript()[KEY.review], critical: '' } })
   assert.match(doneFacts(no), /review=[^;]*no toca superficies críticas/)
 
-  const pendiente = await runFlow(withSurfaces({ critical: '' }, { surfacesPending: true }))
-  assert.match(doneFacts(pendiente), /review=[^;]*filas sin declarar/)
+  const pending = await runFlow(withSurfaces({ critical: '' }, { surfacesPending: true }))
+  assert.match(doneFacts(pending), /review=[^;]*filas sin declarar/)
 })
 
 // La corrida real del 2026-10-01 lo mostró: la tarea subió y pasó por Review, y `done/` decía `express`.
 // Desde el caso 538 el carril llega a done/ por el WIP: `ops done` lo lee de ahí antes que de la cola, y eso lo prueba
 // `test/planning/done-command.test.js` en disco. Acá se mide que el WIP lleve el que corrió.
 test('el carril que llega al WIP, y por él a done/, es el que corrió', async () => {
-  const subida = await runFlow(withSurfaces({ critical: SURFACE }), { lane: 'express', vouched: true })
-  assert.match((subida.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=directo,/)
-  assert.match(doneFacts(subida), /Hechos: review=/, 'la prueba encontró el prompt de cierre')
-  assert.doesNotMatch(doneFacts(subida), /lane=/, 'el cierre ya no lo copia: lo saca ops done')
+  const raised = await runFlow(withSurfaces({ critical: SURFACE }), { lane: 'express', vouched: true })
+  assert.match((raised.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=directo,/)
+  assert.match(doneFacts(raised), /Hechos: review=/, 'la prueba encontró el prompt de cierre')
+  assert.doesNotMatch(doneFacts(raised), /lane=/, 'el cierre ya no lo copia: lo saca ops done')
 
-  const intacta = await runFlow(withSurfaces({ critical: '' }), { lane: 'express', vouched: true })
-  assert.match((intacta.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=express,/)
+  const untouched = await runFlow(withSurfaces({ critical: '' }), { lane: 'express', vouched: true })
+  assert.match((untouched.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=express,/)
 })
 
 // Lo que el prompt promete sobre una superficie crítica tiene que coincidir con lo que el código hace: un
@@ -123,15 +123,15 @@ test('una sospecha sin comprobar sobre una superficie crítica frena y queda par
 })
 
 test('fuera de lo crítico, o comprobada, la misma sospecha sigue su camino de siempre', async () => {
-  const afuera = await runFlow({ ...withSurfaces({ critical: '' }), [KEY.review]: reviewed('', [suspicion]) })
-  ranToEnd(afuera.result)
-  assert.ok(!afuera.wrote.includes('Review|critical-human'))
+  const outside = await runFlow({ ...withSurfaces({ critical: '' }), [KEY.review]: reviewed('', [suspicion]) })
+  ranToEnd(outside.result)
+  assert.ok(!outside.wrote.includes('Review|critical-human'))
 
-  const comprobada = await runFlow({ ...withSurfaces({ critical: '' }),
+  const checked = await runFlow({ ...withSurfaces({ critical: '' }),
     [KEY.review]: reviewed(SURFACE, [{ ...suspicion, verified: true }],
       { verdict: 'aprobado', concerns: [], previous: [{ id: 'r1-B1', fixed: true, evidence: 'api/alta.go:12' }] }) })
-  ranToEnd(comprobada.result)
-  assert.ok(comprobada.asked.includes('Review|review-fix'), 'lo comprobado sobre lo crítico se corrige')
+  ranToEnd(checked.result)
+  assert.ok(checked.asked.includes('Review|review-fix'), 'lo comprobado sobre lo crítico se corrige')
 })
 
 test('la re-revisión también frena si deja una sospecha sin comprobar sobre lo crítico', async () => {

@@ -12,7 +12,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execute, executeAll } = require('../../engine/hooks/run')
 
-const BORRA = /borra .*que es una prueba/
+const DELETES = /borra .*que es una prueba/
 
 // Una instancia con su producto en una raíz declarada: dos pruebas commiteadas y un fuente.
 function project(prefix) {
@@ -46,9 +46,9 @@ test('borrar por shell una prueba commiteada se frena, como sea que se la borre'
     // El comando real que la borró con la primera versión del guard: la ruta en una variable asignada ahí.
     `W=${root}; cd $W; F="$W/app/test/legado.test.js"; echo "borrando"; rm -- "$F"; echo "rm exit $?"`,
     `T=app/test; rm $T/legado.test.js`, 'F=app/test/legado.test.js && git rm -q "${F}"',
-  ]) blocked('test-evidence-shell', run(command), BORRA)
-  blocked('test-evidence-shell', run('rm test/legado.test.js', app), BORRA)
-  assert.throws(() => executeAll(['pre-shell'], run('rm app/test/legado.test.js')), BORRA)
+  ]) blocked('test-evidence-shell', run(command), DELETES)
+  blocked('test-evidence-shell', run('rm test/legado.test.js', app), DELETES)
+  assert.throws(() => executeAll(['pre-shell'], run('rm app/test/legado.test.js')), DELETES)
   assert.ok(fs.existsSync(path.join(root, 'app', 'test', 'legado.test.js')), 'el guard no ejecuta nada')
 })
 
@@ -85,7 +85,7 @@ test('lo que no es borrar una prueba del proyecto pasa', () => {
   fs.renameSync(nested.root, under)
   const at = (command) => ({ cwd: under, tool_input: { command } })
   assert.doesNotThrow(() => execute('test-evidence-shell', at('rm app/src/suma.js')), 'un fuente')
-  blocked('test-evidence-shell', at('rm app/test/legado.test.js'), BORRA)
+  blocked('test-evidence-shell', at('rm app/test/legado.test.js'), DELETES)
   assert.ok(root)
 })
 
@@ -94,7 +94,7 @@ test('se aprueba como el resto: la línea en .ops-approval, lo que la persona no
   const call = run('rm app/test/legado.test.js')
   const chat = chatSession()
   try {
-    blocked('test-evidence-shell', chat.says('dejá la suite en verde')(call), BORRA)
+    blocked('test-evidence-shell', chat.says('dejá la suite en verde')(call), DELETES)
     assert.doesNotThrow(() => execute('test-evidence-shell', chat.says('borrá app/test/legado.test.js')(call)))
   } finally { chat.close() }
   assert.match(messageOf('test-evidence-shell', call), /OPS_TEST_EVIDENCE_OVERRIDE/)
@@ -102,7 +102,7 @@ test('se aprueba como el resto: la línea en .ops-approval, lo que la persona no
   assert.doesNotThrow(() => execute('test-evidence-shell', call))
 
   const other = run('rm app/test/suma.test.js')
-  blocked('test-evidence-shell', other, BORRA)
+  blocked('test-evidence-shell', other, DELETES)
   process.env.OPS_TEST_EVIDENCE_OVERRIDE = '1'
   try { assert.doesNotThrow(() => execute('test-evidence-shell', other)) } finally {
     delete process.env.OPS_TEST_EVIDENCE_OVERRIDE

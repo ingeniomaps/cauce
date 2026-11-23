@@ -63,34 +63,34 @@ test('el carril lite conserva el review y saltea el desmenuzado del plan', async
 // después por carril sería un segundo filtro contradiciendo al primero: el clasificador dijo que esa
 // superficie necesita esos ojos, y bajar ceremonia nunca bajó la revisión.
 test('el revisor que nombra la línea revisa en todos los carriles', async () => {
-  const conCast = { [KEY.context]: {
+  const withCast = { [KEY.context]: {
     ...baseScript()[KEY.context], cast: { build: 'backend-engineer', review: ['security-engineer'] },
   } }
-  const reviewerOf = ({ prompts }) => prompts.find((entrada) => entrada.key === 'Review|review').prompt
+  const reviewerOf = ({ prompts }) => prompts.find((entry) => entry.key === 'Review|review').prompt
 
-  const inLite = reviewerOf(await runFlow(conCast, { lane: 'lite' }))
+  const inLite = reviewerOf(await runFlow(withCast, { lane: 'lite' }))
   assert.match(inLite, /software-architect/, 'el dueño de la fase revisa igual')
   assert.match(inLite, /security-engineer/, 'y el que nombró la clasificación también')
 
-  const inFull = reviewerOf(await runFlow(conCast))
+  const inFull = reviewerOf(await runFlow(withCast))
   assert.match(inFull, /security-engineer/, 'lo mismo en el carril completo')
 })
 
 // Ver la tarea, y si no está clasificada clasificarla. Es lo primero que pasa, antes de gastar
 // cualquier otra cosa en ella.
 test('una tarea sin clasificar se clasifica y la clasificación se escribe donde vive la tarea', async () => {
-  const sinClasificar = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
-  const yaClasificada = baseScript()[KEY.context]
+  const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const alreadyClassified = baseScript()[KEY.context]
   const { result, phases, asked, prompts } = await runFlow({}, {
-    contexts: [sinClasificar, yaClasificada],
+    contexts: [unclassified, alreadyClassified],
   })
   ranToEnd(result)
   assert.ok(phases.includes('Classify'), 'la tarea sin lane pasa por el clasificador')
   assert.ok(asked.indexOf(KEY.classify) < asked.indexOf(KEY.ready),
     'y antes de que nada más se gaste en ella')
-  const orden = prompts.find((entry) => entry.key === KEY.classify).prompt
-  assert.match(orden, /BACKLOG\.md/, 'la clasificación se escribe donde vive la tarea')
-  assert.match(orden, /\(cast:/, 'con el reparto en la línea, no sólo el carril')
+  const order = prompts.find((entry) => entry.key === KEY.classify).prompt
+  assert.match(order, /BACKLOG\.md/, 'la clasificación se escribe donde vive la tarea')
+  assert.match(order, /\(cast:/, 'con el reparto en la línea, no sólo el carril')
 })
 
 // Caso 380: lo que es más barato hecho por la sesión no se construye con agentes, y devolverlo suelta la reserva
@@ -215,9 +215,9 @@ test('una tarea ya clasificada no vuelve a clasificarse', async () => {
 // Lo que se fija no es el carril sino que la corrida llegue al final: sin clasificación las cuatro
 // fases caras tienen que correr igual, y ninguna se saltea. Por qué no frena, en `autobuild`.
 test('una clasificación que no escribió nada deja la tarea en el carril completo', async () => {
-  const sinClasificar = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const unclassified = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
   const { result, phases } = await runFlow({ [KEY.classify]: { classified: [] } }, {
-    contexts: [sinClasificar, sinClasificar],
+    contexts: [unclassified, unclassified],
   })
   ranToEnd(result)
   for (const present of ['Decompose', 'Critique', 'Review', 'QA']) {
@@ -228,10 +228,10 @@ test('una clasificación que no escribió nada deja la tarea en el carril comple
 // El caso arranca con el WIP ya activo, que es la única forma de distinguir «no reclasifica» de «no
 // clasifica»: sin WIP las dos se ven igual. Por qué no se reclasifica, en `autobuild`.
 test('un WIP activo no se reclasifica', async () => {
-  const enVuelo = {
+  const inFlight = {
     ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] }, wipActive: true,
   }
-  const { phases } = await runFlow({}, { contexts: [enVuelo, enVuelo] })
+  const { phases } = await runFlow({}, { contexts: [inFlight, inFlight] })
   assert.ok(!phases.includes('Classify'), 'lo que ya está en vuelo no cambia de carril')
 })
 
@@ -329,13 +329,13 @@ test('el cierre recibe el veredicto de la revisión, o que no hubo', async () =>
 
   const express = await runFlow({}, { lane: 'express' })
   ranToEnd(express.result)
-  const sinRevisión = done(express.prompts)
-  assert.match(sinRevisión, /review=no corrió/, 'el cierre no sabe que nadie revisó')
+  const withoutReview = done(express.prompts)
+  assert.match(withoutReview, /review=no corrió/, 'el cierre no sabe que nadie revisó')
 
-  const directo = await runFlow({}, { lane: 'directo' })
-  ranToEnd(directo.result)
-  const conRevisión = done(directo.prompts)
-  assert.match(conRevisión, /review=aprobado/, 'el cierre no recibe el veredicto de quien sí revisó')
+  const direct = await runFlow({}, { lane: 'directo' })
+  ranToEnd(direct.result)
+  const withReview = done(direct.prompts)
+  assert.match(withReview, /review=aprobado/, 'el cierre no recibe el veredicto de quien sí revisó')
 })
 
 // Auditar una corrida no puede exigir leer este archivo. Cuando el DONE de una tarea `express` afirmó
@@ -357,13 +357,13 @@ test('la corrida devuelve por qué fases pasó, y el cierre las recibe', async (
 // la segunda, correr Ready siempre también pasa, y ahí el carril mecánico ya no compra nada. El porqué
 // de la premisa vive en `autobuild.js`, junto al `if` que la usa.
 test('el carril mecánico saltea Ready sólo si alguien leyó la aceptación en esta corrida', async () => {
-  const declarado = await runFlow({}, { lane: 'express' })
-  ranToEnd(declarado.result)
-  assert.ok(declarado.phases.includes('Ready'),
+  const declared = await runFlow({}, { lane: 'express' })
+  ranToEnd(declared.result)
+  assert.ok(declared.phases.includes('Ready'),
     'nadie leyó la aceptación y aun así nadie preguntó si estaba lista')
 
-  const avalado = await runFlow({}, { lane: 'express', vouched: true })
-  ranToEnd(avalado.result)
-  assert.ok(avalado.phases.includes('Classify'), 'el clasificador es quien avala')
-  assert.ok(!avalado.phases.includes('Ready'), 'avalado, el carril mecánico sigue sin preguntar dos veces')
+  const vouched = await runFlow({}, { lane: 'express', vouched: true })
+  ranToEnd(vouched.result)
+  assert.ok(vouched.phases.includes('Classify'), 'el clasificador es quien avala')
+  assert.ok(!vouched.phases.includes('Ready'), 'avalado, el carril mecánico sigue sin preguntar dos veces')
 })

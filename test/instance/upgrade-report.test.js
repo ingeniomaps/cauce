@@ -18,9 +18,9 @@ const { tempRoot, run } = require('../support/environment')
 test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
   const { adviceFor } = require('../../engine/cli/upgrade-report')
 
-  const regla = adviceFor(['planning/rules/system/process.md'])
-  assert.match(regla, /escribí la tuya al/, 'una regla del sistema se sobrescribe al lado')
-  assert.doesNotMatch(regla, /configuración de tu runner/, 'y no recibe el consejo del runtime')
+  const rule = adviceFor(['planning/rules/system/process.md'])
+  assert.match(rule, /escribí la tuya al/, 'una regla del sistema se sobrescribe al lado')
+  assert.doesNotMatch(rule, /configuración de tu runner/, 'y no recibe el consejo del runtime')
 
   const guard = adviceFor(['automatization/hooks/guard-verify.sh'])
   assert.match(guard, /configuración de tu runner/)
@@ -38,22 +38,22 @@ test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
   assert.match(agents, /antes de repetir con --force/, 'y cuándo moverlo, que es antes de perderlo')
 
   // Y las tres juntas llegan las tres: es el caso que dejaba a alguien sin su salida.
-  const todas = adviceFor([
+  const all = adviceFor([
     'planning/rules/system/process.md',
     'automatization/hooks/guard-verify.sh',
     'planning/PROTOCOL.md',
   ])
-  for (const parte of [/override explícito/, /configuración de tu runner/, /delivery\/project\.md/]) {
-    assert.match(todas, parte)
+  for (const part of [/override explícito/, /configuración de tu runner/, /delivery\/project\.md/]) {
+    assert.match(all, part)
   }
   assert.equal(adviceFor([]), '')
 
   // Y lo que se lee está en español entero: el consejo de las reglas decía «Las ruleFiles y decisiones
   // bajo system/», que es el nombre de una variable del motor metido en una frase. Se comprueba por la
   // forma y no por la palabra, porque lo que se cuela es siempre un identificador y nunca el mismo.
-  const todo = adviceFor(['planning/rules/system/process.md', 'automatization/hooks/guard-verify.sh',
+  const everything = adviceFor(['planning/rules/system/process.md', 'automatization/hooks/guard-verify.sh',
     'planning/PROTOCOL.md', 'AGENTS.md'])
-  const camel = todo.match(/\b[a-z]+[A-Z][a-z]+\b/g) || []
+  const camel = everything.match(/\b[a-z]+[A-Z][a-z]+\b/g) || []
   assert.deepEqual(camel, [], 'ningún identificador del motor en la prosa que lee una persona')
 })
 
@@ -61,28 +61,28 @@ test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
 // se prueban sin montar nada. Antes vivían dentro del comando que sí muta y sólo se veían corriéndolo.
 test('el preview de upgrade distingue sus tres respuestas', () => {
   const { previewUpgrade } = require('../../engine/cli/upgrade-report')
-  const dicho = []
+  const said = []
   const log = console.log
-  console.log = (line) => dicho.push(String(line))
+  console.log = (line) => said.push(String(line))
   try {
     // Al día y sin nada editado: no hay nada que resolver.
     assert.equal(previewUpgrade({ from: '1.0.0', to: '1.0.0', changed: [] }), 0)
-    assert.ok(dicho.some((line) => /al día con el motor instalado/.test(line)))
+    assert.ok(said.some((line) => /al día con el motor instalado/.test(line)))
 
     // Al día con algo editado: sale 1, porque hay algo que resolver antes de la próxima.
-    dicho.length = 0
+    said.length = 0
     assert.equal(previewUpgrade({ from: '1.0.0', to: '1.0.0', changed: ['AGENTS.md'] }), 1)
-    assert.ok(dicho.some((line) => /editado localmente: AGENTS\.md/.test(line)))
+    assert.ok(said.some((line) => /editado localmente: AGENTS\.md/.test(line)))
 
     // Hacia adelante y hacia atrás dicen cosas distintas: volver no es «hay algo más nuevo».
-    dicho.length = 0
+    said.length = 0
     assert.equal(previewUpgrade({ from: '1.0.0', to: '2.0.0', changed: [] }), 1)
-    assert.ok(dicho.some((line) => /hay una versión más nueva/.test(line)))
+    assert.ok(said.some((line) => /hay una versión más nueva/.test(line)))
 
-    dicho.length = 0
+    said.length = 0
     assert.equal(previewUpgrade({ from: '2.0.0', to: '1.0.0', changed: [] }), 1)
-    assert.ok(dicho.some((line) => /volvés a 1\.0\.0/.test(line)), 'y dice lo que se deja, no lo que se gana')
-    assert.equal(dicho.some((line) => /hay una versión más nueva/.test(line)), false)
+    assert.ok(said.some((line) => /volvés a 1\.0\.0/.test(line)), 'y dice lo que se deja, no lo que se gana')
+    assert.equal(said.some((line) => /hay una versión más nueva/.test(line)), false)
   } finally { console.log = log }
 })
 
@@ -96,18 +96,18 @@ test('sin --force el informe no dice descartado, y dice que lo propio quedó int
   const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
   fs.writeFileSync(guard, '#!/usr/bin/env bash\n# mío\n')
 
-  const conservado = run(['upgrade', target])
-  assert.equal(conservado.status, 0, conservado.stderr)
-  assert.equal(/descartado tu cambio/.test(conservado.stdout), false,
+  const kept = run(['upgrade', target])
+  assert.equal(kept.status, 0, kept.stderr)
+  assert.equal(/descartado tu cambio/.test(kept.stdout), false,
     'no se descartó nada: afirmarlo es falso')
-  assert.match(conservado.stdout, /todo lo propio quedaron intactos/,
+  assert.match(kept.stdout, /todo lo propio quedaron intactos/,
     'y es justo cuando hay que decirlo')
 
-  const forzado = run(['upgrade', target, '--force'])
-  assert.equal(forzado.status, 0, forzado.stderr)
-  assert.match(forzado.stdout, /descartado tu cambio en automatization\/hooks\/guard-verify\.sh/,
+  const forced = run(['upgrade', target, '--force'])
+  assert.equal(forced.status, 0, forced.stderr)
+  assert.match(forced.stdout, /descartado tu cambio en automatization\/hooks\/guard-verify\.sh/,
     'con --force sí se descartó, y el rastro queda')
-  assert.equal(/todo lo propio quedaron intactos/.test(forzado.stdout), false)
+  assert.equal(/todo lo propio quedaron intactos/.test(forced.stdout), false)
 })
 
 // El 047: `upgrade` conservaba archivo por archivo lo editado y en la misma corrida borraba directorios
@@ -116,30 +116,30 @@ test('una ruta retirada cuyo nombre el proyecto también usa no se borra sin --f
   const base = tempRoot('cauce-retirado-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
-  const propio = path.join(target, 'automatization', 'workflows')
-  fs.mkdirSync(propio, { recursive: true })
-  fs.writeFileSync(path.join(propio, 'autobuild.js'), '// el loop propio del proyecto\n')
+  const own = path.join(target, 'automatization', 'workflows')
+  fs.mkdirSync(own, { recursive: true })
+  fs.writeFileSync(path.join(own, 'autobuild.js'), '// el loop propio del proyecto\n')
 
   const upgraded = run(['upgrade', target])
   assert.equal(upgraded.status, 0, upgraded.stderr)
-  assert.equal(fs.existsSync(path.join(propio, 'autobuild.js')), true, 'no se borra lo que no entregó')
+  assert.equal(fs.existsSync(path.join(own, 'autobuild.js')), true, 'no se borra lo que no entregó')
   assert.match(upgraded.stdout, /automatization\/workflows: 1 archivo\(s\)/)
   assert.equal(/− retirado automatization\/workflows/.test(upgraded.stdout), false,
     'y no se afirma un retiro que no ocurrió')
 
   // Lo que sí es del toolkit sin ambigüedad se retira igual: el mecanismo no se apaga entero.
-  const catalogo = path.join(target, 'flows', 'system')
-  fs.mkdirSync(catalogo, { recursive: true })
-  fs.writeFileSync(path.join(catalogo, 'viejo.md'), '# copia vieja del catálogo\n')
-  const otra = run(['upgrade', target])
-  assert.equal(fs.existsSync(catalogo), false, 'flows/system no lleva contenido del proyecto')
-  assert.match(otra.stdout, /retirado flows\/system/)
+  const catalog = path.join(target, 'flows', 'system')
+  fs.mkdirSync(catalog, { recursive: true })
+  fs.writeFileSync(path.join(catalog, 'viejo.md'), '# copia vieja del catálogo\n')
+  const other = run(['upgrade', target])
+  assert.equal(fs.existsSync(catalog), false, 'flows/system no lleva contenido del proyecto')
+  assert.match(other.stdout, /retirado flows\/system/)
 
   // Y con --force se limpia, que es la salida que la línea ofrece.
-  const forzado = run(['upgrade', target, '--force'])
-  assert.equal(forzado.status, 0, forzado.stderr)
-  assert.equal(fs.existsSync(propio), false, '--force sí lo retira')
-  assert.match(forzado.stdout, /retirado automatization\/workflows/)
+  const forced = run(['upgrade', target, '--force'])
+  assert.equal(forced.status, 0, forced.stderr)
+  assert.equal(fs.existsSync(own), false, '--force sí lo retira')
+  assert.match(forced.stdout, /retirado automatization\/workflows/)
 })
 
 test('check cuenta las rutas retiradas que quedaron sin limpiar', () => {

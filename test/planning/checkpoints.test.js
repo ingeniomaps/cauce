@@ -21,12 +21,13 @@ function instance(prefix) {
     return out.stdout.trim()
   }
   const planning = path.join(root, 'planning')
-  const write = (hito, { status = 'pendiente', line, legacy = false } = {}) => {
-    const file = legacy ? path.join(planning, 'AWAITING_REVIEW.md') : path.join(planning, 'checkpoints', `${hito}.md`)
+  const write = (milestone, { status = 'pendiente', line, legacy = false } = {}) => {
+    const file = legacy ? path.join(planning, 'AWAITING_REVIEW.md')
+      : path.join(planning, 'checkpoints', `${milestone}.md`)
     fs.mkdirSync(path.dirname(file), { recursive: true })
-    const front = [`status: ${status}`, legacy ? '' : `hito: ${hito}`, line === undefined ? '' : `line: ${line}`]
-    fs.writeFileSync(file, `---\n${front.filter(Boolean).join('\n')}\n---\n\n# Checkpoint: hito ${hito}\n\n`
-      + `Revisar el hito ${hito}.\n`)
+    const front = [`status: ${status}`, legacy ? '' : `hito: ${milestone}`, line === undefined ? '' : `line: ${line}`]
+    fs.writeFileSync(file, `---\n${front.filter(Boolean).join('\n')}\n---\n\n# Checkpoint: hito ${milestone}\n\n`
+      + `Revisar el hito ${milestone}.\n`)
     return path.relative(root, file)
   }
   const context = () => JSON.parse(run(['context', planning, '--json']).stdout)

@@ -384,13 +384,13 @@ test('flow toma la raíz que le pasan, como el resto de los comandos', () => {
   linkEngine(target)
 
   // Desde un directorio que no es una instancia: sin la raíz no hay nada que listar, con ella sí.
-  const afuera = tempRoot('cauce-flow-afuera-')
-  assert.doesNotMatch(run(['flow', 'list'], afuera).stdout, /intake/, 'sin raíz mira donde está parado')
-  assert.match(run(['flow', 'list', target], afuera).stdout, /intake/, 'con raíz mira la que le pasaron')
+  const outside = tempRoot('cauce-flow-afuera-')
+  assert.doesNotMatch(run(['flow', 'list'], outside).stdout, /intake/, 'sin raíz mira donde está parado')
+  assert.match(run(['flow', 'list', target], outside).stdout, /intake/, 'con raíz mira la que le pasaron')
 
   // Y los que llevan recorrido la toman después de él, igual que `agents fork <cargo> [ops-root]`.
-  assert.equal(run(['flow', 'check', 'intake', target], afuera).status, 0)
-  assert.match(run(['flow', 'show', 'intake', target], afuera).stdout, /Intake/)
+  assert.equal(run(['flow', 'check', 'intake', target], outside).status, 0)
+  assert.match(run(['flow', 'show', 'intake', target], outside).stdout, /Intake/)
 })
 
 // Por qué el aviso va por `stderr` y sólo con la lista vacía está junto a `warnUnresolved`
@@ -403,17 +403,17 @@ test('un catálogo que no se pudo resolver lo dice, en vez de contestar vacío',
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar', '--no-install']).status, 0)
 
   // Sin el paquete en ninguna parte: la lista sale vacía y ahora se dice por qué.
-  const mudo = run(['agents', 'list', target])
-  assert.equal(mudo.status, 0, 'no rompe: una lista vacía sigue siendo una respuesta')
-  assert.match(mudo.stderr, /no se pudo resolver/, 'y dice que no es lo mismo que no tener cargos')
+  const mute = run(['agents', 'list', target])
+  assert.equal(mute.status, 0, 'no rompe: una lista vacía sigue siendo una respuesta')
+  assert.match(mute.stderr, /no se pudo resolver/, 'y dice que no es lo mismo que no tener cargos')
   assert.match(run(['flow', 'list', target]).stderr, /no se pudo resolver/, 'los recorridos igual')
   // El `--json` no cambia: lo consume un cron.
   assert.deepEqual(JSON.parse(run(['agents', 'list', target, '--json']).stdout), [])
 
   // Con el paquete resuelto no se avisa nada, que es la mitad que no se escribe sola.
   linkEngine(target)
-  const sano = run(['agents', 'list', target])
-  assert.equal(sano.status, 0)
-  assert.doesNotMatch(sano.stderr, /no se pudo resolver/, 'con cargos de verdad no hay aviso')
+  const healthy = run(['agents', 'list', target])
+  assert.equal(healthy.status, 0)
+  assert.doesNotMatch(healthy.stderr, /no se pudo resolver/, 'con cargos de verdad no hay aviso')
   assert.doesNotMatch(run(['flow', 'list', target]).stderr, /no se pudo resolver/)
 })

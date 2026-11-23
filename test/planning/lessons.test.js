@@ -11,12 +11,12 @@ const fs = require('node:fs')
 const path = require('node:path')
 const LS = require('../../engine/planning/lessons')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const RULE = 'planning/rules/system/commits.md#R8'
 
 function planning(name) {
   const dir = path.join(tempRoot(name), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   return dir
 }
 

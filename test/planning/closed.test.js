@@ -9,7 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
 const entry = (slug) => `- [x] **${slug}** — Resultado
   acept: el resultado se observa
@@ -45,7 +45,7 @@ test('closedErrors nombra la tarea cerrada que no quedó en done/ con su slug, y
 
 test('check --closed frena la tarea cerrada con otro slug, y sin la bandera nada cambia', () => {
   const dir = path.join(tempRoot('cauce-closed-'), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'BACKLOG.md'), '# Backlog\n\n## Hito h — H\n\n'
     + '- [ ] **alta** [lite] — Dar de alta. _Aceptación: el alta responde 201._ (service: api)\n')
   fs.writeFileSync(path.join(dir, 'done', 'alta-renombrada.md'), entry('alta-renombrada'))

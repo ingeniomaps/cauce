@@ -13,14 +13,14 @@ const ISSUES = path.resolve(__dirname, '..', '..', 'docs', 'issues')
 // Desde qué versión rige la convención. Los casos cerrados antes se quedan como están: retro-rellenar
 // treinta cierres sería escribir de memoria lo que el contraste tenía que haber encontrado en su
 // momento, que es justamente lo que la convención existe para no hacer.
-const DESDE = [0, 65, 0]
+const SINCE = [0, 65, 0]
 
 const version = (raw) => String(raw || '').trim().split('.').map(Number)
 // El piso es un parámetro porque las dos exigencias no empezaron el mismo día: el contraste rige desde
 // 0.65.0 y la prueba nombrada desde 0.75.0. Retro-rellenar cualquiera de las dos sería escribir de
 // memoria lo que en su momento no se hizo.
-const alcanzado = (v, desde = DESDE) => v.length === 3 && !v.some(Number.isNaN)
-  && (v[0] !== desde[0] ? v[0] > desde[0] : v[1] !== desde[1] ? v[1] > desde[1] : v[2] >= desde[2])
+const reached = (v, from = SINCE) => v.length === 3 && !v.some(Number.isNaN)
+  && (v[0] !== from[0] ? v[0] > from[0] : v[1] !== from[1] ? v[1] > from[1] : v[2] >= from[2])
 
 function cases() {
   return fs.readdirSync(ISSUES).filter((name) => /^\d{3}-.*\.md$/.test(name)).sort().map((name) => {
@@ -40,10 +40,10 @@ function cases() {
 // dato que se puede mirar —el encabezado del propio caso ya dice en qué versión cerró—, y un cierre es un
 // juicio que había que hacer en su momento. Rellenar el dato es leerlo; rellenar el cierre sería inventarlo.
 test('un caso resuelto declara en qué versión se cerró', () => {
-  const faltan = cases()
+  const missing = cases()
     .filter((one) => one.estado === 'resuelto' && !one.resueltoEn)
     .map((one) => `${one.name}: estado resuelto y sin «resuelto-en»`)
-  assert.deepEqual(faltan, [], `casos cerrados que ninguna puerta mira:\n  ${faltan.join('\n  ')}`)
+  assert.deepEqual(missing, [], `casos cerrados que ninguna puerta mira:\n  ${missing.join('\n  ')}`)
 })
 
 // Un ítem del recorrido se escribe de dos formas y las dos dicen lo mismo: la viñeta, y el título en negrita
@@ -59,17 +59,17 @@ const ITEM = /^- |^\*\*.+?\*\*\s+—/gm
 // único mecanizable. Vale lo mismo que dice R10 de sus seis: decir qué mide una puerta y qué no es
 // parte de la puerta, porque una que se presenta como más fuerte de lo que es enseña a no creerle.
 test('un caso resuelto trae el contraste contra lo que enumeró', () => {
-  const faltan = []
-  let mirados = 0
+  const missing = []
+  let looked = 0
   for (const one of cases()) {
-    if (one.estado !== 'resuelto' || !alcanzado(version(one.resueltoEn))) continue
-    mirados += 1
-    const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
-    const items = (cierre.match(ITEM) || []).length
-    if (!items) faltan.push(`${one.name}: sin «## Cierre» con qué pasó con cada cosa que enumeró`)
+    if (one.estado !== 'resuelto' || !reached(version(one.resueltoEn))) continue
+    looked += 1
+    const closing = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
+    const items = (closing.match(ITEM) || []).length
+    if (!items) missing.push(`${one.name}: sin «## Cierre» con qué pasó con cada cosa que enumeró`)
   }
-  assert.ok(mirados > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')
-  assert.deepEqual(faltan, [], `casos cerrados sin contraste:\n  ${faltan.join('\n  ')}`)
+  assert.ok(looked > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')
+  assert.deepEqual(missing, [], `casos cerrados sin contraste:\n  ${missing.join('\n  ')}`)
 })
 
 // Cerrar un caso es afirmar que algo que no funcionaba ahora funciona, y eso es una afirmación de
@@ -84,34 +84,34 @@ test('un caso resuelto trae el contraste contra lo que enumeró', () => {
 // contraste de arriba, la honestidad la sostiene quien cierra. Rige desde 0.75.0 y no antes, por lo
 // mismo que el contraste rige desde 0.65.0: retro-rellenarlo sería escribir de memoria la prueba que en
 // su momento no se corrió.
-const NOMBRA_SU_PRUEBA = /mutaci[óo]n|comprobad|medid|probad|se corrió|corrida real|ejecutad|en rojo/i
+const NAMES_ITS_PROOF = /mutaci[óo]n|comprobad|medid|probad|se corrió|corrida real|ejecutad|en rojo/i
 test('un caso resuelto dice qué se corrió para saber que funciona', () => {
-  const faltan = []
-  let mirados = 0
+  const missing = []
+  let looked = 0
   for (const one of cases()) {
-    if (one.estado !== 'resuelto' || !alcanzado(version(one.resueltoEn), [0, 75, 0])) continue
-    mirados += 1
-    const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
-    if (!NOMBRA_SU_PRUEBA.test(cierre)) {
-      faltan.push(`${one.name}: el cierre no nombra qué se corrió`)
+    if (one.estado !== 'resuelto' || !reached(version(one.resueltoEn), [0, 75, 0])) continue
+    looked += 1
+    const closing = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
+    if (!NAMES_ITS_PROOF.test(closing)) {
+      missing.push(`${one.name}: el cierre no nombra qué se corrió`)
     }
   }
-  assert.ok(mirados > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')
-  assert.deepEqual(faltan, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${faltan.join('\n  ')}`)
+  assert.ok(looked > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')
+  assert.deepEqual(missing, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${missing.join('\n  ')}`)
 })
 
 // Una frase suelta sobre lo que no se probó no se distingue de la cita de un tradeoff que el mismo cierre contesta,
 // así que buscarlas fabrica huecos. Con una línea fija, «¿qué quedó sin probar?» se contesta con un grep. Mide que la
 // línea esté, no que sea cierta.
-const SIN_PROBAR = /^\*\*Sin probar:\*\* \S/m
+const UNTESTED_LINE = /^\*\*Sin probar:\*\* \S/m
 test('un caso resuelto dice qué quedó sin probar', () => {
-  const resueltos = cases()
-    .filter((one) => one.estado === 'resuelto' && alcanzado(version(one.resueltoEn), [0, 118, 0]))
-  const faltan = resueltos
-    .filter((one) => !SIN_PROBAR.test((one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''))
+  const resolved = cases()
+    .filter((one) => one.estado === 'resuelto' && reached(version(one.resueltoEn), [0, 118, 0]))
+  const missing = resolved
+    .filter((one) => !UNTESTED_LINE.test((one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''))
     .map((one) => `${one.name}: el cierre no trae «**Sin probar:** …», aunque diga «nada»`)
-  assert.ok(resueltos.length > 0, 'ningún caso alcanzó la convención: no está midiendo nada')
-  assert.deepEqual(faltan, [], `cierres sin su línea:\n  ${faltan.join('\n  ')}`)
+  assert.ok(resolved.length > 0, 'ningún caso alcanzó la convención: no está midiendo nada')
+  assert.deepEqual(missing, [], `cierres sin su línea:\n  ${missing.join('\n  ')}`)
 })
 
 // Una lista para leer no se cumplió: se cerraron casos con puntos sin hacer en la misma sesión que la escribió. Escrita
@@ -119,10 +119,10 @@ test('un caso resuelto dice qué quedó sin probar', () => {
 // número de caso y
 // no por versión, porque 458 y 460 ya salen en 0.118.0 y rellenarlos sería escribir de memoria.
 const CLOSING_POINTS = 16
-function closingListProblems(cierre) {
-  const opens = cierre.indexOf('### Lista de cierre\n')
+function closingListProblems(closing) {
+  const opens = closing.indexOf('### Lista de cierre\n')
   if (opens < 0) return ['sin «### Lista de cierre»']
-  const block = cierre.slice(opens).split('\n**Sin probar:**')[0]
+  const block = closing.slice(opens).split('\n**Sin probar:**')[0]
   const lines = [...block.matchAll(/^(\d+)\. (hecho|no aplica|pendiente): \S/gm)]
   const seen = new Map(lines.map((line) => [Number(line[1]), line[2]]))
   const problems = []
@@ -133,11 +133,11 @@ function closingListProblems(cierre) {
   return problems
 }
 test('un caso resuelto recorrió la lista de cierre punto por punto', () => {
-  const faltan = cases().filter((one) => one.estado === 'resuelto' && Number(one.caso) >= 464).flatMap((one) => {
-    const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
-    return closingListProblems(cierre).map((problem) => `${one.name}: ${problem}`)
+  const missing = cases().filter((one) => one.estado === 'resuelto' && Number(one.caso) >= 464).flatMap((one) => {
+    const closing = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
+    return closingListProblems(closing).map((problem) => `${one.name}: ${problem}`)
   })
-  assert.deepEqual(faltan, [], `cierres sin recorrer la lista:\n  ${faltan.join('\n  ')}`)
+  assert.deepEqual(missing, [], `cierres sin recorrer la lista:\n  ${missing.join('\n  ')}`)
 })
 
 test('la lista que exige la puerta tiene tantos puntos como la que escribe AGENTS.md', () => {
@@ -157,7 +157,7 @@ test('un resuelto-en más nuevo que el paquete es la versión abierta del CHANGE
   assert.ok(open, 'el CHANGELOG no tiene ninguna versión que leer')
   const next = [published[0], published[1], published[2] + 1]
   const wrong = cases()
-    .filter((one) => one.estado === 'resuelto' && alcanzado(version(one.resueltoEn), next) && one.resueltoEn !== open)
+    .filter((one) => one.estado === 'resuelto' && reached(version(one.resueltoEn), next) && one.resueltoEn !== open)
     .map((one) => `${one.name}: resuelto-en ${one.resueltoEn}, y la versión abierta es ${open}`)
   assert.deepEqual(wrong, [], `versiones que no van a salir:\n  ${wrong.join('\n  ')}`)
 })
@@ -165,7 +165,7 @@ test('un resuelto-en más nuevo que el paquete es la versión abierta del CHANGE
 // La tabla de `docs/issues/README.md`: los cuatro estados con el glifo que a cada uno le toca en el
 // encabezado. Por qué uno fuera de ella se rechaza en vez de ignorarse está escrito allá, al pie de la
 // tabla; acá sólo se comprueba.
-const GLIFOS = {
+const GLYPHS = {
   abierto: /^\*\*🔴 abierto\*\*/m,
   resuelto: /^\*\*🟢 resuelto en ([0-9.]+)\*\*/m,
   descartado: /^\*\*⚪ descartado\*\*/m,
@@ -183,21 +183,21 @@ test('un caso aplazado dice cuándo se reabre', () => {
 // Un caso dice su estado en dos lugares —el frontmatter y el encabezado que se lee primero— y quien
 // cierra toca uno de los dos. Desincronizados, el que miente es el que se lee sin abrir el archivo.
 test('el estado del frontmatter y el del encabezado dicen lo mismo', () => {
-  const desacuerdos = []
+  const disagreements = []
   for (const one of cases()) {
-    const esperado = GLIFOS[one.estado]
-    if (!esperado) {
-      desacuerdos.push(`${one.name}: estado «${one.estado}», que el README no define`)
+    const expected = GLYPHS[one.estado]
+    if (!expected) {
+      disagreements.push(`${one.name}: estado «${one.estado}», que el README no define`)
       continue
     }
-    const encabezado = one.text.match(esperado)
-    if (!encabezado) desacuerdos.push(`${one.name}: ${one.estado} y el encabezado no`)
-    if (one.estado === 'resuelto' && encabezado && one.resueltoEn && encabezado[1] !== one.resueltoEn) {
-      desacuerdos.push(`${one.name}: resuelto-en ${one.resueltoEn} y el encabezado dice ${encabezado[1]}`)
+    const header = one.text.match(expected)
+    if (!header) disagreements.push(`${one.name}: ${one.estado} y el encabezado no`)
+    if (one.estado === 'resuelto' && header && one.resueltoEn && header[1] !== one.resueltoEn) {
+      disagreements.push(`${one.name}: resuelto-en ${one.resueltoEn} y el encabezado dice ${header[1]}`)
     }
   }
   assert.ok(cases().length > 30, `sólo se leyeron ${cases().length} casos`)
-  assert.deepEqual(desacuerdos, [], `estados que no coinciden:\n  ${desacuerdos.join('\n  ')}`)
+  assert.deepEqual(disagreements, [], `estados que no coinciden:\n  ${disagreements.join('\n  ')}`)
 })
 
 // El número **es** el identificador del caso: lo citan los cierres, los mensajes de commit, los cuerpos de
@@ -211,17 +211,17 @@ test('el estado del frontmatter y el del encabezado dicen lo mismo', () => {
 // misma situación que el estado y por la misma razón: el que se lee sin abrir el archivo es el del nombre,
 // así que es el que miente.
 test('el número de un caso es único, y el nombre dice el mismo que el frontmatter', () => {
-  const reclamado = new Map()
-  const problemas = []
+  const claimed = new Map()
+  const problems = []
   for (const one of cases()) {
-    const enElNombre = one.name.slice(0, 3)
-    if (one.caso !== enElNombre) {
-      problemas.push(`${one.name}: adentro se llama caso ${one.caso || '(sin caso:)'}`)
+    const inName = one.name.slice(0, 3)
+    if (one.caso !== inName) {
+      problems.push(`${one.name}: adentro se llama caso ${one.caso || '(sin caso:)'}`)
     }
-    if (reclamado.has(enElNombre)) {
-      problemas.push(`${enElNombre}: lo reclaman ${reclamado.get(enElNombre)} y ${one.name}`)
-    } else reclamado.set(enElNombre, one.name)
+    if (claimed.has(inName)) {
+      problems.push(`${inName}: lo reclaman ${claimed.get(inName)} y ${one.name}`)
+    } else claimed.set(inName, one.name)
   }
   assert.ok(cases().length > 30, `sólo se leyeron ${cases().length} casos`)
-  assert.deepEqual(problemas, [], `números que no identifican un caso:\n  ${problemas.join('\n  ')}`)
+  assert.deepEqual(problems, [], `números que no identifican un caso:\n  ${problems.join('\n  ')}`)
 })

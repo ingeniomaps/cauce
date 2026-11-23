@@ -17,10 +17,10 @@ const P = require('../../engine/planning/parser')
 // direcciones, y van juntas porque separadas no dicen nada: que la prosa deje de partir **y** que un
 // separador de verdad siga partiendo. Sólo lo primero pasaría con un validador que acepta todo.
 test('el punto y coma de la prosa no parte una traza, y el que separa sí', () => {
-  const conProsa = 'A → `runtime.test.ts`, con los rojos por mutación: quitar el HEALTHCHECK pone rojos '
+  const withProse = 'A → `runtime.test.ts`, con los rojos por mutación: quitar el HEALTHCHECK pone rojos '
     + 'tres casos; `--start-period=1m` pone rojo el techo de 30 s; y un `USER root` posterior pone rojo '
     + 'el caso del usuario'
-  assert.equal(DE.validTestTrace(conProsa), true, 'una sola traza con prosa adentro es una traza')
+  assert.equal(DE.validTestTrace(withProse), true, 'una sola traza con prosa adentro es una traza')
   assert.equal(DE.validTestTrace('C1 → uno.js; C2 → dos.js; n/a — el tercero no tiene superficie'), true,
     'y tres trazas separadas siguen siendo tres')
   assert.equal(DE.validTestTrace('esto no es una traza'), false, 'lo que no traza sigue sin trazar')
@@ -30,10 +30,10 @@ test('el punto y coma de la prosa no parte una traza, y el que separa sí', () =
   // El rastreo de criterios usa el mismo corte, y sigue cazando lo que tiene que cazar a los dos lados
   // de un separador de verdad. Que **comparta** el corte no lo prueba ninguna aserción y está dicho en el
   // fuente: hoy las dos formas de partir dan el mismo resultado.
-  const entrada = (tests) => ({ source: 'done/x.md', slug: 'x', tests, decisions: '[fuente: x]' })
-  assert.deepEqual(DE.validateDoneEntry(entrada('C1 → uno.js, y algo; C2 → dos.js'), ['C1', 'C2']), [],
+  const entry = (tests) => ({ source: 'done/x.md', slug: 'x', tests, decisions: '[fuente: x]' })
+  assert.deepEqual(DE.validateDoneEntry(entry('C1 → uno.js, y algo; C2 → dos.js'), ['C1', 'C2']), [],
     'los dos criterios se rastrean a través del separador de verdad')
-  assert.deepEqual(DE.validateDoneEntry(entrada('C1 → uno.js'), ['C1', 'C2']),
+  assert.deepEqual(DE.validateDoneEntry(entry('C1 → uno.js'), ['C1', 'C2']),
     ['done/x.md x: la historia cita C2 y tests: no lo rastrea'],
     'y el criterio citado que nadie rastrea se sigue cazando')
 })
@@ -110,41 +110,41 @@ test('el inbox dice cuántas viñetas quedaron sin contar', () => {
 // «cerrado» suelta en la celda. Los dos fallos son silenciosos, y en direcciones opuestas.
 test('el estado de una acción humana es vocabulario cerrado y se lee por el principio de la celda', () => {
   const root = tempRoot('ops-human-actions-')
-  const fila = (estado) => `# Acciones humanas
+  const row = (state) => `# Acciones humanas
 
 | Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
 |---|---|---|---|
-| tarea-uno | ${estado} | Ready | Detalle |
+| tarea-uno | ${state} | Ready | Detalle |
 `
-  const leer = (estado) => {
-    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), fila(estado))
+  const read = (state) => {
+    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), row(state))
     return P.readHumanActions(root)[0]
   }
 
   assert.deepEqual(P.HUMAN_ACTION_STATES, ['pendiente', 'resuelta'])
-  assert.equal(leer('pendiente').resolved, false)
-  assert.equal(leer('pendiente').valid, true)
-  assert.equal(leer('resuelta').resolved, true)
-  assert.equal(leer('Resuelta 2026-08-17').resolved, true, 'admite el detalle detrás del vocabulario')
-  assert.equal(leer('resuelta 2026-08-17').valid, true)
+  assert.equal(read('pendiente').resolved, false)
+  assert.equal(read('pendiente').valid, true)
+  assert.equal(read('resuelta').resolved, true)
+  assert.equal(read('Resuelta 2026-08-17').resolved, true, 'admite el detalle detrás del vocabulario')
+  assert.equal(read('resuelta 2026-08-17').valid, true)
+  for (const invention of ['✅ COMPLETADO 2026-08-10', 'COMPLETADA', 'hecha', 'SIN EFECTO', '']) {
+    const outside = read(invention)
+    assert.equal(outside.valid, false, `"${invention}" está fuera del vocabulario`)
+    assert.equal(outside.resolved, false, `"${invention}" no desbloquea: fuera del vocabulario se bloquea`)
 
-  for (const invento of ['✅ COMPLETADO 2026-08-10', 'COMPLETADA', 'hecha', 'SIN EFECTO', '']) {
-    const fuera = leer(invento)
-    assert.equal(fuera.valid, false, `"${invento}" está fuera del vocabulario`)
-    assert.equal(fuera.resolved, false, `"${invento}" no desbloquea: fuera del vocabulario se bloquea`)
   }
 
   // El accidente inverso: la palabra reconocida aparece dentro del texto, no como estado.
-  const accidente = leer('✅ COMPLETADO 2026-08-17 — cerrado con run-ui.mjs')
-  assert.equal(accidente.resolved, false, 'una palabra suelta en la celda no resuelve la fila')
-  assert.equal(accidente.valid, false)
+  const accidental = read('✅ COMPLETADO 2026-08-17 — cerrado con run-ui.mjs')
+  assert.equal(accidental.resolved, false, 'una palabra suelta en la celda no resuelve la fila')
+  assert.equal(accidental.valid, false)
 })
 
 // La plantilla enseña el formato con filas comentadas, igual que BACKLOG y DONE. Sin filtrarlas, el
 // ejemplo bloqueaba `slug-de-tarea` en toda instancia recién creada.
 test('las filas de ejemplo comentadas no son acciones humanas', () => {
-  const plantilla = path.resolve(__dirname, '..', '..', 'template', 'planning')
-  assert.deepEqual(P.readHumanActions(plantilla), [], 'la plantilla no trae ninguna acción abierta')
+  const template = path.resolve(__dirname, '..', '..', 'template', 'planning')
+  assert.deepEqual(P.readHumanActions(template), [], 'la plantilla no trae ninguna acción abierta')
 })
 
 // El último eslabón de la trazabilidad: la historia cita `(→ C1)` y su evidencia dice qué prueba lo
@@ -182,18 +182,18 @@ test('la evidencia de DONE rastrea el criterio que la historia citó', () => {
 // un documento se pudre sin que nada falle.
 test('una acción humana cuya tarea no está en el backlog no rompe check ni bloquea nada', () => {
   const ST = require('../../engine/planning/state')
-  const fila = { task: 'no-existe', state: 'pendiente', valid: true, action: 'crear la cuenta' }
+  const row = { task: 'no-existe', state: 'pendiente', valid: true, action: 'crear la cuenta' }
 
   const errores = PC.validateState({
     epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [] }],
-    done: { entries: [], set: new Set(), duplicates: [] }, wips: [], humanActions: [fila],
+    done: { entries: [], set: new Set(), duplicates: [] }, wips: [], humanActions: [row],
   })
   assert.deepEqual(errores, [], 'check sólo juzga el Estado de la fila, nunca su tarea')
 
-  const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
+  const taskRow = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
   const { task, skipped } = ST.currentTask({
-    milestones: [{ slug: 'h', tasks: [tarea('uno')] }], done: { set: new Set() }, wips: [],
-  }, [fila])
+    milestones: [{ slug: 'h', tasks: [taskRow('uno')] }], done: { set: new Set() }, wips: [],
+  }, [row])
   assert.equal(task.slug, 'uno', 'no bloquea a nadie: sólo se saltea lo que está en la cola')
   assert.deepEqual(skipped, [], 'y no se anuncia como salteada, porque no lo está')
 })
@@ -249,33 +249,33 @@ test('el último campo de una entrada no se traga lo que viene después', () => 
 // pasa `check` y le entrega al runner el contenido de `Origen` como si fuera la acción de desbloqueo.
 test('un pipe escapado pertenece a su celda y no corre las columnas', () => {
   const root = tempRoot('ops-human-pipe-')
-  const tabla = (fila) => `# Acciones humanas
+  const table = (row) => `# Acciones humanas
 
 | Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
 |---|---|---|---|
-${fila}
+${row}
 `
-  const leer = (fila) => {
-    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), tabla(fila))
+  const read = (row) => {
+    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), table(row))
     return P.readHumanActions(root)[0]
   }
 
   // Cara ruidosa: el pipe cae en `Tarea` y el estado real nunca se lee.
-  const ruidosa = leer('| poner el flag `<COP \\| USD>` | pendiente | Ready | Pedir el valor a Ops. |')
-  assert.equal(ruidosa.task, 'poner el flag `<COP | USD>`', 'la tarea se lee entera')
-  assert.equal(ruidosa.state, 'pendiente')
-  assert.equal(ruidosa.valid, true, 'la fila está bien escrita y no se rechaza')
+  const noisy = read('| poner el flag `<COP \\| USD>` | pendiente | Ready | Pedir el valor a Ops. |')
+  assert.equal(noisy.task, 'poner el flag `<COP | USD>`', 'la tarea se lee entera')
+  assert.equal(noisy.state, 'pendiente')
+  assert.equal(noisy.valid, true, 'la fila está bien escrita y no se rechaza')
 
   // Cara silenciosa: el pipe cae en `Estado`, detrás de la palabra del vocabulario. `valid` sigue en
   // true —por eso no deja rastro— y lo que se corrompe es la acción, que es a quien sirve la columna.
-  const silenciosa = leer('| sembrar-el-flag | pendiente — mide A \\| B | Ready | Sembrar FLAG y avisar. |')
-  assert.equal(silenciosa.state, 'pendiente — mide A | B')
-  assert.equal(silenciosa.resolved, false)
-  assert.equal(silenciosa.origin, 'Ready')
-  assert.equal(silenciosa.action, 'Sembrar FLAG y avisar.', 'la acción de desbloqueo llega entera')
+  const silent = read('| sembrar-el-flag | pendiente — mide A \\| B | Ready | Sembrar FLAG y avisar. |')
+  assert.equal(silent.state, 'pendiente — mide A | B')
+  assert.equal(silent.resolved, false)
+  assert.equal(silent.origin, 'Ready')
+  assert.equal(silent.action, 'Sembrar FLAG y avisar.', 'la acción de desbloqueo llega entera')
 
   // El separador sin escapar sigue siendo separador: el arreglo no puede volver ilegible una fila normal.
-  const normal = leer('| tarea-uno | resuelta | Ready | Detalle |')
+  const normal = read('| tarea-uno | resuelta | Ready | Detalle |')
   assert.deepEqual(
     [normal.task, normal.state, normal.origin, normal.action],
     ['tarea-uno', 'resuelta', 'Ready', 'Detalle'],
@@ -296,11 +296,11 @@ test('leer bien la fila destapa el estado que la fila corrida escondía', () => 
   // la posición del estado, así que la fila pasaba `check` y desbloqueaba una tarea que nadie resolvió.
   // Leída bien, el estado es `hecho`, que está fuera del vocabulario. Empezar a fallar acá es el defecto
   // saliendo a la luz, no una regresión.
-  const fila = P.readHumanActions(root)[0]
-  assert.equal(fila.task, 'dar acceso | pendiente')
-  assert.equal(fila.state, 'hecho')
-  assert.equal(fila.valid, false, 'el estado real estaba fuera del vocabulario y ahora se ve')
-  assert.equal(fila.resolved, false)
+  const row = P.readHumanActions(root)[0]
+  assert.equal(row.task, 'dar acceso | pendiente')
+  assert.equal(row.state, 'hecho')
+  assert.equal(row.valid, false, 'el estado real estaba fuera del vocabulario y ahora se ve')
+  assert.equal(row.resolved, false)
 })
 
 // La cabecera de una tabla markdown es la fila anterior a la de separadores, diga lo que diga su primera
@@ -308,23 +308,23 @@ test('leer bien la fila destapa el estado que la fila corrida escondía', () => 
 // una tabla propia recibe un error que nombra las etiquetas de sus columnas como si fueran datos.
 test('la cabecera se reconoce por su forma y no por lo que dice su primera celda', () => {
   const root = tempRoot('ops-human-cabecera-')
-  const leer = (texto) => {
-    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), texto)
+  const read = (text) => {
+    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), text)
     return P.readHumanActions(root)
   }
 
-  const propia = leer(`# Acciones humanas
+  const own = read(`# Acciones humanas
 
 | Tarea Requerida | Estado | Origen | Descripción / Instrucciones |
 | :--- | :---: | :---: | :--- |
 | sembrar-el-flag | pendiente | Ready | Sembrar \`FLAG\` en Infisical. |
 `)
-  assert.equal(propia.length, 1, 'la cabecera propia no es una acción humana')
-  assert.equal(propia[0].task, 'sembrar-el-flag')
+  assert.equal(own.length, 1, 'la cabecera propia no es una acción humana')
+  assert.equal(own[0].task, 'sembrar-el-flag')
 
   // El caso que el propio 043 anticipa en Tradeoffs: con varias tablas hay que saltear la cabecera de
   // cada una. El archivo real que lo destapó tenía tres, una por sección.
-  const varias = leer(`# Acciones humanas
+  const several = read(`# Acciones humanas
 
 ## Infraestructura
 
@@ -338,18 +338,18 @@ test('la cabecera se reconoce por su forma y no por lo que dice su primera celda
 | :--- | :--- | :--- | :--- |
 | dar-acceso | resuelta | Ready | Dar el acceso. |
 `)
-  assert.deepEqual(varias.map((fila) => fila.task), ['sembrar-el-flag', 'dar-acceso'])
-  assert.deepEqual(varias.map((fila) => fila.valid), [true, true])
+  assert.deepEqual(several.map((row) => row.task), ['sembrar-el-flag', 'dar-acceso'])
+  assert.deepEqual(several.map((row) => row.valid), [true, true])
 
   // Por qué el literal del molde sigue haciendo falta lo explica el parser, donde se decidió. Acá se fija
   // el caso que lo delataría: una tabla a la que le falta su fila de separadores, que es la forma en que
   // alguien la escribe mal sin notarlo.
-  const sinGuiones = leer(`# Acciones humanas
+  const withoutDashes = read(`# Acciones humanas
 
 | Tarea | Estado | Origen | Detalle |
 | sembrar-el-flag | pendiente | Ready | Sembrar el flag. |
 `)
-  assert.deepEqual(sinGuiones.map((fila) => fila.task), ['sembrar-el-flag'])
+  assert.deepEqual(withoutDashes.map((row) => row.task), ['sembrar-el-flag'])
 })
 
 // La regla del `tests:` todo n/a con un commit que toca código sólo reconocía la forma `n/a — razón` pelada,

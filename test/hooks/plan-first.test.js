@@ -5,7 +5,7 @@
 const { tempRoot, writeWip } = require('../support/environment')
 const {
   blocked, git, initRepo, planFirstRoot, WIP_IDLE,
-  WIP_CON_PLAN, WIP_WITHOUT_PLAN, BACKLOG_WITH_TASK, BACKLOG_EMPTY,
+  WIP_WITH_PLAN, WIP_WITHOUT_PLAN, BACKLOG_WITH_TASK, BACKLOG_EMPTY,
 } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -27,7 +27,7 @@ test('guard-plan-first exige el plan antes de cambiar el producto', () => {
   blocked('plan-first', { cwd: withTask, tool_input: { file_path: 'src/altas.js' } },
     /alta-de-cliente y ningún paso/)
 
-  const withPlan = planFirstRoot('ops-hook-plan-ok-', WIP_CON_PLAN)
+  const withPlan = planFirstRoot('ops-hook-plan-ok-', WIP_WITH_PLAN)
   assert.doesNotThrow(() => execute('plan-first', { cwd: withPlan, tool_input: { file_path: 'src/altas.js' } }))
 })
 

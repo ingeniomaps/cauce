@@ -175,7 +175,7 @@ const DISARM = {
 
 const WIP_IDLE = 'status: IDLE\n'
 
-const WIP_CON_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n'
+const WIP_WITH_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n'
   + '## Plan aprobado\n1. [ ] Escribir el handler\n'
 
 const WIP_WITHOUT_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n'
@@ -194,7 +194,7 @@ const LIVE = /la rama viva/
 
 // Un repositorio cuyo HEAD alcanza un remoto: es lo que distingue «reescribir historia que otro leyó» de
 // corregir algo que no salió de la máquina. El remoto es un bare local — nada habla con la red.
-function repoPublicado(prefix) {
+function publishedRepo(prefix) {
   const root = tempRoot(prefix)
   initRepo(root)
   fs.writeFileSync(path.join(root, 'a.txt'), 'uno\n')
@@ -209,8 +209,8 @@ function repoPublicado(prefix) {
 }
 
 module.exports = {
-  blocked, git, initRepo, repoPublicado, chatSession, messageOf,
+  blocked, git, initRepo, publishedRepo, chatSession, messageOf,
   planFirstRoot, pasteApproval, pushRoot, sidecar,
-  DISARM, WIP_IDLE, WIP_CON_PLAN, WIP_WITHOUT_PLAN,
+  DISARM, WIP_IDLE, WIP_WITH_PLAN, WIP_WITHOUT_PLAN,
   BACKLOG_WITH_TASK, BACKLOG_EMPTY, WORK, LIVE,
 }

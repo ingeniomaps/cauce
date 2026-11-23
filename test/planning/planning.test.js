@@ -153,7 +153,7 @@ test('una tarea no se toma con la aceptación sin decidir', () => {
   const base = tempRoot('cauce-acept-')
   const planning = path.join(base, 'planning')
   fs.cpSync(path.resolve(__dirname, '..', '..', 'template', 'planning'), planning, { recursive: true })
-  const epica = (criterio) => fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-alta.md'), `---
+  const epic = (criterion) => fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-alta.md'), `---
 epic: 001
 title: Alta de cuenta
 status: open
@@ -162,7 +162,7 @@ service: api
 
 ## Criterios
 
-- **C1** — ${criterio}
+- **C1** — ${criterion}
 
 ## Contexto relevante
 
@@ -176,16 +176,16 @@ service: api
 
 - Ninguno.
 `)
-  const backlog = (linea) => fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+  const backlog = (line) => fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
 
 ## Hito alta — Alta de cuenta
 
-${linea}
+${line}
 `)
   const errores = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
     .filter((error) => /BACKLOG alta-nueva/.test(error))
 
-  epica('Un alta con email nuevo devuelve 201.')
+  epic('Un alta con email nuevo devuelve 201.')
   backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)')
   assert.deepEqual(errores(), [], 'una aceptación decidida pasa')
 
@@ -194,13 +194,13 @@ ${linea}
     ['BACKLOG alta-nueva: la aceptación no está decidida — "Por definir."'])
 
   // Heredada: la tarea no escribe aceptación y el criterio que cita todavía no decidió nada.
-  epica('El umbral de reintentos: por definir.')
+  epic('El umbral de reintentos: por definir.')
   backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. (→ C1) (epic: 001) (service: api)')
   assert.deepEqual(errores(),
     ['BACKLOG alta-nueva: la aceptación no está decidida — "El umbral de reintentos: por definir."'])
 
   // Y con el criterio resuelto, la misma tarea heredada pasa.
-  epica('Un alta con email nuevo devuelve 201.')
+  epic('Un alta con email nuevo devuelve 201.')
   assert.deepEqual(errores(), [])
 
   // El mismo filtro, un nivel más arriba. La épica rechaza el marcador al activarse y la tarea lo
@@ -276,12 +276,12 @@ test('check muestra una aprobación de gobernanza sin borrar, contando rutas', (
 
   fs.writeFileSync(path.join(planning, '.ops-approval'), '# Aprobado por X el 2026-09-06.\n'
     + `# Vale para el commit de la propuesta.\n${path.join(planning, 'rules', 'system', 'conduct.md')}\n`)
-  const avisado = run(['check', planning])
+  const warned = run(['check', planning])
 
-  assert.equal(avisado.status, 0, 'es advertencia: la aprobación es legítima, lo que no puede es esconderse')
-  assert.match(avisado.stderr + avisado.stdout, /ops-approval: 1 ruta\(s\)/,
+  assert.equal(warned.status, 0, 'es advertencia: la aprobación es legítima, lo que no puede es esconderse')
+  assert.match(warned.stderr + warned.stdout, /ops-approval: 1 ruta\(s\)/,
     'una ruta y dos comentarios son una ruta')
-  assert.doesNotMatch(avisado.stderr + avisado.stdout, /ruta relativa/, 'una ruta entera no es una línea vieja')
+  assert.doesNotMatch(warned.stderr + warned.stdout, /ruta relativa/, 'una ruta entera no es una línea vieja')
 
   // Las formas de antes del 445 y del 446 ya no aprueban nada, y contarlas como vigentes las escondía: una ruta
   // relativa, y un comando que depende de dónde corre aprobado sin su lugar. Lo que nombra su lugar o su
@@ -289,14 +289,14 @@ test('check muestra una aprobación de gobernanza sin borrar, contando rutas', (
   fs.appendFileSync(path.join(planning, '.ops-approval'), 'package.json\npush origin feat/x\ngit clean -fd\n'
     + `git clean -fd @ ${target}\ngh pr merge 3\ngh pr merge 3 --repo acme/app\ndocker system prune\n`
     + 'vitest\n./vitest\n')
-  const viejo = run(['check', planning])
-  const dicho = viejo.stderr + viejo.stdout
-  assert.equal(viejo.status, 0)
-  assert.match(dicho, /1 línea\(s\) con una ruta relativa, que ya no aprueba nada: package\.json\./)
-  assert.match(dicho, /3 línea\(s\) sin el lugar donde valen, que ya no aprueban nada: /)
-  assert.match(dicho, /aprueban nada: push origin feat\/x, git clean -fd, gh pr merge 3\./)
+  const old = run(['check', planning])
+  const stated = old.stderr + old.stdout
+  assert.equal(old.status, 0)
+  assert.match(stated, /1 línea\(s\) con una ruta relativa, que ya no aprueba nada: package\.json\./)
+  assert.match(stated, /3 línea\(s\) sin el lugar donde valen, que ya no aprueban nada: /)
+  assert.match(stated, /aprueban nada: push origin feat\/x, git clean -fd, gh pr merge 3\./)
   // `vitest` es lo que `workers` aprueba para un runner sin cota: una palabra, no una ruta, y sigue valiendo.
-  assert.match(dicho, /ops-approval: 6 ruta\(s\) aprobadas y sin borrar/)
+  assert.match(stated, /ops-approval: 6 ruta\(s\) aprobadas y sin borrar/)
   fs.writeFileSync(path.join(planning, '.ops-approval'),
     `${path.join(planning, 'rules', 'system', 'conduct.md')}\n`)
 
@@ -323,9 +323,9 @@ test('check muestra cada ruta exenta del límite de raíces, ya resuelta', () =>
 
   const result = run(['check', planning])
   assert.equal(result.status, 0, 'la exención es legítima: avisa, no falla')
-  const salida = result.stdout + result.stderr
-  assert.match(salida, /~\/\.claude\/projects\/demo\/memory está exenta del límite de raíces/)
-  assert.ok(salida.includes(path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')),
+  const output = result.stdout + result.stderr
+  assert.match(output, /~\/\.claude\/projects\/demo\/memory está exenta del límite de raíces/)
+  assert.ok(output.includes(path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')),
     'y la ruta resuelta al lado, que es la que el guard compara')
 })
 
@@ -338,8 +338,8 @@ test('dos raíces con el mismo nombre avisan y no rompen check', () => {
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const planning = path.join(target, 'planning')
-  for (const raiz of ['initech', 'umbrella']) {
-    fs.mkdirSync(path.join(base, raiz, 'keycloak'), { recursive: true })
+  for (const root of ['initech', 'umbrella']) {
+    fs.mkdirSync(path.join(base, root, 'keycloak'), { recursive: true })
   }
   const configPath = path.join(target, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
@@ -356,8 +356,8 @@ test('dos raíces con el mismo nombre avisan y no rompen check', () => {
 
   config.workspaceRoots[1].name = 'umbrella'
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
-  const limpio = run(['check', planning])
-  assert.doesNotMatch(`${limpio.stdout}${limpio.stderr}`, /nombra dos raíces/, 'dos nombres distintos, nada')
+  const clean = run(['check', planning])
+  assert.doesNotMatch(`${clean.stdout}${clean.stderr}`, /nombra dos raíces/, 'dos nombres distintos, nada')
 })
 
 // La advertencia de override nombra los IDs que el archivo propio deja de definir, y eso sólo tiene
@@ -371,21 +371,21 @@ test('el override dice qué reglas retira, y sólo donde hay reglas', () => {
 
   fs.writeFileSync(path.join(planning, 'rules', 'process.md'),
     '# Proceso\n\n## R1 — Lo nuestro\n\nTexto.\n')
-  const conReglas = run(['check', planning])
-  assert.equal(conReglas.status, 0, 'sigue siendo advertencia y no error')
-  const salida = conReglas.stdout + conReglas.stderr
-  assert.match(salida, /rules\/process\.md sobrescribe process\.md \(override explícito\); deja de regir R2/)
-  assert.doesNotMatch(salida, /deja de regir[^\n]*R1\b/, 'la que sí redefine no se reporta perdida')
+  const withRules = run(['check', planning])
+  assert.equal(withRules.status, 0, 'sigue siendo advertencia y no error')
+  const output = withRules.stdout + withRules.stderr
+  assert.match(output, /rules\/process\.md sobrescribe process\.md \(override explícito\); deja de regir R2/)
+  assert.doesNotMatch(output, /deja de regir[^\n]*R1\b/, 'la que sí redefine no se reporta perdida')
 
   // Un ADR propio con el número de uno del sistema es override igual, y no retira ninguna regla.
   const adr = path.join(planning, 'adr')
-  const molde = fs.readFileSync(path.join(adr, 'system', fs.readdirSync(path.join(adr, 'system'))[0]), 'utf8')
-  const nombre = fs.readdirSync(path.join(adr, 'system'))[0]
-  fs.writeFileSync(path.join(adr, nombre), molde)
-  const conAdr = run(['check', planning])
-  const salidaAdr = conAdr.stdout + conAdr.stderr
-  assert.match(salidaAdr, new RegExp(`adr/${nombre.replace('.', '\\.')} sobrescribe`), 'el override se reporta')
-  assert.doesNotMatch(salidaAdr, new RegExp(`adr/${nombre.replace('.', '\\.')}[^\\n]*deja de regir`))
+  const template = fs.readFileSync(path.join(adr, 'system', fs.readdirSync(path.join(adr, 'system'))[0]), 'utf8')
+  const label = fs.readdirSync(path.join(adr, 'system'))[0]
+  fs.writeFileSync(path.join(adr, label), template)
+  const withAdr = run(['check', planning])
+  const adrOutput = withAdr.stdout + withAdr.stderr
+  assert.match(adrOutput, new RegExp(`adr/${label.replace('.', '\\.')} sobrescribe`), 'el override se reporta')
+  assert.doesNotMatch(adrOutput, new RegExp(`adr/${label.replace('.', '\\.')}[^\\n]*deja de regir`))
 })
 
 // El README manda editar el draft y después correr `check`. Seguido al pie, `check` fallaba: editar
@@ -405,9 +405,9 @@ test('curar un draft no deja la integración en rojo', () => {
   assert.ok(signals && Array.isArray(signals.outgoing), 'derive resuelve sin mirar draftChanged')
 
   // Y el validador ya no exige que el flag coincida con el contenido.
-  const fuente = fs.readFileSync(
+  const source = fs.readFileSync(
     path.join(__dirname, '..', '..', 'engine', 'integrations', 'registry.js'), 'utf8')
-  assert.doesNotMatch(fuente, /draftChanged no coincide con el contenido real/,
+  assert.doesNotMatch(source, /draftChanged no coincide con el contenido real/,
     'un derivado que se puede recalcular no es un error de validación')
   assert.ok(typeof I.validate === 'function')
 })
@@ -422,20 +422,20 @@ test('la épica promovida no deja dos secciones compitiendo por el mismo rol', (
 
   // Los encabezados de la descripción remota bajan un nivel al entrar: dejan de competir y siguen
   // legibles. Cualquier `## Historias` o `## Resultado` remoto choca igual y por la misma razón.
-  const descripcion = 'El operador necesita ver el último sync.\n\n## Criterios de aceptación\n\n'
+  const description = 'El operador necesita ver el último sync.\n\n## Criterios de aceptación\n\n'
     + '- La fecha del último sync es visible.\n'
   assert.equal(typeof I.nestHeadings, 'function', 'promote degrada lo que importa')
-  const anidada = I.nestHeadings(descripcion)
-  assert.doesNotMatch(anidada, /^## Criterios/m, 'ya no compite')
-  assert.match(anidada, /^### Criterios de aceptación$/m, 'y sigue estando, un nivel abajo')
+  const nested = I.nestHeadings(description)
+  assert.doesNotMatch(nested, /^## Criterios/m, 'ya no compite')
+  assert.match(nested, /^### Criterios de aceptación$/m, 'y sigue estando, un nivel abajo')
 
   // El parser prefiere la coincidencia exacta cuando existe, y cae a la parcial si no. Así
   // `## Criterios` gana sobre `## Criterios de aceptación`, y `## Historias (Tareas)` sigue resolviendo.
-  const epica = '# Épica\n\n## Criterios de aceptación\n\n- suelto\n\n## Criterios\n\n- **C1** — real\n\n'
+  const epic = '# Épica\n\n## Criterios de aceptación\n\n- suelto\n\n## Criterios\n\n- **C1** — real\n\n'
     + '## Historias (Tareas)\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'
-  assert.match(P.section(epica, /Criterios/i), /^Criterios\n/, 'la exacta gana sobre la que la contiene')
-  assert.match(P.section(epica, /Historias/i), /^Historias \(Tareas\)/, 'y sin exacta vale la parcial')
-  assert.equal(P.section(epica, /Resultado/i), '', 'una sección ausente sigue siendo vacío')
+  assert.match(P.section(epic, /Criterios/i), /^Criterios\n/, 'la exacta gana sobre la que la contiene')
+  assert.match(P.section(epic, /Historias/i), /^Historias \(Tareas\)/, 'y sin exacta vale la parcial')
+  assert.equal(P.section(epic, /Resultado/i), '', 'una sección ausente sigue siendo vacío')
 
   // Y el criterio sale sin el guión de la viñeta importada pegado al texto.
   assert.equal(typeof I.criterionText, 'function')

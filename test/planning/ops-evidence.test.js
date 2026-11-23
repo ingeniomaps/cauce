@@ -12,7 +12,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const ENTRADA = `
+const INPUT = `
 ## Hito primero — Primer resultado
 
 - [x] **alta-de-cliente** (epic: 001) — Alta de cliente
@@ -24,8 +24,8 @@ const ENTRADA = `
   commit: abc1234 feat(api): alta
 `
 
-function instancia(prefijo) {
-  const root = tempRoot(prefijo)
+function instance(prefix) {
+  const root = tempRoot(prefix)
   const ops = path.join(root, 'demo-ops')
   fs.mkdirSync(path.join(ops, 'planning', 'done'), { recursive: true })
   fs.writeFileSync(path.join(ops, 'planning', 'BACKLOG.md'), '# Backlog\n')
@@ -33,12 +33,12 @@ function instancia(prefijo) {
   fs.writeFileSync(path.join(root, 'api', 'alta_test.go'), 'func TestAltaResponde201(t *testing.T) {}\n')
   fs.writeFileSync(path.join(ops, 'ops.config.json'),
     JSON.stringify({ project: 'Demo', mode: 'sidecar', workspaceRoots: [{ name: 'api', path: '../api' }] }))
-  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA)
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), INPUT)
   return ops
 }
 
 test('evidence separa el artefacto que existe del que no y del que no se puede buscar', () => {
-  const ops = instancia('cauce-evidence-')
+  const ops = instance('cauce-evidence-')
   const result = run(['evidence', path.join(ops, 'planning'), '--json'])
   assert.equal(result.status, 0, result.stderr)
   const report = JSON.parse(result.stdout)
@@ -46,16 +46,16 @@ test('evidence separa el artefacto que existe del que no y del que no se puede b
   assert.deepEqual(report.traces.map((trace) => trace.verdict), ['encontrado', 'inbuscable', 'ausente'])
   assert.deepEqual(report.runs, [], 'sin corridas de verify todavía')
 
-  const texto = run(['evidence', path.join(ops, 'planning')])
-  assert.equal(texto.status, 0, texto.stderr)
-  assert.match(texto.stdout, /TestQueNoExiste {2}\[ausente\]/)
+  const text = run(['evidence', path.join(ops, 'planning')])
+  assert.equal(text.status, 0, text.stderr)
+  assert.match(text.stdout, /TestQueNoExiste {2}\[ausente\]/)
   // Un contraste que no dice qué no puede ver se lee como si lo hubiera visto todo.
-  assert.match(texto.stdout, /No dice que la prueba nombrada haya corrido/)
-  assert.match(texto.stdout, /sin corridas registradas/)
+  assert.match(text.stdout, /No dice que la prueba nombrada haya corrido/)
+  assert.match(text.stdout, /sin corridas registradas/)
 })
 
 test('evidence lee el registro de gates y elige la entrada que se le pide', () => {
-  const ops = instancia('cauce-evidence-gates-')
+  const ops = instance('cauce-evidence-gates-')
   fs.writeFileSync(path.join(ops, 'planning', '.verify-log'),
     `${JSON.stringify({ at: '2026-09-07T10:00:00Z', gate: 'test', status: 0 })}\n`)
   fs.writeFileSync(path.join(ops, 'planning', 'done', 'baja-de-cliente.md'),
@@ -63,17 +63,17 @@ test('evidence lee el registro de gates y elige la entrada que se le pide', () =
 
   // Sin `--task` responde por la más reciente. Qué la decide —la fecha, no la posición— lo prueba
   // `done.test.js`, donde las dos se contradicen; acá sólo se comprueba que elija sin que se le pida.
-  const ultima = run(['evidence', path.join(ops, 'planning'), '--json'])
-  assert.equal(JSON.parse(ultima.stdout).task, 'baja-de-cliente')
+  const last = run(['evidence', path.join(ops, 'planning'), '--json'])
+  assert.equal(JSON.parse(last.stdout).task, 'baja-de-cliente')
 
-  const pedida = run(['evidence', path.join(ops, 'planning'), '--task', 'alta-de-cliente', '--json'])
-  const report = JSON.parse(pedida.stdout)
+  const requested = run(['evidence', path.join(ops, 'planning'), '--task', 'alta-de-cliente', '--json'])
+  const report = JSON.parse(requested.stdout)
   assert.equal(report.task, 'alta-de-cliente')
   assert.deepEqual(report.runs, [{ at: '2026-09-07T10:00:00Z', gate: 'test', status: 0 }])
 
-  const inexistente = run(['evidence', path.join(ops, 'planning'), '--task', 'no-existe'])
-  assert.equal(inexistente.status, 2, 'nombrar una tarea que no está es la invocación')
-  assert.match(inexistente.stderr, /DONE no tiene la entrada no-existe/)
+  const nonexistent = run(['evidence', path.join(ops, 'planning'), '--task', 'no-existe'])
+  assert.equal(nonexistent.status, 2, 'nombrar una tarea que no está es la invocación')
+  assert.match(nonexistent.stderr, /DONE no tiene la entrada no-existe/)
 })
 
 // Una instancia recién creada no tiene nada en DONE, y eso es un estado del proyecto, no una invocación mal hecha.
@@ -91,7 +91,7 @@ test('evidence no afirma ausencia donde no hay dónde mirar', () => {
   fs.mkdirSync(path.join(ops, 'planning', 'done'), { recursive: true })
   fs.writeFileSync(path.join(ops, 'planning', 'BACKLOG.md'), '# Backlog\n')
   fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ project: 'Demo', mode: 'sidecar' }))
-  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA)
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), INPUT)
   const result = run(['evidence', path.join(ops, 'planning')])
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /el proyecto no declara raíces de código/)
@@ -346,7 +346,7 @@ test('evidence no encuentra en planning lo que la propia entrada escribió', () 
 // Caso 332. El registro guarda las últimas corridas de la máquina, no las de la tarea: lo que se imprime lo
 // dice, y avisa cuando ninguna puede ser de ella.
 test('evidence dice que los gates son los de la instancia, y avisa si son anteriores a la tarea', () => {
-  const ops = instancia('cauce-evidence-viejos-')
+  const ops = instance('cauce-evidence-viejos-')
   const log = path.join(ops, 'planning', '.verify-log')
   const withRun = (at) => {
     fs.writeFileSync(log, `${JSON.stringify({ at: '2026-08-30T09:00:00Z', gate: 'lint', status: 1 })}\n`
@@ -380,7 +380,7 @@ test('evidence dice que los gates son los de la instancia, y avisa si son anteri
   assert.match(run(['evidence', path.join(ops, 'planning')]).stdout, /la más reciente es del 2026-09-01/)
 
   // Una entrada sin fecha no tiene contra qué comparar.
-  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA.replace(/^ {2}fecha:.*\n/m, ''))
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), INPUT.replace(/^ {2}fecha:.*\n/m, ''))
   assert.equal(STALE.test(withRun('2026-09-01T10:00:00Z')), false)
 })
 

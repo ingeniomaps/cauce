@@ -32,14 +32,14 @@ test('ninguna regla del sistema manda a escribir en un archivo que `upgrade` ree
   // Por nombre de archivo y sin repetir: tres rutas de `SYSTEM_FILES` terminan en `AGENTS.md`, y
   // nombrarlas todas convertía un hallazgo en tres líneas que señalan archivos que la regla no nombró.
   const owned = new Set(O.SYSTEM_FILES.map((one) => path.basename(one)))
-  const nombrados = []
+  const named = []
 
   for (const file of fs.readdirSync(dir)) {
     const text = fs.readFileSync(path.join(dir, file), 'utf8')
-    for (const name of owned) if (text.includes(name)) nombrados.push(`${file} nombra ${name}`)
+    for (const name of owned) if (text.includes(name)) named.push(`${file} nombra ${name}`)
   }
 
-  assert.deepEqual(nombrados, [], `una regla manda a un archivo del toolkit:\n  ${nombrados.join('\n  ')}`)
+  assert.deepEqual(named, [], `una regla manda a un archivo del toolkit:\n  ${named.join('\n  ')}`)
 })
 
 // La pasada que contrasta la línea de una tarea contra su propia descripción es prosa, así que se borra
@@ -50,17 +50,17 @@ test('ninguna regla del sistema manda a escribir en un archivo que `upgrade` ree
 // la regla viva, que es lo que hay que cuidar. Perder uno la deja pareciendo completa y cubriendo menos,
 // que es la forma que R15 nombra.
 test('el protocolo manda contrastar la línea de una tarea contra su descripción', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const protocolo = fs.readFileSync(path.join(raiz, 'template', 'planning', 'PROTOCOL.md'), 'utf8')
-  const lanes = protocolo.split(/^##\s+/m).find((parte) => /^Lanes/.test(parte))
+  const root = path.resolve(__dirname, '..', '..')
+  const protocol = fs.readFileSync(path.join(root, 'template', 'planning', 'PROTOCOL.md'), 'utf8')
+  const lanes = protocol.split(/^##\s+/m).find((part) => /^Lanes/.test(part))
   assert.ok(lanes, 'la sección Lanes existe')
 
-  for (const [eje, patron] of [
+  for (const [axis, patron] of [
     ['la aceptación cubre lo que la descripción promete', /descripción frase por frase/],
     ['el carril se lee contra la superficie', /carril contra la superficie/],
     ['el cast entrega a quien construye', /cast entregue a quien construye/],
   ]) {
-    assert.match(lanes, patron, `la pasada perdió el eje: ${eje}`)
+    assert.match(lanes, patron, `la pasada perdió el eje: ${axis}`)
   }
 })
 
@@ -71,17 +71,17 @@ test('el protocolo manda contrastar la línea de una tarea contra su descripció
 // revisa, sólo rehacerla. Los tres ejes se comprobaron por separado — quitar cualquiera de los tres deja
 // la puerta en rojo sola.
 test('R29 pide que la mutación se declare, no sólo que se corra', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const testing = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'proof.md'), 'utf8')
-  const r29 = testing.split(/^##\s+/m).find((parte) => /^R29\b/.test(parte))
+  const root = path.resolve(__dirname, '..', '..')
+  const testing = fs.readFileSync(path.join(root, 'template', 'planning', 'rules', 'system', 'proof.md'), 'utf8')
+  const r29 = testing.split(/^##\s+/m).find((part) => /^R29\b/.test(part))
   assert.ok(r29, 'R29 existe en proof.md')
 
-  for (const [eje, patron] of [
+  for (const [axis, patron] of [
     ['la mutación se escribe, no sólo se corre', /mutación se declara por escrito/],
     ['dice qué romper y qué tiene que ponerse rojo', /qué se rompe\s*\n?\s*y qué prueba tiene que ponerse roja/],
     ['sin eso, revisar obliga a volver a correrla', /volver a correrla/],
   ]) {
-    assert.match(r29, patron, `R29 perdió el eje: ${eje}`)
+    assert.match(r29, patron, `R29 perdió el eje: ${axis}`)
   }
 })
 
@@ -92,18 +92,18 @@ test('R29 pide que la mutación se declare, no sólo que se corra', () => {
 // —se ve y se corrige—, y contar de menos no dispara nada y se lee igual que una unidad chica. Un eje
 // por cada dirección, y la prueba operable aparte, que es lo único que se puede aplicar sin criterio.
 test('R17 dice qué cuenta como una condición, en las dos direcciones', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const proceso = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'process.md'), 'utf8')
-  const r17 = proceso.split(/^##\s+/m).find((parte) => /^R17\b/.test(parte))
+  const root = path.resolve(__dirname, '..', '..')
+  const processRules = fs.readFileSync(path.join(root, 'template', 'planning', 'rules', 'system', 'process.md'), 'utf8')
+  const r17 = processRules.split(/^##\s+/m).find((part) => /^R17\b/.test(part))
   assert.ok(r17, 'R17 existe en process.md')
 
-  for (const [eje, patron] of [
+  for (const [axis, patron] of [
     ['una condición es un resultado, no una viñeta', /resultado que se puede mirar por separado/],
     ['contar de más parte lo que era uno solo', /mismo invariante[\s\S]{0,120}\*\*una\*\* condición/],
     ['contar de menos no dispara nada', /Contar de menos no dispara nada/],
     ['y hay una prueba que no pide criterio', /se pueden entregar por separado/],
   ]) {
-    assert.match(r17, patron, `R17 perdió el eje: ${eje}`)
+    assert.match(r17, patron, `R17 perdió el eje: ${axis}`)
   }
 })
 
@@ -114,18 +114,18 @@ test('R17 dice qué cuenta como una condición, en las dos direcciones', () => {
 // agrega la herramienta al final de lo que uno escribió. Una regla que sólo dijera «no la escribas» se
 // cumple creyendo que se cumplió, porque nunca se escribió — y sale publicada igual.
 test('R8 prohíbe la firma de IA en todo lo que se publica, no sólo en el commit', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
-  const r8 = commits.split(/^##\s+/m).find((parte) => /^R8\b/.test(parte))
+  const root = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(root, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r8 = commits.split(/^##\s+/m).find((part) => /^R8\b/.test(part))
   assert.ok(r8, 'R8 existe en commits.md')
 
-  for (const [eje, patron] of [
+  for (const [axis, patron] of [
     ['cubre todo lo publicado, no sólo el commit', /cubre todo lo que este trabajo publica/],
     ['nombra dónde: título, cuerpo y comentarios', /título y el cuerpo del pull request[\s\S]{0,60}comentarios/],
     ['la agrega la herramienta, no la tipea nadie', /lo agrega la herramienta, sola/],
     ['por eso se cumple revisando la salida', /revisar la salida antes de publicarla/],
   ]) {
-    assert.match(r8, patron, `R8 perdió el eje: ${eje}`)
+    assert.match(r8, patron, `R8 perdió el eje: ${axis}`)
   }
 })
 
@@ -135,19 +135,19 @@ test('R8 prohíbe la firma de IA en todo lo que se publica, no sólo en el commi
 // que los vuelve regla es que el daño no se deshace — el PR mal apuntado ya se vio, ya notificó, y
 // cerrarlo no borra nada de eso. Sin él, «va al fork» se negocia el día que apura.
 test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
-  const r10 = commits.split(/^##\s+/m).find((parte) => /^R10\b/.test(parte))
+  const root = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(root, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r10 = commits.split(/^##\s+/m).find((part) => /^R10\b/.test(part))
   assert.ok(r10, 'R10 existe en commits.md')
 
-  for (const [eje, patron] of [
+  for (const [axis, patron] of [
     ['la autorización no dice a dónde', /autorización dice si se publica, nunca a dónde/],
     ['va al repo en el que se trabaja, y al fork si lo es', /Si ese remoto es un fork, va al fork/],
     ['la rama se corta de la suya', /rama\s*\n?\s*se corta de la suya/],
     ['que la herramienta lo resuelva no autoriza', /resuelva sola el repositorio de origen no es una/],
     ['y no tiene vuelta atrás', /cerrarlo no deshace nada/],
   ]) {
-    assert.match(r10, patron, `R10 perdió el eje: ${eje}`)
+    assert.match(r10, patron, `R10 perdió el eje: ${axis}`)
   }
 })
 
@@ -158,19 +158,19 @@ test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () =
 // condición de borrado, deprecar es no quitar nunca; sin «lo que nadie llama se borra», es deprecar
 // todo. R29 ya decía cómo se prueba una quita y nunca cuándo se puede hacer.
 test('R29 dice cuándo se puede quitar lo que está en uso', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const testing = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'proof.md'), 'utf8')
-  const r29 = testing.split(/^##\s+/m).find((parte) => /^R29\b/.test(parte))
+  const root = path.resolve(__dirname, '..', '..')
+  const testing = fs.readFileSync(path.join(root, 'template', 'planning', 'rules', 'system', 'proof.md'), 'utf8')
+  const r29 = testing.split(/^##\s+/m).find((part) => /^R29\b/.test(part))
   assert.ok(r29, 'R29 existe en proof.md')
 
-  for (const [eje, patron] of [
+  for (const [axis, patron] of [
     ['lo que está en uso se depreca, no se corta', /está en uso no se corta: se depreca/],
     ['la marca dice qué lo reemplaza', /qué lo reemplaza/],
     ['y qué condición permite borrarlo', /qué\s*\n?\s*condición permite borrarlo/],
     ['sin eso queda para siempre', /código muerto con un cartel puesto/],
     ['y lo que nadie llama se borra', /Lo que no llama nadie es otra cosa y se borra/],
   ]) {
-    assert.match(r29, patron, `R29 perdió el eje: ${eje}`)
+    assert.match(r29, patron, `R29 perdió el eje: ${axis}`)
   }
 })
 
@@ -178,14 +178,14 @@ test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () =
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['manual', 'express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
 
-  const raiz = path.resolve(__dirname, '..', '..')
-  const protocolo = fs.readFileSync(path.join(raiz, 'template', 'planning', 'PROTOCOL.md'), 'utf8')
-  assert.ok(protocolo.includes(`[${P.LANES.join('|')}]`), 'el contrato de tarea enumera los lanes')
-  const seccion = protocolo.split(/^##\s+/m).find((parte) => /^Lanes/.test(parte))
-  const descritos = [...seccion.matchAll(/^- `([a-z]+)`/gm)].map((match) => match[1])
-  assert.deepEqual(descritos, P.LANES, 'y cada uno tiene su criterio escrito, en el mismo orden')
+  const root = path.resolve(__dirname, '..', '..')
+  const protocol = fs.readFileSync(path.join(root, 'template', 'planning', 'PROTOCOL.md'), 'utf8')
+  assert.ok(protocol.includes(`[${P.LANES.join('|')}]`), 'el contrato de tarea enumera los lanes')
+  const section = protocol.split(/^##\s+/m).find((part) => /^Lanes/.test(part))
+  const described = [...section.matchAll(/^- `([a-z]+)`/gm)].map((match) => match[1])
+  assert.deepEqual(described, P.LANES, 'y cada uno tiene su criterio escrito, en el mismo orden')
 
-  const workflow = fs.readFileSync(path.join(raiz, 'automatization', 'workflows', 'autobuild.js'), 'utf8')
+  const workflow = fs.readFileSync(path.join(root, 'automatization', 'workflows', 'autobuild.js'), 'utf8')
   const enums = [...workflow.matchAll(/enum:\s*\[([^\]]*)\]/g)]
     .map((match) => match[1].split(',').map((item) => item.trim().replace(/^'|'$/g, '')))
     .filter((values) => values.includes('express'))
@@ -202,13 +202,13 @@ test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () =
 // ninguna frase lo diga: `reports/` existía con su propio README y no figuraba, así que nadie iba a
 // pedir después lo que nada indicaba que faltara.
 test('el README de planning enumera todas las piezas que existen', () => {
-  const raiz = path.resolve(__dirname, '..', '..', 'template', 'planning')
-  const readme = fs.readFileSync(path.join(raiz, 'README.md'), 'utf8')
-  const piezas = fs.readdirSync(raiz, { withFileTypes: true })
+  const root = path.resolve(__dirname, '..', '..', 'template', 'planning')
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
+  const pieces = fs.readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.name !== 'README.md' && !entry.name.startsWith('.'))
     .map((entry) => (entry.isDirectory() ? `${entry.name}/` : entry.name))
-  for (const pieza of piezas) {
-    assert.ok(readme.includes(`\`${pieza}\``), `README no menciona ${pieza}`)
+  for (const piece of pieces) {
+    assert.ok(readme.includes(`\`${piece}\``), `README no menciona ${piece}`)
   }
 })
 
@@ -218,11 +218,11 @@ test('el README de planning enumera todas las piezas que existen', () => {
 test('una copia de la plantilla de épica se activa tal cual', () => {
   const base = tempRoot('cauce-plantilla-epica-')
   const planning = path.join(base, 'planning')
-  const molde = path.resolve(__dirname, '..', '..', 'template', 'planning')
-  fs.cpSync(molde, planning, { recursive: true })
+  const templateText = path.resolve(__dirname, '..', '..', 'template', 'planning')
+  fs.cpSync(templateText, planning, { recursive: true })
 
-  const plantilla = fs.readFileSync(path.join(molde, 'roadmap', 'epic-000-template.md'), 'utf8')
-  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-alta.md'), plantilla
+  const templateDir = fs.readFileSync(path.join(templateText, 'roadmap', 'epic-000-template.md'), 'utf8')
+  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-alta.md'), templateDir
     .replace(/^epic: 000$/m, 'epic: 001')
     .replace(/^status: template$/m, 'status: active')
     .replace(/^title: .*$/m, 'title: Alta de cuenta'))
@@ -244,30 +244,30 @@ test('una copia de la plantilla de épica se activa tal cual', () => {
 // Rutas que una regla de merge nombra y el molde no puede traer porque no existen hasta que alguien las
 // usa. Cada una con su razón, porque la exención es lo que le saca fuerza a la comprobación: sin la
 // lista, la salida barata sería aflojar el guard para todos.
-const CREADAS_EN_USO = {
+const CREATED_IN_USE = {
   'planning/done/human-actions.md':
     'La escribe `ops archive human-actions` la primera vez que hay una fila resuelta. El molde trae el '
     + 'directorio y no el archivo, porque un histórico vacío no es un histórico.',
 }
 
 test('las reglas de merge del molde apuntan a archivos que el molde trae', () => {
-  const molde = path.resolve(__dirname, '..', '..', 'template')
-  const reglas = fs.readFileSync(path.join(molde, '.gitattributes'), 'utf8')
+  const templateText = path.resolve(__dirname, '..', '..', 'template')
+  const rules = fs.readFileSync(path.join(templateText, '.gitattributes'), 'utf8')
     .split('\n')
     .filter((line) => line.trim() && !line.startsWith('#'))
     .map((line) => line.trim().split(/\s+/)[0])
 
-  assert.ok(reglas.length, 'el molde declara al menos una regla de merge')
-  const rotas = reglas.filter((ruta) => !CREADAS_EN_USO[ruta] && !fs.existsSync(path.join(molde, ruta)))
-  assert.deepEqual(rotas, [], `el molde no trae: ${rotas.join(', ')}`)
+  assert.ok(rules.length, 'el molde declara al menos una regla de merge')
+  const broken = rules.filter((route) => !CREATED_IN_USE[route] && !fs.existsSync(path.join(templateText, route)))
+  assert.deepEqual(broken, [], `el molde no trae: ${broken.join(', ')}`)
 
   // Y una exención que ya no hace falta se retira: si el molde pasa a traer el archivo, la lista queda
   // cuidando algo que nadie necesita y esconde el próximo caso real.
-  for (const ruta of Object.keys(CREADAS_EN_USO)) {
-    assert.ok(reglas.includes(ruta), `${ruta}: exenta y ninguna regla la nombra`)
-    assert.equal(fs.existsSync(path.join(molde, ruta)), false, `${ruta}: el molde ya la trae; sacala`)
+  for (const route of Object.keys(CREATED_IN_USE)) {
+    assert.ok(rules.includes(route), `${route}: exenta y ninguna regla la nombra`)
+    assert.equal(fs.existsSync(path.join(templateText, route)), false, `${route}: el molde ya la trae; sacala`)
     // El directorio sí tiene que estar: si no, la ruta está mal escrita y nadie se entera.
-    assert.ok(fs.existsSync(path.join(molde, path.dirname(ruta))), `${ruta}: su directorio no existe`)
+    assert.ok(fs.existsSync(path.join(templateText, path.dirname(route))), `${route}: su directorio no existe`)
   }
 })
 
@@ -276,28 +276,28 @@ test('las reglas de merge del molde apuntan a archivos que el molde trae', () =>
 test('los rangos que declara el README de reglas son los que hay', () => {
   const rules = path.resolve(__dirname, '..', '..', 'template', 'planning', 'rules')
   const readme = fs.readFileSync(path.join(rules, 'README.md'), 'utf8')
-  const declarado = [...readme.matchAll(/^- `system\/([a-z-]+\.md)` — ([^:]+):/gm)]
-  assert.ok(declarado.length >= 4, 'el README declara un rango por archivo del sistema')
+  const declared = [...readme.matchAll(/^- `system\/([a-z-]+\.md)` — ([^:]+):/gm)]
+  assert.ok(declared.length >= 4, 'el README declara un rango por archivo del sistema')
+  const expand = (text) => text.split(',').flatMap((part) => {
+    const range = part.trim().match(/^R(\d+)\.\.R(\d+)$/)
+    if (!range) return [part.trim()]
+    const from = Number(range[1])
+    return Array.from({ length: Number(range[2]) - from + 1 }, (_, step) => `R${from + step}`)
 
-  const expandir = (texto) => texto.split(',').flatMap((parte) => {
-    const rango = parte.trim().match(/^R(\d+)\.\.R(\d+)$/)
-    if (!rango) return [parte.trim()]
-    const desde = Number(rango[1])
-    return Array.from({ length: Number(rango[2]) - desde + 1 }, (_, paso) => `R${desde + paso}`)
   })
 
-  const cubiertos = new Set()
-  for (const [, archivo, rango] of declarado) {
-    const reales = [...fs.readFileSync(path.join(rules, 'system', archivo), 'utf8')
+  const covered = new Set()
+  for (const [, file, range] of declared) {
+    const reales = [...fs.readFileSync(path.join(rules, 'system', file), 'utf8')
       .matchAll(/^##\s+(R\d+)\s+[—-]/gm)].map((match) => match[1])
-    assert.deepEqual(expandir(rango).sort(), reales.sort(), `el rango de ${archivo} no es el que hay`)
-    for (const id of reales) cubiertos.add(id)
+    assert.deepEqual(expand(range).sort(), reales.sort(), `el rango de ${file} no es el que hay`)
+    for (const id of reales) covered.add(id)
   }
 
   // Y ningún archivo del sistema queda sin declarar.
-  const archivos = fs.readdirSync(path.join(rules, 'system')).filter((name) => name.endsWith('.md'))
-  assert.equal(declarado.length, archivos.length, 'cada archivo del sistema tiene su línea')
-  assert.equal(cubiertos.size, 29, 'las veintinueve reglas están declaradas en alguna línea')
+  const files = fs.readdirSync(path.join(rules, 'system')).filter((name) => name.endsWith('.md'))
+  assert.equal(declared.length, files.length, 'cada archivo del sistema tiene su línea')
+  assert.equal(covered.size, 29, 'las veintinueve reglas están declaradas en alguna línea')
 })
 
 // La misma lección que la plantilla de épica: lo que se copia no puede traer algo que haya que borrar
@@ -306,10 +306,10 @@ test('los rangos que declara el README de reglas son los que hay', () => {
 test('una copia de la plantilla de ADR se valida tal cual', () => {
   const base = tempRoot('cauce-plantilla-adr-')
   const planning = path.join(base, 'planning')
-  const molde = path.resolve(__dirname, '..', '..', 'template', 'planning')
-  fs.cpSync(molde, planning, { recursive: true })
+  const templateText = path.resolve(__dirname, '..', '..', 'template', 'planning')
+  fs.cpSync(templateText, planning, { recursive: true })
   fs.writeFileSync(path.join(planning, 'adr', '001-algo.md'),
-    fs.readFileSync(path.join(molde, 'adr', '000-template.md'), 'utf8'))
+    fs.readFileSync(path.join(templateText, 'adr', '000-template.md'), 'utf8'))
 
   const errores = JSON.parse(run(['check', planning, '--json']).stdout).errors
     .filter((error) => /adr\//.test(error))

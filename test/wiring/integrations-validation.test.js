@@ -158,23 +158,23 @@ function readyDraft(fields) {
 }
 
 test('promotionEpic tiene que ser NNN también cuando la promoción es una épica', () => {
-  const sano = readyDraft({ promotionKind: 'epic' })
-  assert.equal(run(['integration', 'check', sano, 'jira']).status, 0, 'sin el campo sigue siendo válido')
-  assert.equal(run(['integration', 'promote', sano, 'jira', 'DEMO-42']).status, 0)
-  assert.ok(fs.readdirSync(path.join(sano, 'planning', 'roadmap')).some((file) => /^epic-001-/.test(file)))
+  const healthy = readyDraft({ promotionKind: 'epic' })
+  assert.equal(run(['integration', 'check', healthy, 'jira']).status, 0, 'sin el campo sigue siendo válido')
+  assert.equal(run(['integration', 'promote', healthy, 'jira', 'DEMO-42']).status, 0)
+  assert.ok(fs.readdirSync(path.join(healthy, 'planning', 'roadmap')).some((file) => /^epic-001-/.test(file)))
 
   // Un número sin rellenar produce `epic-7-…`, que el roadmap no reconoce como épica: la promoción se
   // anuncia bien y lo escrito queda invisible para la cola.
-  const corto = readyDraft({ promotionKind: 'epic', promotionEpic: '7' })
-  const cortoCheck = run(['integration', 'check', corto, 'jira'])
-  assert.equal(cortoCheck.status, 1, cortoCheck.stdout)
-  assert.match(cortoCheck.stderr + cortoCheck.stdout, /promotionEpic debe ser NNN/)
+  const short = readyDraft({ promotionKind: 'epic', promotionEpic: '7' })
+  const shortCheck = run(['integration', 'check', short, 'jira'])
+  assert.equal(shortCheck.status, 1, shortCheck.stdout)
+  assert.match(shortCheck.stderr + shortCheck.stdout, /promotionEpic debe ser NNN/)
 
   // Y un `..` sacaba la épica de `roadmap/` con `promote` devolviendo 0 y diciendo «promovido como epic».
-  const fuga = readyDraft({ promotionKind: 'epic', promotionEpic: '../../../pwned' })
-  assert.equal(run(['integration', 'check', fuga, 'jira']).status, 1)
-  const promote = run(['integration', 'promote', fuga, 'jira', 'DEMO-42'])
+  const escape = readyDraft({ promotionKind: 'epic', promotionEpic: '../../../pwned' })
+  assert.equal(run(['integration', 'check', escape, 'jira']).status, 1)
+  const promote = run(['integration', 'promote', escape, 'jira', 'DEMO-42'])
   assert.equal(promote.status, 1, 'y promote se niega, que es lo que impide la escritura')
-  assert.deepEqual(fs.readdirSync(path.join(fuga, 'planning')).filter((file) => /pwned/.test(file)), [],
+  assert.deepEqual(fs.readdirSync(path.join(escape, 'planning')).filter((file) => /pwned/.test(file)), [],
     'nada escrito fuera del roadmap')
 })

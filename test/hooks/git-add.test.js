@@ -4,7 +4,7 @@
 // parte de su texto es dato y no orden.
 
 const { tempRoot } = require('../support/environment')
-const { blocked, git, initRepo, repoPublicado } = require('../support/hooks-harness')
+const { blocked, git, initRepo, publishedRepo } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -48,7 +48,7 @@ test('un cd en una subcapa cerrada no saca al git add del repositorio de la sesi
 // Se mide en las dos direcciones a propósito. Sólo lo primero pasaría con las reglas apagadas, y sólo lo
 // segundo pasaría con el `[^;&|]` de antes: es el par lo que fija el corte donde va.
 test('un guard no cruza el salto de línea, que también separa comandos', () => {
-  const dosLineas = (primero, segundo) => ({ tool_input: { command: `${primero}\n${segundo}` } })
+  const twoLines = (first, second) => ({ tool_input: { command: `${first}\n${second}` } })
 
   // Sigue bloqueando lo que le toca, escrito en una sola línea.
   blocked('git-add', { tool_input: { command: 'git commit -am "x"' } }, /stagea al commitear/)
@@ -56,14 +56,14 @@ test('un guard no cruza el salto de línea, que también separa comandos', () =>
   blocked('dependencies', { tool_input: { command: 'npm install -g cosa' } }, /acción humana/)
 
   // Y deja pasar lo que vive en la línea de abajo y no es asunto suyo.
-  assert.doesNotThrow(() => execute('git-add', dosLineas('git commit -q -m "x"', 'set -a; . ./.env; set +a')))
-  assert.doesNotThrow(() => execute('git-add', dosLineas('git commit -m "x"', 'ls -a')))
-  assert.doesNotThrow(() => execute('git-add', dosLineas('git add uno.js', 'ls .')))
-  assert.doesNotThrow(() => execute('dependencies', dosLineas('npm install', 'grep -g x archivo')))
+  assert.doesNotThrow(() => execute('git-add', twoLines('git commit -q -m "x"', 'set -a; . ./.env; set +a')))
+  assert.doesNotThrow(() => execute('git-add', twoLines('git commit -m "x"', 'ls -a')))
+  assert.doesNotThrow(() => execute('git-add', twoLines('git add uno.js', 'ls .')))
+  assert.doesNotThrow(() => execute('dependencies', twoLines('npm install', 'grep -g x archivo')))
 
   // El push de la línea de arriba sigue frenado, pero por lo que de verdad es: publicar pide una acción
   // humana (R10). Lo que dejó de decir es que fuera un force push.
-  const push = dosLineas('git push origin main', 'rm -f /tmp/x.log')
+  const push = twoLines('git push origin main', 'rm -f /tmp/x.log')
   blocked('destructive', push, /requiere una acción humana/)
   assert.throws(() => execute('destructive', push), (error) => !/reescribe historia/.test(String(error)),
     'y ya no lo anuncia como una reescritura de historia publicada')
@@ -89,25 +89,25 @@ test('el salto de línea termina la lista de argumentos de un comando', () => {
   fs.mkdirSync(path.join(root, 'api'))
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ workspaceRoots: [{ name: 'api', path: 'api' }] }))
-  const entrada = (command) => ({ cwd: root, tool_input: { command } })
-  const afuera = path.join(os.homedir(), 'afuera', 'x')
+  const entry = (command) => ({ cwd: root, tool_input: { command } })
+  const outside = path.join(os.homedir(), 'afuera', 'x')
 
   // Las dos formas de segunda línea, con heredoc y sin él, contra las tres familias que leen argumentos:
   // la que toma el último (`cp`), la que toma todos (`tee`) y la que exige `-i` (`sed`). Cambiar una
   // sola y probar una sola deja las otras dos leyendo la línea de abajo.
   // El intérprete va con ruta absoluta a propósito: si el token de la segunda línea resolviera adentro
   // de la raíz, leerlo mal no bloquearía y el caso pasaría con el defecto puesto.
-  for (const segunda of ["/usr/bin/python3 - <<'PY'\nprint(1)\nPY", '/usr/bin/python3 -c "print(1)"']) {
-    for (const primera of ['cp /etc/hostname api/h', 'printf x | tee api/log', "sed -i 's/a/b/' api/f"]) {
-      assert.doesNotThrow(() => execute('shell-boundary', entrada(`${primera}\n${segunda}`)),
-        `acusó una escritura que no está en el comando: ${primera}`)
+  for (const second of ["/usr/bin/python3 - <<'PY'\nprint(1)\nPY", '/usr/bin/python3 -c "print(1)"']) {
+    for (const first of ['cp /etc/hostname api/h', 'printf x | tee api/log', "sed -i 's/a/b/' api/f"]) {
+      assert.doesNotThrow(() => execute('shell-boundary', entry(`${first}\n${second}`)),
+        `acusó una escritura que no está en el comando: ${first}`)
     }
   }
 
   // Y la dirección contraria, que es la que se rompe si uno corta de más: un destino real de la primera
   // línea se sigue viendo aunque haya otra línea debajo.
-  blocked('shell-boundary', entrada(`cp /etc/hostname ${afuera}\npython3 -c "print(1)"`), /fuera de las raíces/)
-  blocked('shell-boundary', entrada(`echo hola\ncp /etc/hostname ${afuera}`), /fuera de las raíces/)
+  blocked('shell-boundary', entry(`cp /etc/hostname ${outside}\npython3 -c "print(1)"`), /fuera de las raíces/)
+  blocked('shell-boundary', entry(`echo hola\ncp /etc/hostname ${outside}`), /fuera de las raíces/)
 })
 
 // Se cruzan todas las reglas contra todas las formas, y no una contra una, porque lo que falló no fue
@@ -133,13 +133,13 @@ test('una opción global de git no desactiva la regla que mira el subcomando', (
     ['destructive', 'git reset --hard HEAD', /destruye cambios locales/],
     // El amend se mide sobre historia publicada, que es donde la regla aplica: sin publicar no hay
     // bloqueo que las opciones globales puedan desactivar. Por qué, junto a la regla en `shell.js`.
-    ['destructive', 'git commit --amend -m x', /publicad/, repoPublicado('ops-amend-globals-')],
+    ['destructive', 'git commit --amend -m x', /publicad/, publishedRepo('ops-amend-globals-')],
     ['destructive', 'git clean -fd', /sin seguimiento/],
     ['destructive', 'git checkout -- .', /no sólo lo que estás mirando/],
   ]
-  for (const [guard, command, motivo, cwd] of rules) {
+  for (const [guard, command, reason, cwd] of rules) {
     for (const form of forms(command)) {
-      blocked(guard, { ...(cwd ? { cwd } : {}), tool_input: { command: form } }, motivo)
+      blocked(guard, { ...(cwd ? { cwd } : {}), tool_input: { command: form } }, reason)
     }
   }
 })
