@@ -108,6 +108,15 @@ diseño — eso vive en el commit y en el código.
   sobre un script de los guards, o `git --attr-source HEAD config core.hooksPath h`, pasaban donde `git -C . rm`
   frenaba. Ahora las cuatro leen la misma lista. No hay nada que hacer en la instancia: llega con `upgrade`.
 
+- **`secrets-shell` frena leer una credencial con un programa que no conoce.** Contaba como lector sólo lo que estaba
+  en su lista, así que `comm .env x`, `zcat .env.gz`, `column -t .env` o `git diff .env` pasaban; `nl` había entrado
+  después de que un agente lo usara en una sesión real. Ahora cuenta cualquier programa instalado, y lo que sólo nombra
+  el archivo se declara aparte: `ls`, `test`, `cp`, `rm`, `echo`, `git add`, `git log` sin parche, `ssh -i`,
+  `docker compose --env-file`, entre otros. Medido sobre 101.218 comandos reales de sesiones: frena 7 más y ninguno que
+  antes frenara pasa. Lo que pasa un archivo de credenciales a otro programa sin que el guard lo conozca —`openssl`,
+  `npx dotenv -e .env`, `tar`— ahora frena y se aprueba en el chat. No hay nada que hacer en la instancia: llega con
+  `upgrade`.
+
 - **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
   no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
   Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
