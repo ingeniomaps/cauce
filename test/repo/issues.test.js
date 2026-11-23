@@ -115,9 +115,8 @@ test('un caso resuelto dice qué quedó sin probar', () => {
 })
 
 // Una lista para leer no se cumplió: se cerraron casos con puntos sin hacer en la misma sesión que la escribió. Escrita
-// punto por punto, saltearse uno se ve. Mide que cada punto tenga su línea, no que sea cierta. Rige por
-// número de caso y
-// no por versión, porque 458 y 460 ya salen en 0.118.0 y rellenarlos sería escribir de memoria.
+// punto por punto, saltearse uno se ve. Mide que cada punto tenga su línea, no que sea cierta. Rige por número de caso
+// y no por versión, porque 458 y 460 ya salen en 0.118.0 y rellenarlos sería escribir de memoria.
 const CLOSING_POINTS = 16
 function closingListProblems(closing) {
   const opens = closing.indexOf('### Lista de cierre\n')

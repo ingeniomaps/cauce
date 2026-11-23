@@ -83,11 +83,11 @@ function unreadableMessage(root, file) {
 // comparar quedan dos conductas posibles y ninguna intermedia, y se elige la que cierra la vía que el 114
 // midió.
 //
-// Lo que sí se ofrece es que la persona lo confirme a ciegas, en este turno y sin nada que pegar (`judgeCommand`),
-// una salida más angosta que la del 370: Codex escribe
-// sólo por `apply_patch`, que llega como parche y no como archivo, así que sin esto no le quedaba ninguna vía
-// para el cambio que ella pidió (revisión del 373). Quien confirma no ve con qué queda el archivo, y el
-// bloqueo se lo dice; la herramienta de edición, donde la hay, sigue siendo la que muestra la entrada.
+// Lo que sí se ofrece es que la persona lo confirme a ciegas, en este turno y sin nada que pegar (`judgeCommand`), una
+// salida más angosta que la del 370: Codex escribe sólo por `apply_patch`, que llega como parche y no como archivo, así
+// que sin esto no le quedaba ninguna vía para el cambio que ella pidió (revisión del 373). Quien confirma no ve con qué
+// queda el archivo, y el bloqueo se lo dice; la herramienta de edición, donde la hay, sigue siendo la que muestra la
+// entrada.
 function commandMessage(root, file) {
   return `el comando escribe en ${file}, donde viven ${guards(root, file)}. Un comando no dice con qué va a `
     + 'quedar el archivo, así que acá se frena toda escritura. Si el cambio es de cualquier otro campo, '

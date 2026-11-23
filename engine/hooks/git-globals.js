@@ -197,9 +197,8 @@ const withoutGitGlobals = (command) => {
   return out + text.slice(copied)
 }
 
-// Dónde está el valor del primer `-C` de `text`, o null. Fuera de la primera palabra se lee como antes:
-// hasta un separador
-// o una comilla, y si las comillas no cierran ahí, no hay valor y cuenta la carpeta de la sesión.
+// Dónde está el valor del primer `-C` de `text`, o null. Fuera de la primera palabra se lee como antes: hasta un
+// separador o una comilla, y si las comillas no cierran ahí, no hay valor y cuenta la carpeta de la sesión.
 function directoryFlag(text) {
   const isHead = commandHeads(text)
   for (const found of text.matchAll(/(?:^|\s)git(?=\s)/g)) {

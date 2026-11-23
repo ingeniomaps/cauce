@@ -259,12 +259,11 @@ function validateState({
         + `${P.HUMAN_ACTION_STATES.join(' | ')}; mientras no se entienda, la tarea queda bloqueada`)
       continue
     }
-    // La primera columna es a la vez lo que una persona lee y la clave con la que el motor bloquea:
-    // la selección de tarea (`state.js`) arma su conjunto de bloqueadas con ella tal cual. Esa doble
-    // función es libre a propósito —el molde manda
-    // nombrar la épica o el recorrido cuando la tarea todavía no existe— así que lo que no se puede
-    // recortar es la libertad, y lo que sí se puede es la forma intermedia: la celda que **menciona** una
-    // tarea de la cola sin ser su slug.
+    // La primera columna es a la vez lo que una persona lee y la clave con la que el motor bloquea: la selección de
+    // tarea (`state.js`) arma su conjunto de bloqueadas con ella tal cual. Esa doble función es libre a propósito —el
+    // molde manda nombrar la épica o el recorrido cuando la tarea todavía no existe— así que lo que no se puede
+    // recortar es la libertad, y lo que sí se puede es la forma intermedia: la celda que **menciona** una tarea de la
+    // cola sin ser su slug.
     //
     // Es la peor de las tres porque promete un bloqueo que no ocurre, y nada lo dice: la fila se escribe
     // sin error, sale en `ops context` bajo HUMAN como si estuviera registrada, y la tarea se sigue
