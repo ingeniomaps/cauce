@@ -220,8 +220,8 @@ test('solo se toma trabajo promovido, y sin identidad no se toma nada', () => {
   assert.match(anonymous.stderr, /No sé quién sos/)
 })
 
-// Lo que sigue a una tarea en vuelo es trabajo de quien la tiene. El orden del BACKLOG lo decía solo
-// mientras hubiera un runner; con dos, el segundo toma la que sigue y las dos ramas se pisan al integrar.
+// Lo que sigue a una tarea en vuelo es trabajo de quien la tiene: ofrecerlo a otro runner hace que las dos
+// ramas se pisen al integrar. Por qué el orden del BACKLOG no alcanza, en `engine/planning/parser.js`.
 test('lo que depende de una tarea en vuelo no se le ofrece a otro runner', () => {
   const dir = planning('cauce-depende-')
   fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido
@@ -290,9 +290,8 @@ test('context puede acotarse a un hito, y avisa si el hito no existe', () => {
   assert.match(broken.stderr, /el hito bakend no existe\. Hay: frontend, backend/)
 })
 
-// Encontrado corriendo un equipo de verdad, no en una prueba: `--hito` sobre otro hito le ofrecía a
-// quien ya sostenía una tarea una segunda que `ops claim` después se niega a dar. El comando que dice
-// qué hacer y el que lo autoriza contestaban distinto, y la contradicción sólo se veía al reclamar.
+// Encontrado corriendo un equipo de verdad, no en una prueba: `--hito` sobre otro hito le ofrecía a quien ya
+// sostenía una tarea una segunda que `ops claim` negaba. Por qué importa, en `engine/cli/planning.js`.
 test('acotar por hito no esconde la tarea que ya tenés', () => {
   const dir = planning('cauce-hito-propio-')
   fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido

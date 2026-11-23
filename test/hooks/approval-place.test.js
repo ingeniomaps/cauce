@@ -195,7 +195,7 @@ test('sin un lugar que se pueda saber no hay línea que pegar', () => {
     const unset = 'cd $REPO && git clean -fd'
     assert.doesNotMatch(messageOf('destructive', runs(ws.workspace, unset)), /estas líneas:/)
 
-    // `gh` corre en la carpeta del shell: el `-C` de un `git` del mismo comando no le cambia el repositorio.
+    // Un `git -C` en el mismo comando no le mueve el repositorio a `gh` (por qué, en `engine/hooks/approval.js`).
     const mixed = `git -C ${ws.repos.api} fetch && gh workflow run deploy.yml`
     blocked('destructive', chat.says('revisá el deploy')(runs(ws.repos.web, mixed)), /dispara o publica/)
     assert.doesNotThrow(() => execute('destructive', chat.says('dale')(runs(ws.repos.web, mixed))))

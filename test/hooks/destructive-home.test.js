@@ -3,7 +3,7 @@
 // Caso 368: `destructive` cuida la carpeta personal por nombre, también con el proyecto fuera de ella. El
 // porqué, en `removesTheTree`.
 //
-// El guard sólo lee el texto del comando: acá no se ejecuta ningún borrado.
+// Acá no se borra nada: el guard juzga sólo el texto del comando.
 
 const { tempRoot } = require('../support/environment')
 const { blocked } = require('../support/hooks-harness')

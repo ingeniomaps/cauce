@@ -142,8 +142,8 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
     'T=$(algo-que-no-es-mktemp) && cd $T && echo x > a.js',
     'T=$(mktemp -d -p $NADIE) && cd $T && echo x > a.js',
     'T=$(mktemp -d -p relativo) && cd $T && echo x > a.js',
-    // `mktemp` tiene más de una forma de decir dónde crea, y cuando dos se contradicen gana una que acá no se
-    // sabe. Cada una de éstas resolvía a la raíz mientras `mktemp` creaba afuera: quedan sin resolver.
+    // Formas de `mktemp` que se contradicen sobre dónde crea (por qué quedan sin resolver, en
+    // `engine/hooks/mktemp.js`). Cada una de éstas resolvía a la raíz mientras `mktemp` creaba afuera.
     `T=$(mktemp -d -p ${root} -p ${outside}) && cd $T && echo x > a.js`,
     `T=$(mktemp -d -p ${root} --tmpdir=${outside}) && cd $T && echo x > a.js`,
     `T=$(mktemp -d --tmpdir=${root} -p${outside}) && cd $T && echo x > a.js`,

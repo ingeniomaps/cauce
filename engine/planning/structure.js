@@ -4,8 +4,8 @@
 // reglas y ADR— antes de que alguien componga un estado con ellos.
 //
 // Vive aparte de `contracts.js` porque es la otra mitad de una costura: aquéllas reciben el estado ya
-// leído y se prueban sin tocar disco, éstas abren archivos. Se separaron cuando el archivo cruzó las 500
-// líneas, y lo que decidió el corte fue eso y no el número.
+// leído y se prueban sin tocar disco, éstas abren archivos. El archivo se partió al pasar de 500 líneas,
+// pero el corte lo decidió la costura, no el número.
 
 const fs = require('node:fs')
 const path = require('node:path')

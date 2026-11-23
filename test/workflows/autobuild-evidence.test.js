@@ -223,9 +223,9 @@ test('un commit que no se hizo no se da por hecho', async () => {
   assert.match(result.detail, /sin stagear/)
 })
 
-// Caso 251. El repo de un servicio queda en su rama viva después de cada merge, y el commit caía ahí. Las
-// dos mitades van juntas: que se pida cortar la rama, y que un commit que igual quedó en la viva no se dé
-// por bueno — el prompt solo no prueba qué hizo quien lo recibió.
+// Caso 251: el commit caía en la rama viva (por qué, junto al prompt de Commit en
+// `automatization/workflows/autobuild.js`). Las dos mitades van juntas: que se pida cortar la rama, y que un commit que
+// igual quedó en la viva no se dé por bueno — el prompt solo no prueba qué hizo quien lo recibió.
 const commitPrompt = (prompts) => prompts.find((one) => one.key === KEY.commit).prompt
 const live = { committed: true, hash: 'abc123', branch: 'main', live: true }
 const allowed = { [KEY.contract]: { ...baseScript()[KEY.contract], commitToLiveBranch: true } }

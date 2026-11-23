@@ -242,7 +242,7 @@ test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
       'claude-opus-5': { webSearchRequests: 1 },
     },
   })
-  // El JSON de una corrida, para medir el resumen del job sin gastar modelo.
+  // Sin gastar modelo: el doble devuelve el JSON de esta corrida.
   fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`)
 
   const done = spawnSync('bash', ['-c', step], {

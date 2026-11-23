@@ -46,8 +46,7 @@ const SIGNATURE = {
     // y colapsarlos dejaba sin salida a un mes revisado, firmado y cerrado sin cambios: el recorrido lo
     // mandaba a proponer de nuevo y la propuesta quedaba `proposed` para siempre, contando como pendiente.
     change: { type: 'string' },
-    // Qué CLI existe acá. Una empresa tiene el shim `tools/ops.js`; el repo del toolkit no lo tiene
-    // —no se instala a sí mismo— y su motor está en `engine/cli/ops.js`. Los dos evaluadores ya lo
+    // Qué CLI existe acá, por lo mismo que en `agent-eval`. Los dos evaluadores ya lo
     // preguntan; éste lo suponía en sus dos comandos. El primero se salvó porque el agente improvisó, y
     // el último —el que sella— no: la propuesta quedó `proposed` con el cambio ya aplicado, que es el
     // estado que el comentario de ese paso llama «el que se hace mal en silencio».

@@ -137,8 +137,8 @@ function learn(agent, cli) {
       fail(`${agent} es un recorrido: aprende de sus corridas, no de informes de investigación.\n`
         + `  Abrí la propuesta con "ops learn ${agent} --flow --proposal".`, USAGE)
     }
-    // `--period` es para consolidar a mano un mes que no es el de hoy. El ciclo automático no lo
-    // pasa: la propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró.
+    // `--period` es para consolidar a mano un mes que no es el de hoy; por qué el ciclo no lo pasa, en
+    // `prepareProposal`.
     const result = cli.has('--proposal')
       ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'), kind)
       : L.prepareReport(opsRoot(), agent)

@@ -1,7 +1,7 @@
 'use strict'
 
-// Lo que la sesión de una línea puede escribir dentro de la carpeta de sesión (caso 422): sus árboles y la instancia,
-// y nada más de esa carpeta. Cómo se sabe qué línea lleva, y por qué así, en `engine/hooks/line-scope.js`.
+// El límite del caso 422: en la carpeta de sesión, la sesión de una línea escribe sólo en sus árboles y en la
+// instancia. Cómo se sabe qué línea lleva, y por qué así, en `engine/hooks/line-scope.js`.
 
 const { outsideTempRoot, run } = require('../support/environment')
 const { blocked } = require('../support/hooks-harness')
@@ -44,7 +44,7 @@ function session(name) {
   return { base, ops, tree: path.join(base, 'lines', 'piloto', 'app') }
 }
 
-// La raíz, por `OPS_ROOT`, como el shim instalado (el porqué, en `run-hook.sh`).
+// La raíz va por `OPS_ROOT`, igual que en el shim instalado; la razón, en `run-hook.sh`.
 // Y sin `CI`, que apaga el chat (`present`, chat.js) y deja sin persona a las pruebas que confirman.
 function withRoot(ops, body) {
   const saved = { root: process.env.OPS_ROOT, runner: process.env.CAUCE_RUNNER, ci: process.env.CI }
@@ -148,7 +148,7 @@ test('la línea de una sesión sale de lo que ella dice o de CAUCE_RUNNER, y un 
     prompt(id, '/autobuild piloto', base)
     executeAll(['pre-shell'], shell(id, ops, 'node tools/ops.js claim planning t-piloto --line nadie'))
     blocked('workspace-boundary', write(id, base, main, agent), STRAYED)
-    // Las otras formas de correr `ops` la anotan igual: el script directo, el `bin` del paquete y `npm run ops --`.
+    // Las otras formas de correr `ops` que reconoce `opsCall` la anotan igual.
     for (const command of ['./tools/ops.js worktree planning t-piloto --line piloto',
       'npx cauce claim planning t-piloto --line piloto', 'npm run ops -- claim planning t-piloto --line=piloto']) {
       const fresh = sessionId()
@@ -161,7 +161,7 @@ test('la línea de una sesión sale de lo que ella dice o de CAUCE_RUNNER, y un 
     executeAll(['pre-shell'], { ...agy, tool_input: { command: claim } })
     blocked('workspace-boundary', { ...agy, cwd: base, tool_input: { file_path: main } }, STRAYED)
     // Sin nada dicho, el id declarado con la línea, también con un espacio de más. Y la carpeta donde está parada no
-    // cuenta: la principal que entra a mirar el árbol de una línea no pasa a llevarla.
+    // cuenta: escribir desde el árbol de una línea sin haberla dicho no la lleva.
     process.env.CAUCE_RUNNER = `${ops}#line/piloto \n`
     blocked('workspace-boundary', write(sessionId(), base, main, agent), STRAYED)
     delete process.env.CAUCE_RUNNER

@@ -40,7 +40,6 @@ test('check avisa cuando una dimensión del molde desapareció', () => {
 
 // Cuatro corridas reales, cuatro resultados distintos: dos cubrieron todas las variables declaradas y
 // dos dejaron afuera las que la conversación no tocó —entre ellas el broker por donde entran los datos—.
-// Una variable sin dueño no rompe nada hoy: rompe el día que alguien tiene que desplegar.
 test('check avisa por las credenciales que nadie se llevó', () => {
   const base = tempRoot('cauce-creds-')
   const workspace = path.join(base, 'repo')

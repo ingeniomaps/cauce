@@ -74,9 +74,8 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
 
 // La regresión del caso 070, medida como R29 pide que se mida una quita: por ausencia de daño. Poner
 // `CI=true` en la copia no agregaba una conducta, **quitaba** una —la confirmación con la que pnpm frena
-// antes de purgar—, y esa confirmación era lo único que protegía al `node_modules` del proyecto. Sin
-// ella la reinstalación avanza y borra por el enlace; el gate igual termina en verde, así que nada lo
-// dice.
+// antes de purgar— (el daño, en `engine/hooks/verify.js`); el gate igual termina en verde, así que nada
+// lo dice.
 //
 // Se usa un `pnpm` de mentira porque el de verdad exige una instalación real, y lo que hay que fijar no es
 // qué hace pnpm sino **qué le pedimos**: con la comprobación previa apagada no toca nada, y con cualquier

@@ -73,9 +73,8 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const wiring = fs.readFileSync(path.join(workspace, '.claude', 'settings.json'), 'utf8')
   assert.match(wiring, /\$CLAUDE_PROJECT_DIR\/acme-ops\/automatization\/hooks\/guard-shell\.sh/)
 
-  // El guard tiene que morder desde ahí. La raíz ops es un hermano de los repos de producto, y
-  // ninguna búsqueda hacia arriba la encuentra: si el guard no la resuelve por su cuenta, no
-  // bloquea nada y el silencio se lee como permiso.
+  // El guard tiene que morder desde ahí, con la raíz ops al lado del producto: si no la resuelve por
+  // su cuenta, no bloquea nada y el silencio se lee como permiso.
   const guard = (file) => spawnSync(
     path.join(consumer, 'automatization', 'hooks', 'guard-files.sh'),
     { cwd: workspace, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: workspace },

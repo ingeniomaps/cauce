@@ -10,8 +10,6 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-// La guía es lo único que le dice a alguien qué hacer con lo que acaba de crear, así que no puede
-// depender de que la instalación haya corrido: la resuelve el mismo motor que está corriendo init.
 // El motor viene fijado en una versión exacta, así que no se mueve solo: sin decirlo, «al día» se lee
 // como «no hay nada nuevo» durante todas las versiones siguientes, y el usuario se queda atrás en
 // silencio. La instrucción concreta vale más que la advertencia.
@@ -64,10 +62,8 @@ test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
   assert.equal(run(['check', path.join(target, 'planning')]).status, 0)
 })
 
-// Lo que el 001 protege es que una edición local no se pierda, y eso se cumple mejor conservándola que
-// abortando: antes había que elegir entre no actualizar nunca y descartarlo todo, y quien adopta Cauce
-// sobre un proceso propio se quedaba con la primera. Ahora se actualiza lo intacto, se conserva lo
-// editado y se dice cuál en cada corrida.
+// Se actualiza lo intacto, se conserva lo editado y se dice cuál en cada corrida. Por qué conservar en vez
+// de abortar (caso 001), en `engine/cli/instance.js`.
 test('upgrade conserva lo editado, actualiza el resto y lo dice', () => {
   const base = tempRoot('cauce-upgrade-edit-')
   const target = path.join(base, 'acme')

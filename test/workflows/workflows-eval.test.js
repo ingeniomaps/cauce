@@ -122,9 +122,8 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /Leelos antes de contestar/, 'y le dice al cargo que lo lea')
   assert.match(evalWf, /no es obra suya/, 'y al juez, que vino con el banco')
 
-  // Comprobar las afirmaciones de mecanismo lo hacía a mano quien lanzaba la corrida, así que el hallazgo
-  // dependía de que a alguien se le ocurriera la comprobación correcta y la vara se movía entre corridas.
-  // Va con redacción fija y fuera del bloque de conducta prohibida: un cargo puede afirmar de más aunque
+  // El juez comprueba las afirmaciones de mecanismo (por qué, en `agent-eval.js`). Va con redacción fija
+  // y fuera del bloque de conducta prohibida: un cargo puede afirmar de más aunque
   // su contrato no declare ninguna.
   assert.match(evalWf, /Enumeralas con el registro que cada una lleva/, 'el juez busca las afirmaciones')
   assert.match(evalWf, /comprobá las que se puedan comprobar barato/, 'y comprueba las baratas')
@@ -217,11 +216,8 @@ test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
 
 // El caso son los dos evaluadores a la vez, no uno cada uno: el arreglo entró en `agent-eval` y
 // `flow-eval` quedó sin él. Un caso por gemelo deja pasar exactamente eso.
-// `agent-promote` entra a la lista tarde y por lo que costó: suponía `tools/ops.js` en sus tres
-// comandos. El primero se salvó porque el agente improvisó —que es exactamente lo que este caso existe
-// para impedir— y el último, el que sella, no: aplicó el cambio al `SKILL.md`, escribió el historial y
-// dejó la propuesta en `proposed`. El comentario de ese paso ya lo nombraba: marcar el estado a mano es
-// «el paso que se hace mal en silencio», y salió mal por no poder correrse.
+// `agent-promote` entra a la lista tarde y por lo que costó (lo que pasó, en su campo `cli`): suponía
+// `tools/ops.js`, y que el agente improvise el comando es exactamente lo que este caso existe para impedir.
 test('los tres recorridos que corren el CLI preguntan cuál existe, no lo suponen', () => {
   for (const name of ['agent-eval.js', 'flow-eval.js', 'agent-promote.js']) {
     const source = fs.readFileSync(path.join(WF, name), 'utf8')

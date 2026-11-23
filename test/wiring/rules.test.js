@@ -46,7 +46,7 @@ test('las reglas vigentes son las propias y las del sistema que el proyecto no s
 // adopta Cauce sobre su propio proceso, y el override es por nombre de archivo: se llevaba puesto el
 // archivo entero. R16, R20, R21 y R22 —lo que cuesta una corrida, cuándo una medición vale, cómo se
 // retoma, qué no se toca mientras se mide— dejaban de llegarle a todo agente sin que nadie lo decidiera.
-// Una instancia real las declaró «adoptadas por referencia» en una tabla de prosa que el motor no lee, y
+// Una instancia real las declaró «adoptadas por referencia» en una tabla que el motor no lee, y
 // dos de ellas no estaban rigiendo el día que le costaron una sesión (caso 160).
 //
 // Por eso viven en `runs.md`: la prueba no es que el override ande —eso ya se mide arriba— sino que el
@@ -193,8 +193,7 @@ test('una regla que declara su superficie se nombra sin cargarse, y una sin decl
     'doctor no reporta como faltante la que a propósito no se carga')
 })
 
-// Escribir una regla propia encarece todas las corridas futuras de todos los agentes, y hasta acá eso no
-// lo decía nadie: había que sumar los tamaños a mano después de una corrida cara (caso 141). Las dos
+// Por qué se dice lo que pesa una regla propia, en `engine/automation/index.js` (caso 141). Las dos
 // mitades de decirlo son distintas — `install` lo declara cuando se elige, `check` avisa cuando ya pesa—
 // y las dos cuentan lo mismo: lo que el bloque **carga**. Una regla con `aplica:` no suma, porque si
 // sumara declararla no serviría de nada.

@@ -270,9 +270,9 @@ test('una intención que empieza con el nombre de un recorrido, sin los dos punt
 // casos adversariales de los cargos miden y castigan. `flow list` sólo se corría cuando el slug fallaba,
 // para decir cuáles hay.
 //
-// Va en las reglas comunes y no sólo en la etapa que enruta: cualquier etapa puede nombrar un destino
-// al cerrar, y son seis slugs de contexto. Sale del registro, como la cadencia y como la matriz del
-// cron: una lista escrita al lado se pudre el día que alguien agrega un recorrido.
+// Que la lista llegue a todas las etapas y no sólo a la que enruta: el porqué, en `flow.js`. Sale del
+// registro, como la cadencia y como la matriz del cron: una lista escrita al lado se pudre el día que
+// alguien agrega un recorrido.
 test('cada etapa sabe qué recorridos existen, en vez de nombrarlos de memoria', async () => {
   const { prompts } = await runFlow({
     'flow-contract': { ...baseScript()['flow-contract'], flows: ['intake', 'incident-review'] },
@@ -308,14 +308,12 @@ test('un recorrido que se bloquea entrega igual lo que las etapas anteriores est
   assert.match(partial, /nadie estimó el esfuerzo/, 'y con qué falta para completarlo')
 })
 
-// El análisis completo viaja por el input de la herramienta, y pasado cierto tamaño el modelo deja de
-// emitir los campos y emite `{"raw": "<el JSON como string>", "len": N}`, que no valida. 86 de las 1550
-// llamadas con schema de tres corridas salieron así, todas menos una declarando 6274 caracteres o más,
-// y dos casos murieron sin medirse. Es la otra mitad de lo que R16 pide —el análisis «queda donde se
-// escribió»— y el prompt no la decía.
+// El análisis completo viaja por el input de la herramienta, y pasado cierto tamaño vuelve envuelto en
+// `raw`, que no valida: el porqué y lo que se intentó, en `automatization/workflows/flow.js`. De las 86
+// llamadas envueltas, todas menos una declaraban 6274 caracteres o más, y dos casos murieron sin medirse.
 //
-// El envoltorio se nombra aparte del techo porque no se arregla acortando: la excepción de esas 86 era
-// un quinto reintento de 924 caracteres que conservó la forma de los cuatro largos anteriores.
+// El envoltorio se nombra aparte del techo porque no se arregla acortando: lo muestra el reintento de 924
+// caracteres que cuenta `flow.js`.
 test('el análisis largo va a un archivo, no por el handoff', async () => {
   const { prompts } = await runFlow()
   const stage = prompts.find((one) => one.key === 'stage:encuadre')

@@ -1,10 +1,9 @@
 'use strict'
 
-// `ops evidence`: el contraste de la evidencia de una entrada de DONE contra lo que no escribió su
-// autor. Lo que se mide acá es la salida del comando —qué veredicto da y qué declara no poder ver—;
-// la decisión por rastro vive en `engine/core/evidence.js` y la ejercita `test/hooks/verify.test.js`.
-// Vecino de `evidence.test.js`, que mide el contrato escrito de esa misma entrada: allá qué tiene que
-// decir DONE, acá contra qué se puede cruzar lo que dijo.
+// `ops evidence` —qué contrasta y por qué no es una puerta, en `engine/cli/planning.js`—. Lo que se mide acá es la
+// salida del comando —qué veredicto da y qué declara no poder ver—; la decisión por rastro vive en
+// `engine/core/evidence.js` y la ejercita `test/hooks/verify.test.js`. Vecino de `evidence.test.js`, que mide el
+// contrato escrito de esa misma entrada: allá qué tiene que decir DONE, acá contra qué se puede cruzar lo que dijo.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
@@ -49,7 +48,7 @@ test('evidence separa el artefacto que existe del que no y del que no se puede b
   const text = run(['evidence', path.join(ops, 'planning')])
   assert.equal(text.status, 0, text.stderr)
   assert.match(text.stdout, /TestQueNoExiste {2}\[ausente\]/)
-  // Un contraste que no dice qué no puede ver se lee como si lo hubiera visto todo.
+  // Declara lo que no puede ver; por qué, en `engine/cli/planning.js`.
   assert.match(text.stdout, /No dice que la prueba nombrada haya corrido/)
   assert.match(text.stdout, /sin corridas registradas/)
 })
@@ -309,7 +308,7 @@ test('la traza que arma el recorrido se lee por su forma, sin mirar la aclaraci�
     [`${F} › «la resta de dos numeros» — criterio: x`,
       'parcial', ['la resta de dos numeros'], ['la resta de dos numeros']],
     [`test/otra.test.js › «${NAME}» — criterio: x`, 'ausente', [NAME], undefined],
-    // Sin archivo, lo nombrado no es una prueba que se pueda ir a buscar.
+    // Sin archivo no hay dónde buscarla (caso 331, en `engine/core/evidence.js`).
     ['«lectura de docs/alta.md» — no hay prueba que lo ejecute · criterio: la guía lo nombra', 'inbuscable'],
   ]) {
     const got = one(artifact)

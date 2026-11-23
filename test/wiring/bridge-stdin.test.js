@@ -2,7 +2,7 @@
 
 // Cómo termina el puente de Antigravity según lo que tenga en stdin (caso 198). Es el mismo contrato que
 // el motor cumple desde el caso 190 —`test/hooks/stdin.test.js`—, medido acá sobre el puente porque el
-// puente leía por su cuenta: se colgaba con stdin abierto y convertía un JSON ilegible en `allow`.
+// puente leía por su cuenta; cómo fallaba, en `automatization/runners/antigravity/hook.js`.
 //
 // Se lanza el puente como proceso, igual que lo lanza `agy`: lo que se cuida es qué escribe y que
 // termine. Cada hijo tiene su tope y se mata al final pase lo que pase.

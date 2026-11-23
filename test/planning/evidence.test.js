@@ -241,10 +241,10 @@ test('el último campo de una entrada no se traga lo que viene después', () => 
   assert.equal(entry.commit, 'abc1234 feat(x): subject')
 })
 
-// En markdown un pipe dentro de una celda se escribe `\|` —es la única forma— y partir por todo `|`
-// corre las columnas de esa fila. Se miden las dos caras que el caso 042 separa, porque tienen daños
-// distintos: la ruidosa rechaza una fila bien escrita culpando a la columna equivocada, y la silenciosa
-// pasa `check` y le entrega al runner el contenido de `Origen` como si fuera la acción de desbloqueo.
+// Un pipe escapado pertenece a su celda; cómo se lee, en `engine/planning/parser.js`. Se miden las dos caras que el
+// caso 042 separa, porque tienen daños distintos: la ruidosa rechaza una fila bien escrita culpando a la columna
+// equivocada, y la silenciosa pasa `check` y le entrega al runner el contenido de `Origen` como si fuera la acción de
+// desbloqueo.
 test('un pipe escapado pertenece a su celda y no corre las columnas', () => {
   const root = tempRoot('ops-human-pipe-')
   const table = (row) => `# Acciones humanas
@@ -301,9 +301,9 @@ test('leer bien la fila destapa el estado que la fila corrida escondía', () => 
   assert.equal(row.resolved, false)
 })
 
-// La cabecera de una tabla markdown es la fila anterior a la de separadores, diga lo que diga su primera
-// celda. Reconocerla por el literal `tarea` sólo funciona con el encabezado del molde: quien llega con
-// una tabla propia recibe un error que nombra las etiquetas de sus columnas como si fueran datos.
+// La cabecera de una tabla se reconoce por su forma (cuál, en `engine/planning/parser.js`). Reconocerla por el literal
+// `tarea` sólo funciona con el encabezado del molde: quien llega con una tabla propia recibe un error que nombra las
+// etiquetas de sus columnas como si fueran datos.
 test('la cabecera se reconoce por su forma y no por lo que dice su primera celda', () => {
   const root = tempRoot('ops-human-cabecera-')
   const read = (text) => {

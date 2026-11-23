@@ -5,10 +5,9 @@ const assert = require('node:assert/strict')
 
 const { codeOnly } = require('../support/lexer')
 
-// Un `/` abre un regex o divide, y hasta 0.78.0 el lexer no lo decidía: leía el `//` que queda al
-// cerrar un regex escapado como el arranque de un comentario y se comía el resto de la línea. Las dos
-// direcciones van juntas porque una sola deja pasar a la otra — un lexer que tratara toda barra como
-// regex pasaría las tres primeras y se comería cada división.
+// Un `/` abre un regex o divide, y hasta 0.78.0 el lexer no lo decidía; cómo fallaba, en
+// `test/support/lexer.js`. Las dos direcciones van juntas porque una sola deja pasar a la otra — un lexer
+// que tratara toda barra como regex pasaría las tres primeras y se comería cada división.
 test('una barra se lee como regex o como división según lo que tenga delante', () => {
   const cases = [
     ['const p = u.replace(/x\\//g, "") + noExiste(1)\n', /noExiste\(1\)/,

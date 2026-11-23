@@ -14,7 +14,7 @@ const { signatureIn, ordersSignature } = require('../../engine/hooks/ai-signatur
 
 const SIGNED = /termina con .*\. Lo que se publica no lleva firmas de IA \(R8\)/
 
-// Un repositorio de la sesión con un commit. La sesión se fija por entorno, que es como la conoce un guard.
+// Un repositorio de la sesión con un commit. La sesión va por entorno: así la conoce un guard.
 function inRepo(prefix, body) {
   const root = tempRoot(prefix)
   initRepo(root)

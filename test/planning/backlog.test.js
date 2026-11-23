@@ -65,9 +65,9 @@ status: open
   assert.equal(BK.readBacklog(root)[0].noSplit, '', 'el hito no hereda la razón de su tarea')
 })
 
-// Una viñeta bajo un hito que no cumple el contrato de tarea no la lee nadie: ni `check`, ni `tree`,
-// ni el runner que busca trabajo. El motor ya rechaza por esto la épica mal nombrada —«nadie lo lee»—
-// y el BACKLOG no tenía la red: dos tareas escritas daban cero en cola y cero errores.
+// Una viñeta bajo un hito que no cumple el contrato de tarea no la lee nadie, igual que la épica mal
+// nombrada que el motor ya rechaza —«nadie lo lee»—, y el BACKLOG no tenía la red: dos tareas escritas
+// daban cero en cola y cero errores.
 test('una línea de BACKLOG que nadie puede leer es un error, no un silencio', () => {
   const root = tempRoot('ops-backlog-')
   const write = (body) => fs.writeFileSync(path.join(root, 'BACKLOG.md'), body)
@@ -130,10 +130,8 @@ Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 // la línea —la forma que el molde muestra primero— valía cero: una tarea con ocho condiciones pasaba sin
 // que nada la nombrara, y la escapatoria que R17 describe no se le pedía nunca. `acceptanceConditions`
 // dice hasta dónde llega la cuenta y por qué sub-cuenta.
-// La condición que no se puede comprobar cuando se la comprueba. El recorrido ya la frena, pero en Verify:
-// 1,2 M de tokens y once agentes para terminar con el trabajo hecho y sin poder cerrarlo (caso 140). Acá
-// cuesta un regex sobre la cola, y por eso avisa en vez de fallar: el patrón es de texto y una aceptación
-// legítima puede nombrar la palabra sin depender de ella.
+// La condición que no se puede comprobar cuando se la comprueba (caso 140). Por qué se avisa antes y no
+// se falla, en `unverifiableAcceptance`.
 test('una aceptación que nombra el registro se avisa antes de construir', () => {
   const judge = (acceptance) => PC.unverifiableAcceptance(
     [{ slug: 'h', tasks: [{ slug: 'tarea', acceptance }] }])
@@ -370,9 +368,8 @@ test('currentTask aplica la precedencia del protocolo sobre el estado ya leído'
 // que las separa (`engine/planning/contracts.js`, el recorrido de `humanActions`).
 //
 // Las tres formas van en la misma prueba porque el valor está en el contraste: la libertad de la primera
-// columna es del contrato —el molde manda nombrar la épica o el recorrido cuando la tarea todavía no
-// existe— así que una comprobación que la recortara rompería lo que el molde pide. Lo único que se marca
-// es la forma que promete un bloqueo y no lo cumple.
+// columna es del contrato, así que una comprobación que la recortara rompería lo que el molde pide. Lo
+// único que se marca es la forma que promete un bloqueo y no lo cumple.
 test('una fila de acciones humanas que casi nombra su tarea se marca; una que no la nombra, no', () => {
   const sampleTask = {
     slug: 'h-uno', tier: 'lite', cast: { build: '', review: [] }, epic: '001',

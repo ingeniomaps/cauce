@@ -282,7 +282,7 @@ test('lo que el contrato no cubre entra aunque el caso pase', () => {
     + '### 02-dos\n\n- Veredicto: pasa\n- Para el contrato: no dice qué hacer cuando la fuente es un '
     + 'resumen.\n\nTodo en orden.\n\n'
     // Uno que falla y además trae nota: el rojo ya pide corregir, así que la nota no puede entrar
-    // aparte. Dos hallazgos sobre el mismo caso mandarían a arreglar dos veces lo que es una cosa.
+    // aparte (por qué, en la aserción de abajo).
     + '### 03-tres\n\n- Veredicto: no pasa\n- Para el contrato: falta decir qué es una fuente.\n\n'
     + 'No comprobó el mecanismo.\n\n'
     + '### 04-cuatro\n\n- Veredicto: pasa\n\nSu respuesta decía:\n'

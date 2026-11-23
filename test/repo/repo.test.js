@@ -328,12 +328,9 @@ test('los detectores de borrado y de home ven lo que tienen que ver', () => {
     'nombrar la casa para que un guard decida sobre ella no es crear nada ahí')
 })
 
-// El nombre de un banco decide si una prueba pasa, porque la suite aísla lo que cada una mide filtrando
-// la salida de `check` por substring y esa salida empieza con la ruta absoluta del banco. Con el sufijo
-// aleatorio que agregaba mkdtemp esa decisión era del azar: `/adr\//` casó `…-w1cadr/` y un error de
-// `integrations` entró a una prueba de ADR (caso 085). Lo que se comprueba es la propiedad que lo
-// impide —el nombre es el pedido más un número y nada más—, no la ausencia de aquel fallo, que no se
-// puede volver a provocar a voluntad.
+// El nombre de un banco decide si una prueba pasa; por qué, en `test/support/environment.js` (caso 085).
+// Lo que se comprueba es la propiedad que lo impide —el nombre es el pedido más un número y nada más—,
+// no la ausencia de aquel fallo, que no se puede volver a provocar a voluntad.
 test('el nombre de un banco no trae nada que la prueba no haya pedido', () => {
   const { tempRoot, outsideTempRoot } = require('../support/environment')
   for (const [where, make] of [['tempRoot', tempRoot], ['outsideTempRoot', outsideTempRoot]]) {
@@ -353,11 +350,10 @@ test('el nombre de un banco no trae nada que la prueba no haya pedido', () => {
     'un error ajeno no puede entrar por el nombre del banco')
 })
 
-// `io.js` define la fecha de hoy y su comentario explica por qué vive en un solo lugar: «dejar una copia
-// a cada lado habría roto en silencio lo único que esta función promete». Igual había siete lugares
-// calculándola —dos copias de `TODAY` con el mismo nombre y cuatro expresiones sueltas—, y el silencio es
-// literal: el día que alguien cambie esa definición —la zona horaria es el candidato— los demás siguen
-// devolviendo lo de antes y dos comandos del mismo minuto empiezan a fechar distinto sin que nada falle.
+// `io.js` define la fecha de hoy y su comentario explica por qué vive en un solo lugar. Igual había siete
+// lugares calculándola —dos copias de `TODAY` con el mismo nombre y cuatro expresiones sueltas—, y el
+// silencio es literal: el día que alguien cambie esa definición —la zona horaria es el candidato— los
+// demás siguen devolviendo lo de antes y dos comandos del mismo minuto empiezan a fechar distinto sin que nada falle.
 //
 // Se mira la expresión y no el nombre: las copias no se detectan por llamarse igual —dos ni siquiera se
 // llamaban igual— sino por recalcular lo mismo. Y se mira el motor y no las pruebas: la promesa es que

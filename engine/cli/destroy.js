@@ -39,7 +39,7 @@ function whatIsLost(root) {
   }
 }
 
-// Sin `GIT_*`, por lo mismo que en `core/ignore-block.js`: de lo que git contesta sale de qué `.gitignore` se saca el
+// Sin `GIT_*` (la razón, en `core/ignore-block.js`): de lo que git contesta sale de qué `.gitignore` se saca el
 // bloque y qué árboles se nombran.
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')))
 

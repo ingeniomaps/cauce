@@ -139,7 +139,7 @@ test('una opción global de git no desactiva la regla que mira el subcomando', (
 
 // La contracara, que es la que evita que el arreglo se cumpla bloqueando de más: sacar las opciones
 // globales no puede convertir en prohibido lo que no lo era, y `-C` después del subcomando es otra
-// cosa —`git commit -C <commit>` reusa el mensaje de otro commit— que no se toca.
+// cosa (ver `engine/hooks/git-globals.js`) que no se toca.
 test('sacar las opciones globales no inventa un bloqueo', () => {
   for (const fine of [
     'git -C /tmp status --short',

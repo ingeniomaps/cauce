@@ -1,6 +1,6 @@
 'use strict'
 
-// Los guards de Claude Code en una sesión abierta en una subcarpeta del proyecto. Por qué van en
+// Los hooks de Cauce en una sesión de Claude Code abierta en una subcarpeta del proyecto. Por qué van en
 // `.claude/settings.local.json`, en `engine/automation/subfolder-hooks.js`. `HOME` y `XDG_CONFIG_HOME` van a un
 // temporal: el `.gitignore` global de quien corre la prueba puede ignorar ya ese archivo, y entonces el bloque no lo
 // repetiría (R23).

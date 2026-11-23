@@ -80,8 +80,8 @@ test('stdin abierto sin datos: el guard termina bloqueando', { concurrency: true
     assert.match(result.stderr, /git add/, 'juzgó el comando que llegó, no la falta de entrada')
   })
 
-  // El plazo es sobre el primer byte y no sobre la lectura: el segundo trozo llega después de que el plazo
-  // venció, y aun así se lee entero. Un plazo sobre el total cortaría acá un `Write` grande.
+  // El segundo trozo llega después de que el plazo venció, y aun así se lee entero. Por qué, en
+  // `readInput` de `engine/hooks/input.js`.
   t.test('JSON en dos trozos, el segundo después del plazo', async () => {
     const half = Math.floor(BLOCKED.length / 2)
     const result = await launch(process.execPath, [RUN, 'git-add'], {

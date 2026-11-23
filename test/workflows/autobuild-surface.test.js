@@ -137,10 +137,9 @@ test('una condición fuera de verify que Verify devuelve sin cubrir no frena el 
   assert.doesNotMatch(hollow.result.detail, /e2e/, 'la parada nombra sólo lo que de verdad falta')
 })
 
-// Done escribía `tests: CN → prueba` sin que nadie le pasara qué prueba cubría qué: el mapeo lo tenía
-// Verify, que lo contrastó leyendo el fuente, y no viajaba (hallazgo del 189). Y viajando como una frase no
-// se podía contrastar: nadie distingue el nombre de la prueba de la aclaración que le sigue (caso 331). Verify
-// lo da por partes y la traza la arma el recorrido, siempre con la misma forma.
+// Done escribía `tests: CN → prueba` sin el mapeo que tenía Verify (hallazgo del 189, caso 331; por qué viaja por
+// partes, junto al esquema en `automatization/workflows/autobuild.js`). La traza la arma el recorrido, siempre con la
+// misma forma.
 test('Done recibe cada traza ya armada con el archivo, el nombre de la prueba y la aclaración', async () => {
   const root = '/srv/acme/ops'
   const rows = [
@@ -158,7 +157,7 @@ test('Done recibe cada traza ya armada con el archivo, el nombre de la prueba y 
     // El archivo no puede traer lo que separa las partes.
     [{ criterion: 'c', file: 'test/x.test.js › «crea» — y', name: 'inventada' },
       '«inventada» — archivo: test/x.test.js crea — y · criterio: c'],
-    // Una ruta con espacios no cabe en la forma, y sin nombre no hay prueba que buscar: van en la aclaración.
+    // Lo que no cabe en la forma va a la aclaración.
     [{ criterion: 'c', file: 'mi carpeta/y.test.js', name: 'crea' },
       '«crea» — archivo: mi carpeta/y.test.js · criterio: c'],
     [{ criterion: 'c', file: 'test/y.test.js', name: ' ' }, 'archivo: test/y.test.js · criterio: c'],

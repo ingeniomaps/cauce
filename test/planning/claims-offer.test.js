@@ -134,8 +134,8 @@ test('check avisa lo viejo, lo terminado y dos tareas sobre el mismo servicio', 
 })
 
 
-// El bug que apareció preguntando qué pasa al volver al día siguiente: con `mode: sidecar` hay un solo
-// `planning/` por máquina, así que un plan compartido lo escriben todos los agentes que corren ahí. El
+// El bug que apareció preguntando qué pasa al volver al día siguiente: en sidecar los agentes de una
+// máquina comparten el mismo `planning/`, y un plan compartido lo escriben todos. El
 // segundo recibía la tarea que el primero estaba construyendo, con el plan ajeno adentro y diciéndole
 // que estaba libre. Ninguna prueba lo veía porque todas corrían con un solo runner.
 test('el plan de otro runner no se lee como propio', () => {

@@ -66,8 +66,7 @@ test('una configuración ilegible detiene el comando en vez de pasar por descono
   assert.match(run(['upgrade', root]).stderr, /falta ops\.config\.json/, 'ausente no es ilegible')
 })
 
-// Una bandera con un typo se ignoraba: `check --jsonn` imprimía la salida humana con código 0, así
-// que quien esperaba JSON recibía texto sin señal de nada. Es la misma familia que el bug ya
+// Una bandera con un typo se ignoraba (el ejemplo, en `FLAGS`). Es la misma familia que el bug ya
 // documentado en `parse()` (engine/cli/args.js) —`--json` tomado como raíz—: ahí se arreglaron los posicionales y no
 // las banderas. Y `--help` sólo valía como primer argumento.
 test('el CLI rechaza una bandera que no existe en vez de ignorarla', () => {

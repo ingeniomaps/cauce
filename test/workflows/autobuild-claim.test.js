@@ -228,9 +228,8 @@ test('una cola vacía cierra en silencio, como antes', async () => {
 // Una parada que bloquea la tarea suelta lo que reclamó. Por qué, y por qué sólo estas dos, está junto
 // al release en el recorrido.
 //
-// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera el reclamo queda
-// sobre una tarea que nadie puede tomar; sin la segunda, soltarlo siempre abandonaría el trabajo que la
-// corrida dejó a medias en disco, que es lo contrario de lo que el reclamo dice.
+// Se prueban juntas: sin la primera el reclamo queda sobre una tarea que nadie puede tomar; sin la segunda, soltarlo
+// siempre abandonaría el trabajo que la corrida dejó a medias en disco, que es lo contrario de lo que el reclamo dice.
 test('las paradas que bloquean antes de construir sueltan el reclamo, y las de después no', async () => {
   const released = (written) => written.some((text) => /ops\.js release/.test(text))
 

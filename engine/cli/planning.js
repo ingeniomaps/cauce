@@ -276,7 +276,7 @@ function context(dir, cli) {
     // Las reglas que rigen, con los overrides resueltos. Van acá porque `autobuild` ya lee este comando y
     // tiene prohibido abrir otros archivos para completar su contrato (caso 105).
     rules: O.effectiveRules(path.resolve(root, '..')),
-    // Lo que la empresa declaró que no se puede romper (caso 205). Viaja acá por lo mismo que `rules`.
+    // Las superficies críticas que declaró la empresa (caso 205). Viajan acá por lo mismo que `rules`.
     surfaces: SF.criticalSurfaces(path.resolve(root, '..')),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
@@ -298,7 +298,7 @@ function context(dir, cli) {
   // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
   // Tu propio nombre en una tarea «ajena» es la señal de que sos vos desde otro runner, y sin decirlo se
   // lee como que alguien te ganó la tarea.
-  // Un dueño vacío no es nadie: sin identidad de git los dos lados son '', y eso no hace tuyo un reclamo ajeno.
+  // El dueño vacío no cuenta como tuyo, por lo mismo que en `engine/cli/claims.js`.
   const mine = (one) => Boolean(one.owner) && one.owner === report.owner
   const ownerLabel = (one) => (mine(one) ? `${one.owner} — vos, desde otro runner` : one.owner)
   // Que el reclamo sea tuyo desde otro id ya se decía; que además haya un **plan escrito** bajo ese id, no.

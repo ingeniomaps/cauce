@@ -105,12 +105,9 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
     const at = path.relative(REPO, file)
     // `engine/cli/ops.js` sólo existe en el toolkit; estos documentos viajan a cada instancia.
     assert.equal(text.includes('engine/cli/ops.js'), false, `${at} cita el CLI del toolkit`)
-    // Las dos formas de errarle al patrón están en el encabezado de esta suite; acá se ejercen.
-    //
-    // Y el comienzo se ancla al borde: sin eso, una cita **correcta** de `engine/agents/evaluations.js`
-    // matcheaba el trozo `agents/evaluations.js` y se preguntaba por él en la raíz, donde no existe. El
-    // guard tiraba en rojo un documento cuya ruta era buena, y no se vio hasta que un cargo citó por
-    // primera vez un archivo del motor: la propuesta de `qa-engineer` para 2026-08-r3.
+    // Las dos formas de errarle al patrón, y el anclaje al borde, están en el encabezado de esta suite;
+    // acá se ejercen. El guard tiraba en rojo un documento cuya ruta era buena, y no se vio hasta que un
+    // cargo citó por primera vez un archivo del motor: la propuesta de `qa-engineer` para 2026-08-r3.
     for (const match of text.matchAll(CITED_PATH)) {
       assert.equal(fs.existsSync(path.join(REPO, match[0])), true, `${at} cita ${match[0]}, que no existe`)
     }
@@ -118,10 +115,8 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
 })
 
 test('el material adjunto a un caso no se lee como documentación del cargo', () => {
-  // Un fixture es lo que el cargo **recibe** —la guía del proveedor, el diff del PR—, y adentro puede
-  // haber un `make` de otra empresa o una ruta de un árbol que acá no existe. Exigirle las reglas de
-  // un documento que alguien sigue es el mismo error de categoría que `agentDocs` ya evita con
-  // `results/`, y lo destapó un fixture que cita `make arch-lint`: el guard lo pidió en este Makefile.
+  // Un fixture es lo que el cargo **recibe** —la guía del proveedor, el diff del PR—. Por qué queda
+  // afuera y qué lo destapó, en `agentDocs` (`test/support/agents-fixtures.js`).
   const fixture = path.join(REPO, 'agents', 'roles', 'system', 'software-architect',
     'evaluations', 'cases', '08-ci-enforcement-assumed', 'guia-arquitectura-go.md')
   assert.ok(fs.existsSync(fixture), 'la prueba necesita un fixture con un comando ajeno adentro')

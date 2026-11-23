@@ -377,9 +377,8 @@ test('un WIP sin pasos pendientes no vuelve a pagar el agente que construye', as
   assert.ok(reached(asked, 'Review'), 'y lo que ya está en disco se revisa igual')
 })
 
-// La otra mitad del caso, y la que R21 pide poder mirar: hoy «Build construyó» y «Build miró y no hizo
-// nada» se ven idénticos salvo por el costo, así que comprobar la reanudación exigía abrir el `.output`
-// y sumar tokens a mano. El nombre de la fase lo dice, y viaja al resultado y a la entrada de DONE.
+// La otra mitad del caso, y la que R21 pide poder mirar: el nombre de la fase dice si Build construyó o
+// sólo miró, y viaja al resultado y a la entrada de DONE (por qué, en `automatization/workflows/autobuild.js`).
 test('una corrida reanudada se distingue de una que construyó', async () => {
   const { result } = await runFlow({}, resumed({ phase: 'Build', complete: 9, pending: 0 }))
   assert.ok(result.phases.includes('Build (reanudado)'), `se anuncia reanudada: ${result.phases}`)

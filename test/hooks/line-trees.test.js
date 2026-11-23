@@ -144,8 +144,8 @@ test('los guards de commit juzgan el árbol de una línea declarada', () => {
   }
 })
 
-// Caso 429: un proyecto que fija `CAUCE_RUNNER` para todas sus sesiones no le quita a la de una línea su id. El
-// porqué, en el comentario de `runner` en `engine/planning/claims.js`.
+// Caso 429: un proyecto que fija `CAUCE_RUNNER` para todas sus sesiones no le quita a la de una línea su id.
+// Mismo porqué que el caso 411, arriba.
 test('con CAUCE_RUNNER fijado para el proyecto, la sesión de una línea tiene su WIP, sus reclamos y su plan', () => {
   const { base, ops, repo, tree } = session('cauce-hook-linea-fijada-')
   const planning = path.join(ops, 'planning')

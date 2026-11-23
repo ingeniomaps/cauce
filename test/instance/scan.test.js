@@ -94,7 +94,7 @@ test('dos raíces que terminan en la misma carpeta se distinguen por el name dec
   assert.deepEqual(nameless.servicios.map((service) => service.path), ['initech', 'keycloak'])
 })
 
-// Un corte que no se anuncia hace pasar lo listado por todo lo que hay.
+// Por qué el recorte se anuncia, en `engine/cli/wiring.js`.
 test('scan recorta la lista en pantalla y dice cuánto', () => {
   const repo = tempRoot('cauce-grande-')
   for (let index = 0; index < 25; index += 1) {
@@ -108,8 +108,7 @@ test('scan recorta la lista en pantalla y dice cuánto', () => {
   assert.equal(JSON.parse(run(['scan', repo, '--json']).stdout).services.length, 25, 'el JSON los trae todos')
 })
 
-// Las preguntas salen de código y cuestan cero: la versión anterior gastaba un subagente de un minuto
-// para terminar diciendo «volvé a correrlo con contexto», que a quien recién instaló no le dice nada.
+// Las preguntas salen de código y cuestan cero; por qué, en `engine/core/onboarding.js`.
 test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
   const base = tempRoot('cauce-guia-')
   const repo = path.join(base, 'mono')

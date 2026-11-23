@@ -173,9 +173,8 @@ test('un review que sigue rechazando después de corregir frena', async () => {
   assert.match(result.detail, /sigue faltando/)
 })
 
-// Un veredicto bloqueado nombra lo que lo bloquea, pero puede llegar sin nombrar nada. En la segunda
-// pasada eso frenaba con el detalle vacío: el motivo es lo único que queda para leer cuando la corrida
-// terminó, y la primera pasada ya tenía este respaldo.
+// Un veredicto bloqueado nombra lo que lo bloquea, pero puede llegar sin nombrar nada. En la segunda pasada eso frenaba
+// con el detalle vacío, y la primera ya tenía este respaldo (por qué, en `automatization/workflows/autobuild.js`).
 test('un bloqueo sin condiciones nombradas frena igual y lo dice', async () => {
   let reviewTurn = 0
   const review = await runFlow({
@@ -332,7 +331,7 @@ test('Review no repite una decisión pendiente ni registra la aprobación que pi
   assert.match(review, /\.ops-approval que un guard va a pedir al commitear no es una decisión/)
 })
 
-// Caso 101. El tope lo aplica el recorrido sobre lo que le pasa al agente: cinco hallazgos no
+// Caso 101 (por qué el tope es del recorrido, en `automatization/shared/inbox.js`): cinco hallazgos no
 // bloqueantes llegan como tres, en una línea cada uno, y los dos que no entran quedan contados en el
 // hecho de revisión, que es lo que viaja a `done/`.
 test('lo anotado entra al INBOX con tope, con la forma del molde y sin repetir nombres', async () => {
@@ -397,8 +396,8 @@ test('lo anotado dentro del tope no deja nada contado sin volcar', async () => {
 // —y por qué sin él un revisor elige entre frenar la corrida o degradarla a propuesta— está junto al
 // esquema, en el recorrido.
 //
-// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera, la decisión no se
-// registra en ningún lado; sin la segunda, marcarla frenaría igual y el canal no serviría de nada.
+// Hace falta cada mitad: sin la primera, la decisión no se registra en ningún lado; sin la segunda, marcarla frenaría
+// igual y el canal no serviría de nada.
 test('una decisión que Review no puede tomar se registra y la corrida sigue', async () => {
   const { result, written } = await runFlow({
     [KEY.review]: {

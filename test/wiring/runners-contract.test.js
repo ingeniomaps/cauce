@@ -294,5 +294,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 75 desde el 2026-11-22: Review dicta `tools/ops.js review-read` desde `${ROOT}` (caso 549), la misma familia y la
   // misma raíz que el `done` de arriba.
-  assert.equal(hits, 75, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 74 desde el 2026-11-23: un comentario de `agent-promote` dejó de repetir lo que `agent-eval` ya explica sobre
+  // `tools/ops.js` (R11). Era prosa, no una ruta que el guard juzgue: una menos.
+  assert.equal(hits, 74, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

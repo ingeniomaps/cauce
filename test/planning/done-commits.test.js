@@ -116,8 +116,8 @@ test('los shas se le pasan a git como argumentos, nunca por stdin', () => {
   }
 })
 
-// Caso 356. Una tarea de planning o de documentos commitea en el repositorio de la instancia, que en sidecar
-// vive al lado de las raíces de código y no es una de ellas.
+// Caso 356. Una tarea de planning o de documentos commitea en el repositorio de la instancia; por qué no se
+// encontraba en sidecar, en `instanceRepo`.
 test('el commit que vive en el repositorio de la propia instancia se encuentra', () => {
   const { target, sha } = instance('cauce-commits-instancia-')
   const file = path.join(target, 'ops.config.json')

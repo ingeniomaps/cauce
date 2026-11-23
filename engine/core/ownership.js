@@ -276,8 +276,8 @@ const TEMPLATE_OWN = {
   'organization/company.md': 'init',
   'organization/domains.md': 'init',
   'organization/product.md': 'init',
-  // 0.57.0. `AGENTS.md` lo nombra tres veces y se reemplaza en cada actualización, así que sin esto
-  // una instancia que actualiza queda leyendo una instrucción que apunta a un archivo que no tiene.
+  // 0.57.0. `AGENTS.md` lo nombra tres veces y se reemplaza en cada actualización, así que la instancia
+  // que actualiza también lo necesita.
   'organization/workspace.md': 'upgrade',
   'planning/BACKLOG.md': 'init',
   'planning/HUMAN_ACTIONS.md': 'init',

@@ -260,7 +260,7 @@ test('secrets-shell resuelve una lectura desde el cd del mismo comando', () => {
   assert.doesNotThrow(() => execute('secrets-shell', runs("echo 'hint; cd ..; make'; cat .env")))
   blocked('secrets-shell', runs('cd "sub dir" && cat .env'), new RegExp(`lee ${path.join(portal, 'sub dir', '.env')},`))
   assert.doesNotThrow(() => execute('secrets-shell', runs(`cat ${path.join(root, '.env')}`)))
-  // Lo que la persona pidió en el chat nombrándolo pasa también bajo un `cd` que no se resuelve, como la escritura.
+  // Igual que la escritura de arriba: pedido en el chat, pasa bajo un `cd` que no se resuelve.
   const chat = chatSession()
   try {
     const said = chat.says('leé el .env.keys de $DIR y decime qué claves tiene')

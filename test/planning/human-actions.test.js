@@ -1,10 +1,8 @@
 'use strict'
 
-// La fila de `HUMAN_ACTIONS.md` que figura resuelta sin que ninguna decisión haya quedado en disco. Ready
-// la rechazaba —la leyó como aprobación autoservida, y tenía razón— y `check` salía en verde, así que el
-// defecto se descubría en la fase 4 de un recorrido, ya gastados Triage, Pick, Claim y Decompose: 1,21 M de
-// tokens en una sola medición (caso 121). De los tres defectos de enunciado que Ready encontró es el único
-// mecanizable, porque lo contesta `git log` y no hace falta un agente para preguntarlo.
+// La fila de `HUMAN_ACTIONS.md` que figura resuelta sin que ninguna decisión haya quedado en disco (caso
+// 121; por qué, en `unrecordedHumanActions`). De los tres defectos de enunciado que Ready encontró es el
+// único mecanizable, porque lo contesta `git log` y no hace falta un agente para preguntarlo.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')

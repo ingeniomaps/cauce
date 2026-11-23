@@ -168,7 +168,7 @@ test('lo que un shell lee de su entrada se juzga como escrito suelto', () => {
     `bash <<'EOF'\ncat > R.md <<'DOC'\nrm -rf ${OUT}/sub\nDOC\nEOF`, `grep -E 'x|bash' <<EOF\nrm -rf ${OUT}/sub\nEOF`,
     `printf '%s\\n' 'rm -rf ${OUT}/sub' | xargs -n1 sh`, `echo 'rm -rf ${OUT}/sub' || sh`, 'printf | sh',
     `bash <<EOF\ncase $1 in a) echo;; esac\ncd ${OUT}\nEOF\nrm -rf build`,
-    // Un script con un heredoc anidado con sangría, o un renglón que abre dos: todo el cuerpo sigue siendo dato.
+    // Los dos cuerpos que se lleva la primera pasada de `shell-changes.js`: todo sigue siendo dato.
     `cat > s.sh <<EOF\n  if x; then\n    cat <<-EOF\n\tuso\n\tEOF\n    rm -rf ${OUT}/sub\n  fi\nEOF`,
     `cat > a <<A 3<<B\nx\nA\nrm -rf ${OUT}/sub\nB`]) {
     passes(command)

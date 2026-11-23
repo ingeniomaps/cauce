@@ -78,7 +78,7 @@ test('se aprueba como el resto: el diálogo, el chat o la línea en .ops-approva
   blocked('mcp-writes', call(root, 'mcp__atlassian__addCommentToJiraIssue'), WRITES)
 })
 
-// Decisión del caso: preguntar en cada llamada eran decenas de diálogos por una tarea en el navegador.
+// Decisión del caso; por qué, en `engine/hooks/mcp-writes.js`.
 test('lo que corrió queda concedido el resto de la sesión para esa herramienta, y un «pará» lo revoca', () => {
   const root = pushRoot('cauce-mcp-sesion-')
   const click = (turn) => turn(call(root, 'mcp__claude-in-chrome__computer', { action: 'left_click' }))

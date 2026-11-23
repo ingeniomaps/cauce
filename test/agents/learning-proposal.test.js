@@ -118,8 +118,7 @@ test('una propuesta aplicada no se puede volver a aplicar', () => {
 })
 
 // Aplicar un cargo del catálogo lo deja en `main` sin versión que lo lleve si nadie escribe su entrada, y
-// escribirla era un paso que nadie tenía asignado. Sellar la escribe en el toolkit y en ningún otro lado:
-// en una empresa el cargo es suyo y no hay CHANGELOG de Cauce. Un mes sin cambios se sella sin anotar.
+// escribirla era un paso que nadie tenía asignado. Por qué sólo en el toolkit, en `noteChange`.
 test('sellar un cargo en el toolkit lo anota en el CHANGELOG, y en una empresa no', () => {
   const sealAt = (root, dir, options) => {
     withRecommendation(learning.prepareReport(root, 'probe', new Date('2099-06-10T00:00:00Z')).file)

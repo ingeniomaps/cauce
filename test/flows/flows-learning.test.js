@@ -14,8 +14,8 @@ const L = require('../../engine/agents/learning')
 const ROOT = path.resolve(__dirname, '..', '..')
 const CLI = path.join(ROOT, 'engine', 'cli', 'ops.js')
 
-// Lo que hace una persona antes de aplicar: decir quién decide y qué cambia. Sin esto `seal` se niega,
-// y por eso vive acá arriba: todos los tests del ciclo lo necesitan.
+// La firma humana sin la que `seal` se niega; vive acá arriba porque todos los tests del ciclo la
+// necesitan.
 // Firma las tres líneas, como `sign-proposal.yml`. Antes dejaba «Estado: pendiente» y la firma
 // simulada no se parecía a la real: `seal` no mira ese campo, así que nada fallaba, pero el estado
 // «firmada y sin aplicar» no existía en ninguna prueba.

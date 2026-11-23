@@ -66,8 +66,8 @@ test('un directorio del status entra por su forma sin barra', () => {
   assert.equal(reaches(['src/**'], ['src/']), true)
 })
 
-// En un monorepo el `scope` de `apps/web` habla de `src/**`, no de `apps/web/src/**`: lo escribe quien
-// vive en esa raíz. Si se comparara contra la ruta del repositorio, todo alcance de un subdirectorio
+// El alcance se compara contra la ruta relativa a la raíz declarada; por qué, en `relativeTo`
+// (`engine/core/scope.js`). Si se comparara contra la ruta del repositorio, todo alcance de un subdirectorio
 // fallaría en silencio y la copia se forzaría siempre — el defecto de hoy, con un campo nuevo al lado.
 test('el patrón es relativo a su raíz, no al repositorio', () => {
   const roots = [{ name: 'web', path: 'apps/web', scope: ['src/**'] }]

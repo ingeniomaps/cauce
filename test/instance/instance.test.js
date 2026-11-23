@@ -103,7 +103,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(run(['automation', 'doctor', target, 'gemini']).status, 0)
   assert.equal(run(['automation', 'install', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(workspace, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
-  // Un home propio: por qué, en el encabezado de test/wiring/registration.test.js.
+  // Un home aparte, como en test/wiring/registration.test.js, cuyo encabezado dice la razón.
   const home = path.join(base, 'home')
   fs.mkdirSync(home)
   assert.equal(run(['automation', 'doctor', target, 'antigravity'], undefined, { HOME: home }).status, 0)
@@ -203,7 +203,7 @@ test('init no crea una carpeta ops dentro de otra', () => {
   const base = tempRoot('cauce-anidada-')
   const repo = path.join(base, 'acme-ops')
   fs.mkdirSync(repo)
-  // Sólo `.git`: es lo que hay en la carpeta que alguien acaba de crear y versionar para la instancia.
+  // Sólo `.git`, que no cuenta como contenido: por qué, en `init` de `engine/cli/ops.js`.
   fs.mkdirSync(path.join(repo, '.git'))
   const created = run(['init', '--no-install'], repo)
   assert.equal(created.status, 0, created.stderr)

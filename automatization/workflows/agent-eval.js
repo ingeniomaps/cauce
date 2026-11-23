@@ -185,8 +185,8 @@ const verdicts = await pipeline(
         `Leelos antes de contestar. Sé exacto sobre la procedencia de lo que afirmes: lo que leíste, ` +
         `leelo; lo que no, no lo supongas.`
       : '')
-    // Lo que el cargo escriba termina en un registro del repositorio, y una ruta bajo el `/home` de
-    // alguien no le sirve a nadie más. El recorte del registro la saca igual, pero recortar deja el
+    // Lo que el cargo escriba termina en un registro del repositorio, que no admite rutas de esta máquina
+    // (ver `shared/eval-measured.js`). El recorte del registro la saca igual, pero recortar deja el
     // hueco a la vista —«todos bajo ``»— y nombrar bien no. En `flow-eval` no hace falta: ahí el
     // sujeto es el recorrido y devuelve datos, no prosa.
     + `\n\nNombrá los archivos relativos a la raíz desde la que trabajás. Ninguna ruta absoluta de esta `

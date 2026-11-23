@@ -14,7 +14,7 @@ const { spawnSync } = require('node:child_process')
 const IB = require('../core/ignore-block')
 const { declaredRoots } = require('../core/repos')
 
-// Sin las variables de git del entorno: con `GIT_DIR` puesto, `-C` contesta por otro repositorio (caso 045).
+// Sin `GIT_*`: la razón, en `core/ignore-block.js`.
 const commonDir = (dir) => {
   const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')))
   const asked = spawnSync('git', ['-C', dir, 'rev-parse', '--path-format=absolute', '--git-common-dir'],

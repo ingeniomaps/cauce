@@ -129,9 +129,8 @@ test('R8 prohíbe la firma de IA en todo lo que se publica, no sólo en el commi
   }
 })
 
-// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
-//
-// Lo propio de éste es el tercer eje. Los dos primeros se pueden leer como una preferencia de flujo; el
+// Como las de arriba, por ejes. Lo propio de éste es el tercer eje. Los dos primeros se pueden leer como
+// una preferencia de flujo; el
 // que los vuelve regla es que el daño no se deshace — el PR mal apuntado ya se vio, ya notificó, y
 // cerrarlo no borra nada de eso. Sin él, «va al fork» se negocia el día que apura.
 test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () => {
@@ -152,9 +151,8 @@ test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () =
 })
 
 
-// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
-//
-// Lo propio de éste es que la regla tiene dos bordes y sin los dos se vuelve su propio opuesto: sin la
+// Por ejes, como las anteriores. Lo propio de éste es que la regla tiene dos bordes y sin los dos se
+// vuelve su propio opuesto: sin la
 // condición de borrado, deprecar es no quitar nunca; sin «lo que nadie llama se borra», es deprecar
 // todo. R29 ya decía cómo se prueba una quita y nunca cuándo se puede hacer.
 test('R29 dice cuándo se puede quitar lo que está en uso', () => {

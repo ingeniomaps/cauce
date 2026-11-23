@@ -171,8 +171,7 @@ test('una aprobación de gobernanza vale para lo que nombra y deja de valer al c
   const role = write('agents/roles/system/qa-engineer/SKILL.md')
   blocked('governance', commit, /gobernanza protegida/)
 
-  // Parcial no alcanza, y el mensaje nombra sólo lo que falta: mandar a revisar lo ya aprobado es lo
-  // que hace que la próxima vez nadie lea el mensaje.
+  // Parcial no alcanza, y el mensaje nombra sólo lo que falta (por qué, en `engine/hooks/approval.js`).
   approve(rule)
   assert.throws(() => execute('governance', commit), (error) => {
     assert.match(error.message, new RegExp(role.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
@@ -276,10 +275,9 @@ test('una migración se frena por haber viajado, no por estar en disco', () => {
     /OPS_MIGRATIONS_OVERRIDE/)
 })
 
-// La extensión es del proyecto y el default no cambió: sin declarar nada sigue viendo sólo `.sql`, así
-// que una migración TypeORM con el mismo `DROP TABLE` pasa. Las dos mitades van juntas porque cualquiera
-// sola deja pasar la otra — un guard que mirara todo reintroduciría el falso positivo del caso 039, y uno
-// que no mirara nada es el 077.
+// La extensión es del proyecto y el default no cambió: sin declarar nada sigue viendo sólo `.sql`, así que una
+// migración TypeORM con el mismo `DROP TABLE` pasa. Hace falta medir los dos lados: un guard que mirara todo
+// reintroduciría el falso positivo del caso 039, y uno que no mirara nada es el 077.
 test('guard-migrations juzga las extensiones que el proyecto declara, y `.sql` si no declara ninguna', () => {
   const root = tempRoot('ops-hook-migrations-ext-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
@@ -446,9 +444,8 @@ test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo 
 // runner, así que la forma que funciona deja el guard apagado hasta que la sesión cierre.
 //
 // Aprobar el conjunto exacto es lo que expresa «autorizo esta operación» en los cuatro: en cuanto
-// cambia lo que se está por escribir o commitear, la aprobación deja de valer. Por eso el archivo es
-// uno solo y ya no se llama de gobernanza — una aprobación escrita a mano nombra rutas, y quién las
-// mira lo decide qué guard esté juzgando esa ruta.
+// cambia lo que se está por escribir o commitear, la aprobación deja de valer. Por qué el archivo es uno
+// solo, en `engine/hooks/approval.js`.
 test('la aprobación por operación abre los guards que deciden sobre una ruta', () => {
   const root = fs.realpathSync(tempRoot('ops-hook-approval-todos-'))
   initRepo(root)

@@ -62,7 +62,7 @@ test('una migración con marcadores se juzga por el bloque que aplica, no por su
     /contiene SQL destructivo: `DROP TABLE`/)
 })
 
-// En un `Edit` el guard no ve el archivo, sólo el fragmento. De qué lado cae lo decide dónde está
+// Un `Edit` trae sólo el fragmento (por qué se reconstruye, en `judged`). De qué lado cae lo decide dónde está
 // `old_string` en disco; el repositorio es para que un archivo que no viajó no frene por existir.
 test('un Edit se juzga según el lado de la migración en disco donde cae', () => {
   const root = instance('ops-hook-mig-edit-', { extensions: LANGUAGE })

@@ -1,9 +1,7 @@
 'use strict'
 
-// Lo que una sesión concedió, visto desde `check`. El 116 trajo `granted` —lo que un guard deja pasar queda
-// anotado y se hereda mensaje a mensaje— y lo dejó del lado que nadie audita: vive en el temporal del
-// sistema y ninguna corrida lo muestra, mientras que por una sola línea en `.ops-approval` `check` sí
-// avisa. Una exención que no se ve es un límite que ya no existe (caso 117).
+// Lo que una sesión concedió, visto desde `check`: `granted`, que trajo el 116, anota lo que un guard deja
+// pasar y se hereda mensaje a mensaje. Por qué tiene que verse, en `engine/hooks/approval.js` (caso 117).
 
 const { tempRoot, outsideTempRoot, run, writeWip } = require('../support/environment')
 const test = require('node:test')
@@ -75,10 +73,9 @@ test('una concesión sin alcance no la toca el WIP', () => {
   }
 })
 
-// Fuera de una instancia no hay WIP contra el cual comparar —`opsRoot` devuelve vacío—, y ahí el acote se
-// respeta en vez de vencer: revocarlo sería castigar a quien trabaja fuera de una instancia por algo que
-// nunca dijo. Es la otra mitad de la caducidad, y sin ella «vence cuando no hay WIP» se llevaría puesto
-// este caso sin que ninguna prueba lo note.
+// Fuera de una instancia no hay WIP contra el cual comparar —`opsRoot` devuelve vacío—, y ahí el acote se respeta en
+// vez de vencer (por qué, en `engine/hooks/chat.js`). Es la otra mitad de la caducidad, y sin ella «vence cuando no hay
+// WIP» se llevaría puesto este caso sin que ninguna prueba lo note.
 test('un alcance fuera de toda instancia se respeta, porque no hay WIP contra el cual vencer', () => {
   const outside = outsideTempRoot('cauce-alcance-sin-raiz-')
   const session = `prueba-sin-raiz-${process.pid}`
@@ -100,8 +97,8 @@ test('un alcance fuera de toda instancia se respeta, porque no hay WIP contra el
 })
 
 // Una concesión se consume sin dejar nada: al mensaje siguiente ya no queda quién la autorizó ni cuándo.
-// Es lo mismo que el 112 resolvió para el push, y se anota igual — sólo agrega, y el texto de la persona
-// se queda en el temporal, que es donde el 098 lo dejó (caso 127).
+// Es lo mismo que el 112 resolvió para el push, y se anota igual (caso 127); qué entra en el rastro y qué
+// no, en `engine/hooks/trail.js`.
 test('una concesión deja su línea en el rastro de la instancia, sin el texto de la persona', () => {
   const { target } = withTask('cauce-rastro-concesion-', 't-014')
   const log = path.join(target, 'planning', '.grant-log')

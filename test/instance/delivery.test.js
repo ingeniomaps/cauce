@@ -12,10 +12,9 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { inRepo } = require('../support/environment')
 
-// «init fija la versión exacta, así que npm update no la mueve» es lo que el README da como razón para
-// no saltear el primer paso del upgrade, y el comando que documentaba a continuación desarmaba esa
-// premisa: npm guarda con caret por defecto, y dentro de 0.x el caret alcanza a los patches —los hay—.
-// Lo que este caso cuida es que los tres lugares que dictan el comando lo dicten preservando el pin:
+// Por qué importa el pin, en `pinEngine` de `engine/cli/dependency.js`. Dentro de 0.x el caret alcanza a los
+// patches —los hay—, así que un comando documentado sin el flag desarma el pin. Lo que este caso cuida es
+// que los tres lugares que dictan el comando lo dicten preservando el pin:
 // el README, el atajo del molde y la salida de `--check`. Comprobado contra npm 11.16.0: con
 // `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
 test('todo lo que documenta el upgrade preserva la versión exacta',
@@ -43,9 +42,9 @@ test('todo lo que documenta el upgrade preserva la versión exacta',
   assert.deepEqual(unpinned, [], `dictan el comando sin el pin:\n  ${unpinned.join('\n  ')}`)
 })
 
-// `upgrade` sólo reemplaza lo del sistema y el runtime, así que un archivo propio del molde no llega a
-// una instancia que ya existe por ninguna otra vía. Cada uno declara la suya en `TEMPLATE_OWN`, y esto
-// es lo que obliga a decidirla: agregar un archivo al molde sin clasificarlo rompe la puerta.
+// Cómo llega un archivo propio del molde a una instancia que ya existe, en `engine/core/ownership.js`. Cada
+// uno declara la suya en `TEMPLATE_OWN`, y esto es lo que obliga a decidirla: agregar un archivo al molde
+// sin clasificarlo rompe la puerta.
 //
 // Sin esto pasó lo que tenía que pasar. 0.57.0 agregó `organization/workspace.md` y lo nombró tres
 // veces desde un `AGENTS.md` que sí se reemplaza: la instancia que actualizaba quedaba leyendo una

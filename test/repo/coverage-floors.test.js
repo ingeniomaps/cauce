@@ -300,8 +300,8 @@ const withSuite = (repo, output) => {
 }
 
 // El 148: `npm run ci` salía en verde con seis pruebas en rojo, porque la suite entra a la puerta sólo
-// por acá y el `|| true` la tapaba. Esto ejecuta el script en vez de leerlo — el defecto no era el texto
-// sino lo que ese texto hace, y otra redacción igual de ciega volvería a pasar.
+// por acá y el `|| true` la tapaba. Esto ejecuta el script en vez de leerlo: lo roto era su efecto y no
+// su redacción, y otra igual de ciega volvería a pasar.
 //
 // Se distingue por el **mensaje** y no por el código de salida: con la suite en verde el script sigue de
 // largo hasta la puerta de pisos, que sobre un lcov de un solo archivo falla por su cuenta. Los dos
@@ -346,7 +346,7 @@ test('una prueba en rojo frena la puerta, y al registrar un piso no', { skip: pr
   assert.equal(green.status, 0, `con la suite verde y los pisos en su lugar, la puerta pasa: ${output(green)}`)
 
   // La mitad que el 144 ganó y que este arreglo no puede perder: registrar sigue siendo posible con la
-  // suite en rojo, que es justo cuando hace falta —al agregar un archivo sin piso—.
+  // suite en rojo. Por qué, en `test/tools/coverage.sh`.
   const recording = run(1, '--update')
   assert.equal(recording.status, 0, `registrar un piso con la suite en rojo: ${output(recording)}`)
   assert.match(output(recording), /piso registrado/, 'y el registro ocurre de verdad')

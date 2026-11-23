@@ -9,11 +9,10 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const { KEY, NO_TASK, baseScript, ranToEnd, runFlow } = require('../support/autobuild-harness')
 
-// Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige,
-// y esa distinción no se ve leyendo el fuente —las dos cosas son el mismo `if`—.
-// Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
-// dijo que nombra un valor literal. Lo que separa a `directo` de `express` es un solo ojo más, el que
-// mira la superficie que cambió; lo que no cambia en ningún carril es Verify, que es la evidencia.
+// Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige, y esa distinción
+// no se ve leyendo el fuente —las dos cosas son el mismo `if`—. Por qué lo mecánico no se planifica, en el recorrido.
+// Lo que separa a `directo` de `express` es un solo ojo más, el que mira la superficie que cambió; lo que no cambia en
+// ningún carril es Verify, que es la evidencia.
 test('el carril directo entrega y lo revisa quien nombra la línea', async () => {
   const { result, phases } = await runFlow({}, { lane: 'directo', vouched: true })
   ranToEnd(result)

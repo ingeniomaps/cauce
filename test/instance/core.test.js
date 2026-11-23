@@ -147,9 +147,7 @@ test('las llaves de runner que el molde nombra existen en el schema', () => {
 
 // La misma atadura que la de abajo, un nivel más arriba, que es donde no existía: `verify` se probó como
 // propiedad de una raíz, y el campo siguiente entró en el primer nivel, donde nada ataba las dos listas.
-// La extensión entra en una expresión regular, así que un valor con metacaracteres la rompería o la
-// ampliaría sin que nadie lo pidiera. Y `.ts` o `SQL` son tipeos que conviene ver acá y no como cobertura
-// que el proyecto cree tener y no tiene, que es el defecto que el campo vino a cerrar (caso 077).
+// Por qué la extensión se valida, en `engine/config/validate.js` (caso 077).
 test('migrations.extensions se valida, y no declararlo es válido', () => {
   const errorsOf = (migrations) => validateOpsConfig({ ...opsConfig(), migrations })
     .filter((error) => error.includes('migrations'))

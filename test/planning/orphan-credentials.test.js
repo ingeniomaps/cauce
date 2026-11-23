@@ -144,8 +144,8 @@ test('una credencial pasado el tope del escaneo se acusa igual', () => {
   assert.match(all, /credenciales por nombre sin dueño/)
 })
 
-// Y el aviso de recorte sigue existiendo, porque un corte que no se anuncia hace pasar lo listado por
-// todo lo que hay. Lo que cambió es lo que promete: no «no miré esto» sino «no te listo todo».
+// Y el aviso de recorte sigue existiendo (por qué, en `orphanCredentials`). Lo que cambió es lo que
+// promete: no «no miré esto» sino «no te listo todo».
 test('el recorte de la lista se sigue diciendo', () => {
   const config = Array.from({ length: 40 }, (_, index) => `CONFIG_${index}=`).join('\n')
   const { ops } = instance('cauce-102-recorte-', 'embedded', `${config}\nDB_PASSWORD=\n`)

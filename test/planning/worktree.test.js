@@ -136,10 +136,9 @@ test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () =
   assert.deepEqual(withProgress, [], 'una tarea que avanza no se apura por llevar tiempo tomada')
 })
 
-// El defecto que apareció corriendo una sesión de equipo, no en una prueba: una rama recién creada hereda
-// la historia del tronco, así que preguntar por «su último commit» a secas devuelve el del tronco y toda
-// rama parece haber avanzado el día que se creó. Es la señal que separa una tarea larga de una abandonada,
-// y sin excluir el tronco no separaba nada — no avisaba nunca sobre una tarea que ya tiene worktree.
+// El defecto que apareció corriendo una sesión de equipo, no en una prueba: sin excluir el tronco, la señal
+// que separa una tarea larga de una abandonada no avisaba nunca sobre una tarea que ya tiene worktree. Por
+// qué, en `lastCommit` (`engine/core/repos.js`).
 test('un commit del tronco no cuenta como avance de la tarea', () => {
   const { repo, planning } = mount('cauce-avance-')
   assert.equal(as('/w/ana', () => run(['worktree', planning, 'alta'])).status, 0)

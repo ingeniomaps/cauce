@@ -46,9 +46,8 @@ test('evaluate rechaza la misma URL bajo dos nombres', () => {
 })
 
 // Una URL, un nombre. `evaluate` sólo ve el archivo de un cargo, así que la misma fuente bajo dos
-// nombres en dos cargos distintos se le escapa — y es la forma que de verdad apareció: la
-// especificación OpenAPI vivía como `OpenAPI Specification`, `...latest published` y `...3.2.0`, así
-// que corregirle el `tier` a un cargo no se lo corregía a los otros dos.
+// nombres en dos cargos distintos se le escapa — y es la forma que de verdad apareció (el ejemplo, en
+// `sourceUrls`).
 test('el catálogo no repite una fuente bajo dos nombres', () => {
   const dir = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
   const byUrl = new Map()

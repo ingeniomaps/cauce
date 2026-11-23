@@ -138,8 +138,8 @@ test('una entrada sin carril avisa con su cuenta y no frena el check', () => {
     `dice cuántas son, que es lo que se mira bajar: ${JSON.stringify(output.warnings)}`)
 })
 
-// Escrito mal sí frena, porque eso es un valor que alguien puso y de él depende leer si la ceremonia fue
-// la que correspondía. Es el mismo trato que recibe un lane inventado en la línea del BACKLOG.
+// Escrito mal sí frena (por qué, en `engine/planning/done-entry.js`). Es el mismo trato que recibe un lane
+// inventado en la línea del BACKLOG.
 test('un carril que no existe en la entrada de DONE frena el check', () => {
   const dir = planning('cauce-done-lane-mal-')
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta', '  lane: rapido'))
@@ -221,8 +221,8 @@ test('una tarea full sin crítica del plan se nombra desde que la instancia escr
 
 // Cuánto del trabajo que entró al repositorio quedó registrado. Se mide sobre un repositorio de verdad
 // porque lo que se cruza son shas: un doble de git no probaría el cruce, que es lo único que puede
-// fallar. Las dos direcciones van juntas: sin la segunda, un aviso que saltara siempre pasaría la
-// primera y volvería inútil el número (caso 082).
+// fallar. Las dos direcciones van juntas: con sólo la primera, también la cumpliría un aviso que saltara
+// siempre, y el número no serviría (caso 082).
 test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   const ops = tempRoot('cauce-cobertura-')
   const repo = path.join(ops, 'app')
@@ -257,9 +257,8 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   assert.deepEqual(output.errors.filter((one) => /entrada de DONE nombra/.test(one)), [],
     'avisa y no falla: es un hecho del pasado que no se arregla editando nada')
 
-  // La ventana arranca en la entrada **más reciente** y no en la primera: contar toda la historia da una
-  // deuda que nunca baja. Un commit anterior a la última tarea cerrada queda afuera, y eso no se ve con
-  // una sola entrada — con una, las dos anclas son la misma fecha y la diferencia es inobservable.
+  // La ventana arranca en la entrada **más reciente** —por qué, en `coverageWarnings`—: un commit anterior
+  // a la última tarea cerrada queda afuera.
   const older = { ...process.env, GIT_AUTHOR_DATE: '2021-01-01T00:00:00', GIT_COMMITTER_DATE: '2021-01-01T00:00:00' }
   fs.writeFileSync(path.join(repo, 'viejo.js'), 'x')
   spawnSync('git', ['-C', repo, 'add', 'viejo.js'], { encoding: 'utf8' })

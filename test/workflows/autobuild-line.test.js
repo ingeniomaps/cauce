@@ -145,7 +145,8 @@ test('el checkpoint recién escrito se relee, y si no frena se corrige una vez y
   assert.equal(fixes(blind).length, 0, 'sin lectura no se reescribe nada')
 })
 
-// La línea llega transcripta por un agente, y un valor vacío a veces llega con sus comillas escritas.
+// Una línea entre comillas o que no es un nombre no se dicta (caso 083; por qué, en
+// `automatization/workflows/autobuild.js`).
 test('una línea que llega entre comillas o no es un nombre no se escribe en el checkpoint', async () => {
   const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
   const gateOf = async (line) => {

@@ -153,9 +153,9 @@ function orphanCredentials(root) {
       + 'organization/workspace.md o en una acción de planning/human/; el criterio es el nombre, así '
       + 'que una credencial con nombre de configuración no aparece acá')
   }
-  // El tope recorta lo que se **lista**, no lo que se mira: las credenciales de arriba salen del ejemplo
-  // entero. Esto se sigue diciendo porque un corte que no se anuncia hace pasar lo listado por todo lo que
-  // hay —y hasta el 134 además cegaba el análisis, que es de donde viene la redacción vieja—.
+  // Las credenciales de arriba salen del ejemplo entero. El recorte se sigue diciendo por la misma razón
+  // que el de `scan` en `cli/wiring.js` —y hasta el 134 además cegaba el análisis, que es de donde viene
+  // la redacción vieja—.
   if (cut.length) {
     warnings.push(`pasado el tope de variables por servicio: ${cut.join(', ')} — el ejemplo se lista `
       + 'recortado; las credenciales se buscan igual sobre el archivo entero')

@@ -190,8 +190,8 @@ test('un runner dentro de un contenedor con tope de memoria y de CPU no se frena
   ]) blocked('test-workers', run(root, command), /sin cota de workers/)
 })
 
-// Caso 329. El runner que un contenedor recibe como su comando, sin `sh -c`, no estaba en posición de comando:
-// la forma más corta pasaba sin ningún tope y la otra frenaba. Se le pide lo mismo que a la otra.
+// Caso 329: `docker run img npx jest` pasaba sin ningún tope y la forma con `sh -c` frenaba. Se le pide lo
+// mismo que a la otra; por qué no se veía, en `engine/hooks/workers.js`.
 test('un runner pasado directo a un contenedor se juzga como el que va detrás de sh -c', () => {
   const root = pushRoot('cauce-workers-directo-')
   for (const command of [
@@ -284,8 +284,8 @@ test('un runner lanzado con un comando que el proyecto declaró acotado no se fr
     .some((one) => /boundedCommands/.test(one)))
 })
 
-// Caso 499. El script entre comillas de un intérprete de otro lenguaje no es shell: su `|` no abre comando, y un
-// `node -e` que trae `pytest|jest` en una expresión regular no corre jest. Cualquier otra comilla sigue separando.
+// Caso 499: un `node -e` que trae `pytest|jest` en una expresión regular no corre jest, y cualquier otra comilla
+// sigue separando. Por qué, en `engine/hooks/workers.js`.
 test('un separador en el script de otro lenguaje no abre comando, y cualquier otra comilla sí', () => {
   const root = pushRoot('cauce-workers-comillas-')
   for (const command of ["node -e 'const r = /(pytest|jest|vitest)/i'", 'node -e "a; vitest"', "env node -e 'a|jest'",

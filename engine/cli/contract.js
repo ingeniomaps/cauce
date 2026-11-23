@@ -66,8 +66,8 @@ const STATES_A_LIMIT = /^(?:El runner\b|Debe\b|Nunca\b)/
 // sobre el molde de hoy y se habría roto con el primero que agregue un párrafo.
 //
 // Lo que esto no resuelve, y por eso existe el caso 157: que sea una deducción gramatical y no una marca.
-// Un límite que el proyecto escriba con otra forma no entra, y eso no se ve — la lista sale más corta y se
-// lee igual de completa. Sobre `AGENTS.md` casi no puede pasar porque `upgrade` lo reemplaza entero; sobre
+// Un límite que el proyecto escriba con otra forma no entra, y eso no se ve: lo avisa `warnings`, más abajo.
+// Sobre `AGENTS.md` casi no puede pasar porque `upgrade` lo reemplaza entero; sobre
 // `organization/workspace.md`, que lo escribe una persona, pasa siempre que no imite esta gramática.
 // Y el camino declarado, que es el que no adivina: una viñeta bajo `### Límites`. El molde lo trae desde
 // 0.92.0 para que quien escriba una excepción tenga dónde ponerla en vez de tener que imitar la gramática

@@ -1,7 +1,7 @@
 'use strict'
 
-// Lo que la revisión del 364 encontró en el aviso de `check` sobre lo que un runner instala con la ruta de
-// la carpeta escrita. El caso de base —qué entra a git y qué no— está en `install-shared-folder.test.js`.
+// Lo que la revisión del 364 encontró en el aviso de `check`. El caso de base —qué instala el runner con
+// la ruta escrita, qué entra a git y qué no— está en `install-shared-folder.test.js`.
 
 const { tempRoot, run, linkEngine } = require('../support/environment')
 const test = require('node:test')

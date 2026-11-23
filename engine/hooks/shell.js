@@ -241,8 +241,7 @@ function destructive(input) {
   // El ítem que se aprueba es el tramo del comando que la regla reconoce, entero —`stretchOf`, caso 451—, y no el
   // pedazo que matcheó: `git clean -f` no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento
   // no destrabaría lo que la persona escribió. Cualquier otra bandera es otro comando y vuelve a preguntarse. Y lleva
-  // el lugar donde corre, cuando el efecto depende de él: el mismo texto en otro repositorio u otra carpeta es otra
-  // operación (caso 446).
+  // el lugar donde corre, cuando el efecto depende de él (caso 446; por qué, en `chat.js`).
   const spotOf = placesOf(raw, input)
   const root = opsRoot(input)
   for (const [pattern, message, open, by, kind, publishes] of rulesOf(input)) {

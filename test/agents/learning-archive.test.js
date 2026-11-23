@@ -128,7 +128,7 @@ test('archivar deja quién lo decidió, en el documento y en el historial', () =
   assert.match(doc, /^- Responsable: quien\.decide@acme\.test$/m, 'el documento dice quién la archivó')
   assert.equal(/por definir/.test(doc), false, `no queda nada sin decidir: ${doc}`)
 
-  // La columna de la tabla se llama «Decisión» y hay dos: aplicar y archivar. La segunda no dejaba fila.
+  // Archivar también deja fila; por qué, en `appendHistory`.
   const rows = fs.readFileSync(history, 'utf8').split('\n').filter((one) => /^\| 2\d{3}-/.test(one))
   assert.equal(rows.length, 1, `una fila por propuesta cerrada: ${JSON.stringify(rows)}`)
   assert.match(rows[0], /\| archivada \|/, 'y dice cuál de las dos decisiones fue')

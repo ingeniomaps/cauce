@@ -15,9 +15,8 @@ const { spawnSync } = require('node:child_process')
 const { execute, guards } = require('../../engine/hooks/run')
 
 // R23 nombra la raíz, el home y el directorio padre, y la regla los reconocía sólo desnudos: con una
-// comilla, con llaves, con `--` delante o con una barra al final, el mismo destino pasaba. Las comillas
-// son lo que escribe quien cita bien sus variables —`rm -rf "$HOME"` es la forma *correcta* de escribirlo
-// en bash—, así que el hueco premiaba justamente al que tiene el hábito bueno (caso 167).
+// comilla, con llaves, con `--` delante o con una barra al final, el mismo destino pasaba (caso 167). Por
+// qué las comillas pesan más, en `engine/hooks/shell.js`.
 //
 // La segunda mitad es la que impide cerrarlo frenando todo: un borrado con destino concreto es trabajo
 // corriente y tiene que seguir pasando, también entrecomillado.
@@ -224,8 +223,8 @@ test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése'
     blocked('destructive', { tool_input: { command } }, reason)
   }
 
-  // La otra mitad, que es la que decide si el guard sobrevive a su primera semana. `-- ` seguido de un
-  // espacio significa que viene un archivo nombrado, y eso la regla no lo toca desde siempre.
+  // La otra mitad, que es la que decide si el guard sobrevive a su primera semana: lo que sigue a `-- ` es
+  // un archivo nombrado, que la regla no toca desde siempre (por qué, en `engine/hooks/shell.js`).
   for (const command of [
     'rm -rf /srv/cache', 'rm -r build/cache', 'rm -rf ./tmp', 'rm archivo.txt',
     'git checkout -- src/app.js', 'git checkout rama-nueva', 'git restore src/app.js',
@@ -331,13 +330,12 @@ test('git-add no lee el mensaje de un commit como si fuera un comando', () => {
   blocked('git-add', { tool_input: { command: `eval 'git add -A'` } }, /está prohibido/)
 })
 
-// Un `--amend` sobre un commit que nadie vio es la corrección, no el daño. Lo que R8 protege es la
-// historia que otro ya leyó, y eso el motor ya lo distingue para el push: «publicar se autoriza,
-// reescribir historia publicada, no». La razón por la que acá se mira el remoto vive junto a la regla.
+// Un `--amend` sobre un commit que nadie vio es la corrección, no el daño. Por qué se mira el remoto, junto
+// a la regla en `engine/hooks/shell.js`.
 //
-// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera el guard frena una
-// corrección legítima y la salida real pasa a ser `reset --soft`, que consigue lo mismo y no lo nombra;
-// sin la segunda, el amend abriría la puerta que el force-push tiene cerrada.
+// Se miden los dos lados: sin la primera el guard frena una corrección legítima y la salida real pasa a ser
+// `reset --soft`, que consigue lo mismo y no lo nombra; sin la segunda, el amend abriría la puerta que el
+// force-push tiene cerrada.
 test('el amend se frena sobre historia publicada y no sobre la que nadie vio', () => {
   const root = tempRoot('ops-amend-')
   initRepo(root)
@@ -358,9 +356,8 @@ test('el amend se frena sobre historia publicada y no sobre la que nadie vio', (
   git(['fetch', '-q', 'origin'], root)
   blocked('destructive', input, /publicad/)
 
-  // Y donde no hay con qué saber: cerrado por defecto (R27). No saber si algo se publicó no es lo mismo
-  // que saber que no, y ésta es la mitad que se abre sola si nadie la mide — un guard que falla hacia el
-  // «pasá» deja de proteger sin que nada lo diga.
+  // Y donde no hay con qué saber, cerrado por defecto (R27; por qué, en `engine/hooks/shell.js`). Ésta es la mitad que
+  // se abre sola si nadie la mide — un guard que falla hacia el «pasá» deja de proteger sin que nada lo diga.
   blocked('destructive', { cwd: tempRoot('ops-amend-sin-git-'), tool_input: { command: 'git commit --amend' } },
     /publicad/)
 })

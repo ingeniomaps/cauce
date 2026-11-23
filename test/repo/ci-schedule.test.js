@@ -35,10 +35,8 @@ test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () =
   assert.match(source, /roles\.filter\(\(role\) => role\.slug === only\)/, 'el input se valida contra slugs reales')
 
   // Los recorridos no salen de `agents list --json` —no son cargos—, así que el cron no los veía y
-  // ninguno aprendió nunca pese a que el ciclo existía y funcionaba a mano. Su disparador tampoco es
-  // el calendario: un cargo investiga porque su profesión cambia sola afuera, y un recorrido sólo
-  // aprende cuando le fue mal. Sin el filtro por `pending` el día 1 abriría una propuesta por
-  // recorrido diciendo «no hay qué corregir», y cada una cuesta una firma humana.
+  // ninguno aprendió nunca pese a que el ciclo existía y funcionaba a mano. Por qué entran sólo los que
+  // tienen `pending`, en `pendingRuns` de `engine/agents/learning.js`.
   assert.match(source, /node "\$OPS" flow list --json/, 'los recorridos salen de su propia lista')
   assert.match(source, /fromJSON\(needs\.discover\.outputs\.flows\)/, 'y arman su propia matriz')
   assert.match(source, /one\.pending > 0/, 'sólo entra el que tiene corridas sin consolidar')
@@ -333,8 +331,8 @@ test('un dispatch puede nombrar un recorrido, y sólo miente un slug que no es n
 //
 // El pathspec con barra final y comodín —`flows/*/$FLOW/`— no matchea nada, así que los siete
 // recorridos morían en «cambió archivos fuera de su propuesta» y ninguno abrió un PR nunca. Y el paso
-// de cargos stageaba sólo la propuesta, así que el sello se quedaba en el runner: el informe seguía en
-// `draft` en la rama base y el mes siguiente entraba de nuevo, que es contra lo que el sello existe.
+// de cargos stageaba sólo la propuesta y dejaba el sello afuera del PR (el porqué, en
+// `test/agents/learning-proposal.test.js`).
 // Un mes sin nada que proponer no abre documento ni PR, y así tiene que ser. El problema es que eso
 // se ve **idéntico** a un ciclo roto: job verde, cero PR. Es el mismo modo de fallo que dejó la
 // credencial caída una semana sin que nada lo dijera, y la anotación es lo único que los separa sin

@@ -40,10 +40,7 @@ test('flow check y show exponen un contrato utilizable', () => {
 // El cron arma su matriz leyendo `agents list --json`, y ahí no hay recorridos. Por eso ninguno
 // aprendió nunca: el ciclo existía y funcionaba a mano, y nada lo disparaba. `flow list --json`
 // devuelve la misma forma para que lo consuma el mismo paso.
-//
-// `cadence` es fija porque un recorrido no tiene profesión que cambie afuera; lo que decide si le toca
-// es `pending`, las corridas que dejó sin consolidar. Sin eso el cron le pediría una propuesta todos
-// los meses y cobraría una firma humana por un documento que dice «no hay qué corregir».
+// Por qué `cadence` es fija y decide `pending`, en `engine/cli/catalog.js`.
 test('flow list --json trae lo que el cron necesita para incluir un recorrido', () => {
   const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
