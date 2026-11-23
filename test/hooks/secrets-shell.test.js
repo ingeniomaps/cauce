@@ -12,8 +12,10 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const os = require('node:os')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 const { execute, executeAll } = require('../../engine/hooks/run')
+const { fakeCommand } = require('../support/fakes')
 
 // Caso 287. Lo que un `grep` busca y lo que un `sed`, un `awk` o un `jq` ejecutan no es un archivo. Leído como
 // ruta, buscar en el código el nombre de un archivo de entorno frenaba como si se lo abriera. Las dos mitades
@@ -80,6 +82,43 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
     blocked('secrets-shell', chat.says('¿para qué sirve el id_ed25519?')(runs('cat id_ed25519')),
       /lee .*credencial/)
   } finally { chat.close() }
+})
+
+// Cerrado por defecto: un programa que el guard no conoce y está instalado lee lo que nombra. Lo que no es un programa
+// —un pedazo de código o de prosa cortado por un separador entre comillas— no lee nada, y lo que sólo nombra pasa.
+test('secrets-shell frena el lector que no conoce y deja pasar lo que sólo nombra', () => {
+  const root = planFirstRoot('ops-hook-lector-ajeno-', WIP_WITH_PLAN)
+  const runs = (command) => ({ cwd: root, tool_input: { command } })
+  // Un lector que ninguna lista podría tener, instalado en el PATH de la prueba.
+  fakeCommand(path.join(root, 'bin'), 'lector-propio', '#!/bin/sh\ncat "$1"\n')
+  const before = process.env.PATH
+  process.env.PATH = `${path.join(root, 'bin')}${path.delimiter}${before}`
+  try {
+    for (const command of ['lector-propio .env', 'comm .env x', 'expand .env', 'sudo comm .env x', 'git diff .env',
+      'git log -p -- .env', 'git stash show -p -- .env', 'find . -name .env -exec lector-propio {} ;',
+      'lector-propio --file=.env', 'cat "$(pwd)/.env"', 'lector-propio --opt="a b" .env',
+      // El `)` de una sustitución puede estar entre comillas: cerrarla ahí perdía la lectura de adentro.
+      "TOKEN=$(grep -E '^(NPM_TOKEN)=' .env | cut -d= -f2)", 'echo "$(grep \')\' .env)"',
+      'X=$(node -p "require(\'fs\').readFileSync(\'.npmrc\',\'utf8\')")']) {
+      blocked('secrets-shell', runs(command), /lee .*credencial/)
+    }
+    for (const command of ['gh pr create --body "sin el .env"', 'for f in .env .env.local; do echo $f; done',
+      'docker compose --env-file .env up -d', 'echo .env >> .gitignore', 'git stash push -- .env',
+      '[ -f .env ] && echo si', 'git grep -n "process.env"', 'find . -name ".env*"', 'wc -l .env',
+      'lector-ausente .env', "lector-propio 'no leas el .env'", 'X=1 git grep -n "process.env"',
+      'sudo cp "$(mkcert -CAROOT)/rootCA.pem" /tmp/ca.crt', 'git log --oneline -- .env',
+      'git diff --name-only -- .env', 'git update-index --assume-unchanged .env', 'find . -name .env -exec rm {} ;',
+      'ssh -i ~/.ssh/id_rsa host uptime', 'ssh-add ~/.ssh/id_rsa', './bin/lector-propio-ausente .env',
+      'gh pr create --title "ignora ./.env"']) {
+      assert.doesNotThrow(() => execute('secrets-shell', runs(command)), command)
+    }
+  } finally { process.env.PATH = before }
+  // Una asignación larga sin espacio después: la primera forma de saltear asignaciones tardaba segundos con 28 letras.
+  // Va en otro proceso porque una regex que no termina bloquea a éste y ningún tope de la prueba llega a cortarla.
+  const run = `require(${JSON.stringify(require.resolve('../../engine/hooks/run'))}).execute('secrets-shell', `
+    + `{ cwd: ${JSON.stringify(root)}, tool_input: { command: 'X=' + 'a'.repeat(5000) } })`
+  const long = spawnSync(process.execPath, ['-e', run], { timeout: 5000 })
+  assert.equal(long.status, 0, 'saltear una asignación no puede depender de su largo')
 })
 
 // Un commit en el mismo comando no apaga la escritura, y su mensaje no es una: lo que dice entre comillas o en un
