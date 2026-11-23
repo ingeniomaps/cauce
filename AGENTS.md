@@ -511,6 +511,13 @@ El cierre escrito:
     `nada`.
 16. El estado coincide en sus dos lugares, `resuelto-en` es la versión abierta, y hay entrada en el CHANGELOG.
 
+**Antes de dar el caso por cerrado, un subagente contrasta la lista contra la evidencia.** Recibe el caso, la lista y
+dónde está la evidencia —scripts y salidas de la sesión, commits, el código actual—, no la conclusión de quien cerró, y
+rehace lo barato: una sonda por la entrada real, la prueba contra el motor anterior. Lo que encuentre se corrige antes
+de cambiar el estado. Va escrito porque los cierres con huecos tenían puntos marcados «hecho» que no eran ciertos, y se
+vieron sólo al contrastarlos: el 484 y el 485 el 2026-11-13, y el 524, el 527 y el 528 el 2026-11-20. Ninguna prueba
+puede ver eso: la evidencia y la línea «hecho» las escribe la misma sesión.
+
 Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales ni firmas de IA.
 
 ## Convenciones
