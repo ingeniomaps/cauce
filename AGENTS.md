@@ -541,8 +541,10 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   **La regla tiene puerta desde el 2026-11-23**: `test/repo/language.test.js` falla con cualquier nombre
   en español del JavaScript, el shell y los `run:` de los workflows. Antes no la tenía, y entre 0.90.0 y
   0.123.1 se acumularon unos 670 nombres que hubo que traducir de una vez. La prueba detecta por una lista
-  de palabras y por la forma, así que la palabra nueva que no está en la lista pasa: se agrega a
-  `test/support/spanish-words.txt` cuando aparece. El vocabulario que el código nombra igual que el
+  de palabras, por la forma y por la prosa del propio repositorio: una palabra de un nombre que la prosa en
+  español usa cuenta como español hasta que `test/support/english-words.txt` la declara inglesa. Una palabra
+  nueva en inglés que la prosa también usa la pone en rojo y se agrega ahí. Lo que sigue abierto es la palabra
+  que la prosa nunca usó. El vocabulario que el código nombra igual que el
   documento que escribe se declara en la propia prueba, con su razón. No mira claves ni propiedades, ni
   los fixtures de los casos de evaluación.
 
