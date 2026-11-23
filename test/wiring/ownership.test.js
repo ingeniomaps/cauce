@@ -165,6 +165,33 @@ test('el bloque que install escribe en un AGENTS.md de la empresa no blanquea su
   assert.match(body, /TEXTO-DE-LA-EMPRESA/, 'y su texto queda')
 })
 
+// Los dos bordes del 546 que el arreglo dejaba del lado seguro: un archivo sin editar al que se le quita el bloque
+// sigue siendo del molde, y uno que la empresa devolvió al molde, con el bloque adentro, vuelve a serlo.
+test('desinstalar el runner, o devolver el AGENTS.md al molde, no lo deja como edición de la empresa', () => {
+  const base = tempRoot('cauce-bloque-vuelta-')
+  const limpio = path.join(base, 'limpio')
+  fs.mkdirSync(limpio, { recursive: true })
+  assert.equal(run(['init', limpio, '--name', 'Acme', '--mode', 'embedded', '--no-install']).status, 0)
+  linkEngine(limpio)
+  const molde = fs.readFileSync(path.join(limpio, 'AGENTS.md'), 'utf8')
+  assert.equal(run(['automation', 'install', limpio, 'codex']).status, 0)
+  assert.equal(run(['automation', 'uninstall', limpio, 'codex']).status, 0)
+  assert.doesNotMatch(run(['upgrade', limpio, '--check']).stdout, /editado localmente: AGENTS\.md/, 'sin el bloque')
+
+  const devuelto = path.join(base, 'devuelto')
+  fs.mkdirSync(devuelto, { recursive: true })
+  fs.writeFileSync(path.join(devuelto, 'AGENTS.md'), '# Nuestro AGENTS.md\n')
+  assert.equal(run(['init', devuelto, '--name', 'Acme', '--mode', 'embedded', '--no-install', '--force']).status, 0)
+  linkEngine(devuelto)
+  assert.equal(run(['automation', 'install', devuelto, 'codex']).status, 0)
+  const body = fs.readFileSync(path.join(devuelto, 'AGENTS.md'), 'utf8')
+  const block = body.slice(body.indexOf('<!-- cauce:codex inicio'))
+  fs.writeFileSync(path.join(devuelto, 'AGENTS.md'), `${molde}\n${block}`)
+  assert.equal(run(['automation', 'install', devuelto, 'codex']).status, 0)
+  assert.doesNotMatch(run(['upgrade', devuelto, '--check']).stdout, /editado localmente: AGENTS\.md/,
+    'devuelto al molde con el bloque, vuelve a ser del molde')
+})
+
 // `list` es el comando que informa si un runner está instalado, y componía la ruta contra la instancia
 // en vez de resolverla como sus tres hermanos —`install`, `doctor` y `uninstall` usan `runnerPaths`—.
 // En `sidecar`, que es el modo por defecto, el wiring vive en el padre: los cuatro adaptadores salían

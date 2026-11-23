@@ -9,6 +9,7 @@ const catalog = require('../agents/catalog')
 const O = require('../core/ownership')
 const M = require('../core/manifest')
 const RL = require('./rules')
+const SR = require('./shared-record')
 const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, toolsDrift,
@@ -213,7 +214,7 @@ function uninstall(root, name, output = console) {
       const body = fs.readFileSync(resolved.target, 'utf8')
       const clean = withoutBlock(body, name)
       if (clean !== body.trimEnd()) {
-        F.atomicWrite(resolved.target, `${clean}\n`)
+        SR.writeShared(root, resolved.target, () => F.atomicWrite(resolved.target, `${clean}\n`))
         removed += 1
       }
       delete deliveredPaths[key]
@@ -367,20 +368,16 @@ function install(root, name, output = console, options = {}) {
     const ownFile = runner.instructions.includes(resolved.item)
     if (!ownFile) landed.add(path.dirname(resolved.target))
     if (ownFile && isSharedFile(root, resolved.target)) {
-      const own = path.relative(root, resolved.target).split(path.sep).join('/')
-      const edited = O.SYSTEM_FILES.includes(own) && M.editedPaths(root, [own]).length > 0
       const content = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
-      if (blockUpToDate(resolved.target, name, content)) {
-        output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
-      } else {
-        mergeInstruction(resolved.target, name, content)
-        output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
-      }
+      SR.writeShared(root, resolved.target, () => {
+        if (blockUpToDate(resolved.target, name, content)) {
+          output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
+        } else {
+          mergeInstruction(resolved.target, name, content)
+          output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
+        }
+      })
       deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digestRelocatable(resolved, OPS_ROOT)
-      // Y en la otra sección, porque `AGENTS.md` es del sistema y es donde este runner deja su bloque: sin anotarlo, el
-      // `upgrade` siguiente le echaba a la empresa la edición del comando de al lado. Sólo si no estaba editado: anotar
-      // uno que la empresa ya había editado blanqueaba la edición, y el `upgrade` lo reemplazaba entero (caso 546).
-      if (O.SYSTEM_FILES.includes(own) && !edited) M.write(root, M.recordPaths(root, [own], M.read(root)))
       continue
     }
     if (status === 'ajeno' && ownFile) {
