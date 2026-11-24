@@ -217,9 +217,10 @@ function scriptsOf(words, verb) {
     const shell = () => words.slice(0, at).some((one) => RUNS_SCRIPT.test(path.basename(one)))
     // Detrás de un shell también va agrupada: `bash -lc`, `sh -ec`, `bash -cex`.
     const flag = word === '-c' || (/^-[a-zA-Z]*c[a-zA-Z]*$/.test(word) && shell())
-    // El script es el primer argumento que no es opción: el shell sigue leyendo opciones después de `-c`
-    // (`bash -c -e …`). Se busca sólo detrás de un `-c`, para que un comando largo no cueste el cuadrado.
-    const script = flag && words.slice(at + 1).find((one) => !one.startsWith('-'))
+    // El script es el primer argumento que no es opción: el shell sigue leyendo opciones después de `-c` (`-e`, `+e`,
+    // `-o pipefail`). Se busca sólo detrás de un `-c`, para que un comando largo no cueste el cuadrado.
+    const script = flag && words.slice(at + 1)
+      .find((one, after, all) => !/^[-+]/.test(one) && !(after && /^[-+]o$/.test(all[after - 1])))
     if (script && (!OTHER_C.has(path.basename(verb)) || shell())) found.push(script)
     else if (word === '--command' && words[at + 1]) found.push(words[at + 1])
     else if (word.startsWith('--command=')) found.push(word.slice('--command='.length))
