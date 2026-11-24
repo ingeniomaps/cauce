@@ -74,10 +74,31 @@ test('los guards del proyecto corren una vez por evento, lo llame el runner por 
 
 // Con `stop_hook_active` la sesión ya está siguiendo por un cierre frenado: frenarla otra vez es el bucle.
 test('en stop, un guard del proyecto no vuelve a frenar a la sesión que ya sigue por un cierre frenado', () => {
-  withGuards('cauce-guards-stop-', {}, { stop: ['guards/no-esta.sh'] }, ({ target }) => {
-    blockedBy(() => executeAll(['planning-drift'], { cwd: target }), /no-esta\.sh/)
-    assert.doesNotThrow(() => executeAll(['planning-drift'], { cwd: target, stop_hook_active: true }))
-  })
+  withGuards('cauce-guards-stop-', { 'frena.sh': 'echo no cierres >&2; exit 2' }, { stop: ['guards/frena.sh'] },
+    ({ target }) => {
+      blockedBy(() => executeAll(['planning-drift'], { cwd: target }), /no cierres/)
+      assert.doesNotThrow(() => executeAll(['planning-drift'], { cwd: target, stop_hook_active: true }))
+    })
+})
+
+// Caso 559: en `stop`, el guard que falla o no termina avisa y deja cerrar; en otro evento sigue frenando.
+test('en stop, un guard del proyecto que no contesta avisa en vez de frenar el cierre', () => {
+  const scripts = { 'falla.sh': 'echo roto >&2; exit 1', 'tarda.sh': 'sleep 5' }
+  const previous = PG.limits.timeoutMs
+  try {
+    for (const [file, limit, pattern] of [['guards/falla.sh', 20000, /salió con 1: roto; en el cierre eso avisa/],
+      // Con un plazo de evento más corto que el mínimo de stop, el aviso nombra el mínimo.
+      ['guards/tarda.sh', 300, /no terminó en los 2 s que tiene un guard de stop .*; en el cierre eso avisa/],
+      ['guards/no-esta.sh', 20000, /ENOENT/]]) {
+      PG.limits.timeoutMs = limit
+      withGuards('cauce-guards-stop-roto-', scripts, { stop: [file] }, ({ target }) => {
+        const notices = executeAll(['planning-drift'], { cwd: target })
+        assert.match(notices.join('\n'), pattern, file)
+      })
+    }
+  } finally {
+    PG.limits.timeoutMs = previous
+  }
 })
 
 test('un guard del proyecto que no contesta frena, y dice por qué', () => {
@@ -405,4 +426,19 @@ test('un guard del proyecto que pide confirmar deja lo frenado esperando el sí,
         } finally { chat.close() }
       }
     })
+})
+
+
+// Uno lento que agota el plazo no deja sin el suyo al que viene detrás: el que frena con 2 sigue frenando.
+test('en stop, un guard lento no le quita el plazo al que frena', () => {
+  const scripts = { 'lento.sh': 'sleep 1', 'frena.sh': 'echo no cierres >&2; exit 2' }
+  const previous = PG.limits.timeoutMs
+  PG.limits.timeoutMs = 300
+  try {
+    withGuards('cauce-guards-stop-orden-', scripts, { stop: ['guards/lento.sh', 'guards/frena.sh'] }, ({ target }) => {
+      blockedBy(() => executeAll(['planning-drift'], { cwd: target }), /no cierres/)
+    })
+  } finally {
+    PG.limits.timeoutMs = previous
+  }
 })

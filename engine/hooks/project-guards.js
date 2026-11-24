@@ -30,6 +30,9 @@ const { GUARD_EVENTS, validateGuards } = require('../config/validate')
 // a los del motor, así que tres guards de 20 s cada uno lo pasaban, y qué hace `agy` con un hook vencido no está
 // medido. Es un objeto y no una constante para que la prueba mida el corte sin esperar los 20 s.
 const limits = { timeoutMs: 20000 }
+// En `stop` un guard que no termina avisa (caso 559), así que uno lento no puede dejar sin plazo a los que vienen
+// detrás: el que iba a frenar con 2 vencería en un milisegundo y la sesión cerraría. Cada uno arranca con este mínimo.
+const STOP_FLOOR_MS = 2000
 
 // Un aviso viaja en cada llamada, así que uno ruidoso se pagaría en contexto todo el resto de la sesión.
 const NOTICE_MAX = 2000
@@ -70,7 +73,8 @@ function declaredFor(root, event, input) {
 function judge(file, event, input, root, deadline) {
   const name = path.relative(root, file)
   // Al que llega con el plazo vencido le queda un milisegundo, y su corte es el mismo que el de cualquier otro.
-  const left = Math.max(deadline - Date.now(), 1)
+  const floored = event === 'stop' && deadline - Date.now() < STOP_FLOOR_MS
+  const left = floored ? STOP_FLOOR_MS : Math.max(deadline - Date.now(), 1)
   const result = spawnSync(file, [], {
     input: JSON.stringify(input), cwd: cwdOf(input), encoding: 'utf8', timeout: left,
     env: { ...process.env, OPS_ROOT: root, CAUCE_HOOK_EVENT: event },
@@ -82,6 +86,13 @@ function judge(file, event, input, root, deadline) {
     return said ? noticeOf(name, said) : ''
   }
   if (result.status === 2) block(`[${name}] ${said || 'el guard del proyecto frenó sin decir por qué'}`)
+  // En `stop` el que no contesta avisa: frenar ahí ata la sesión a no poder cerrar por un defecto del guard, que es el
+  // criterio de `CANNOT_STOP` en `run.js` para los del motor (caso 559). El que contesta con 2 sigue frenando.
+  if (event === 'stop') {
+    const why = failureOf(result, said, floored)
+    return noticeOf(name, `el guard que declara guards.stop en ops.config.json ${why}; en el `
+      + 'cierre eso avisa y no frena. Arreglalo o sacalo de la lista.')
+  }
   block(`[${name}] el guard que declara guards.${event} en ops.config.json ${failureOf(result, said)}, y un guard `
     + 'que no contesta frena. Arreglalo o sacalo de la lista.')
 }
@@ -107,9 +118,13 @@ function decisionOf(stdout) {
 
 // Por qué no contestó un guard que no salió ni en 0 ni en 2. EPIPE es el guard que salió sin leer la llamada: corrió,
 // y lo que hizo lo dicen su código y su señal. Sin ninguno de los dos, el EPIPE es lo único que hay para decir.
-function failureOf(result, said = '') {
+function failureOf(result, said = '', floored = false) {
   const ran = result.status !== null || Boolean(result.signal)
   if (result.error && !(result.error.code === 'EPIPE' && ran)) {
+    if (floored && result.error.code === 'ETIMEDOUT') {
+      return `no terminó en los ${STOP_FLOOR_MS / 1000} s que tiene un guard de stop cuando el plazo del evento ya `
+        + 'se usó'
+    }
     return result.error.code === 'ETIMEDOUT'
       ? `no terminó dentro de los ${limits.timeoutMs / 1000} s que tienen entre todos los guards del evento`
       : `no se pudo ejecutar (${result.error.code})`
