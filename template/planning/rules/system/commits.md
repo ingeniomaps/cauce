@@ -85,3 +85,10 @@ configurado el original por defecto, ni que un PR anterior haya ido a parar all�
 
 Es de las pocas que no tiene vuelta atrás. Un PR mal apuntado es trabajo publicado en el repositorio de
 otro equipo: lo ven, les llega la notificación, y cerrarlo no deshace nada de eso.
+
+**Y si un guard cuida el paso, se intenta antes de preguntar.** Preguntar «¿empujo?» antes de correr el comando hace
+que el sí llegue cuando todavía no hay nada frenado: no aprueba nada, el guard frena igual y pide el mismo sí otra vez.
+Se anuncia el paso, se corre, y si frena se pregunta nombrando lo frenado; ese sí es el que lo deja pasar. Vale sólo
+donde se sabe que un guard frena esa forma del comando en este repositorio: un guard reconoce formas, no intenciones.
+Donde no, o donde no se sabe —un deploy por un botón o por un script, probar en un ambiente compartido, un repositorio
+sin los guards de Cauce—, se pregunta antes, porque ahí intentarlo ya es hacerlo.

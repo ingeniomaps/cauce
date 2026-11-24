@@ -15,6 +15,11 @@ arrastra en el handoff se reenvía en cada etapa que sigue, así que lo que cost
 una vez por etapa. Son requisitos opuestos y por eso no son el mismo texto: el resumen quiere ser corto
 porque viaja, y la síntesis quiere estar completa porque decide.
 
+Y lo que vuelve se escribe donde va apenas vuelve. El informe de un subagente que queda sólo en el contexto de quien
+lo pidió se pierde con ese contexto —un corte, una compactación— y la síntesis lo da por leído. La síntesis no arranca
+con un informe sin escribir, y el que no encontró nada lo dice igual, con qué miró: un hueco y un «sin hallazgos» se
+ven distinto sólo si los dos están escritos.
+
 Se lee para escribir, no para confirmar: un archivo se lee una vez y se escribe entero. Releerlo para
 comprobar que quedó no comprueba nada que un error no hubiera dicho.
 
