@@ -128,8 +128,20 @@ diseño — eso vive en el commit y en el código.
   `cp`, `mv`, `chmod` y sus parecidos, así que `dd of=automatization/hooks/guard-files.sh`, `perl -pi -e … guard.sh`,
   `patch`, `git clean` o un `node -e` que escribía el archivo pasaban. Ahora cuenta cualquier programa que nombre el
   archivo exacto o un glob que lo alcance, salvo los que sólo lo leen o lo ejecutan (`cat`, `diff`, `bash guard.sh`,
-  `git log`). Sobre 101.218 comandos reales de sesiones frena 29 más, casi todos scripts de Python que reescribían el
-  motor con `open(p, 'w')`, y ninguno que antes frenara pasa.
+  `git log`). Sobre 101.218 comandos reales de sesiones frena 40 más, casi todos scripts de Python que reescribían el
+  motor con `open(p, 'w')` y parches aplicados en el repositorio de la instancia, y ninguno que antes frenara pasa.
+
+- **`patch`, `git apply` y `git am` piden confirmación siempre que apliquen en el repositorio de la instancia.** Escriben
+  lo que trae su diff, que el comando no nombra, así que un diff podía reescribir un script de los guards sin que nada lo
+  viera. Leer el diff no alcanzó: cada forma de leerlo dejaba pasar otra (un heredoc, una tubería, `-p`, `--directory`,
+  una sesión de `git am`). Ahora frenan dentro del repositorio que contiene a la instancia, sobre una carpeta que la
+  contiene, o cuando el árbol se elige con `--directory`, `--work-tree` o `GIT_WORK_TREE`, sin excepciones de modo:
+  también `git apply --check` y `patch --dry-run`. Fuera de ese repositorio no se juzgan.
+
+- **`destructive` pregunta antes de todo `git clean` que no simula.** Preguntaba sólo con `-f` o `--force`, así que
+  `git clean --forc` (git acepta cualquier prefijo de una opción larga), un `clean.requireForce` apagado en la
+  configuración, o un `-e` cuyo valor parecía un `-n` borraban sin preguntar. Un `git clean -d` que git rechaza sin `-f`
+  ahora también pregunta.
 
 - **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
   no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
