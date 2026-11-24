@@ -304,7 +304,16 @@ function failure(gate, result, timeoutMs) {
     .filter((one) => one && !one.startsWith('>'))
   const line = lines.find((one) => FAILED_TEST.test(one))
     || lines.find((one) => !PASSED_TEST.test(one) && ERROR_LINE.test(one)) || lines[0] || ''
-  return { gate, status: result.status, ms: result.ms, line: line.slice(0, MAX_LINE) }
+  // Muerto por una señal no tiene código, y antes salía «exit null»; un 137 es el SIGKILL que npm reporta como
+  // código. Antes del tope, los dos son casi siempre memoria, y leerlos como corte por tiempo apuntaba al tope
+  // equivocado (caso 564).
+  const killed = result.signal === 'SIGKILL' ? 'lo mató SIGKILL antes del tope' : result.status === 137
+    ? '137 es SIGKILL antes del tope' : ''
+  const hint = killed ? `${killed}; casi siempre es falta de memoria${line ? '. ' : ''}`
+    : result.overflowed ? `su salida pasó el búfer y lo cortó ${result.signal}${line ? '. ' : ''}`
+      : result.signal ? `lo mató ${result.signal}${line ? '. ' : ''}` : ''
+  // La pista va fuera del tope: el tope es de la línea de error, que es lo que no se puede perder.
+  return { gate, status: result.signal || result.status, ms: result.ms, line: `${hint}${line.slice(0, MAX_LINE)}` }
 }
 
 // Un gate que vuelve en menos de esto no corrió una suite. No se afirma que **no** haya corrido —un
@@ -313,7 +322,8 @@ function failure(gate, result, timeoutMs) {
 const TOO_FAST = 2000
 function howItReads(failures) {
   const summary = failures
-    .map((one) => `${one.gate} (${one.status === 'cortado' ? 'cortado' : `exit ${one.status}`}, `
+    .map((one) => `${one.gate} (${one.status === 'cortado' || /^SIG/.test(one.status) ? one.status
+      : `exit ${one.status}`}, `
       + `${(one.ms / 1000).toFixed(1)} s)`
       + `${one.line ? `: ${one.line}` : ''}`)
     .join('; ')
@@ -372,7 +382,8 @@ function verifyGates(root, dir, unapproved, env, input, timeoutMs, tree) {
   const config = rootOf(input, dir) || {}
   const gate = (label, program, args) => {
     const result = run(program, args, root, env, { timeoutMs })
-    EV.record(ops, label, result.status, result.ms, tree ? { tree } : {})
+    const extra = { ...(tree ? { tree } : {}), ...(result.signal ? { signal: result.signal } : {}) }
+    EV.record(ops, label, result.status, result.ms, extra)
     if (!result.ok && !KR.isKnownRed(known, config.name, label)) failures.push(failure(label, result, timeoutMs))
   }
   // El gate que la raíz declara reemplaza al que se adivina por el stack (caso 547): es el que el agente corre en
