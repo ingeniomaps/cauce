@@ -421,7 +421,7 @@ test('la regla del destino resuelto ve prefijos y globs, y el cd sin resolver fr
 test('git clean se frena si no simula, en cualquier opción, y no si sólo simula', () => {
   for (const command of ['git clean -d -f', 'git clean -x -f', 'git clean -df', 'git clean --force', 'git clean -fd',
     'git -C app clean -d --force', 'git clean --forc -dx', 'git clean -dx', 'git clean -fdx -einit',
-    'git -c clean.requireForce=false clean -dx', 'git clean -fdi']) {
+    'git -c clean.requireForce=false clean -dx', 'git clean -fdi', 'git clean -fdx -e -n', 'git clean -fdx -- -n']) {
     blocked('destructive', { tool_input: { command } }, /borra archivos sin seguimiento/)
   }
   for (const command of ['git clean -fdn', 'git clean -n -fd', 'git clean -fd --dry-run', 'git clean -nd',

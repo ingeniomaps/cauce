@@ -283,7 +283,8 @@ function isCommit(command) {
 
 // Lo que hace de un `git clean` una simulación, para los guards que lo juzgan: una `n` del racimo antes de cualquier
 // `e` —en `-einit` la `n` es del patrón que se queda—, o un prefijo de `--dry-run`. `-i` no simula: borra si recibe la
-// orden por la entrada. Sin `-f` también borra si la configuración lo permite, y `--forc` es `--force`.
+// orden por la entrada. Sin `-f` también borra si la configuración lo permite, y `--forc` es `--force`. Cuenta sólo
+// una opción de verdad: no el valor de `-e` ni lo que va después de `--` (`git clean -fdx -e -n`).
 const CLEAN_DRY = String.raw`-[a-df-zA-Z]*n[a-zA-Z]*|--d(?:r(?:y(?:-(?:r(?:u(?:n)?)?)?)?)?)?`
 
 module.exports = {
