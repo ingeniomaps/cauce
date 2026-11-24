@@ -10,6 +10,7 @@
 
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { shellWord } = require('./files')
 
 const git = (dir, ...args) => spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' })
 
@@ -42,8 +43,8 @@ function credentialedRemotes(dir) {
 }
 
 // Cómo sacarla, por remoto, con la URL ya limpia.
-const fixOf = (dir, one) => `git -C ${dir} remote set-url ${one.key === 'pushurl' ? '--push ' : ''}`
-  + `${one.name} ${one.url}`
+const fixOf = (dir, one) => `git -C ${shellWord(dir)} remote set-url ${one.key === 'pushurl' ? '--push ' : ''}`
+  + `${shellWord(one.name)} ${shellWord(one.url)}`
 
 // Para `check`: la instancia y cada raíz del workspace, una vez por repositorio.
 function remoteWarnings(opsRoot) {

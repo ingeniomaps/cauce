@@ -99,3 +99,9 @@ test('se aprueba con la línea en .ops-approval, y check lo avisa sin mostrarla'
   execFileSync('git', ['-C', root, 'remote', 'set-url', 'origin', 'https://github.com/acme/app.git'])
   assert.deepEqual(RC.remoteWarnings(root), [])
 })
+
+// El comando que se imprime se pega tal cual: una ruta con un espacio lo partía en dos palabras.
+test('el arreglo que se imprime lleva entre comillas una carpeta con espacios', () => {
+  const fix = RC.fixOf('/tmp/Mis Proyectos/app', { key: 'url', name: 'origin', url: 'https://github.com/acme/app.git' })
+  assert.equal(fix, "git -C '/tmp/Mis Proyectos/app' remote set-url origin https://github.com/acme/app.git")
+})
