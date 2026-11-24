@@ -21,7 +21,7 @@ test('editar una descripción en markdown frena, en cualquier servidor', () => {
     [{ fields: { description: 'texto nuevo' } }],
     [{ fields: { description: 'texto nuevo' }, contentFormat: 'markdown' }],
     [{ fields: { description: 'texto nuevo' } }, 'mcp__atlassian-acme__editJiraIssue'],
-  ]) blocked('jira-adf', edit(root, input, tool), /aplana lo que el ADF tenía/)
+  ]) blocked('jira-adf', edit(root, input, tool), /aplana lo que el ADF tenía[^]*contentFormat "html"/)
 })
 
 test('lo que no aplana nada pasa', () => {
@@ -29,6 +29,9 @@ test('lo que no aplana nada pasa', () => {
   for (const [input, tool] of [
     [{ fields: { description: { type: 'doc', version: 1, content: [] } } }],
     [{ fields: { description: 'texto' }, contentFormat: 'adf' }],
+    // El conector v2 no acepta ADF: su HTML lleva casillas y tablas (caso 554).
+    [{ fields: { description: '<ul data-type="task-list"></ul>' }, contentFormat: 'html' }],
+    [{ fields: { description: '<p>x</p>' }, contentFormat: 'HTML' }],
     [{ fields: { description: null } }],
     [{ fields: { summary: 'otro título' } }],
     [{ fields: { description: 'nueva' } }, 'mcp__atlassian__createJiraIssue'],
