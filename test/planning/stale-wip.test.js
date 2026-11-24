@@ -56,7 +56,8 @@ test('un WIP sobre una tarea cerrada se avisa en check y no se ofrece en context
     + '- [ ] **baja-de-cliente** [lite] — Baja de cliente. _Aceptación: la baja borra el cliente._\n')
   const queued = JSON.parse(context(planning, '--json').stdout)
   assert.deepEqual([queued.task.slug, queued.wip, queued.staleWip], ['baja-de-cliente', null, 'alta-de-cliente'])
-  assert.equal(run(['claim', planning, 'baja-de-cliente'], undefined, { CAUCE_RUNNER: RUNNER }).status, 0)
+  const owner = { CAUCE_RUNNER: RUNNER, CAUCE_OWNER: 'prueba@ejemplo' }
+  assert.equal(run(['claim', planning, 'baja-de-cliente'], undefined, owner).status, 0)
   const claimed = JSON.parse(context(planning, '--json').stdout)
   assert.deepEqual([claimed.task.slug, claimed.claimed, claimed.wip], ['baja-de-cliente', true, null])
 })
