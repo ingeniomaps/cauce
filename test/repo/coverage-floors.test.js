@@ -352,3 +352,35 @@ test('una prueba en rojo frena la puerta, y al registrar un piso no', { skip: pr
   assert.match(output(recording), /piso registrado/, 'y el registro ocurre de verdad')
   discard(repo)
 })
+
+// Un punto porcentual es menos que una rama en un archivo chico: con cincuenta, perder una baja de 100 a 98, y una
+// rama que una corrida no cuenta tiraba la puerta (el release de 0.124.0). La holgura es la mayor de las dos: un
+// punto, o una unidad. En uno grande sigue mandando el punto.
+test('a una sola unidad de su piso un archivo chico pasa, a dos no, y en uno grande manda el punto', () => {
+  // Cada corrida es `[ramas, alcanzadas]` del archivo; con varias, la puerta toma el mínimo.
+  const verdict = (file, ...runs) => {
+    const dir = tempRoot('cauce-pisos-unidad-')
+    const recordFile = floors()
+    const lcovs = runs.map(([branches, hit], at) => {
+      const lcov = path.join(dir, `medido-${at}.info`)
+      fs.writeFileSync(lcov, Object.entries(recordFile).map(([one, metrics]) => `SF:${one}\nLF:100\n`
+        + `LH:${metrics.lines}\n${one === file ? `BRF:${branches}\nBRH:${hit}` : `BRF:100\nBRH:${metrics.branches}`}\n`
+        + `FNF:100\nFNH:${metrics.functions}\nend_of_record\n`).join(''))
+      return lcov
+    })
+    const baseline = path.join(dir, 'baseline.json')
+    recordFile[file].branches = file === FEW_BRANCHES ? 100 : 90
+    fs.writeFileSync(baseline, `${JSON.stringify(recordFile, null, 2)}\n`)
+    const done = spawnSync(process.execPath, [TOOL, ...lcovs, `--baseline=${baseline}`], { encoding: 'utf8' })
+    discard(dir)
+    return done.status
+  }
+  const FEW_BRANCHES = 'engine/planning/done-entry.js'
+  const MANY_BRANCHES = 'engine/cli/ops.js'
+  assert.equal(verdict(FEW_BRANCHES, [50, 49]), 0, 'una rama de cincuenta, 98 contra 100')
+  assert.equal(verdict(FEW_BRANCHES, [50, 48]), 1, 'dos ramas, 96 contra 100')
+  assert.equal(verdict(MANY_BRANCHES, [1000, 890]), 0, 'un punto en mil ramas, 89 contra 90')
+  assert.equal(verdict(MANY_BRANCHES, [1000, 880]), 1, 'dos puntos, aunque cada uno sean diez ramas')
+  assert.equal(verdict(FEW_BRANCHES, [50, 48], [100, 99]), 1,
+    'las unidades salen de la corrida del mínimo, no de la última')
+})
