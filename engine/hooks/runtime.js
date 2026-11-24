@@ -219,6 +219,9 @@ function interpreted(rest) {
   return [...literals, ...(code < 0 ? args.slice(1) : args)]
 }
 
+// La salida pegada a un grupo de banderas cortas de `sort`: lo que sigue a la primera `o` (`-o`, `-uo`).
+const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-zA-Z]*?o/, '') : '')
+
 function touched(ran) {
   const found = []
   for (const { verb, rest, base } of ran) {
@@ -238,13 +241,11 @@ function touched(ran) {
       }
       const from = rest.slice(0, Math.max(sub, 0)).reduce(moves, base)
       // `git clean` borra lo que nombra y lo de adentro, y sin ruta, el árbol entero; los demás, como cualquier
-      // programa, sólo el archivo exacto. Borra con `-f`, o sin él si se apagó `clean.requireForce` en el mismo
-      // comando, y nunca en seco (`-n`, `-i`). El valor de `-e` es lo que se queda, no una ruta.
+      // programa, sólo el archivo exacto. Se juzga salvo en seco (`-n`, `-i`): sin `-f` también borra si la
+      // configuración lo permite, y el guard no la lee (R27). El valor de `-e` es lo que se queda, no una ruta.
       const clean = rest[sub] === 'clean'
       const after = rest.slice(sub + 1)
-      const unforced = rest.slice(0, sub).some((word) => /^clean\.requireforce=(?:false|no|off|0)$/i.test(word))
-      const forced = (unforced || after.some((word) => /^(?:-[a-zA-Z]*f[a-zA-Z]*|--force)$/.test(word)))
-        && !after.some((word) => /^(?:-[a-zA-Z]*[ni][a-zA-Z]*|--dry-run|--interactive)$/.test(word))
+      const forced = !after.some((word) => /^(?:-[a-zA-Z]*[ni][a-zA-Z]*|--dry-run|--interactive)$/.test(word))
       const excludes = /^(?:-e|--exclude)$/
       const kept = after.filter((word, at) => !/^(?:-e|--exclude)(?:=|$)/.test(word)
         && !(at && excludes.test(after[at - 1])))
@@ -255,11 +256,7 @@ function touched(ran) {
       }
     }
     // `sort -oARCHIVO` lleva la salida pegada, y `named` no mira lo que empieza con `-`.
-    if (verb === 'sort') {
-      for (const word of rest.filter((one) => /^-[a-zA-Z]*?o./.test(one))) {
-        found.push({ raw: word.replace(/^-[a-zA-Z]*?o/, ''), base, exact: true })
-      }
-    }
+    if (verb === 'sort') for (const raw of rest.map(sortOutput)) if (raw) found.push({ raw, base, exact: true })
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
     // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
     for (const raw of INTERPRETERS.has(verb) ? interpreted(rest) : named(rest)) found.push({ raw, base, exact: true })
