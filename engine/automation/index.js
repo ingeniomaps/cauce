@@ -9,6 +9,7 @@ const catalog = require('../agents/catalog')
 const O = require('../core/ownership')
 const M = require('../core/manifest')
 const RL = require('./rules')
+const SR = require('./shared-record')
 const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, toolsDrift,
@@ -213,7 +214,7 @@ function uninstall(root, name, output = console) {
       const body = fs.readFileSync(resolved.target, 'utf8')
       const clean = withoutBlock(body, name)
       if (clean !== body.trimEnd()) {
-        F.atomicWrite(resolved.target, `${clean}\n`)
+        SR.writeShared(root, resolved.target, () => F.atomicWrite(resolved.target, `${clean}\n`))
         removed += 1
       }
       delete deliveredPaths[key]
@@ -285,6 +286,7 @@ function install(root, name, output = console, options = {}) {
   if (O.mode(root) === 'toolkit') {
     throw new Error('Acá se fabrica Cauce, no se lo consume.')
   }
+  require('../planning/adopted').write(path.join(root, 'planning', 'rules')) // el bloque lo nombra (caso 545)
   const runner = runnerManifest(root, name)
   const errors = check(root)
   if (errors.length) throw new Error(`La automatización no es instalable:\n- ${errors.join('\n- ')}`)
@@ -367,20 +369,15 @@ function install(root, name, output = console, options = {}) {
     if (!ownFile) landed.add(path.dirname(resolved.target))
     if (ownFile && isSharedFile(root, resolved.target)) {
       const content = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
-      if (blockUpToDate(resolved.target, name, content)) {
-        output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
-      } else {
-        mergeInstruction(resolved.target, name, content)
-        output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
-      }
+      SR.writeShared(root, resolved.target, () => {
+        if (blockUpToDate(resolved.target, name, content)) {
+          output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
+        } else {
+          mergeInstruction(resolved.target, name, content)
+          output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
+        }
+      })
       deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digestRelocatable(resolved, OPS_ROOT)
-      // Y en la otra sección, porque este archivo está en las dos: `AGENTS.md` es del sistema y es
-      // donde este runner deja su bloque. Anotarlo sólo acá dejaba a `localChanges` comparando contra
-      // el digest previo al bloque, así que el `upgrade` siguiente se detenía echándole a la empresa
-      // una edición que había hecho el comando de al lado. Lo que la empresa escriba alrededor cambia
-      // el digest igual, así que se sigue viendo.
-      const own = path.relative(root, resolved.target).split(path.sep).join('/')
-      if (O.SYSTEM_FILES.includes(own)) M.write(root, M.recordPaths(root, [own], M.read(root)))
       continue
     }
     if (status === 'ajeno' && ownFile) {
@@ -443,7 +440,7 @@ function install(root, name, output = console, options = {}) {
   output.log(`  ${name}: ${RL.weightLine(root)}`)
   const invocation = runner.commands && runner.commands.invocation
   if (invocation && (runner.commands.names || []).length) {
-    const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
+    const listing = runner.commands.names.map((commandName) => invocation.replace('{name}', commandName))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
     // Los que sólo este runner instala —los de mantener un cargo propio en Claude— no entran en la lista común, que
     // es igual en todos; sin esta línea quien forkeaba un cargo no sabía que tenía con qué evaluarlo.
@@ -483,7 +480,7 @@ module.exports = {
   RUNNER_NAMES,
   check,
   doctor,
-  staleArtifacts,
+  staleArtifacts, deliveryState,
   install,
   insideSession,
   uninstall,

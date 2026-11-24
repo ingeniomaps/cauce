@@ -64,7 +64,7 @@ function agentDocs() {
 // fixture dejaba el estado sin tocar, ninguna prueba veía el documento que el sello recibe de verdad.
 // Y desde el caso 486 deja también la huella de lo que se aplica, calculada sobre el texto ya firmado.
 // Como `sign-proposal.yml`, escribe sólo dentro de «Aprobación humana»: un fixture puede traer las mismas líneas.
-function firmarPropuesta(file) {
+function signProposal(file) {
   const raw = fs.readFileSync(file, 'utf8')
     .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n')
   const at = raw.search(/^## Aprobación humana/m)
@@ -72,11 +72,11 @@ function firmarPropuesta(file) {
   const text = raw.slice(0, at) + raw.slice(at)
     .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/mi, '- Estado: aprobada')
     .replace('- Responsable: por definir', '- Responsable: Quien Firma')
-  const huella = require('../../engine/agents/learning-files').fingerprint(text)
-  const signed = text.slice(at).replace(/^(-[ \t]*Fecha:.*)$/m, `$1\n- Huella: sha256:${huella}`)
+  const footprint = require('../../engine/agents/learning-files').fingerprint(text)
+  const signed = text.slice(at).replace(/^(-[ \t]*Fecha:.*)$/m, `$1\n- Huella: sha256:${footprint}`)
   fs.writeFileSync(file, text.slice(0, at) + signed)
 }
 
 module.exports = {
-  REPO, AGENTS_ROOT, AGENTS, installedProject, writeSkill, agentDocs, firmarPropuesta,
+  REPO, AGENTS_ROOT, AGENTS, installedProject, writeSkill, agentDocs, signProposal,
 }

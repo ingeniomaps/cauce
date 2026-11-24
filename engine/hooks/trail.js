@@ -13,8 +13,8 @@
 //
 // Vive en su propio módulo y no dentro del guard que lo usa porque lo escriben dos —el push que se
 // autorizó (caso 112) y la concesión del chat (caso 127)— y `chat.js` **no puede importar a `push.js`**:
-// `push.js` ya lo importa a él, así que el require sería circular. Escrito dos veces, una de las dos
-// copias se pudre sin que nada falle.
+// `push.js` ya lo importa a él, así que el require sería circular. Duplicado, una copia se queda atrás y
+// nada lo avisa.
 //
 // Las entradas llegan armadas y no se tocan acá: cada rastro nombra sus campos como corresponde a lo que
 // anota —`authorizedAt` no es `grantedAt`— y el orden de las claves es parte de lo que sus pruebas fijan.

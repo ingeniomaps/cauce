@@ -42,8 +42,8 @@ const unmeasuredNote = (unmeasured) => (unmeasured.length
 // 2026-08-30 y 31.
 const stripRoot = (text, root) => {
   const one = String(text || '')
-  const visto = (one.match(/([A-Za-z0-9_./~-]+)\/\.cauce-eval\//) || [])[1]
-  const base = root && root !== '.' ? root : (visto && visto.startsWith('/') ? visto : '')
+  const seen = (one.match(/([A-Za-z0-9_./~-]+)\/\.cauce-eval\//) || [])[1]
+  const base = root && root !== '.' ? root : (seen && seen.startsWith('/') ? seen : '')
   return (base ? one.split(`${base}/`).join('') : one)
     .replace(/[A-Za-z0-9_./~-]*\/\.cauce-eval\//g, '.cauce-eval/')
 }

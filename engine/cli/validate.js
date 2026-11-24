@@ -23,6 +23,7 @@ const IB = require('../planning/inbox')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const AD = require('../planning/adoption')
+const ADOPTED = require('../planning/adopted')
 const AP = require('../hooks/approval')
 const I = require('../integrations/registry')
 const O = require('../core/ownership')
@@ -47,13 +48,14 @@ const { fail, planningRoot, TODAY, REFUSED } = require('./io')
 
 // Un lint con `--fix` no lo corre `verify` cuando el commit coincide con el árbol, porque escribiría en él
 // (caso 240). Un hook no tiene cómo avisar sin frenar, así que lo dice `check`: si no, el gate se saltea en
-// silencio y el commit pasa sin lint.
+// silencio y el commit pasa sin lint. Una raíz que declara su `verify` corre ése y no los del stack (caso 547).
 function lintThatWrites(opsDir, workspace) {
+  if (typeof workspace.verify === 'string' && workspace.verify.trim()) return []
   let lint
   // Sin `package.json`, ilegible o sin `scripts`: no hay lint que mirar, y las tres caen acá.
   const file = path.resolve(opsDir, workspace.path, 'package.json')
   try { lint = JSON.parse(fs.readFileSync(file, 'utf8')).scripts.lint } catch { return [] }
-  if (!VF.writesInTree('lint', lint || '', workspace)) return []
+  if (!VF.writesInTree('lint', lint || '')) return []
   return [`ops.config.json: la raíz ${workspace.name} corre lint con --fix, y verify no lo corre sobre el árbol `
     + 'porque escribiría en él: agregá un script de lint que sólo revise']
 }
@@ -159,11 +161,16 @@ function check(dir, cli) {
     epics, milestones, done, wips, roles, adopted: new Set(adopted),
     humanActions: humanActions.filter((row) => !row.file || row.valid),
   }))
+  errors.push(...PC.closedErrors(cli.value('--closed').split(',').map((one) => one.trim()).filter(Boolean),
+    { milestones, done }))
   warnings.push(...AD.report({ done, epics, adopted }))
   warnings.push(...DE.doneCeremonyWarnings(done, new Set(adopted)))
+  warnings.push(...DE.unprovenWarnings(done, new Set(adopted)))
   // Antes de que el recorrido pague Build para descubrirlo en Verify. Cuesta un regex sobre la cola y
   // corre en los cuatro carriles, incluidos los que saltean Ready (caso 140).
   warnings.push(...PC.unverifiableAcceptance(milestones))
+  warnings.push(...PC.staleWips(wips, done))
+  warnings.push(...require('../planning/links').linkWarnings(path.resolve(root, '..')))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   errors.push(...DE.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
   const ops = path.resolve(root, '..')
@@ -235,6 +242,10 @@ function check(dir, cli) {
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
       + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)
   }
+  // Un remoto con la credencial en la URL, en la instancia o en una raíz (caso 530).
+  warnings.push(...require('../core/remote-credentials').remoteWarnings(path.resolve(root, '..')))
+  // Lo que se adopta de un archivo sobrescrito, contra lo que el sistema dice hoy (caso 545).
+  warnings.push(...ADOPTED.staleOf(path.join(root, 'rules')))
   // Y lo que instaló cada runner, contra esas mismas reglas (caso 099).
   warnings.push(...RL.staleLines(path.resolve(root, '..')))
   // Y cuánto pesa lo que ese bloque carga, cuando ya se pasó del umbral. Es la contracara de la línea que

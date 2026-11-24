@@ -13,37 +13,120 @@ const os = require('node:os')
 const path = require('node:path')
 const { asRun, commandOf, rawCommandOf, cwdOf, block, isCommit, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
-const { LEADING, VALUED, POSITIONAL } = require('./shell-wrappers')
+const { afterLeaders } = require('./shell-wrappers')
+const { masked, shellWord } = require('./quoting')
+const { GIT_VALUED } = require('./git-globals')
 const { REDIRECT } = require('./shell-writes')
 const { writes } = require('./shell-changes')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const RC = require('../core/remote-credentials')
 
-// Lo que muestra el contenido de un archivo. Queda afuera lo que sólo lo nombra —`ls`, `test -f`, `rm`,
-// `git add`—, que no deja nada en la sesión, y `cp` y `mv`, cuyo último argumento es un destino: `cp
-// .env.example .env` es preparar el entorno, no leerlo. `nl` entró porque un agente lo usó en una sesión
-// real para leer el `.env` después de que la lista no lo tuviera.
+// Lo que muestra el contenido de un archivo, también dentro de las comillas: el código de un `node -e` nombra el
+// archivo ahí adentro. Estén o no instalados.
 const READERS = new Set(['cat', 'tac', 'nl', 'head', 'tail', 'less', 'more', 'bat', 'sed', 'awk', 'grep', 'egrep',
   'fgrep', 'rg', 'strings', 'xxd', 'od', 'hexdump', 'base64', 'cut', 'sort', 'uniq', 'rev', 'paste', 'fold', 'pr',
   'dd', 'jq', 'yq', 'diff', 'cmp', 'source', '.', 'node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
-const isLeader = (word) => LEADING.has(word) || VALUED.has(word)
+// Sobre una copia: `afterLeaders` consume lo que recibe, y se llevaba el script de un `su user -c '…'`.
+const verbOf = (words) => afterLeaders([...words])[0] || ''
 
-// El verbo de un tramo, saltando lo que va delante sin serlo: asignaciones, prefijos, sus banderas y sus valores. Un
-// `then cat .env` o un `timeout 5 cat .env` leen igual (caso 479).
-function verbOf(words) {
-  let leader = ''
-  let loose = 0
-  while (words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]) || isLeader(words[0])
-    || (leader && words[0].startsWith('-')) || loose)) {
-    const word = words.shift()
-    if (isLeader(word)) {
-      leader = word
-      loose = POSITIONAL.get(word) || 0
-    } else if (word.startsWith('-')) {
-      if ((VALUED.get(leader) || []).includes(word)) words.shift()
-    } else if (loose && !word.includes('=')) loose -= 1
+// Lo que nombra un archivo sin mostrarlo. Cualquier otro verbo cuenta como lector (R27): hasta 0.124.0 sólo contaban
+// los de `READERS`, y un agente leyó el `.env` con `nl` cuando no estaba. `cp`, `mv`, `ln`, `install` y `rsync`
+// leen el origen sin mostrarlo —`cp .env.example .env` es preparar el entorno—, y lo que escriben lo juzga
+// `writtenCredentials`. `docker` y `podman` le pasan el `--env-file` a un contenedor; `docker compose config`, que
+// lo imprime resuelto, queda abierto. `ssh`, `scp` y `ssh-add` usan una clave sin mostrarla, y `ssh-keygen` la crea.
+const NAMES_ONLY = new Set(['ls', 'test', '[', '[[', 'stat', 'file', 'touch', 'rm', 'unlink', 'mkdir', 'chmod', 'chown',
+  'chgrp', 'cp', 'mv', 'ln', 'install', 'rsync', 'echo', 'printf', 'cd', 'pushd', 'realpath', 'readlink', 'basename',
+  'dirname', 'du', 'wc', 'md5sum', 'sha1sum', 'sha256sum', 'which', 'type', 'export', 'unset', 'mktemp', 'shred',
+  'docker', 'docker-compose', 'podman', 'ssh', 'scp', 'sftp', 'ssh-add', 'ssh-keygen', 'tee', 'truncate'])
+// Salvo que el destino de la copia sea la pantalla: `cp .env /dev/stdout` la muestra.
+const COPIERS = new Set(['cp', 'install', 'rsync'])
+const SHOWN = /^\/dev\/(?:stdout|stderr|tty|fd\/\d+)$/
+// Los de git que nombran rutas sin mostrarlas; `show`, `blame` o `stash show` las muestran. `log` sólo con un parche, y
+// `diff` salvo que liste nombres o cuentas.
+const GIT_NAMES_ONLY = new Set(['add', 'rm', 'mv', 'check-ignore', 'ls-files', 'status', 'restore', 'checkout', 'reset',
+  'clean', 'commit', 'stash', 'update-index'])
+const GIT_PATCH = new RegExp(String.raw`^(?:-p|-u|-U\d*|--patch|--word-diff(?:=.*)?|--color-words(?:=.*)?`
+  + String.raw`|-[a-zA-Z]*p[a-zA-Z]*|-L.*|--cc|-c|--dd|--remerge-diff|--patch-with-(?:stat|raw)`
+  + String.raw`|--diff-merges=(?!off$|none$).*)$`)
+const GIT_NAMES = /^--(?:name-only|name-status|stat|numstat|shortstat|dirstat|summary|quiet)(?:=.*)?$/
+// `find` nombra lo que encuentra, salvo que se lo pase a un programa que lo lea o lo imprima con formato.
+const FIND_RUNS = /^-(?:exec|execdir|ok|okdir)$/
+const FIND_PRINTS = /^-(?:fprint|fprintf|fls)$/
+
+function gitSub(rest) {
+  let at = 0
+  while (at < rest.length && rest[at].startsWith('-')) at += GIT_VALUED.has(rest[at]) ? 2 : 1
+  return rest[at]
+}
+
+function gitNamesOnly(rest) {
+  const sub = gitSub(rest)
+  const after = rest.slice(rest.indexOf(sub) + 1)
+  if (sub === 'stash') return after[0] !== 'show'
+  // `--diff-merges` también lleva su valor aparte: `--diff-merges cc`.
+  const patch = (one, at) => GIT_PATCH.test(one) || (one === '--diff-merges' && !/^(?:off|none)$/.test(after[at + 1]))
+  if (sub === 'log' || sub === 'whatchanged') return !after.some(patch)
+  if (sub === 'diff') return after.some((one) => GIT_NAMES.test(one)) && !after.some(patch)
+  return GIT_NAMES_ONLY.has(sub)
+}
+
+// Un programa que no está en esta máquina no lee nada: así un pedazo de código o de prosa que quedó al principio de un
+// tramo —`for(const`, `y`, `const`— no se toma por un lector. Uno con ruta se busca desde la carpeta del tramo, y tiene
+// que ser ejecutable: un `.env` existe y no es un programa.
+const runnable = new Map()
+const executable = (file) => {
+  try { return fs.statSync(file).isFile() && (fs.accessSync(file, fs.constants.X_OK), true) } catch { return false }
+}
+function installed(verb, base) {
+  const own = verb.includes('/')
+  const key = own ? path.resolve(base || process.cwd(), verb) : verb
+  if (!runnable.has(key)) {
+    const dirs = own ? [''] : String(process.env.PATH || '').split(path.delimiter).filter(Boolean)
+    runnable.set(key, /^[\w./+-]+$/.test(verb) && dirs.some((dir) => executable(path.join(dir, own ? key : verb))))
   }
-  return words[0] || ''
+  return runnable.get(key)
+}
+
+// Cómo lee un tramo: `all` mira todo lo que nombra, también dentro de las comillas; `words`, sólo sus argumentos
+// enteros —de un verbo que no se conoce, una frase entre comillas es texto, como el `--body` de un `gh`, y
+// `value(items[].key)` no es un archivo—; y null no lee.
+function readingOf(words, verb, base) {
+  const name = path.basename(verb)
+  if (READERS.has(name)) return 'all'
+  const rest = words.slice(words.indexOf(verb) + 1)
+  if (COPIERS.has(name) && rest.some((word) => SHOWN.test(word.replace(/^["']|["']$/g, '')))) return 'words'
+  if (!name || NAMES_ONLY.has(name)) return null
+  if (name === 'find') {
+    const runs = rest.filter((word, at) => at && FIND_RUNS.test(rest[at - 1]))
+    return rest.some((word) => FIND_PRINTS.test(word)) || runs.some((one) => !NAMES_ONLY.has(path.basename(one)))
+      ? 'words' : null
+  }
+  if (name === 'git' && gitNamesOnly(rest)) return null
+  return installed(verb, base) ? 'words' : null
+}
+
+// Los argumentos enteros de un tramo, sin comillas, y el valor de un `--opción=valor` o de una asignación —el programa
+// recibe ese archivo: `DOTENV_CONFIG_PATH=.env node …`—. Un `@` o un `<` delante es la forma de curl de mandar el
+// archivo: `-d @.env`, `-F f=@.env`. Una frase con espacios es texto, y lo que sigue a una comilla que el tramo no
+// cierra también: el separador que lo cortó estaba adentro.
+function argumentsOf(text) {
+  const found = []
+  for (const word of text.match(/(?:[^\s"']|"[^"]*"|'[^']*')+|["']/g) || []) {
+    if (/^["']$/.test(word)) break
+    // Un paréntesis sin comillas cierra un subshell o una sustitución, no es parte del nombre: `(perl … .env)`.
+    const unquoted = word.replace(/"([^"]*)"|'([^']*)'/g, '$1$2').replace(/^[({]+/, '')
+    const bare = /[({]/.test(unquoted) ? unquoted : unquoted.replace(/[)}]+$/, '')
+    const valued = bare.startsWith('-') || /^[A-Za-z_][\w.-]*=/.test(bare)
+    // `-d@.env` lleva el archivo pegado a la bandera; `f=@.env;type=text/plain` termina en el `;`.
+    const glued = bare.match(/^-[A-Za-z]([@<].+)$/)
+    const value = (glued ? glued[1] : valued ? bare.split(/=(.*)/s)[1] : bare)?.replace(/^(?:[\w.-]*=)?[@<]/, '')
+      .replace(/;.*$/, '')
+    if (value && !/\s/.test(value)) found.push(value)
+    // `HEAD:.env` es el `.env` de esa revisión, y `host:.env` el de esa máquina.
+    if (value && /^[^/:]+:[^/]/.test(value)) found.push(value.replace(/^[^:]*:/, ''))
+  }
+  return found
 }
 
 // `${VAR}` y `$VAR` son la misma expansión, y sólo la primera lleva llaves: la separación de palabras corta
@@ -75,14 +158,21 @@ const PATTERN_FIRST = {
   jq: { pattern: [], data: { '--arg': 2, '--argjson': 2 }, file: ['-f', '--from-file'] },
 }
 
+const afterVerb = (segment, verb) => {
+  const words = segment.trim().split(/\s+/)
+  return words.slice(words.indexOf(verb) + 1)
+}
+
 // El tramo sin su patrón. Las palabras se parten respetando comillas, que es donde un patrón lleva espacios.
 function withoutPattern(segment, verb) {
   const rule = PATTERN_FIRST[path.basename(verb)]
+    || (path.basename(verb) === 'git' && PATTERN_FIRST[gitSub(afterVerb(segment, verb))] ? SEARCH : null)
   if (!rule) return segment
   const words = segment.match(/"[^"]*"|'[^']*'|\S+/g) || []
   const kept = []
   let positional = true
-  for (let at = words.indexOf(verb) + 1; at < words.length; at += 1) {
+  const from = PATTERN_FIRST[path.basename(verb)] ? words.indexOf(verb) : words.indexOf('grep')
+  for (let at = from + 1; at < words.length; at += 1) {
     const word = words[at]
     const [flag, attached] = word.split(/=(.*)/s)
     const separate = attached === undefined ? 1 : 0
@@ -111,6 +201,95 @@ function quotedSeparator(text) {
   return false
 }
 
+// Lo que corre otro shell: el valor de `-c` o `--command` —`sh -c`, `docker exec … bash -c`, `gcloud compute ssh
+// --command`—, lo que sigue a `eval` y el comando remoto de `ssh`. Se lee como un comando, sea cual sea el verbo de
+// afuera: `docker` sólo nombra, y el `. ./.env` de su `sh -c` sí lee.
+// Cuántas palabras se lleva un racimo de opciones del shell: una por cada `o` u `O` (`-o pipefail`, `-oe pipefail`).
+const taken = (word) => (/^[-+][a-zA-Z]+$/.test(word) ? (word.match(/[oO]/g) || []).length : 0)
+const RUNS_SCRIPT = /^(?:sh|bash|zsh|dash|ksh|ash|mksh|fish|csh|tcsh|pwsh|busybox|su|runuser|flock)$/
+const OTHER_C = new Set(['wc', 'ls', 'du', 'grep', 'egrep', 'fgrep', 'rg', 'cut', 'head', 'tail', 'git', 'gzip',
+  'gunzip', 'zcat', 'xz', 'bzip2', 'tar', 'python', 'python3', 'perl', 'ruby', 'psql', 'ssh', 'scp', 'sftp', 'gcc',
+  'cc', 'cmp', 'docker', 'podman', 'sort', 'uniq'])
+const SSH_VALUED = /^-[BbcDEeFIiJLlmOoPpQRSWw]$/
+function scriptsOf(words, verb) {
+  const found = []
+  // Dónde empieza el script a partir de cada palabra, calculado de una sola pasada desde el final: la palabra misma si
+  // no es opción, y si lo es, lo que sigue a los valores que se lleva. Así un comando largo cuesta lineal.
+  const next = []
+  for (let k = words.length - 1; k >= 0; k -= 1) next[k] = !/^[-+]/.test(words[k]) ? k : next[k + 1 + taken(words[k])]
+  const firstShell = words.findIndex((one) => RUNS_SCRIPT.test(path.basename(one)))
+  words.forEach((word, at) => {
+    // `-c` es un script salvo detrás de un programa que lo usa para otra cosa —`wc -c`, `grep -c`, `git -c`— sin un
+    // shell en el medio: `docker exec x sh -c` sí lo es (R27).
+    const shell = () => firstShell >= 0 && firstShell < at
+    // Detrás de un shell también va agrupada: `bash -lc`, `sh -ec`, `bash -cex`.
+    const flag = word === '-c' || (/^-[a-zA-Z]*c[a-zA-Z]*$/.test(word) && shell())
+    // El script es el primer argumento que no es opción: el shell sigue leyendo opciones después de `-c` (`-e`, `+e`,
+    // `-o pipefail`, `-O extglob`), y cada `o` u `O` de un racimo —también el del `-c`: `-oc pipefail`— se lleva una
+    // palabra.
+    const script = flag && words[next[at + 1 + taken(word)]]
+    if (script && (!OTHER_C.has(path.basename(verb)) || shell())) found.push(script)
+    else if (word === '--command' && words[at + 1]) found.push(words[at + 1])
+    else if (word.startsWith('--command=')) found.push(word.slice('--command='.length))
+  })
+  const name = path.basename(verb)
+  const rest = words.slice(words.indexOf(verb) + 1)
+  if (name === 'eval') found.push(rest.join(' '))
+  if (name === 'ssh') {
+    let at = 0
+    while (at < rest.length && rest[at].startsWith('-')) at += SSH_VALUED.test(rest[at]) ? 2 : 1
+    if (rest.length > at + 1) found.push(rest.slice(at + 1).join(' '))
+  }
+  return found.map(shellWord)
+}
+
+// Los intérpretes nombran un archivo en una cadena de su código —`readFileSync('.env')`, `open('.env')`—; lo demás
+// del código no es una ruta: `console.log(x.key)` no lee un archivo `.key`. Sus argumentos sueltos también cuentan.
+const INTERPRETERS = new Set(['node', 'python', 'python3', 'ruby', 'perl', 'php', 'deno', 'bun'])
+function literalsOf(text) {
+  const found = argumentsOf(text)
+  for (const word of text.match(/"(?:[^"\\]|\\[\s\S])*"|'[^']*'/g) || []) {
+    for (const hit of shellWord(word).matchAll(/'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/g)) {
+      const literal = hit[1] ?? hit[2] ?? hit[3]
+      if (literal && !/\s/.test(literal)) found.push(literal)
+    }
+  }
+  return found
+}
+
+// Los tramos y sus separadores, alternados. Un `;`, un `|` o un salto entre comillas o escapado no separa: lo lee otro
+// programa —el `;` de un `python3 -c`, el `|` de un `grep -E '(A|B)'`—, y cortar ahí dejaba la credencial en un tramo
+// sin su lector.
+function separated(text) {
+  const hidden = masked(text).replace(/\\[\s\S]/g, '\u0000\u0000')
+  const found = []
+  let last = 0
+  for (const run of hidden.matchAll(/[;&|\n]+/g)) {
+    found.push(text.slice(last, run.index), run[0])
+    last = run.index + run[0].length
+  }
+  found.push(text.slice(last))
+  return found
+}
+
+// Las palabras de un tramo, sin lo que abre un bloque, y con las comillas dentro de la palabra: `B="a b"` es una.
+const wordsOf = (piece) => piece.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
+  .match(/(?:[^\s"']|"[^"]*"|'[^']*'|["'])+/g) || []
+
+// Los comandos de un tramo: el de afuera y el de cada sustitución, que se lee hasta el final del tramo porque su `)`
+// puede estar entre comillas. Lo que sigue al primer `)` se le pasa además al de afuera, con la sustitución como un
+// valor sin resolver: en `cat "$(pwd)/.env"` la ruta la lee `cat`, no `pwd`.
+function pieces(segment) {
+  const parts = segment.split(/(\$\(|`)/)
+  const found = [parts[0]]
+  for (let at = 2; at < parts.length; at += 2) {
+    found.push(parts[at])
+    const close = parts[at - 1] === '$(' ? parts[at].indexOf(')') : -1
+    if (close >= 0) found[0] += `$_${parts[at].slice(close + 1)}`
+  }
+  return found
+}
+
 // A dónde lleva un `cd` desde `base`, o null si no se sabe: una variable, una sustitución, una opción, comillas que la
 // partición por espacios dejó abiertas.
 function moved(base, to) {
@@ -131,31 +310,38 @@ function moved(base, to) {
 // `$( … )`, un backtick, un comentario o un separador entre comillas en el comando, lo que sigue a un `cd` no se sabe:
 // seguirlos pedía leer bien comillas y redirecciones, y leerlas mal hacía pasar una lectura aprobada en otra carpeta.
 // Una carpeta que no se sabe no se adivina: la lectura de una credencial pide la ruta absoluta.
-function readTokens(command, cwd) {
+function readTokens(command, cwd, depth = 0) {
   const found = new Map()
   const text = unbraced(command)
   const scoped = /[()`#]/.test(text) || quotedSeparator(text)
   let base = cwd
   let pending
-  for (const [at, segment] of text.split(/([;&|\n]+)/).entries()) {
+  for (const [at, segment] of separated(text).entries()) {
     if (at % 2) {
       if (segment.includes('||') && (pending !== undefined || base !== cwd)) base = null
       else if (pending !== undefined && /^(?:&&|;|\n)+$/.test(segment)) base = pending
       pending = undefined
       continue
     }
-    for (const piece of segment.split(/\$\(|`/)) {
-      const words = piece.trim().replace(/^(?:(?:then|else|elif|if|do|while|until|!)\s+)*(?:[({]+\s*)+/, '')
-        .split(/\s+/).filter(Boolean)
+    for (const written of pieces(segment)) {
+      const raw = verbOf(wordsOf(written))
+      // `\cat` y `"cat"` son `cat`.
+      const piece = raw ? written.replace(raw, shellWord(raw)) : written
+      const words = wordsOf(piece)
       if (/^\s*(?:else|elif)\b/.test(piece) && base !== cwd) base = null
       const verb = verbOf(words)
-      if (verb === 'cd') pending = scoped ? null : moved(base, words[1])
-      const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(piece)
+      if (verb === 'cd') pending = scoped ? null : moved(base, words[words.indexOf(verb) + 1])
+      const reading = /<(?![<(])/.test(piece) ? 'all' : readingOf(words, verb, base)
       // Lo que va después de `>` es el destino, no lo que se lee: `cat > .npmrc` escribe, y eso lo juzga
       // `writtenCredentials` como escritura (caso 402).
       const read = withoutPattern(piece, verb).replace(REDIRECT, ' ')
-      for (const token of reads ? read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || [] : []) {
+      const tokens = reading === 'all' ? read.match(/[^\s'"`\\;|&<>(){}=,]+/g) || [] : []
+      const code = reading === 'all' && INTERPRETERS.has(path.basename(verb))
+      for (const token of reading === 'words' ? argumentsOf(read) : code ? literalsOf(read) : tokens) {
         found.set(`${base}\0${token}`, { token, base })
+      }
+      for (const script of depth < 3 ? scriptsOf(words, verb) : []) {
+        for (const one of readTokens(script, base, depth + 1)) found.set(`${one.base}\0${one.token}`, one)
       }
     }
   }
@@ -197,6 +383,36 @@ function writtenCredentials(input, command) {
   block(`${left.map((file) => `${file} ${found.get(file)}`).join('\n')}\n${AP.HOW(null, left, input)}`)
 }
 
+// Lo que muestra la URL de un remoto (caso 530): `remote -v`, `remote show`, `remote get-url`, un `config` que lee las
+// del remoto o lista todo, `ls-remote --get-url`, y un lector que nombra `.git/config`. Por sí solo no frena: frena si
+// alguna URL de ese repositorio trae credencial, y la de un remoto sin ella se lee como siempre.
+// Las opciones globales de git se sacan antes con `withoutGitGlobals`.
+const SHOWS_URL = new RegExp(String.raw`(?:^|[\s;&|('"])(?:[^\s;&|()<>'"\x60]*\/)?git\s+(?:`
+  + String.raw`remote\s+(?:[^;&|\n]*\s)?(?:-v+|--verbose|show|get-url)\b`
+  + String.raw`|config\b(?=[^;&|\n]*(?:\bremote\b|\burl\b|\s(?:-l|--list|list)\b))`
+  + String.raw`|ls-remote\b[^;&|\n]*--get-url)`)
+function remoteShown(input, command, reads) {
+  const raw = String(command)
+  // El `.git/config` que se lee es el de su ruta, que puede ser de otro repositorio que el de la carpeta.
+  const configs = reads.filter(({ token }) => /(?:^|\/)\.git\/config$/.test(token))
+    .map(({ token, base }) => path.dirname(path.dirname(path.resolve(base || cwdOf(input), token))))
+  const shows = SHOWS_URL.test(require('./input').withoutGitGlobals(raw))
+  const dirs = [...new Set([...configs, ...(shows ? [require('./input').gitDirectory(raw, cwdOf(input), input)] : [])])]
+  for (const dir of dirs) remoteIn(input, dir)
+}
+
+function remoteIn(input, dir) {
+  const remotes = RC.credentialedRemotes(dir)
+  if (!remotes.length) return
+  const items = remotes.map((one) => `remote ${one.name} @ ${dir}`)
+  const left = AP.pending(opsRoot(input), items, input)
+  if (!left.length) return
+  const named = remotes.filter((one) => left.includes(`remote ${one.name} @ ${dir}`))
+  block(`el comando imprime la URL del remoto ${named.map((one) => one.name).join(' y ')} de ${dir}, que lleva una `
+    + 'credencial: quedaría en el contexto de la sesión. Sacala de la URL y dejala en el helper de git:\n'
+    + `${named.map((one) => `  ${RC.fixOf(dir, one)}`).join('\n')}\n${AP.HOW(null, left, input)}`)
+}
+
 function secretsShell(input) {
   const raw = commandOf(input)
   writtenCredentials(input, rawCommandOf(input))
@@ -208,7 +424,9 @@ function secretsShell(input) {
   const root = opsRoot(input)
   const declared = root && fs.existsSync(path.join(root, 'organization', 'secrets.json'))
     ? require('../secrets').identityFiles(root) : []
-  const named = readTokens(command, cwdOf(input))
+  const reads = readTokens(command, cwdOf(input))
+  remoteShown(input, command, reads)
+  const named = reads
     .filter(({ token, base }) => patternNames(token).some((name) => credential(input, name))
       || (base !== null && declared.includes(path.resolve(base, token.replace(/^~(?=$|\/)/, os.homedir())))))
   // Bajo un `cd` que no se sabe no hay qué ruta aprobar; pasa si la persona lo pidió en el chat nombrándolo, como la

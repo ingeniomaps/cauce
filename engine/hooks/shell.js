@@ -17,6 +17,7 @@ const {
 } = require('./input')
 const { REDIRECTIONS } = require('./shell-writes')
 const { PROGRAM_PATH, SAME_COMMAND } = require('./quoting')
+const { CLEAN_DRY } = require('./git-globals')
 const { removesTheTree } = require('./removal')
 const { steps, removals, creations, home, asRead, writes } = require('./shell-changes')
 const { landing } = require('../core/files')
@@ -41,9 +42,9 @@ const { deliveryRules, namesRepo, GH, DIR } = require('./delivery')
 //
 // Y el `\s*` va adentro del lookahead. Afuera, el cuantificador retrocede a vacío y el lookahead ve el
 // espacio que él mismo habría consumido, así que `git checkout -- src/app.js` empieza a caer.
-const ANTES = String.raw`(?:^|[\s;&|('"\`])`
-const PALABRA = String.raw`$|[\s;&|)'"\`]`
-const COMANDO = String.raw`$|[;&|)'"\`]`
+const BEFORE = String.raw`(?:^|[\s;&|('"\`])`
+const WORD_END = String.raw`$|[\s;&|)'"\`]`
+const COMMAND_END = String.raw`$|[;&|)'"\`]`
 
 // Si algún remoto alcanza al commit que está en HEAD. Lectura local e inocua: `branch -r` mira lo que ya
 // está en `refs/remotes/`, no habla con ningún servidor. Un `fetch` que nadie corrió deja la respuesta
@@ -147,14 +148,14 @@ function rulesOf(input) {
       "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
         + 'prohíbe: hacé otro commit encima.',
     ]] : []),
-    // Fuerza en cualquiera de sus opciones, y no simula: mirando sólo la primera, `-d -f` borraba sin preguntar y
-    // `-fdn`, que no borra nada, se frenaba (caso 452).
-    [new RegExp(String.raw`\bgit\s+clean\b(?=${SAME_COMMAND}*\s(?:-[a-zA-Z]*f[a-zA-Z]*|--force)\b)`
-      + String.raw`(?!${SAME_COMMAND}*\s(?:-[a-zA-Z]*n[a-zA-Z]*|--dry-run)\b)`),
+    // Todo `git clean` que no simula, en cualquiera de sus opciones: mirando sólo la primera, `-d -f` borraba sin
+    // preguntar y `-fdn`, que no borra nada, se frenaba (caso 452). Qué simula, en `CLEAN_DRY`.
+    [new RegExp(String.raw`\bgit\s+clean\b(?!(?:(?!\s--(?:\s|$))${SAME_COMMAND})*\s`
+      + String.raw`(?<!\s['"]?(?:-[a-df-zA-Z]*e|--e[a-z]*)['"]*\s)(?:${CLEAN_DRY})\b)`),
     "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
-    // nombrado es trabajo corriente y no se toca.
+    // nombrado es trabajo corriente y no se toca, y frenarlo empujaría a la forma ancha.
     //
     // Pasó dos veces en una sesión, las dos limpiando restos de una prueba: el comando revirtió también
     // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
@@ -163,7 +164,7 @@ function rulesOf(input) {
       // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
       // que restaura el working tree por defecto y toma el pathspec sin separador.
       new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${SAME_COMMAND}*?\s)?`
-        + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
+        + String.raw`(?:--(?=\s*(?:${COMMAND_END}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMMAND_END})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
       true,
@@ -183,7 +184,7 @@ function rulesOf(input) {
       DIR,
     ],
     [
-      new RegExp(ANTES + PROGRAM_PATH + String.raw`(?:mkfs\S*|shred)\s`
+      new RegExp(BEFORE + PROGRAM_PATH + String.raw`(?:mkfs\S*|shred)\s`
         + String.raw`|\bdd\s+${SAME_COMMAND}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],
@@ -194,7 +195,7 @@ function rulesOf(input) {
       // sus variables. Y `destructive` no desentrecomilla fuera de un commit, a propósito, así que la
       // comilla tiene que entrar en el patrón (caso 167).
       new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:--\s+)?['"]?`
-        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${PALABRA})`),
+        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${WORD_END})`),
       "'rm -r' sobre /, home o el directorio padre es catastrófico.",
     ],
   ]
@@ -241,8 +242,7 @@ function destructive(input) {
   // El ítem que se aprueba es el tramo del comando que la regla reconoce, entero —`stretchOf`, caso 451—, y no el
   // pedazo que matcheó: `git clean -f` no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento
   // no destrabaría lo que la persona escribió. Cualquier otra bandera es otro comando y vuelve a preguntarse. Y lleva
-  // el lugar donde corre, cuando el efecto depende de él: el mismo texto en otro repositorio u otra carpeta es otra
-  // operación (caso 446).
+  // el lugar donde corre, cuando el efecto depende de él (caso 446; por qué, en `chat.js`).
   const spotOf = placesOf(raw, input)
   const root = opsRoot(input)
   for (const [pattern, message, open, by, kind, publishes] of rulesOf(input)) {
@@ -303,7 +303,7 @@ function gitAdd(input) {
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
   // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
   // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
-  if (new RegExp(String.raw`\bgit\s+add\s+(?:${SAME_COMMAND}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
+  if (new RegExp(String.raw`\bgit\s+add\s+(?:${SAME_COMMAND}*\s)?(?:-A|--all|\.)(?=${WORD_END})`)
     .test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
   }

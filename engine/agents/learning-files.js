@@ -28,8 +28,9 @@ const LEGACY_REVISION = `Una revisión suele **no** ser aditiva: reemplaza texto
 explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no para
 un texto que acaba de fallar su primera medición.`
 
-// Una propuesta firmada y sin aplicar no espera lo mismo que una sin firmar: en la primera la decisión
-// ya se tomó y el trabajo quedó detenido; la segunda está bien quieta hasta que alguien la lea.
+// Firmar y aplicar son actos separados a propósito (OPS-004), y una propuesta firmada y sin aplicar no
+// espera lo mismo que una sin firmar: en la primera la decisión ya se tomó y el trabajo quedó detenido;
+// la segunda está bien quieta hasta que alguien la lea.
 // `proposalState` no las distingue —mira el frontmatter, y la firma la escribe `sign-proposal.yml` en
 // el cuerpo—, así que las dos caían en el mismo `pending` y la que ya tenía autoridad para avanzar se
 // veía igual que la que no. Sin ese aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01

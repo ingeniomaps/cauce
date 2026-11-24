@@ -31,13 +31,13 @@ function git(args, cwd) {
 
 // Una instancia con su raíz declarada y un gate que deja dicho dónde corrió. El gate sale en verde: lo
 // que se mide es el lugar, y un rojo traería además el bloqueo y su aprobación, que son otra pregunta.
-function instancia(scope) {
+function instance(scope) {
   const root = tempRoot('ops-verify-scope-')
-  const marca = path.join(root, '..', `${path.basename(root)}-donde.txt`)
-  const raiz = { name: 'main', path: '.', ...(scope ? { scope } : {}) }
+  const marker = path.join(root, '..', `${path.basename(root)}-donde.txt`)
+  const rootDir = { name: 'main', path: '.', ...(scope ? { scope } : {}) }
   fs.mkdirSync(path.join(root, 'planning', 'wip'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
-    project: 'x', mode: 'embedded', workspaceRoots: [raiz],
+    project: 'x', mode: 'embedded', workspaceRoots: [rootDir],
   }))
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
     scripts: { test: `node -e "require('node:fs').writeFileSync(process.env.OPS_DONDE, process.cwd())"` },
@@ -52,59 +52,59 @@ function instancia(scope) {
   // El commit que se quiere hacer: un cambio staged, que por sí solo no fuerza nada.
   fs.writeFileSync(path.join(root, 'src', 'app.js'), 'module.exports = 2\n')
   git(['add', 'src/app.js'], root)
-  return { root, marca }
+  return { root, marker }
 }
 
-function donde({ root, marca }) {
-  const previo = process.env.OPS_DONDE
-  process.env.OPS_DONDE = marca
+function where({ root, marker }) {
+  const previous = process.env.OPS_DONDE
+  process.env.OPS_DONDE = marker
   try {
-    fs.rmSync(marca, { force: true })
+    fs.rmSync(marker, { force: true })
     execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } })
   } finally {
-    if (previo === undefined) delete process.env.OPS_DONDE
-    else process.env.OPS_DONDE = previo
+    if (previous === undefined) delete process.env.OPS_DONDE
+    else process.env.OPS_DONDE = previous
   }
-  assert.ok(fs.existsSync(marca), 'el gate no llegó a correr, así que no se midió nada')
-  const corrio = fs.readFileSync(marca, 'utf8').trim()
-  assert.ok(corrio, 'el gate corrió pero no dejó dónde')
+  assert.ok(fs.existsSync(marker), 'el gate no llegó a correr, así que no se midió nada')
+  const ran = fs.readFileSync(marker, 'utf8').trim()
+  assert.ok(ran, 'el gate corrió pero no dejó dónde')
   // Se comparan las cadenas tal cual, sin resolver la ruta contra el disco: la copia **ya no existe**
   // cuando se lee esto —se borra al terminar, pase o falle el gate— así que resolverla lanza `ENOENT`.
   // Ese error no se leía como un arnés roto sino como la aserción fallando, y mandó a buscar el defecto
   // al motor durante una tanda entera.
-  return corrio === root ? 'árbol' : 'copia'
+  return ran === root ? 'árbol' : 'copia'
 }
 
 // La misma compatibilidad que fija `test/repo/scope.test.js`, acá de punta a punta: aquélla mira la
 // decisión, ésta mira dónde terminó corriendo el gate. Son los dos lados de la misma promesa, y hace
 // falta el de acá porque una decisión correcta mal cableada se ve igual de verde.
 test('sin scope declarado, un archivo ajeno sigue forzando la copia', () => {
-  const caso = instancia(null)
-  assert.equal(donde(caso), 'árbol', 'sin delta, el árbol es el próximo commit')
-  fs.writeFileSync(path.join(caso.root, 'NOTAS.md'), 'apuntes\n')
-  assert.equal(donde(caso), 'copia', 'como siempre: cualquier delta materializa')
+  const caseName = instance(null)
+  assert.equal(where(caseName), 'árbol', 'sin delta, el árbol es el próximo commit')
+  fs.writeFileSync(path.join(caseName.root, 'NOTAS.md'), 'apuntes\n')
+  assert.equal(where(caseName), 'copia', 'como siempre: cualquier delta materializa')
 })
 
 // El caso 156 entero: lo que el gate no va a abrir no puede cambiar su veredicto.
 test('con scope declarado, un archivo fuera del alcance deja correr sobre el árbol', () => {
-  const caso = instancia(['src/**', 'package.json'])
-  fs.writeFileSync(path.join(caso.root, 'NOTAS.md'), 'apuntes\n')
-  assert.equal(donde(caso), 'árbol')
+  const caseName = instance(['src/**', 'package.json'])
+  fs.writeFileSync(path.join(caseName.root, 'NOTAS.md'), 'apuntes\n')
+  assert.equal(where(caseName), 'árbol')
 })
 
 test('y uno dentro del alcance la fuerza igual que antes', () => {
-  const caso = instancia(['src/**', 'package.json'])
-  fs.writeFileSync(path.join(caso.root, 'src', 'suelto.js'), 'module.exports = 3\n')
-  assert.equal(donde(caso), 'copia', 'lo que el gate lee sigue midiéndose sobre el índice')
+  const caseName = instance(['src/**', 'package.json'])
+  fs.writeFileSync(path.join(caseName.root, 'src', 'suelto.js'), 'module.exports = 3\n')
+  assert.equal(where(caseName), 'copia', 'lo que el gate lee sigue midiéndose sobre el índice')
 })
 
 // El bucle que este caso destraba, y la razón por la que el 153 no tiene salida hoy: el archivo que el
 // propio bloqueo manda crear para aprobar unas rutas queda sin trackear, y con él cada commit siguiente
 // corre sobre la copia — que en un proyecto Next es un gate que no puede pasar.
 test('el archivo de aprobación que el guard manda crear ya no fuerza la copia', () => {
-  const caso = instancia(['src/**', 'package.json'])
-  fs.writeFileSync(path.join(caso.root, 'planning', '.ops-approval'), 'src/app.js\n')
-  assert.equal(donde(caso), 'árbol')
+  const caseName = instance(['src/**', 'package.json'])
+  fs.writeFileSync(path.join(caseName.root, 'planning', '.ops-approval'), 'src/app.js\n')
+  assert.equal(where(caseName), 'árbol')
 })
 
 // Un directorio sin trackear llega colapsado —git reporta `?? extra/` y **no dice qué hay adentro**, ni
@@ -114,10 +114,10 @@ test('el archivo de aprobación que el guard manda crear ya no fuerza la copia',
 // El directorio va fuera de `src/`, que está trackeado: adentro git reportaría el archivo y no el
 // directorio, y el caso pasaría por el camino común sin ejercer nunca la rama que dice ejercer.
 test('un directorio sin trackear al que el alcance apunta adentro fuerza la copia', () => {
-  const caso = instancia(['extra/**/*.js'])
-  fs.mkdirSync(path.join(caso.root, 'extra', 'hondo'), { recursive: true })
-  fs.writeFileSync(path.join(caso.root, 'extra', 'hondo', 'x.js'), 'module.exports = 4\n')
-  const estado = spawnSync('git', ['status', '--porcelain'], { cwd: caso.root, encoding: 'utf8' })
-  assert.match(estado.stdout, /\?\? extra\/$/m, 'el escenario tiene que entregar un directorio, no un archivo')
-  assert.equal(donde(caso), 'copia')
+  const caseName = instance(['extra/**/*.js'])
+  fs.mkdirSync(path.join(caseName.root, 'extra', 'hondo'), { recursive: true })
+  fs.writeFileSync(path.join(caseName.root, 'extra', 'hondo', 'x.js'), 'module.exports = 4\n')
+  const state = spawnSync('git', ['status', '--porcelain'], { cwd: caseName.root, encoding: 'utf8' })
+  assert.match(state.stdout, /\?\? extra\/$/m, 'el escenario tiene que entregar un directorio, no un archivo')
+  assert.equal(where(caseName), 'copia')
 })

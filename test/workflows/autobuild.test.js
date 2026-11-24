@@ -29,21 +29,21 @@ test('el carril con el que corre la tarea viaja al WIP y al cierre', async () =>
   const { prompts } = await runFlow({}, { lane: 'lite', vouched: true })
   const wip = prompts.find((one) => one.key === KEY.wip).prompt
   assert.match(wip, /lane=lite/, 'el plan en vuelo lo conserva para quien reanude')
-  const cierre = prompts.find((one) => one.key.startsWith('Done|')).prompt
-  assert.match(cierre, /tests, commit, lane, review y critique/,
-    'y el cierre lo pide como un campo más de la evidencia')
+  const closing = prompts.find((one) => one.key.startsWith('Done|')).prompt
+  assert.match(closing, /acept, fecha y lane no van, porque ops done los saca del disco/,
+    'y el cierre lo toma de ahí, sin pedírselo al agente')
 })
 
 // El cierre escribe un archivo por tarea y no agrega a uno compartido: es lo que hace que dos corridas
-// en paralelo no se pisen al terminar. Y la fecha la trae el motor —un workflow no tiene reloj, hay una
-// puerta que se lo impide— así que el prompt tiene que llevarla ya resuelta, no pedírsela al modelo.
-test('el cierre escribe el archivo de la tarea, con la fecha que dio el motor', async () => {
+// en paralelo no se pisen al terminar. Y la fecha la pone `ops done` —un workflow no tiene reloj, hay una
+// puerta que se lo impide—, así que el prompt no se la pide al modelo (caso 538).
+test('el cierre escribe el archivo de la tarea, con la fecha que pone el motor', async () => {
   const { prompts } = await runFlow()
-  const cierre = prompts.find((one) => one.key.startsWith('Done|'))
-  assert.ok(cierre, 'la fase Done pidió algo')
-  assert.match(cierre.prompt, /escribí \.\/planning\/done\/T-1\.md/)
-  assert.match(cierre.prompt, /fecha: 2026-09-08/)
-  assert.doesNotMatch(cierre.prompt, /planning\/DONE\.md/, 'y no manda a tocar el archivo compartido')
+  const closing = prompts.find((one) => one.key.startsWith('Done|'))
+  assert.ok(closing, 'la fase Done pidió algo')
+  assert.match(closing.prompt, /escribe \.\/planning\/done\/T-1\.md/)
+  assert.doesNotMatch(closing.prompt, /fecha: 2026-09-08/, 'la fecha ya no la escribe el agente')
+  assert.doesNotMatch(closing.prompt, /planning\/DONE\.md/, 'y no manda a tocar el archivo compartido')
 })
 
 // El cierre le dicta a un modelo qué escribir, y lo que escriba lo juzga `check` después. Si el contrato
@@ -52,14 +52,14 @@ test('el cierre escribe el archivo de la tarea, con la fecha que dio el motor', 
 // de una entrada vacía, así que agregar uno rompe esta prueba en vez de pasar en silencio.
 test('el cierre nombra todos los campos que el contrato de una entrada exige', async () => {
   const DE = require('../../engine/planning/done-entry')
-  const faltantes = DE.doneEntryErrors({ slug: 'T-1', source: 'done/T-1.md' }, [])
+  const missing = DE.doneEntryErrors({ slug: 'T-1', source: 'done/T-1.md' }, [])
     .map((error) => (error.match(/falta (\w+):/) || [])[1]).filter(Boolean)
-  assert.ok(faltantes.length >= 5, `el validador nombró pocos campos: ${faltantes.join(', ')}`)
+  assert.ok(missing.length >= 5, `el validador nombró pocos campos: ${missing.join(', ')}`)
 
   const { prompts } = await runFlow()
-  const cierre = prompts.find((one) => one.key.startsWith('Done|'))
-  const sinNombrar = faltantes.filter((campo) => !cierre.prompt.includes(campo))
-  assert.deepEqual(sinNombrar, [], `el prompt de cierre no nombra: ${sinNombrar.join(', ')}`)
+  const closing = prompts.find((one) => one.key.startsWith('Done|'))
+  const unnamed = missing.filter((field) => !closing.prompt.includes(field))
+  assert.deepEqual(unnamed, [], `el prompt de cierre no nombra: ${unnamed.join(', ')}`)
 })
 
 // La fase Plan pedía «el contexto de la épica» en su propio texto y nunca lo recibía: el esquema de
@@ -67,9 +67,9 @@ test('el cierre nombra todos los campos que el contrato de una entrada exige', a
 // resuelve tiene que aparecer en el prompt que planifica—, porque es el único punto donde se nota que
 // llegó: el ejecutor tiene prohibido abrir el roadmap para buscarlo.
 test('el contexto de la épica llega al prompt que planifica', async () => {
-  const guion = baseScript()
+  const script = baseScript()
   const { prompts } = await runFlow({
-    [KEY.context]: { ...guion[KEY.context], epicContext: '- Sin esa marca el ruteo no distingue.' },
+    [KEY.context]: { ...script[KEY.context], epicContext: '- Sin esa marca el ruteo no distingue.' },
   })
   const plan = prompts.find((entry) => entry.key.startsWith('Plan|')).prompt
 
@@ -212,33 +212,33 @@ test('una lectura fallida no se toma como cola vacía ni expande nada', async ()
 // trabada por acciones humanas, que es otra cosa y otro archivo (caso 083).
 test('blocked se lee por su valor, y lo que no es del vocabulario no se adivina', async () => {
   const base = baseScript()[KEY.context]
-  const conBlocked = async (valor) => {
+  const withBlocked = async (value) => {
     const { result } = await runFlow({}, {
-      contexts: [{ ...base, blocked: valor, blockedTasks: ['T-9'] }],
+      contexts: [{ ...base, blocked: value, blockedTasks: ['T-9'] }],
     })
     return result
   }
 
-  for (const vacio of ['', '""', "''", '  ']) {
-    assert.equal((await conBlocked(vacio)).reason, undefined,
-      `${JSON.stringify(vacio)} significa que no hay bloqueo, y sus formas equivocadas no son ambiguas`)
+  for (const empty of ['', '""', "''", '  ']) {
+    assert.equal((await withBlocked(empty)).reason, undefined,
+      `${JSON.stringify(empty)} significa que no hay bloqueo, y sus formas equivocadas no son ambiguas`)
   }
 
-  const gate = await conBlocked('awaiting-review')
+  const gate = await withBlocked('awaiting-review')
   assert.equal(gate.reason, 'awaiting-review')
   assert.match(gate.detail, /AWAITING_REVIEW\.md/, 'sin saber cuál, nombra el de siempre')
 
-  const humanas = await conBlocked('blocked-on-human')
-  assert.equal(humanas.reason, 'blocked-on-human', 'tiene motivo propio: no es el checkpoint de hito')
-  assert.match(humanas.detail, /tools\/ops\.js human \S+planning/, 'y dice con qué se ve la causa')
-  assert.match(humanas.detail, /T-9/, 'nombrando qué está trabado')
-  assert.doesNotMatch(humanas.detail, /AWAITING_REVIEW/, 'nunca al gate, que acá no existe')
+  const human = await withBlocked('blocked-on-human')
+  assert.equal(human.reason, 'blocked-on-human', 'tiene motivo propio: no es el checkpoint de hito')
+  assert.match(human.detail, /tools\/ops\.js human \S+planning/, 'y dice con qué se ve la causa')
+  assert.match(human.detail, /T-9/, 'nombrando qué está trabado')
+  assert.doesNotMatch(human.detail, /AWAITING_REVIEW/, 'nunca al gate, que acá no existe')
 
   // Lo que no se reconoce no se adivina en ninguna de las dos direcciones: ni se sigue como si no
   // hubiera bloqueo, ni se inventa cuál es.
-  const raro = await conBlocked('otra-cosa')
-  assert.equal(raro.reason, 'context-unavailable')
-  assert.match(raro.detail, /no es del vocabulario/)
+  const odd = await withBlocked('otra-cosa')
+  assert.equal(odd.reason, 'context-unavailable')
+  assert.match(odd.detail, /no es del vocabulario/)
 })
 
 test('un checkpoint humano sin resolver corta antes de tocar nada', async () => {
@@ -276,13 +276,13 @@ test('con checkpoint configurado el hito terminado queda esperando una firma', a
 
   // Qué lleva el archivo y por qué está junto a la lectura de la compuerta
   // (`engine/planning/checkpoints.js`). Acá se fija sólo que la fase lo pida al escribirlo.
-  const escrito = written.find(isGate)
-  assert.match(escrito, /status: pendiente/, 'el archivo nace con su estado escrito')
-  assert.match(escrito, /hito: H1/, 'con el hito, que es también su nombre')
-  assert.match(escrito, /"line:" a secas/, 'y con la línea: fuera de una, vacía')
-  assert.match(escrito, /resuelta/, 'y dice con qué se destraba, que es lo que evita el borrado')
+  const writtenText = written.find(isGate)
+  assert.match(writtenText, /status: pendiente/, 'el archivo nace con su estado escrito')
+  assert.match(writtenText, /hito: H1/, 'con el hito, que es también su nombre')
+  assert.match(writtenText, /"line:" a secas/, 'y con la línea: fuera de una, vacía')
+  assert.match(writtenText, /resuelta/, 'y dice con qué se destraba, que es lo que evita el borrado')
   // Lo que se quita: el archivo único por instancia, que dos líneas se pisaban (caso 347).
-  assert.doesNotMatch(escrito, /AWAITING_REVIEW/)
+  assert.doesNotMatch(writtenText, /AWAITING_REVIEW/)
 })
 
 test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {
@@ -297,15 +297,14 @@ test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', 
 // La quita se prueba al revés que un agregado: lo que hace falta es una aserción de **ausencia**, porque
 // una que compruebe que la corrida termina pasaría igual con la expansión puesta —también terminaba—.
 //
-// Lo retirado es promover una épica del roadmap al BACKLOG. `open` es «candidata editable que aún no fue
-// promovida», así que pegarla en la cola es promoverla, y BR-OPS-002 la deja fuera hasta que la apruebe
-// una persona. `context` la nombra para que lo haga.
+// Lo retirado es promover una épica del roadmap al BACKLOG; la razón vive en `autobuild.js`, donde la
+// corrida termina sin tarea. El escenario es una cola vacía, y se comprueba que nada pide expandir.
 test('sin cola, el recorrido no promueve una épica: la nombra y para', async () => {
-  const vacio = {
+  const empty = {
     blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,
     cast: { build: '', review: [] },
   }
-  const { result, asked, written } = await runFlow({}, { contexts: [vacio] })
+  const { result, asked, written } = await runFlow({}, { contexts: [empty] })
   ranToEnd(result)
   assert.deepEqual(result.done, [], 'no construye nada')
   assert.equal(written.some((text) => /expand/i.test(text)), false,
@@ -315,19 +314,19 @@ test('sin cola, el recorrido no promueve una épica: la nombra y para', async ()
 
   // Y el recorrido no conserva la maquinaria de lo retirado, que es lo que un `break` bien puesto deja
   // pasar: el schema y su campo seguirían compilando sin que nada los use.
-  const fuente = fs.readFileSync(
+  const source = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'automatization', 'workflows', 'autobuild.js'), 'utf8',
   )
-  assert.equal(/EXPANSION|expanded/.test(fuente), false, 'ni queda el esquema de la expansión')
+  assert.equal(/EXPANSION|expanded/.test(source), false, 'ni queda el esquema de la expansión')
 
   // Y tampoco lo promete `meta`, que es lo único de este archivo que una persona lee **antes** de
   // autorizar la corrida. El detalle de `Pick` siguió diciendo «o la épica que falta expandir» después
   // de que la expansión se quitara: la aserción de arriba no lo vio porque busca dos palabras en inglés
   // y ese texto está en castellano, que es el idioma de todo lo que se lee. Se acota a `phases` porque
   // el cuerpo sí nombra la expansión, a propósito, para explicar por qué ya no está.
-  const fases = fuente.match(/phases: \[[\s\S]*?\n  \]/)
-  assert.ok(fases, 'meta declara sus fases')
-  assert.equal(/expand/i.test(fases[0]), false, 'ninguna fase promete expandir una épica')
+  const phases = source.match(/phases: \[[\s\S]*?\n  \]/)
+  assert.ok(phases, 'meta declara sus fases')
+  assert.equal(/expand/i.test(phases[0]), false, 'ninguna fase promete expandir una épica')
 })
 
 // Por qué la raíz puede llegar ilegible está en el schema del contrato. Acá se mide que el recorrido pare
@@ -364,7 +363,7 @@ test('un contrato sin rootOk se trata como raíz ilegible', async () => {
 //
 // Van los cuatro escenarios juntos porque sueltos no dicen nada: el ahorro sin la compatibilidad se lee
 // como un recorrido que dejó de construir, y la compatibilidad sin el ahorro, como uno que nunca cambió.
-const reanudado = (wip) => ({
+const resumed = (wip) => ({
   contexts: [
     { ...baseScript()[KEY.context], wipActive: true, ...(wip ? { wip } : {}) },
     { ...baseScript()[KEY.context], hasTask: false, wipActive: false, queued: 0 },
@@ -372,23 +371,22 @@ const reanudado = (wip) => ({
 })
 
 test('un WIP sin pasos pendientes no vuelve a pagar el agente que construye', async () => {
-  const { result, asked } = await runFlow({}, reanudado({ phase: 'Build', complete: 9, pending: 0 }))
+  const { result, asked } = await runFlow({}, resumed({ phase: 'Build', complete: 9, pending: 0 }))
   ranToEnd(result)
   assert.equal(asked.includes('Build|build'), false, 'no hay nada que construir y no se llama a nadie')
   assert.ok(reached(asked, 'Review'), 'y lo que ya está en disco se revisa igual')
 })
 
-// La otra mitad del caso, y la que R21 pide poder mirar: hoy «Build construyó» y «Build miró y no hizo
-// nada» se ven idénticos salvo por el costo, así que comprobar la reanudación exigía abrir el `.output`
-// y sumar tokens a mano. El nombre de la fase lo dice, y viaja al resultado y a la entrada de DONE.
+// La otra mitad del caso, y la que R21 pide poder mirar: el nombre de la fase dice si Build construyó o
+// sólo miró, y viaja al resultado y a la entrada de DONE (por qué, en `automatization/workflows/autobuild.js`).
 test('una corrida reanudada se distingue de una que construyó', async () => {
-  const { result } = await runFlow({}, reanudado({ phase: 'Build', complete: 9, pending: 0 }))
+  const { result } = await runFlow({}, resumed({ phase: 'Build', complete: 9, pending: 0 }))
   assert.ok(result.phases.includes('Build (reanudado)'), `se anuncia reanudada: ${result.phases}`)
   assert.equal(result.phases.includes('Build'), false, 'y no además como si hubiera construido')
 })
 
 test('con pasos pendientes se construye como siempre', async () => {
-  const { result, asked } = await runFlow({}, reanudado({ phase: 'Build', complete: 3, pending: 6 }))
+  const { result, asked } = await runFlow({}, resumed({ phase: 'Build', complete: 3, pending: 6 }))
   ranToEnd(result)
   assert.ok(asked.includes('Build|build'), 'queda trabajo y se paga')
   assert.ok(result.phases.includes('Build'), 'sin marca de reanudada')
@@ -398,7 +396,7 @@ test('con pasos pendientes se construye como siempre', async () => {
 // de que existiera. Sin esto, el ahorro se pagaría con un recorrido que deja de construir donde todavía
 // hay que hacerlo.
 test('una instancia que no emite wip construye como antes del campo', async () => {
-  const { result, asked } = await runFlow({}, reanudado(null))
+  const { result, asked } = await runFlow({}, resumed(null))
   ranToEnd(result)
   assert.ok(asked.includes('Build|build'), 'sin el dato no se supone nada')
   assert.ok(result.phases.includes('Build'))
@@ -410,14 +408,14 @@ test('una instancia que no emite wip construye como antes del campo', async () =
 // Se asercia el prompt y no el archivo porque es donde vive el límite: lo escribe un agente, así que lo
 // único que el recorrido controla es qué le pide. Una prueba sobre el disco mediría al modelo.
 test('la fila de una decisión abierta no puede nombrar a la tarea que la dejó', async () => {
-  const conDecision = {
+  const withDecision = {
     completed: true, summary: 'algo', redFirst: [{ test: 'T', failure: 'want x, got y' }],
     discovered: [{ kind: 'open', detail: 'falta decidir el default' }], closedTask: false,
   }
-  const { prompts } = await runFlow({ [KEY.build]: conDecision })
-  const fila = prompts.find((one) => /una fila por cada decisión/.test(one.prompt))
-  assert.ok(fila, 'la fase corrió')
-  assert.match(fila.prompt, /El task nunca es T-1/,
+  const { prompts } = await runFlow({ [KEY.build]: withDecision })
+  const row = prompts.find((one) => /una fila por cada decisión/.test(one.prompt))
+  assert.ok(row, 'la fase corrió')
+  assert.match(row.prompt, /El task nunca es T-1/,
     'el prompt tiene que prohibirlo: sin eso la fila bloquea lo que dice no bloquear')
 })
 
@@ -429,14 +427,14 @@ test('la fila de una decisión abierta no puede nombrar a la tarea que la dejó'
 // sin la descripción reproduce el defecto entero — una compuerta juzgando contra un texto que la otra
 // no vio.
 test('lo que la línea ya decidió llega a Ready, Plan, Critique y Build', async () => {
-  const decidido = 'normalizar vive en api/padron.js y el duplicado queda fuera de alcance'
-  const conDescripcion = { ...baseScript()[KEY.context], description: decidido }
-  const { prompts } = await runFlow({ [KEY.context]: conDescripcion }, { contexts: [conDescripcion] })
+  const decided = 'normalizar vive en api/padron.js y el duplicado queda fuera de alcance'
+  const withDescription = { ...baseScript()[KEY.context], description: decided }
+  const { prompts } = await runFlow({ [KEY.context]: withDescription }, { contexts: [withDescription] })
 
   for (const key of [KEY.ready, KEY.plan, KEY.critique, KEY.build]) {
-    const fase = prompts.find((one) => one.key === key)
-    assert.ok(fase, `${key} corrió`)
-    assert.ok(fase.prompt.includes(decidido), `${key} recibe lo que la línea ya decidió`)
+    const phase = prompts.find((one) => one.key === key)
+    assert.ok(phase, `${key} corrió`)
+    assert.ok(phase.prompt.includes(decided), `${key} recibe lo que la línea ya decidió`)
   }
   // Y se dice qué es: sin eso se lee como contexto opinable y el plan la re-decide igual.
   const plan = prompts.find((one) => one.key === KEY.plan)
@@ -451,16 +449,16 @@ test('lo que la línea ya decidió llega a Ready, Plan, Critique y Build', async
 // donde queda escrita para quien revisa —R29 pide la mutación declarada, no recordada— y Build es quien la
 // corre. Que llegue a uno solo deja la mitad del defecto en pie.
 test('la estrategia de prueba del plan llega al WIP y a Build', async () => {
-  const estrategia = 'romper el replace y ver roja «pone mayúscula en cada palabra»'
-  const conPlan = {
-    approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: estrategia,
+  const strategy = 'romper el replace y ver roja «pone mayúscula en cada palabra»'
+  const withPlan = {
+    approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: strategy,
   }
-  const { prompts } = await runFlow({ [KEY.plan]: conPlan })
+  const { prompts } = await runFlow({ [KEY.plan]: withPlan })
 
   for (const key of [KEY.wip, KEY.build]) {
-    const fase = prompts.find((one) => one.key === key)
-    assert.ok(fase, `${key} corrió`)
-    assert.ok(fase.prompt.includes(estrategia), `${key} recibe la estrategia que el plan escribió`)
+    const phase = prompts.find((one) => one.key === key)
+    assert.ok(phase, `${key} corrió`)
+    assert.ok(phase.prompt.includes(strategy), `${key} recibe la estrategia que el plan escribió`)
   }
 })
 

@@ -25,7 +25,7 @@ test('valida el contrato completo de ops.config.json', () => {
   assert.ok(errors.some((error) => error.includes('allowPush debe ser boolean')))
 })
 
-// Opcional y booleano (caso 251): ausente es apagado, y una instancia instalada antes no lo trae.
+// Caso 251. Por qué es opcional, junto a su validación en `validateOpsConfig` (`engine/config/validate.js`).
 test('runner.commitToLiveBranch es opcional y sólo admite un booleano', () => {
   const errorsOf = (value) => {
     const config = opsConfig()
@@ -74,8 +74,6 @@ test('una raíz que declara su puerta pasa el validador', () => {
   assert.deepEqual(validateOpsConfig(config), [])
 })
 
-// Declararlo vacío es peor que no declararlo: promete una puerta y no la da, y quien verifica se queda
-// sin comando y sin el aviso de que tenía que descubrirlo.
 test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
   const config = opsConfig()
   config.workspaceRoots[0].verify = '   '
@@ -149,9 +147,7 @@ test('las llaves de runner que el molde nombra existen en el schema', () => {
 
 // La misma atadura que la de abajo, un nivel más arriba, que es donde no existía: `verify` se probó como
 // propiedad de una raíz, y el campo siguiente entró en el primer nivel, donde nada ataba las dos listas.
-// La extensión entra en una expresión regular, así que un valor con metacaracteres la rompería o la
-// ampliaría sin que nadie lo pidiera. Y `.ts` o `SQL` son tipeos que conviene ver acá y no como cobertura
-// que el proyecto cree tener y no tiene, que es el defecto que el campo vino a cerrar (caso 077).
+// Por qué la extensión se valida, en `engine/config/validate.js` (caso 077).
 test('migrations.extensions se valida, y no declararlo es válido', () => {
   const errorsOf = (migrations) => validateOpsConfig({ ...opsConfig(), migrations })
     .filter((error) => error.includes('migrations'))

@@ -42,9 +42,9 @@ test('pinEngine no inventa un package.json, y un ilegible lo dice en vez de adiv
 // reescribe o no. Qué problema resuelve reponer el pin, en `pinEngine`.
 test('pinEngine repone sólo cuando la versión declarada cambió', () => {
   const dir = tempRoot('cauce-dep-pin-rango-')
-  const sinBloque = manifestWith(dir, { name: 'app' })
+  const withoutBlock = manifestWith(dir, { name: 'app' })
   assert.equal(D.pinEngine(dir, '1.0.0'), null, 'un manifiesto sin devDependencies no tiene pin que reponer')
-  assert.deepEqual(read(sinBloque), { name: 'app' }, 'y no se le agrega el bloque')
+  assert.deepEqual(read(withoutBlock), { name: 'app' }, 'y no se le agrega el bloque')
 
   const file = manifestWith(dir, { name: 'app', devDependencies: { typescript: '^5' } })
   assert.equal(D.pinEngine(dir, '1.0.0'), null, 'sin la clave del motor no hay pin que reponer')
@@ -65,13 +65,13 @@ test('undeclareEngine no toca un manifiesto que no declaró el motor', () => {
   assert.deepEqual(D.undeclareEngine(path.join(dir, 'package.json')), [],
     'sin manifiesto no hay nada que sacar')
 
-  const sinDev = manifestWith(dir, { name: 'app', version: '1.4.0' })
-  assert.deepEqual(D.undeclareEngine(sinDev), [], 'sin devDependencies tampoco')
-  assert.deepEqual(read(sinDev), { name: 'app', version: '1.4.0' }, 'y queda intacto')
+  const withoutDev = manifestWith(dir, { name: 'app', version: '1.4.0' })
+  assert.deepEqual(D.undeclareEngine(withoutDev), [], 'sin devDependencies tampoco')
+  assert.deepEqual(read(withoutDev), { name: 'app', version: '1.4.0' }, 'y queda intacto')
 
-  const ajeno = manifestWith(dir, { name: 'app', devDependencies: { typescript: '^5' } })
-  assert.deepEqual(D.undeclareEngine(ajeno), [], 'con dependencias ajenas y sin la nuestra, nada')
-  assert.deepEqual(read(ajeno).devDependencies, { typescript: '^5' }, 'las del anfitrión no se tocan')
+  const foreign = manifestWith(dir, { name: 'app', devDependencies: { typescript: '^5' } })
+  assert.deepEqual(D.undeclareEngine(foreign), [], 'con dependencias ajenas y sin la nuestra, nada')
+  assert.deepEqual(read(foreign).devDependencies, { typescript: '^5' }, 'las del anfitrión no se tocan')
 
   fs.writeFileSync(path.join(dir, 'roto.json'), '{ esto no es json\n')
   assert.deepEqual(D.undeclareEngine(path.join(dir, 'roto.json')), [], 'un manifiesto ilegible no se toca')
@@ -103,9 +103,9 @@ test('declarar el motor sobre un package.json inválido lo dice y no lo pisa', (
   fs.mkdirSync(repo, { recursive: true })
   fs.writeFileSync(path.join(repo, 'package.json'), '{ esto no es json\n')
 
-  const hecho = run(['init', repo, '--name', 'App', '--mode', 'embedded', '--force'])
-  assert.equal(hecho.status, 2, hecho.stdout)
-  assert.match(hecho.stderr + hecho.stdout, /package\.json inválido/)
+  const done = run(['init', repo, '--name', 'App', '--mode', 'embedded', '--force'])
+  assert.equal(done.status, 2, done.stdout)
+  assert.match(done.stderr + done.stdout, /package\.json inválido/)
   assert.equal(fs.readFileSync(path.join(repo, 'package.json'), 'utf8'), '{ esto no es json\n',
     'el archivo del anfitrión se deja como estaba')
 })

@@ -30,6 +30,8 @@ cargos llega como skills en `.claude/skills/`.
 
 `manifest.json` declara destinos y capacidades. Comprueba todo con
 `node tools/ops.js automation doctor . claude`.
+Además dice cuántos caracteres de instrucciones carga una sesión abierta en la carpeta del runner, partidos en
+los del usuario, los del proyecto y los de Cauce, contra el piso del aviso de Claude Code. Informa, no frena.
 
 En `.claude/agents/` deja dos agentes que `autobuild` usa para lo que no es juzgar. No son cargos ni están
 para pedirles trabajo.

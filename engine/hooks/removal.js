@@ -10,12 +10,12 @@ const path = require('node:path')
 const { cwdOf, opsRoot, configOf, expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
 const { cdTarget, positional, QUOTED_CD, REDIRECTIONS } = require('./shell-writes')
+const { afterLeaders } = require('./shell-wrappers')
 
 // Un `cd $(mktemp -d)` cae en un temporal que no contiene nada de lo que se cuida; un `cd` a una ruta absoluta
 // vuelve a dar base aunque la anterior no se haya resuelto. El verbo se busca detrás de lo que un shell admite
-// delante —asignaciones, `sudo`, `time`, un paréntesis—, igual que `test-evidence-shell`: `sudo rm -rf .` es
-// el mismo borrado (revisión del 337). Un glob se juzga por su carpeta: `rm -rf *` vacía el cwd como `rm -rf .`.
-const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
+// delante —asignaciones, prefijos con sus banderas (`afterLeaders`), un paréntesis—: `setsid rm -rf .` es el mismo
+// borrado (revisión del 337). Un glob se juzga por su carpeta: `rm -rf *` vacía el cwd como `rm -rf .`.
 const home = (raw) => raw.replace(/^~(?=$|\/)/, os.homedir())
 // Un `cd` con una redirección —`cd /otra 2>/dev/null`— es un `cd`, pero quien lo escribió espera que pueda fallar, y
 // entonces lo que sigue corre donde se estaba: el borrado se juzga en las dos carpetas. Leerlo sólo como `cd` dejaba
@@ -40,7 +40,7 @@ function removedDirectories(command, cwd) {
     }
     const words = segment.trim().replace(/^[({]+\s*|\s*[)}]+$/g, '').replace(/(["'])([^"'\n]*)\1/g, '$2')
       .split(/\s+/)
-    while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || PREFIXES.has(words[0]))) words.shift()
+    afterLeaders(words)
     if (path.basename(words[0] || '') !== 'rm') continue
     const flags = words.slice(1).filter((word) => word.startsWith('-') && word !== '--')
     if (!flags.some((flag) => /^-[^-]*r/i.test(flag) || flag === '--recursive')) continue

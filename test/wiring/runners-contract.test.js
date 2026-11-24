@@ -135,7 +135,7 @@ test('ningún archivo instalable nombra una invocación que su runner no tiene',
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)
     const ownFiles = new Set(FLOWS.map(
-      (pase) => ((runner.commands && runner.commands.invocation) || '').replace('{name}', pase),
+      (pass) => ((runner.commands && runner.commands.invocation) || '').replace('{name}', pass),
     ))
     const dir = path.join(automation, 'runners', name)
     const copied = [
@@ -288,5 +288,14 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 75 desde el 2026-11-13: `agent-promote` corre `tools/ops.js learn --check-signature` antes de aplicar (caso 486),
   // con el mismo respaldo `signature.cli || 'tools/ops.js'` y la misma raíz que el `learn --applied` que ya dictaba.
-  assert.equal(hits, 75, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 74 desde el 2026-11-22: el cierre de `/autobuild` dicta un solo comando, `tools/ops.js done` (caso 538), en vez del
+  // `tools/ops.js release` y el `tools/ops.js check` que dictaba; misma raíz, uno menos.
+  //
+  // 75 desde el 2026-11-22: Review dicta `tools/ops.js review-read` desde `${ROOT}` (caso 549), la misma familia y la
+  // misma raíz que el `done` de arriba.
+  //
+  // 74 desde el 2026-11-23: un comentario de `agent-promote` dejó de repetir lo que `agent-eval` ya explica sobre
+  // `tools/ops.js` (R11). Era prosa, no una ruta que el guard juzgue: una menos.
+  assert.equal(hits, 74, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

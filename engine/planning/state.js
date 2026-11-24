@@ -42,10 +42,19 @@ function pendingHumanActions(root) {
 //
 // Quién soy acá es el runner y no la persona: dos agentes en la misma máquina comparten la identidad de
 // git, así que comparar por owner le devolvería a cada uno la tarea del otro como propia.
+// El WIP de este runner. Uno sobre una tarea ya en DONE no es trabajo en curso: es un cierre que quedó a medias, y se
+// devuelve aparte (caso 535). Ofrecerla mandaba a `claim`, que la rechaza, y `/autobuild` la retomaba como
+// reanudación de una tarea cerrada.
+function ownWip({ wips = [], done }, runner) {
+  const own = wips.find((one) => one.runner === P.wipName(runner)) || null
+  const stale = own && done.set.has(own.task) ? own.task : ''
+  return { wip: stale ? null : own, stale }
+}
+
 function currentTask({ milestones, done, wips = [], claims = [] }, blockers = [], runner = '') {
   // El plan de otro runner no es asunto de éste: leerlo como propio era lo que le entregaba a un agente
   // la tarea que otro estaba construyendo, con el WIP ajeno adentro y diciéndole que estaba libre.
-  const wip = wips.find((one) => one.runner === P.wipName(runner)) || null
+  const { wip } = ownWip({ wips, done }, runner)
   const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
   const mine = new Set(claims.filter((one) => runner && one.runner === runner).map((one) => one.slug))
   // El reclamo entero y no sólo su dueño: quién lo tomó alcanza para decir que la tarea está ocupada, y
@@ -117,4 +126,5 @@ function hasTasks(root) {
 }
 
 
-module.exports = { snapshot, pendingHumanActions, currentTask, hasTasks }
+module.exports = {
+  ownWip, snapshot, pendingHumanActions, currentTask, hasTasks }

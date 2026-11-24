@@ -17,7 +17,7 @@ function probeBridge(paths, runner) {
   try { config = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8')) } catch { return [] }
   const hookEvents = [...new Set(
     JSON.stringify(config).match(/hook\.js ([a-z-]+)/g) || [],
-  )].map((entrada) => entrada.split(' ')[1])
+  )].map((entry) => entry.split(' ')[1])
   if (!hookEvents.length) return []
 
   const problems = []

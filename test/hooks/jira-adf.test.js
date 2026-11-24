@@ -21,7 +21,7 @@ test('editar una descripción en markdown frena, en cualquier servidor', () => {
     [{ fields: { description: 'texto nuevo' } }],
     [{ fields: { description: 'texto nuevo' }, contentFormat: 'markdown' }],
     [{ fields: { description: 'texto nuevo' } }, 'mcp__atlassian-acme__editJiraIssue'],
-  ]) blocked('jira-adf', edit(root, input, tool), /aplana lo que el ADF tenía/)
+  ]) blocked('jira-adf', edit(root, input, tool), /aplana lo que el ADF tenía[^]*contentFormat "html"/)
 })
 
 test('lo que no aplana nada pasa', () => {
@@ -29,6 +29,9 @@ test('lo que no aplana nada pasa', () => {
   for (const [input, tool] of [
     [{ fields: { description: { type: 'doc', version: 1, content: [] } } }],
     [{ fields: { description: 'texto' }, contentFormat: 'adf' }],
+    // El conector v2 no acepta ADF: su HTML lleva casillas y tablas (caso 554).
+    [{ fields: { description: '<ul data-type="task-list"></ul>' }, contentFormat: 'html' }],
+    [{ fields: { description: '<p>x</p>' }, contentFormat: 'HTML' }],
     [{ fields: { description: null } }],
     [{ fields: { summary: 'otro título' } }],
     [{ fields: { description: 'nueva' } }, 'mcp__atlassian__createJiraIssue'],
@@ -53,13 +56,14 @@ test('no le pregunta a nadie lo que se corrige mandándolo en ADF, y la línea e
 
 test('Claude Code registra el guard sobre la herramienta del MCP, sin nombrar el servidor', () => {
   const settings = JSON.parse(fs.readFileSync(path.join(REPO, 'automatization', 'runners', 'claude', 'settings.json')))
-  const entry = settings.hooks.PreToolUse.find((one) => /editJiraIssue/.test(one.matcher))
-  assert.ok(entry, 'hay una entrada para editJiraIssue')
-  assert.equal(entry.matcher, 'mcp__.*__editJiraIssue')
+  // Desde el caso 541 lo corre el grupo `pre-mcp`, registrado sobre toda herramienta MCP.
+  const entry = settings.hooks.PreToolUse.find((one) => /^mcp__/.test(one.matcher))
+  assert.ok(entry, 'hay una entrada para las herramientas MCP')
+  assert.equal(entry.matcher, 'mcp__.*')
   for (const tool of ['mcp__atlassian__editJiraIssue', 'mcp__atlassian-acme__editJiraIssue']) {
     assert.match(tool, new RegExp(`^(?:${entry.matcher})$`))
   }
-  const shim = path.join(REPO, 'automatization', 'hooks', 'guard-jira-adf.sh')
+  const shim = path.join(REPO, 'automatization', 'hooks', 'guard-mcp.sh')
   assert.ok(fs.statSync(shim).mode & 0o111, 'el shim es ejecutable')
-  assert.match(entry.hooks[0].command, /guard-jira-adf\.sh$/)
+  assert.match(entry.hooks[0].command, /guard-mcp\.sh$/)
 })

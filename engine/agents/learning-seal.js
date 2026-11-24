@@ -222,13 +222,13 @@ function appendHistory(target, file, responsible, change, decision = 'aplicada')
   // encabezado, y la fila quedaba pegada ahí: en markdown eso no es una tabla sino texto con barras, y
   // nadie lo veía porque el archivo se lee dos veces al año. Se agrega la cabecera antes de la primera
   // fila en vez de exigir que ya esté, que es pedirle a cada cargo que se acuerde.
-  const cabecera = /^\|\s*Fecha\s*\|/m.test(previous) ? '' : `\n${HISTORY_HEADER}`
-  fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${cabecera}${row}`)
+  const header = /^\|\s*Fecha\s*\|/m.test(previous) ? '' : `\n${HISTORY_HEADER}`
+  fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${header}${row}`)
 }
 
-// Si lo que se aplica —«Cambio propuesto» y «Evaluación»— sigue siendo lo que se firmó. La huella la escribe
-// `sign-proposal.yml` al firmar; una propuesta firmada antes de eso no la trae y se acepta como estaba, porque exigirla
-// dejaría sin aplicar lo ya decidido (caso 486).
+// Si lo que se aplica —«Cambio propuesto» y «Evaluación»— sigue siendo lo que se firmó. Una propuesta firmada antes
+// de que existiera la huella no la trae y se acepta como estaba, porque exigirla dejaría sin aplicar lo ya decidido
+// (caso 486).
 function checkSignature(root, agent, period = '', kind = 'agent') {
   const file = proposalFile(root, agent, period, kind)
   return { file, ...printOf(fs.readFileSync(file, 'utf8')) }

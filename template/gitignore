@@ -33,8 +33,11 @@ planning/wip/*.md
 !planning/wip/README.md
 
 # El staging de una integración es de quien sincroniza: con `candidateAssigneeEnv`, lo que una persona curó
-# es contexto para otra, y compartido se pisaban (caso 222).
-integrations/*/staging/
+# es contexto para otra, y compartido se pisaban (caso 222). Se excluye el contenido y no el directorio, como en
+# planning/wip/: así una instancia que ya versiona su README y su .gitkeep recibe la línea (caso 555).
+integrations/*/staging/*
+!integrations/*/staging/README.md
+!integrations/*/staging/.gitkeep
 
 # Las rutas escribibles que son de una sola máquina: la memoria del runner de una persona, un proyecto suyo.
 # En `ops.config.json` viajarían a todo el que clona; acá se suman sólo donde existen.

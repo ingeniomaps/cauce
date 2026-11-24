@@ -22,8 +22,8 @@ const { commandOf, cwdOf, block, opsRoot, configOf, assignedValues, outsideRoots
 const { isTestFile } = require('./files')
 const AP = require('./approval')
 const { withTaskTrees } = require('../core/task-trees')
+const { afterLeaders } = require('./shell-wrappers')
 
-const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
 const TEST_DIR = /^(?:tests?|specs?|__tests__)$/i
 // Lo que el shell iba a expandir y acá no se sabe: una variable sin resolver o un `$(…)`.
 const UNRESOLVED = /[$`]/
@@ -53,7 +53,7 @@ function removed(command, cwd) {
   for (const segment of command.split(/[;&|\n]+/)) {
     const words = (segment.match(/"[^"]*"|'[^']*'|\S+/g) || [])
       .map((word) => (word.startsWith("'") ? word.slice(1, -1) : value(word.replace(/^"(.*)"$/, '$1'))))
-    while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || PREFIXES.has(words[0]))) words.shift()
+    afterLeaders(words)
     const verb = path.basename(words[0] || '')
     if (verb === 'cd' && words[1] && !UNRESOLVED.test(words[1])) dir = path.resolve(dir, words[1])
     const from = verb === 'git' ? words.indexOf('rm') : ['rm', 'unlink'].includes(verb) ? 0 : -1

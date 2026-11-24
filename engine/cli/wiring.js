@@ -280,6 +280,13 @@ function automation(action, rootArg, runnerName, cli) {
     if (result.errors.length) {
       fail(`${runnerName}: ${result.errors.length} error(es), ${result.warnings.length} advertencia(s)`, REFUSED)
     }
+    // Lo que carga una sesión entera, que es lo que mide el aviso de Claude Code (caso 532): sólo de Claude, que es
+    // quien lleva esa cuenta.
+    if (runnerName === 'claude') {
+      const { installRoot } = require('../automation/runners')
+      const SL = require('../automation/session-load')
+      console.log(`  ${SL.loadLine(installRoot(root), { opsRoot: root, delivered: SL.delivered(root) })}`)
+    }
     console.log(`✓ ${runnerName}: adaptador operativo (${result.warnings.length} advertencia(s))`)
     return
   }

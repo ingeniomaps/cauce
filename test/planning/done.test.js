@@ -12,9 +12,9 @@ const path = require('node:path')
 const P = require('../../engine/planning/parser')
 const { spawnSync } = require('node:child_process')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
-const entrada = (slug, extra = '') => `- [x] **${slug}** — Resultado
+const entry = (slug, extra = '') => `- [x] **${slug}** — Resultado
   acept: el resultado se observa
   fecha: 2026-09-08
   done: se construyó y \`make test\` salió 0
@@ -23,25 +23,25 @@ const entrada = (slug, extra = '') => `- [x] **${slug}** — Resultado
   commit: abc1234 feat: ${slug}
 ${extra}`
 
-function planning(nombre) {
-  const dir = path.join(tempRoot(nombre), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+function planning(label) {
+  const dir = path.join(tempRoot(label), 'planning')
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   return dir
 }
 
 test('una tarea cerrada se lee desde su propio archivo', () => {
   const dir = planning('cauce-done-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
-  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta'))
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entry('baja'))
 
   const done = P.readDone(dir)
   assert.deepEqual(done.entries.map((one) => one.slug).sort(), ['alta', 'baja'])
-  const alta = done.entries.find((one) => one.slug === 'alta')
-  assert.equal(alta.fecha, '2026-09-08')
+  const added = done.entries.find((one) => one.slug === 'alta')
+  assert.equal(added.fecha, '2026-09-08')
   // Un campo vale hasta el próximo campo **conocido**, así que `fecha` tiene que estar en el vocabulario
   // o el que lo precede se lo traga como parte de su propio texto — y la aceptación deja de ser la que
   // alguien escribió sin que nada falle.
-  assert.equal(alta.acceptance, 'el resultado se observa')
+  assert.equal(added.acceptance, 'el resultado se observa')
   // El nombre del archivo no manda: el slug de adentro es el que identifica la tarea, igual que en
   // `DONE.md` mandaba el de la viñeta y no el del hito que la agrupaba.
   fs.renameSync(path.join(dir, 'done', 'alta.md'), path.join(dir, 'done', 'otro-nombre.md'))
@@ -50,7 +50,7 @@ test('una tarea cerrada se lee desde su propio archivo', () => {
 
 test('lo que hay en done/ y no es una entrada no se lee como una', () => {
   const dir = planning('cauce-done-tabla-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta'))
   // `archive human-actions` escribe una tabla en este directorio, y el README explica el formato. Ni una
   // ni otro traen entradas; leerlos como si las trajeran es lo que rompería el recorrido del directorio.
   fs.writeFileSync(path.join(dir, 'done', 'human-actions.md'),
@@ -62,21 +62,21 @@ test('lo que hay en done/ y no es una entrada no se lee como una', () => {
 
 test('check exige la fecha, y nombra el DONE.md que quedó en vez de ignorarlo', () => {
   const dir = planning('cauce-done-check-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
-  const verde = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
-  assert.deepEqual(verde, [], 'una entrada completa en su archivo pasa')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta'))
+  const green = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
+  assert.deepEqual(green, [], 'una entrada completa en su archivo pasa')
 
   // Para qué sirve la fecha está donde se exige, en `contracts.js`. Acá se fija que su ausencia sea un
   // **error** y no un aviso: una entrada sin fecha se ve completa, así que lo único que la distingue es
   // que la puerta se niegue a pasarla.
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta').replace(/ {2}fecha: .*\n/, ''))
-  const sinFecha = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
-  assert.equal(sinFecha.length, 1, JSON.stringify(sinFecha))
-  assert.match(sinFecha[0], /done\/alta\.md alta: falta fecha: AAAA-MM-DD/)
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta').replace(/ {2}fecha: .*\n/, ''))
+  const withoutDate = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
+  assert.equal(withoutDate.length, 1, JSON.stringify(withoutDate))
+  assert.match(withoutDate[0], /done\/alta\.md alta: falta fecha: AAAA-MM-DD/)
 
   // Un `DONE.md` que sobrevivió a la mudanza ya no lo lee nadie, y ésa es la forma cara del error: sus
   // épicas no pueden cerrar y sus historias figuran sin evidencia, igual que si nunca se hubieran hecho.
-  fs.writeFileSync(path.join(dir, 'DONE.md'), `# Done activo\n\n${entrada('vieja')}`)
+  fs.writeFileSync(path.join(dir, 'DONE.md'), `# Done activo\n\n${entry('vieja')}`)
   const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors
   assert.ok(errors.some((one) => /DONE\.md ya no se lee/.test(one)), JSON.stringify(errors))
   assert.equal(P.readDone(dir).set.has('vieja'), false, 'y efectivamente no cuenta como cerrada')
@@ -84,8 +84,8 @@ test('check exige la fecha, y nombra el DONE.md que quedó en vez de ignorarlo',
 
 test('la misma tarea cerrada dos veces sigue siendo un error, ahora entre archivos', () => {
   const dir = planning('cauce-done-dup-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
-  fs.writeFileSync(path.join(dir, 'done', 'alta-otra-vez.md'), entrada('alta'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta-otra-vez.md'), entry('alta'))
 
   const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors
   assert.ok(errors.some((one) => /DONE duplicado: alta/.test(one)), JSON.stringify(errors))
@@ -96,8 +96,8 @@ test('la misma tarea cerrada dos veces sigue siendo un error, ahora entre archiv
 test('sin --task, la más reciente la decide la fecha y no el nombre del archivo', () => {
   const dir = planning('cauce-done-orden-')
   // Alfabéticamente `alta` va antes que `baja`; por fecha es al revés.
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta').replace('2026-09-08', '2026-09-10'))
-  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja').replace('2026-09-08', '2026-09-09'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta').replace('2026-09-08', '2026-09-10'))
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entry('baja').replace('2026-09-08', '2026-09-09'))
 
   assert.equal(JSON.parse(run(['evidence', dir, '--json']).stdout).task, 'alta')
 })
@@ -108,18 +108,18 @@ test('sin --task, la más reciente la decide la fecha y no el nombre del archivo
 // avisa cuando falta y se falla cuando está mal.
 test('el carril con el que corrió la tarea sobrevive en su entrada de DONE', () => {
   const dir = planning('cauce-done-lane-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', '  lane: express'))
-  const alta = P.readDone(dir).entries.find((one) => one.slug === 'alta')
-  assert.equal(alta.lane, 'express', 'el campo se lee')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta', '  lane: express'))
+  const added = P.readDone(dir).entries.find((one) => one.slug === 'alta')
+  assert.equal(added.lane, 'express', 'el campo se lee')
   // Y no se lo come el de arriba. Un campo vale hasta el próximo campo **conocido**, así que agregar uno
   // sin sumarlo al vocabulario lo deja adentro del valor anterior: `commit:` leía «abc1234 feat: alta
   // lane: express» y nada fallaba, porque sigue siendo texto no vacío. Es el mismo borde que la prueba de
   // `fecha:` fija más arriba, y se rompió al agregar este campo.
-  assert.equal(alta.commit, 'abc1234 feat: alta', 'y el campo de arriba no se lo traga')
+  assert.equal(added.commit, 'abc1234 feat: alta', 'y el campo de arriba no se lo traga')
 
-  const salida = JSON.parse(run(['check', dir, '--json']).stdout)
-  assert.deepEqual(salida.errors.filter((one) => /alta/.test(one)), [], 'y el contrato la acepta')
-  assert.deepEqual(salida.warnings.filter((one) => /sin lane:/.test(one)), [],
+  const output = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.deepEqual(output.errors.filter((one) => /alta/.test(one)), [], 'y el contrato la acepta')
+  assert.deepEqual(output.warnings.filter((one) => /sin lane:/.test(one)), [],
     'con el campo puesto no avisa nada')
 })
 
@@ -129,20 +129,20 @@ test('el carril con el que corrió la tarea sobrevive en su entrada de DONE', ()
 // realidad frenaba, y una comprobación que se convirtió en aviso y nadie notó que había dejado de frenar.
 test('una entrada sin carril avisa con su cuenta y no frena el check', () => {
   const dir = planning('cauce-done-sin-lane-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
-  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta'))
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entry('baja'))
 
-  const salida = JSON.parse(run(['check', dir, '--json']).stdout)
-  assert.deepEqual(salida.errors.filter((one) => /lane "/.test(one)), [], 'avisar no es fallar')
-  assert.equal(salida.warnings.filter((one) => /2 entrada\(s\) sin lane:/.test(one)).length, 1,
-    `dice cuántas son, que es lo que se mira bajar: ${JSON.stringify(salida.warnings)}`)
+  const output = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.deepEqual(output.errors.filter((one) => /lane "/.test(one)), [], 'avisar no es fallar')
+  assert.equal(output.warnings.filter((one) => /2 entrada\(s\) sin lane:/.test(one)).length, 1,
+    `dice cuántas son, que es lo que se mira bajar: ${JSON.stringify(output.warnings)}`)
 })
 
-// Escrito mal sí frena, porque eso es un valor que alguien puso y de él depende leer si la ceremonia fue
-// la que correspondía. Es el mismo trato que recibe un lane inventado en la línea del BACKLOG.
+// Escrito mal sí frena (por qué, en `engine/planning/done-entry.js`). Es el mismo trato que recibe un lane
+// inventado en la línea del BACKLOG.
 test('un carril que no existe en la entrada de DONE frena el check', () => {
   const dir = planning('cauce-done-lane-mal-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', '  lane: rapido'))
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta', '  lane: rapido'))
 
   const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /lane "/.test(one))
   assert.equal(errors.length, 1, JSON.stringify(errors))
@@ -158,17 +158,17 @@ test('un carril que no existe en la entrada de DONE frena el check', () => {
 test('la entrada dice qué pasó con la revisión, y su ausencia se cuenta', () => {
   const dir = planning('cauce-done-review-')
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'),
-    entrada('alta', '  lane: full\n  review: aprobado por tech-lead, sobre api/alta.go'))
-  const alta = P.readDone(dir).entries.find((one) => one.slug === 'alta')
-  assert.equal(alta.review, 'aprobado por tech-lead, sobre api/alta.go', 'el campo se lee')
+    entry('alta', '  lane: full\n  review: aprobado por tech-lead, sobre api/alta.go'))
+  const added = P.readDone(dir).entries.find((one) => one.slug === 'alta')
+  assert.equal(added.review, 'aprobado por tech-lead, sobre api/alta.go', 'el campo se lee')
 
-  const conCampo = JSON.parse(run(['check', dir, '--json']).stdout)
-  assert.deepEqual(conCampo.warnings.filter((one) => /sin review:/.test(one)), [], 'con el campo no avisa')
+  const withField = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.deepEqual(withField.warnings.filter((one) => /sin review:/.test(one)), [], 'con el campo no avisa')
 
-  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja', '  lane: full'))
-  const sinCampo = JSON.parse(run(['check', dir, '--json']).stdout)
-  assert.equal(sinCampo.warnings.filter((one) => /1 entrada\(s\) sin review:/.test(one)).length, 1,
-    `cuenta las que no lo traen: ${JSON.stringify(sinCampo.warnings)}`)
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entry('baja', '  lane: full'))
+  const withoutField = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.equal(withoutField.warnings.filter((one) => /1 entrada\(s\) sin review:/.test(one)).length, 1,
+    `cuenta las que no lo traen: ${JSON.stringify(withoutField.warnings)}`)
 })
 
 // El cruce que el campo habilita, medido en sus dos direcciones dentro del mismo `check`: sin la segunda,
@@ -177,18 +177,18 @@ test('la entrada dice qué pasó con la revisión, y su ausencia se cuenta', () 
 test('un carril que convoca revisor y no la tuvo se avisa; express no', () => {
   const dir = planning('cauce-done-cruce-')
   fs.writeFileSync(path.join(dir, 'done', 'saltada.md'),
-    entrada('saltada', '  lane: lite\n  review: n/a — nadie la miró'))
+    entry('saltada', '  lane: lite\n  review: n/a — nadie la miró'))
   fs.writeFileSync(path.join(dir, 'done', 'mecanica.md'),
-    entrada('mecanica', '  lane: express\n  review: n/a — el carril express no convoca revisor'))
+    entry('mecanica', '  lane: express\n  review: n/a — el carril express no convoca revisor'))
 
-  const salida = JSON.parse(run(['check', dir, '--json']).stdout)
-  const cruce = salida.warnings.filter((one) => /convoca revisor/.test(one))
-  assert.equal(cruce.length, 1, `un solo aviso: ${JSON.stringify(salida.warnings)}`)
-  assert.match(cruce[0], /saltada/, 'y nombra la tarea, que es la pregunta concreta para una persona')
-  assert.doesNotMatch(cruce[0], /mecanica/, 'express no convoca revisor: ahí n/a es lo correcto')
+  const output = JSON.parse(run(['check', dir, '--json']).stdout)
+  const crossing = output.warnings.filter((one) => /convoca revisor/.test(one))
+  assert.equal(crossing.length, 1, `un solo aviso: ${JSON.stringify(output.warnings)}`)
+  assert.match(crossing[0], /saltada/, 'y nombra la tarea, que es la pregunta concreta para una persona')
+  assert.doesNotMatch(crossing[0], /mecanica/, 'express no convoca revisor: ahí n/a es lo correcto')
   // Y que sea aviso se asercia, no se supone: es la diferencia entre esto y `doneEntryErrors`, y quien
   // mueva el cruce de lugar puede convertirlo en error sin notarlo. Por qué avisa, en `doneCeremonyWarnings`.
-  assert.deepEqual(salida.errors.filter((one) => /revisor/.test(one)), [])
+  assert.deepEqual(output.errors.filter((one) => /revisor/.test(one)), [])
 })
 
 // La crítica del plan, que `full` corre y los otros carriles no (caso 433). La instancia empieza a deberla desde su
@@ -197,7 +197,7 @@ test('un carril que convoca revisor y no la tuvo se avisa; express no', () => {
 test('una tarea full sin crítica del plan se nombra desde que la instancia escribe el campo, y lo de antes se cuenta',
   () => {
     const dir = planning('cauce-done-critica-')
-    const on = (slug, fecha, extra) => entrada(slug, extra).replace('fecha: 2026-09-08', `fecha: ${fecha}`)
+    const on = (slug, fecha, extra) => entry(slug, extra).replace('fecha: 2026-09-08', `fecha: ${fecha}`)
     fs.writeFileSync(path.join(dir, 'done', 'vieja.md'), on('vieja', '2026-10-01', '  lane: full'))
     fs.writeFileSync(path.join(dir, 'done', 'criticada.md'), on('criticada', '2026-10-10',
       '  lane: full\n  critique: cambió el plan por: comprobar también el texto exacto del error'))
@@ -205,29 +205,29 @@ test('una tarea full sin crítica del plan se nombra desde que la instancia escr
     fs.writeFileSync(path.join(dir, 'done', 'vacia.md'),
       on('vacia', '2026-10-12', '  lane: full\n  critique: n/a — no corrió'))
     fs.writeFileSync(path.join(dir, 'done', 'liviana.md'), on('liviana', '2026-10-12', '  lane: lite'))
-    const criticada = P.readDone(dir).entries.find((one) => one.slug === 'criticada')
-    assert.equal(criticada.critique, 'cambió el plan por: comprobar también el texto exacto del error')
+    const critiqued = P.readDone(dir).entries.find((one) => one.slug === 'criticada')
+    assert.equal(critiqued.critique, 'cambió el plan por: comprobar también el texto exacto del error')
 
-    const salida = JSON.parse(run(['check', dir, '--json']).stdout)
-    const aviso = salida.warnings.filter((one) => /critique:|crítica del plan/.test(one))
-    assert.equal(aviso.length, 2, `uno por cada forma: ${JSON.stringify(salida.warnings)}`)
-    const contadas = aviso.find((one) => /entrada\(s\)/.test(one))
-    const nombradas = aviso.find((one) => /declara/.test(one))
-    assert.match(contadas, /1 entrada\(s\) full sin critique: cerradas antes de que esta instancia/)
-    assert.match(nombradas, /^planning\/done: muda, vacia declara\(n\) lane: full sin crítica del plan/)
-    for (const slug of ['vieja', 'criticada', 'liviana']) assert.doesNotMatch(nombradas, new RegExp(slug))
-    assert.deepEqual(salida.errors.filter((one) => /critique|crítica/.test(one)), [], 'avisa y no falla')
+    const output = JSON.parse(run(['check', dir, '--json']).stdout)
+    const warning = output.warnings.filter((one) => /critique:|crítica del plan/.test(one))
+    assert.equal(warning.length, 2, `uno por cada forma: ${JSON.stringify(output.warnings)}`)
+    const counted = warning.find((one) => /entrada\(s\)/.test(one))
+    const named = warning.find((one) => /declara/.test(one))
+    assert.match(counted, /1 entrada\(s\) full sin critique: cerradas antes de que esta instancia/)
+    assert.match(named, /^planning\/done: muda, vacia declara\(n\) lane: full sin crítica del plan/)
+    for (const slug of ['vieja', 'criticada', 'liviana']) assert.doesNotMatch(named, new RegExp(slug))
+    assert.deepEqual(output.errors.filter((one) => /critique|crítica/.test(one)), [], 'avisa y no falla')
   })
 
 // Cuánto del trabajo que entró al repositorio quedó registrado. Se mide sobre un repositorio de verdad
 // porque lo que se cruza son shas: un doble de git no probaría el cruce, que es lo único que puede
-// fallar. Las dos direcciones van juntas: sin la segunda, un aviso que saltara siempre pasaría la
-// primera y volvería inútil el número (caso 082).
+// fallar. Las dos direcciones van juntas: con sólo la primera, también la cumpliría un aviso que saltara
+// siempre, y el número no serviría (caso 082).
 test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   const ops = tempRoot('cauce-cobertura-')
   const repo = path.join(ops, 'app')
   fs.mkdirSync(repo, { recursive: true })
-  fs.cpSync(MOLDE, path.join(ops, 'planning'), { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, path.join(ops, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({
     project: 'x', mode: 'sidecar', workspaceRoots: [{ name: 'app', path: 'app' }],
   }))
@@ -235,39 +235,38 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   git('init', '-q', '-b', 'main')
   git('config', 'user.email', 'a@b')
   git('config', 'user.name', 'a')
-  const commitear = (nombre) => {
-    fs.writeFileSync(path.join(repo, nombre), 'x')
-    git('add', nombre)
-    git('commit', '-q', '-m', `feat: ${nombre}`)
+  const commit = (label) => {
+    fs.writeFileSync(path.join(repo, label), 'x')
+    git('add', label)
+    git('commit', '-q', '-m', `feat: ${label}`)
     return git('rev-parse', '--short', 'HEAD').stdout.trim()
   }
-  const registrado = commitear('uno.js')
-  commitear('dos.js')
-  commitear('tres.js')
+  const recorded = commit('uno.js')
+  commit('dos.js')
+  commit('tres.js')
 
-  const cerrar = (sha) => fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta.md'),
-    `${entrada('alta').replace(/commit: .*/, `commit: ${sha} feat: uno.js`)}`)
+  const close = (sha) => fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta.md'),
+    `${entry('alta').replace(/commit: .*/, `commit: ${sha} feat: uno.js`)}`)
 
-  cerrar(registrado)
-  const salida = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
-  const aviso = salida.warnings.filter((one) => /entrada de DONE nombra/.test(one))
-  assert.equal(aviso.length, 1, `los dos que nadie nombra se cuentan: ${JSON.stringify(salida.warnings)}`)
-  assert.match(aviso[0], /2 commit\(s\)/)
-  assert.match(aviso[0], /app/, 'y dice en qué repositorio')
-  assert.deepEqual(salida.errors.filter((one) => /entrada de DONE nombra/.test(one)), [],
+  close(recorded)
+  const output = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
+  const warning = output.warnings.filter((one) => /entrada de DONE nombra/.test(one))
+  assert.equal(warning.length, 1, `los dos que nadie nombra se cuentan: ${JSON.stringify(output.warnings)}`)
+  assert.match(warning[0], /2 commit\(s\)/)
+  assert.match(warning[0], /app/, 'y dice en qué repositorio')
+  assert.deepEqual(output.errors.filter((one) => /entrada de DONE nombra/.test(one)), [],
     'avisa y no falla: es un hecho del pasado que no se arregla editando nada')
 
-  // La ventana arranca en la entrada **más reciente** y no en la primera: contar toda la historia da una
-  // deuda que nunca baja. Un commit anterior a la última tarea cerrada queda afuera, y eso no se ve con
-  // una sola entrada — con una, las dos anclas son la misma fecha y la diferencia es inobservable.
-  const antiguo = { ...process.env, GIT_AUTHOR_DATE: '2021-01-01T00:00:00', GIT_COMMITTER_DATE: '2021-01-01T00:00:00' }
+  // La ventana arranca en la entrada **más reciente** —por qué, en `coverageWarnings`—: un commit anterior
+  // a la última tarea cerrada queda afuera.
+  const older = { ...process.env, GIT_AUTHOR_DATE: '2021-01-01T00:00:00', GIT_COMMITTER_DATE: '2021-01-01T00:00:00' }
   fs.writeFileSync(path.join(repo, 'viejo.js'), 'x')
   spawnSync('git', ['-C', repo, 'add', 'viejo.js'], { encoding: 'utf8' })
-  spawnSync('git', ['-C', repo, 'commit', '-q', '-m', 'feat: viejo'], { encoding: 'utf8', env: antiguo })
+  spawnSync('git', ['-C', repo, 'commit', '-q', '-m', 'feat: viejo'], { encoding: 'utf8', env: older })
   // Una entrada vieja, para que la primera y la última fecha dejen de ser la misma: con una sola, las dos
   // anclas coinciden y elegir mal cuál se usa es inobservable.
   fs.writeFileSync(path.join(ops, 'planning', 'done', 'vieja.md'),
-    entrada('vieja').replace(/fecha: .*/, 'fecha: 2020-01-01'))
+    entry('vieja').replace(/fecha: .*/, 'fecha: 2020-01-01'))
   // Y un merge sin registrar: no es trabajo, es la forma de integrarlo, así que no cuenta.
   spawnSync('git', ['-C', repo, 'checkout', '-q', '-b', 'rama'], { encoding: 'utf8' })
   fs.writeFileSync(path.join(repo, 'rama.js'), 'x')
@@ -275,19 +274,19 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   git('commit', '-q', '-m', 'feat: rama')
   git('checkout', '-q', 'main')
   git('merge', '--no-ff', '-q', '-m', 'merge: rama', 'rama')
-  const conViejo = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
+  const withOld = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
     .warnings.filter((one) => /entrada de DONE nombra/.test(one))
-  assert.match(conViejo[0] || '(sin aviso)', /3 commit\(s\)/,
+  assert.match(withOld[0] || '(sin aviso)', /3 commit\(s\)/,
     `dos.js, tres.js y rama.js — el de 2021 queda fuera de la ventana y el merge no es trabajo: `
-    + `${JSON.stringify(conViejo)}`)
+    + `${JSON.stringify(withOld)}`)
 
   // La otra dirección: con todo registrado, el aviso desaparece. Sin esto, un aviso que contara mal —o
   // que contara siempre— pasaría la mitad de arriba igual.
-  const todos = git('log', '--format=%h').stdout.trim().split('\n').join(' ; ')
+  const all = git('log', '--format=%h').stdout.trim().split('\n').join(' ; ')
   fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta.md'),
-    entrada('alta').replace(/commit: .*/, `commit: ${todos}`))
-  const limpio = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
-  assert.deepEqual(limpio.warnings.filter((one) => /entrada de DONE nombra/.test(one)), [],
+    entry('alta').replace(/commit: .*/, `commit: ${all}`))
+  const clean = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
+  assert.deepEqual(clean.warnings.filter((one) => /entrada de DONE nombra/.test(one)), [],
     'con todo registrado no dice nada')
 })
 
@@ -295,12 +294,12 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
 // `corregido:` ni la regla al lado pueden cortar el campo: no son del vocabulario de DONE.
 test('lo corregido viaja dentro de review sin cortarlo, aunque venga envuelto', () => {
   const dir = planning('cauce-done-corregido-')
-  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', `  lane: full
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entry('alta', `  lane: full
   review: aprobado por software-architect, sobre api/alta.go · corregido: la clave viaja en el log
     [planning/rules/security.md#P2] | falta el índice [criterio]
 `))
-  const [alta] = P.readDone(dir).entries
-  assert.equal(alta.review, 'aprobado por software-architect, sobre api/alta.go · corregido: la clave viaja en el '
+  const [added] = P.readDone(dir).entries
+  assert.equal(added.review, 'aprobado por software-architect, sobre api/alta.go · corregido: la clave viaja en el '
     + 'log [planning/rules/security.md#P2] | falta el índice [criterio]')
-  assert.equal(alta.lane, 'full')
+  assert.equal(added.lane, 'full')
 })

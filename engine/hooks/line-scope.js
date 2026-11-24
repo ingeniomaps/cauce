@@ -23,6 +23,7 @@ const LT = require('../core/line-trees')
 const { landing } = require('../core/files')
 const { opsRoot, rawCommandOf, cwdOf } = require('./input')
 const { steps, home } = require('./shell-changes')
+const { GIT_VALUED } = require('./git-globals')
 const AP = require('./approval')
 const CHAT = require('./chat')
 
@@ -39,11 +40,14 @@ const NAMED = String.raw`([a-z0-9]+(?:-[a-z0-9]+)*)`
 // tramo (`steps`): un `grep 'ops claim --line x'` cita el comando y no lo corre, y lo que sigue al tramo —un agente
 // real escribió `--line piloto; echo "exit=$?"`— no es parte de él. Son las formas de correr `ops`: `node …/ops.js`,
 // el script directo, el `bin` del paquete y `npm run ops --`.
-function opsArgs({ verb, rest }) {
-  const args = verb === 'node' ? (/ops\.js$/.test(rest[0] || '') ? rest.slice(1) : null)
+function opsCall({ verb, rest }) {
+  return verb === 'node' ? (/ops\.js$/.test(rest[0] || '') ? rest.slice(1) : null)
     : verb === 'ops.js' || verb === 'cauce' ? rest
       : verb === 'npx' ? (/^(?:@ingeniomaps\/)?cauce(?:@\S+)?$/.test(rest[0] || '') ? rest.slice(1) : null)
         : verb === 'npm' && rest[0] === 'run' && rest[1] === 'ops' ? rest.slice(rest[2] === '--' ? 3 : 2) : null
+}
+function opsArgs(step) {
+  const args = opsCall(step)
   return args && ['claim', 'worktree'].includes(args[0]) ? args : null
 }
 const flagOf = (args) => {
@@ -223,7 +227,7 @@ function gitTargets(ran, { resolve } = {}) {
       else if (flag === '-c' && /^core\.worktree=/i.test(rest[at + 1] || '')) {
         moved.push([flag, rest[(at += 1)].replace(/^[^=]*=/, '')])
       } else if (flag === '--config-env') configured.push(`${flag}=${value()}`)
-      else if (['-c', '--namespace'].includes(flag) && glued === undefined) at += 1
+      else if (GIT_VALUED.has(flag) && glued === undefined) at += 1
     }
     const sub = rest[at]
     if (!sub || reads(sub, rest.slice(at + 1))) continue
@@ -298,9 +302,10 @@ function refusal(input, found) {
     ? `${one.file} va en el árbol de la línea: ${one.twin}` : `${one.file} no es de la línea`))
   return `esta sesión lleva la línea ${line}, y escribe sólo en sus árboles (lines/${line}/…) y en la instancia: `
     + `${where.join('; ')}. Lo de afuera de la línea es de la sesión principal, que lo tiene abierto en su rama. `
-    + `Si la línea tiene que trabajar otro repositorio, se suma con \`ops line <ops-root> ${line} <repo>\`.\n`
+    + 'Si la línea tiene que trabajar otro repositorio, se le pide a la persona: '
+    + `\`ops line <ops-root> ${line} <repo>\` frena hasta que ella lo nombre.\n`
     // Lo que la línea escribe afuera lo corrige ella, escribiéndolo en su árbol; un `git` en un checkout compartido no.
     + AP.HOW(null, held, input, held, { fixable: !shared.length, turn: true })
 }
 
-module.exports = { DIR, remember, lineOf, strayed, refusal, gitTargets, unplaced }
+module.exports = { DIR, remember, lineOf, strayed, refusal, gitTargets, unplaced, opsCall }

@@ -12,10 +12,9 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { inRepo } = require('../support/environment')
 
-// «init fija la versión exacta, así que npm update no la mueve» es lo que el README da como razón para
-// no saltear el primer paso del upgrade, y el comando que documentaba a continuación desarmaba esa
-// premisa: npm guarda con caret por defecto, y dentro de 0.x el caret alcanza a los patches —los hay—.
-// Lo que este caso cuida es que los tres lugares que dictan el comando lo dicten preservando el pin:
+// Por qué importa el pin, en `pinEngine` de `engine/cli/dependency.js`. Dentro de 0.x el caret alcanza a los
+// patches —los hay—, así que un comando documentado sin el flag desarma el pin. Lo que este caso cuida es
+// que los tres lugares que dictan el comando lo dicten preservando el pin:
 // el README, el atajo del molde y la salida de `--check`. Comprobado contra npm 11.16.0: con
 // `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
 test('todo lo que documenta el upgrade preserva la versión exacta',
@@ -32,20 +31,20 @@ test('todo lo que documenta el upgrade preserva la versión exacta',
     .filter((file) => /\.(js|md|sh|json)$/.test(file) || file.endsWith('Makefile'))
     .filter((file) => file !== 'CHANGELOG.md' && !file.startsWith('docs/issues/') && !file.startsWith('test/'))
   let found = 0
-  const sueltos = []
+  const unpinned = []
   for (const file of tracked) {
     for (const hit of fs.readFileSync(path.join(root, file), 'utf8').match(invocation) || []) {
       found += 1
-      if (!/--save-exact/.test(hit)) sueltos.push(`${file}: ${hit}`)
+      if (!/--save-exact/.test(hit)) unpinned.push(`${file}: ${hit}`)
     }
   }
   assert.ok(found >= 4, 'el comando se dicta en varios lugares y hay que verlos todos')
-  assert.deepEqual(sueltos, [], `dictan el comando sin el pin:\n  ${sueltos.join('\n  ')}`)
+  assert.deepEqual(unpinned, [], `dictan el comando sin el pin:\n  ${unpinned.join('\n  ')}`)
 })
 
-// `upgrade` sólo reemplaza lo del sistema y el runtime, así que un archivo propio del molde no llega a
-// una instancia que ya existe por ninguna otra vía. Cada uno declara la suya en `TEMPLATE_OWN`, y esto
-// es lo que obliga a decidirla: agregar un archivo al molde sin clasificarlo rompe la puerta.
+// Cómo llega un archivo propio del molde a una instancia que ya existe, en `engine/core/ownership.js`. Cada
+// uno declara la suya en `TEMPLATE_OWN`, y esto es lo que obliga a decidirla: agregar un archivo al molde
+// sin clasificarlo rompe la puerta.
 //
 // Sin esto pasó lo que tenía que pasar. 0.57.0 agregó `organization/workspace.md` y lo nombró tres
 // veces desde un `AGENTS.md` que sí se reemplaza: la instancia que actualizaba quedaba leyendo una
@@ -58,13 +57,13 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
     .stdout.trim().split('\n').filter(Boolean).map((file) => file.replace(/^template\//, ''))
   assert.ok(tracked.length > 40, 'el recorrido tiene que ver el molde entero')
 
-  const delSistema = (relative) => O.SYSTEM_FILES.includes(relative)
+  const fromSystem = (relative) => O.SYSTEM_FILES.includes(relative)
     || O.SYSTEM_COLLECTIONS.some((collection) => relative.startsWith(`${collection}/system/`))
     || O.RUNTIME_PATHS.some((base) => relative.startsWith(`${base}/`))
 
-  const propios = tracked.filter((file) => !delSistema(file)).sort()
-  const declarados = Object.keys(O.TEMPLATE_OWN).sort()
-  assert.deepEqual(propios, declarados,
+  const ownFiles = tracked.filter((file) => !fromSystem(file)).sort()
+  const declaredOnes = Object.keys(O.TEMPLATE_OWN).sort()
+  assert.deepEqual(ownFiles, declaredOnes,
     'un archivo propio del molde sin declarar no llega a quien actualiza: decidí si toda instancia ya '
     + 'lo tiene (init) o si esta versión lo agrega (upgrade)')
 
@@ -74,15 +73,33 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
 
   // Y lo que el molde nombra como ruta tiene que existir en el molde: es por donde entró el caso, con
   // un `AGENTS.md` que apuntaba a un archivo que la instancia no tenía.
-  const enElMolde = new Set(tracked)
-  const rotas = []
+  const inTemplate = new Set(tracked)
+  const broken = []
   for (const file of tracked.filter((name) => name.endsWith('.md'))) {
     const text = fs.readFileSync(path.join(root, 'template', file), 'utf8')
     for (const hit of text.matchAll(/`(organization\/[a-z][a-zA-Z0-9._-]*\.md)`/g)) {
-      if (!enElMolde.has(hit[1])) rotas.push(`${file}: nombra ${hit[1]}, que el molde no trae`)
+      if (!inTemplate.has(hit[1])) broken.push(`${file}: nombra ${hit[1]}, que el molde no trae`)
     }
   }
-  assert.deepEqual(rotas, [])
+  assert.deepEqual(broken, [])
+})
+
+// La otra mitad, por carpeta: `TEMPLATE_PREFIXES` dice qué raíces de la instancia son del molde, y de eso
+// dependen dónde busca `upgrade` el original, qué no le pide plan `plan-first` y qué commits cuenta como
+// propios `check`. Declarar los archivos de una carpeta nueva en `TEMPLATE_OWN` no la suma ahí (R27).
+const SEEDED_ROOTS = {
+  '.github': 'el CI de la instancia: lo siembra `init` en embebido y desde ahí es del proyecto',
+}
+
+test('cada carpeta raíz del molde está entre las raíces de la instancia', () => {
+  const O = require('../../engine/core/ownership')
+  const roots = fs.readdirSync(path.join(__dirname, '..', '..', 'template'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+  const listed = new Set(O.TEMPLATE_PREFIXES.map((prefix) => prefix.replace(/\/$/, '')))
+  const unlisted = roots.filter((name) => !listed.has(name) && !SEEDED_ROOTS[name])
+  const stale = [...listed, ...Object.keys(SEEDED_ROOTS)].filter((name) => !roots.includes(name))
+  assert.deepEqual(unlisted, [], 'una carpeta del molde fuera de TEMPLATE_PREFIXES: sumala, o declará por qué no')
+  assert.deepEqual(stale, [], 'una raíz declarada que el molde ya no trae')
 })
 
 // El Makefile es la superficie que el dev escribe a mano, y un rename del CLI no lo alcanza solo. Pasó
@@ -97,18 +114,18 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
   const makefile = fs.readFileSync(path.join(root, 'template', 'Makefile'), 'utf8')
   const help = spawnSync(process.execPath, [path.join(root, 'engine', 'cli', 'ops.js'), '--help'],
     { encoding: 'utf8' })
-  const acepta = new Set((`${help.stdout}${help.stderr}`.match(/^ {2}ops ([a-z-]+)/gm) || [])
+  const accepts = new Set((`${help.stdout}${help.stderr}`.match(/^ {2}ops ([a-z-]+)/gm) || [])
     .map((line) => line.trim().split(' ')[1]))
-  assert.ok(acepta.size > 8, 'el uso del CLI tiene que listar sus comandos')
+  assert.ok(accepts.size > 8, 'el uso del CLI tiene que listar sus comandos')
 
-  const rotos = []
-  let mirados = 0
+  const missing = []
+  let looked = 0
   for (const hit of makefile.matchAll(/ops\.js ([a-z-]+)/g)) {
-    mirados += 1
-    if (!acepta.has(hit[1])) rotos.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
+    looked += 1
+    if (!accepts.has(hit[1])) missing.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
   }
-  assert.ok(mirados > 10, 'el molde envuelve varios comandos y hay que verlos todos')
-  assert.deepEqual([...new Set(rotos)], [], `atajos rotos:\n  ${[...new Set(rotos)].join('\n  ')}`)
+  assert.ok(looked > 10, 'el molde envuelve varios comandos y hay que verlos todos')
+  assert.deepEqual([...new Set(missing)], [], `atajos rotos:\n  ${[...new Set(missing)].join('\n  ')}`)
 })
 
 // Un workflow le dice a un agente dónde escribir, y esa instrucción envejece con el molde sin que nada
@@ -121,25 +138,25 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
 test('ningún workflow manda a escribir en una sección que el molde no tiene', () => {
   const root = path.resolve(__dirname, '..', '..')
   const dir = path.join(root, 'automatization', 'workflows')
-  const seccionesDe = (file) => {
+  const sectionsOf = (file) => {
     try {
       return new Set((fs.readFileSync(path.join(root, 'template', file), 'utf8')
         .match(/^##\s+(.+)$/gm) || []).map((line) => line.replace(/^##\s+/, '').trim()))
     } catch { return null }
   }
 
-  const perdidas = []
-  let miradas = 0
+  const lost = []
+  let checked = 0
   for (const name of fs.readdirSync(dir).filter((file) => file.endsWith('.js'))) {
     const text = fs.readFileSync(path.join(dir, name), 'utf8')
     // `"## X" de ${ALGO}/ruta.md` y `${ALGO}/ruta.md … "## X"`: las dos formas que usan los recorridos.
     for (const hit of text.matchAll(/"##\s+([^"]+)"\s+de\s+\$\{[A-Z]+\}\/([a-zA-Z0-9/_.-]+\.md)/g)) {
-      const [, seccion, ruta] = hit
-      const secciones = seccionesDe(ruta) || seccionesDe(path.join('organization', ruta))
-      if (!secciones) continue
-      miradas += 1
-      if (!secciones.has(seccion)) perdidas.push(`${name}: manda a "## ${seccion}" de ${ruta}, que no la tiene`)
+      const [, section, route] = hit
+      const sections = sectionsOf(route) || sectionsOf(path.join('organization', route))
+      if (!sections) continue
+      checked += 1
+      if (!sections.has(section)) lost.push(`${name}: manda a "## ${section}" de ${route}, que no la tiene`)
     }
   }
-  assert.deepEqual(perdidas, [], `secciones que el molde no tiene:\n  ${perdidas.join('\n  ')}`)
+  assert.deepEqual(lost, [], `secciones que el molde no tiene:\n  ${lost.join('\n  ')}`)
 })

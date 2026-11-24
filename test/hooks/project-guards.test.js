@@ -4,6 +4,7 @@
 // `engine/hooks/project-guards.js`.
 
 const { installedProject } = require('../support/environment')
+const { chatSession } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -54,7 +55,9 @@ test('un guard del proyecto frena con su mensaje y deja pasar lo demás, con la 
 test('los guards del proyecto corren una vez por evento, lo llame el runner por el grupo o por su único guard', () => {
   assert.deepEqual(PG.eventsOf(['secrets-read'], hookGroups), ['pre-read'])
   assert.deepEqual(PG.eventsOf(['pre-read'], hookGroups), ['pre-read'])
-  assert.deepEqual(PG.eventsOf(['jira-adf'], hookGroups), ['pre-mcp'])
+  // Desde el caso 541 `pre-mcp` tiene dos guards, así que `jira-adf` solo ya no es el evento.
+  assert.deepEqual(PG.eventsOf(['jira-adf'], hookGroups), [])
+  assert.deepEqual(PG.eventsOf(['pre-mcp'], hookGroups), ['pre-mcp'])
   assert.deepEqual(PG.eventsOf(['planning-drift'], hookGroups), ['stop'])
   assert.deepEqual(PG.eventsOf(['pre-shell', 'pre-shell'], hookGroups), ['pre-shell'])
   assert.deepEqual(PG.eventsOf(['destructive'], hookGroups), [])
@@ -232,8 +235,9 @@ test('guards sólo acepta eventos que juzgan y rutas relativas a la raíz ops', 
 })
 
 test('cada grupo del motor está clasificado: admite guards del proyecto o está exento con su razón', () => {
-  // Los dos de `prompt` registran el mensaje y le nombran las reglas a la sesión: ninguno frena nunca.
-  const exempt = ['prompt', 'prompt-notice']
+  // Los dos de `prompt` registran el mensaje y le nombran las reglas a la sesión, y `post-mcp` anota lo que ya corrió:
+  // ninguno frena nunca.
+  const exempt = ['prompt', 'prompt-notice', 'post-mcp']
   assert.deepEqual([...GUARD_EVENTS, ...exempt].sort(), Object.keys(hookGroups).sort())
   const schema = require('../../engine/schemas/ops-config.schema.json')
   assert.deepEqual(Object.keys(schema.properties.guards.properties).sort(), [...GUARD_EVENTS].sort())
@@ -286,14 +290,14 @@ test('doctor avisa el guard que no está y el que el runner también registra', 
 })
 
 // El aviso de un guard que deja pasar llega a la sesión (caso 466): con un 0 se perdía todo lo que había dicho.
-const AVISA = 'cat >/dev/null\necho "falta el sello" >&2\nexit 0'
+const WARNS = 'cat >/dev/null\necho "falta el sello" >&2\nexit 0'
 const hookRun = (target, command, group = 'pre-shell') => spawnSync(process.execPath,
   [path.join(__dirname, '..', '..', 'engine', 'hooks', 'run.js'), group], {
     input: JSON.stringify(shell(target, command)), encoding: 'utf8', env: { ...process.env, OPS_ROOT: target },
   })
 
 test('lo que dice por stderr un guard que sale 0 le llega a la sesión sin frenar', () => {
-  withGuards('cauce-guards-aviso-', { 'avisa.sh': AVISA }, { 'pre-shell': ['guards/avisa.sh'] }, ({ target }) => {
+  withGuards('cauce-guards-aviso-', { 'avisa.sh': WARNS }, { 'pre-shell': ['guards/avisa.sh'] }, ({ target }) => {
     assert.deepEqual(executeAll(['pre-shell'], shell(target, 'ls')), ['[guards/avisa.sh] falta el sello'])
     const result = hookRun(target, 'ls')
     assert.equal(result.status, 0)
@@ -306,16 +310,16 @@ test('lo que dice por stderr un guard que sale 0 le llega a la sesión sin frena
 })
 
 test('un guard que sale 0 callado no agrega nada a la salida del hook', () => {
-  const calla = 'cat >/dev/null\nexit 0'
-  withGuards('cauce-guards-calla-', { 'calla.sh': calla }, { 'pre-shell': ['guards/calla.sh'] }, ({ target }) => {
+  const silent = 'cat >/dev/null\nexit 0'
+  withGuards('cauce-guards-calla-', { 'calla.sh': silent }, { 'pre-shell': ['guards/calla.sh'] }, ({ target }) => {
     assert.deepEqual(executeAll(['pre-shell'], shell(target, 'ls')), [])
     assert.equal(hookRun(target, 'ls').stdout, '', 'Claude Code lee esta salida como la decisión del hook')
   })
 })
 
 test('el aviso se recorta: un guard ruidoso no se lleva el contexto de la sesión', () => {
-  const ruidoso = 'cat >/dev/null\nhead -c 9000 /dev/zero | tr "\\0" x >&2\nexit 0'
-  withGuards('cauce-guards-ruido-', { 'r.sh': ruidoso }, { 'pre-shell': ['guards/r.sh'] }, ({ target }) => {
+  const noisy = 'cat >/dev/null\nhead -c 9000 /dev/zero | tr "\\0" x >&2\nexit 0'
+  withGuards('cauce-guards-ruido-', { 'r.sh': noisy }, { 'pre-shell': ['guards/r.sh'] }, ({ target }) => {
     const [notice] = executeAll(['pre-shell'], shell(target, 'ls'))
     assert.ok(notice.length < 2100, `midió ${notice.length}`)
     assert.match(notice, /recortado/)
@@ -323,7 +327,7 @@ test('el aviso se recorta: un guard ruidoso no se lleva el contexto de la sesió
 })
 
 test('un guard que frena gana sobre el aviso de otro', () => {
-  const scripts = { 'avisa.sh': AVISA, 'frena.sh': 'cat >/dev/null\necho no >&2\nexit 2' }
+  const scripts = { 'avisa.sh': WARNS, 'frena.sh': 'cat >/dev/null\necho no >&2\nexit 2' }
   withGuards('cauce-guards-gana-', scripts, { 'pre-shell': ['guards/avisa.sh', 'guards/frena.sh'] }, ({ target }) => {
     const result = hookRun(target, 'ls')
     assert.equal(result.status, 2)
@@ -342,7 +346,7 @@ test('el aviso viaja junto con el diálogo que abre otro guard, en un solo JSON'
 })
 
 test('el puente de Antigravity inyecta el aviso antes del siguiente turno, una vez y por conversación', () => {
-  withGuards('cauce-guards-agy-turno-', { 'avisa.sh': AVISA }, { 'pre-shell': ['guards/avisa.sh'] },
+  withGuards('cauce-guards-agy-turno-', { 'avisa.sh': WARNS }, { 'pre-shell': ['guards/avisa.sh'] },
     ({ workspace, env }) => {
       const call = (event, input) => JSON.parse(spawnSync(process.execPath,
         [path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js'), event],
@@ -373,4 +377,32 @@ test('el aviso guardado por el puente se entrega una vez, y sin conversación no
   keepNotices({}, ['[g] suelto'])
   assert.deepEqual(pendingNotices({}), {})
   assert.deepEqual(pendingNotices(null), {})
+})
+
+// Caso 556: un guard del proyecto que carga el motor y pide confirmar con `HOW`. Dentro de su proceso la llamada
+// parece tener diálogo, pero nadie lo abre, así que lo frenado queda esperando el sí del mensaje siguiente.
+const ASKING = `const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'))
+const A = require(${JSON.stringify(path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'approval.js'))})
+const C = require(${JSON.stringify(path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'chat.js'))})
+const item = 'release push api line/acme:line/acme'
+if (!C.unauthorizedNow(input, [item]).length) process.exit(0)
+process.stderr.write(A.HOW(null, [item], input))
+process.exit(2)`
+
+test('un guard del proyecto que pide confirmar deja lo frenado esperando el sí, sin prometer un diálogo', () => {
+  withGuards('cauce-guards-pide-', { 'pide.sh': 'exec node "$OPS_ROOT/guards/pide.cjs"' },
+    { 'pre-shell': ['guards/pide.sh'] }, ({ target }) => {
+      fs.writeFileSync(path.join(target, 'guards', 'pide.cjs'), ASKING)
+      const call = (said) => ({ hook_event_name: 'PreToolUse', permission_mode: 'auto', ...said(shell(target, 'ls')) })
+      for (const [answer, passes] of [['dale', true], ['no, esperá', false]]) {
+        const chat = chatSession()
+        try {
+          assert.throws(() => executeAll(['pre-shell'], call(chat.says('revisado'))), (error) => error.blocked
+            && !error.ask && /release push api/.test(error.message) && !/diálogo/.test(error.message))
+          const next = () => executeAll(['pre-shell'], call(chat.says(answer)))
+          if (passes) assert.doesNotThrow(next, answer)
+          else blockedBy(next, /niega o frena/)
+        } finally { chat.close() }
+      }
+    })
 })

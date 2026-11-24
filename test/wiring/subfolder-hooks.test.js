@@ -1,6 +1,6 @@
 'use strict'
 
-// Los guards de Claude Code en una sesión abierta en una subcarpeta del proyecto. Por qué van en
+// Los hooks de Cauce en una sesión de Claude Code abierta en una subcarpeta del proyecto. Por qué van en
 // `.claude/settings.local.json`, en `engine/automation/subfolder-hooks.js`. `HOME` y `XDG_CONFIG_HOME` van a un
 // temporal: el `.gitignore` global de quien corre la prueba puede ignorar ya ese archivo, y entonces el bloque no lo
 // repetiría (R23).
@@ -105,8 +105,7 @@ test('un settings.local.json que sólo tenía los guards de Cauce se va con unin
   assert.equal(fs.existsSync(local), false)
 })
 
-// Una instalación que no es la raíz de su repositorio no escribe en el de más arriba, con el criterio del bloque del
-// `.gitignore` (caso 513): ese repositorio no es del proyecto.
+// Caso 513: la instancia vive dos carpetas debajo de la raíz git de un monorepo.
 test('una instalación debajo de la raíz git no escribe en el repositorio de más arriba', () => {
   const base = tempRoot('cauce-subcarpeta-arriba-')
   const repo = path.join(base, 'mono')

@@ -4,13 +4,14 @@
 // el runner— no se reescribe, mueve ni borra sin que una persona lo confirme, por archivo ni por shell. Un guard propio
 // al lado sí, y lo demás del proyecto también.
 
-const { installedProject } = require('../support/environment')
+const { installedProject, tempRoot } = require('../support/environment')
 const { blocked, chatSession, messageOf } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 const { execute } = require('../../engine/hooks/run')
 
@@ -50,7 +51,8 @@ test('por shell se frena tocarlo de cualquier forma que lo apague, y copiar desd
     `mv ${SHIM} /tmp/fuera`, `ln -sf /bin/true ${SHIM}`, `chmod -x ${SHIM}`, 'chmod -R a-x automatization',
     `cp /tmp/guard-files.sh ${HOOKS}/`, `cp -t ${HOOKS} /tmp/guard-files.sh`, `git rm ${SHIM}`,
     `git checkout HEAD~1 -- ${SHIM}`, "echo '{}' > .cauce/manifest.json", `sh -c 'printf x > ${SHIM}'`,
-    `git -C . rm ${SHIM}`, `git restore --source=HEAD~1 ${HOOKS}`, 'rm -rf automat*', `find ${HOOKS} -delete`,
+    `git -C . rm ${SHIM}`, `git --attr-source HEAD rm ${SHIM}`, `git --config-env x=Y rm ${SHIM}`,
+    `git restore --source=HEAD~1 ${HOOKS}`, 'rm -rf automat*', `find ${HOOKS} -delete`,
     `find ${HOOKS} -name 'guard-f*' -delete`, `git checkout HEAD~1 -- ${HOOKS}`, `git checkout HEAD~1 ${HOOKS}`,
     'git restore -sHEAD~1 automatization', 'git restore --staged -W --source=HEAD~1 automatization',
     'git restore -sSTABLE automatization']) {
@@ -77,12 +79,105 @@ test('por shell se frena tocarlo de cualquier forma que lo apague, y copiar desd
   }
 })
 
+// Cerrado por defecto: cualquier programa que nombre un archivo entregado cuenta como que lo toca, salvo el que lo lee
+// o lo ejecuta. Antes sólo contaban los que el guard conocía, y `dd of=` o `perl -pi` pasaban.
+test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta no', () => {
+  const { shell } = instance('cauce-runtime-ajeno-')
+  for (const command of [`dd if=/dev/null of=${SHIM}`, `perl -pi -e 's/exec/true/' ${SHIM}`, `patch ${SHIM} < x.diff`,
+    `node -e "require('node:fs').writeFileSync('${SHIM}', '')"`, `python3 -c "open('${SHIM}', 'w')"`,
+    `./propio.sh ${SHIM}`, `git clean -fdx ${HOOKS}`, `git apply --include=${SHIM} x.diff`,
+    `perl -pi -e 's/a/b/' ${HOOKS}/*.sh`,
+    // Las rutas de git cuentan desde su `-C`, y en un pathspec el `*` cruza `/`. `sort`, `uniq`, `awk`, `yq` y `find`
+    // cuentan aunque lean. `git clean` sin ruta borra el árbol, aunque deje algo con `-e` o no lleve `-f`.
+    `git -C ${HOOKS} clean -fdx guard-files.sh`, `git -C ${HOOKS} apply --include=guard-files.sh x.diff`,
+    "git apply --include='automatization/*' x.diff", "git checkout -- 'automatization/*.sh'",
+    `find ${SHIM} -exec truncate -s0 {} +`, `find . -fprint0 ${SHIM}`, `uniq -f 1 /dev/null ${SHIM}`,
+    `sort -uo ${SHIM} /dev/null`, `sort -o${SHIM} /dev/null`, `yq -Pi '.x=1' ${SHIM}`,
+    `git checkout HEAD~1 -- '${HOOKS}/[!z]*'`, `git -c clean.requireForce=false clean -dx ${HOOKS}`,
+    `git clean --forc -dx ${HOOKS}`, `git clean -dx ${HOOKS}`, 'git clean -d', 'git clean',
+    `sort -o ${SHIM} /dev/null`, `uniq /dev/null ${SHIM}`, `awk -i inplace '{print}' ${SHIM}`, `find . -fprint ${SHIM}`,
+    `yq -i '.x=1' ${SHIM}`, 'git clean -fdx', 'git clean -fdx -e keep', 'git clean -fdx --exclude=keep']) {
+    blocked('runtime-shell', shell(command), RUNTIME)
+  }
+  for (const command of [`bash ${SHIM}`, `diff ${SHIM} /tmp/x`, `git log -p ${SHIM}`, `shellcheck ${SHIM}`,
+    './propio.sh .', 'tar -czf /tmp/b.tgz .', `for f in ${HOOKS}/*.sh; do echo "$f"; done`, "./propio.sh -d '*'",
+    'tar czf /tmp/x.tgz automatization/*', 'git clean -n', 'git clean -fdn', "git restore '*'",
+    // Por qué no rompen el guard, en `spec` de `engine/hooks/runtime.js`.
+    "git stash push -m 'wip [b'", "git stash push -m 'nota [z-a]'",
+    "git checkout -- '*'",
+    `node -e "console.log(require('./.cauce/manifest.json').files)"`, 'node --test test/x.test.js',
+    // Un patrón que no es un glob válido no alcanza nada, y no rompe el guard.
+    "./propio.sh 'a/[[:space:]]+required: true[[:space:]]*\\$/'"]) {
+    assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
+  }
+})
+
+// Lo que alcanza a un guard sin nombrarlo: un diff aplicado en el repositorio de la instancia, un `find` que le pasa lo
+// que encuentra a otro programa, un pathspec mágico o que no se sabe traducir, y un `git clean` que se disfraza de
+// simulación. Un diff se frena sin leerse, venga de donde venga: por qué, en `patched` de `engine/hooks/runtime.js`.
+test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
+  const { target, shell } = instance('cauce-runtime-alcance-')
+  for (const command of ['git apply x.diff', 'git apply ok.diff', 'patch -p1 < x.diff',
+    'cat x.diff | env git apply ok.diff -',
+    `git apply <<'EOF'\n--- a/src/x.js\nEOF`, 'git apply --directory=sub x.diff', 'git am x.diff', 'git am --continue',
+    'git am --skip', 'git am --abort', 'git apply --check x.diff', 'git apply --check --app x.diff', 'git am --quit',
+    'git apply --stat x.diff', 'git apply --numstat x.diff', 'git am --show-current-patch',
+    'patch --dry-run -p1 < x.diff',
+    'git apply --exclude --check x.diff', 'cd .. && patch -p1 < x.diff', `git --work-tree=${target} am x.diff`,
+    `GIT_WORK_TREE=${target} git apply x.diff`, `cd ${HOOKS} && patch < ../../sub.diff`,
+    'git clean -fdx -e -n', 'git clean -fdx -- -n',
+    `find ${HOOKS} -exec truncate -s0 {} +`, "find automatization -name 'guard*' -exec rm {} +",
+    "git clean -fdx ':!keep'", "git checkout HEAD~5 -- ':/'",
+    `git checkout HEAD~1 -- '${HOOKS}/guard[[:punct:]]files.sh'`, `git checkout HEAD~1 -- '${SHIM}[[:alpha:]]'`,
+    `git checkout HEAD~1 -- '${HOOKS}/guard\\-files.sh'`, 'git clean -fdx -einit', 'git clean -fdx --excl foo',
+    'git clean -fdx --excl=foo', 'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
+    blocked('runtime-shell', shell(command), RUNTIME)
+  }
+  for (const command of ['git -C /tmp/otra apply /tmp/otra/x.diff',
+    'git -C /tmp/otra am x.diff', 'git commit -m apply', 'git log --grep am', 'git branch am',
+    "find . -name '*.log' -exec rm {} +", `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'",
+    'git clean -fdn',
+    'git clean --dry-run', "git tag -a v1 -m '[x'"]) {
+    assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
+  }
+  // El freno nombra también lo que el diff podría crear: el motor sombra todavía no existe y se pide igual.
+  blocked('runtime-shell', shell('git apply x.diff'), /engine\/hooks\/run\.js/)
+  // Con repositorio, una carpeta hermana de la instancia también cuenta (`topOf`).
+  const repo = path.dirname(target)
+  spawnSync('git', ['init', '-q', repo])
+  blocked('runtime-shell', shell('git -C ../app am x.diff'), RUNTIME)
+  // Y desde afuera, nombrando la instancia con `-d` o eligiéndola como árbol, con `OPS_ROOT` como arriba.
+  const before = process.env.OPS_ROOT
+  process.env.OPS_ROOT = target
+  try {
+    for (const command of [`patch -d ${target} -p1 -i x.diff`, `git --work-tree=${target} am x.diff`,
+      `GIT_WORK_TREE=${target} git apply x.diff`, 'git apply --unsafe-paths ../x.diff',
+      `patch --dir=${target} -i x.diff`, `patch -Rd ${target} -i x.diff`, `patch -d /tmp/otra -d ${target} -i x.diff`,
+      `patch -i x.diff -o${target}/${SHIM}`, `patch -d /tmp/otra -o ../..${target}/${SHIM} -i x.diff`,
+      'patch --suffix -d/tmp/otra -i x.diff', 'git apply --unsafe ../x.diff', 'git am --direc=x y.diff',
+      'git apply --d=x y.diff', `git --git-dir=${target}/.git am x.diff`, `GIT_DIR=${target}/.git git apply x.diff`,
+      `patch -d /tmp -d otra -i x.diff`, 'cd "$X" && git -C sub apply x.diff']) {
+      blocked('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } }, RUNTIME)
+    }
+    // Con las opciones conocidas de `patch` se ubica, y afuera no se juzga.
+    for (const command of ['patch -Np1 -i x.diff', 'patch -Rp 1 --dry-run < x.diff', 'git apply x.diff',
+      'patch -bp1 -F3 --no-backup-if-mismatch -- x', 'git apply --w=fix x.diff', 'git apply --whitespace=fix x.diff']) {
+      execute('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } })
+    }
+  } finally {
+    if (before === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = before
+  }
+})
+
 test('sin un registro legible se protege la carpeta entera', () => {
   const { target, write } = instance('cauce-runtime-registro-')
   fs.writeFileSync(path.join(target, '.cauce/manifest.json'), '{roto')
   blocked('runtime', write(path.join(target, HOOKS, 'guard-propio.sh')), RUNTIME)
   fs.rmSync(path.join(target, '.cauce/manifest.json'))
   blocked('runtime', write(path.join(target, SHIM)), RUNTIME)
+  // También un diff que aplica adentro, que no nombra el archivo.
+  blocked('runtime-shell', { cwd: target, tool_input: { command: 'git apply x.diff' } }, RUNTIME)
 })
 
 test('la persona lo confirma en el turno, sin línea que lo deje abierto', () => {
@@ -109,7 +204,6 @@ test('la persona lo confirma en el turno, sin línea que lo deje abierto', () =>
 
 // En el repositorio de Cauce los scripts son el producto que se edita: ahí no hay instancia, así que no hay raíz ops.
 test('en el toolkit no protege nada', () => {
-  const { tempRoot } = require('../support/environment')
   const root = tempRoot('cauce-runtime-toolkit-')
   fs.mkdirSync(path.join(root, HOOKS), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'T', mode: 'toolkit' }))

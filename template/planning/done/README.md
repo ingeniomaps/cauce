@@ -17,7 +17,8 @@ tarea entregó y con qué se comprueba.
   critique: cambió el plan por: comprobar también el texto exacto del error
 ```
 
-El contrato completo de esos campos está en `../PROTOCOL.md`; acá va por qué el archivo es uno por tarea.
+`done:` o `qa:` pegan el resultado de verificar —un exit code, un `N/M` o un número de pruebas—, o lo justifican con
+`n/a — razón`; `check` avisa la entrada que no lo hace (caso 534). `decisions:` va sólo si hubo una decisión no obvia. El contrato completo de esos campos está en `../PROTOCOL.md`; acá va por qué el archivo es uno por tarea.
 
 En `tests:`, una prueba se nombra por su archivo y su nombre, como en `C1`: el archivo, ` › `, el nombre
 entre `«»` tal como está escrito en el archivo, y después de ` — ` lo que haga falta aclarar. Con esa forma

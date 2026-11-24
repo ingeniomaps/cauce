@@ -24,7 +24,10 @@
 // acierta por dónde termina una ruta ajena no está cubriendo nada.
 const { eachQuoted, masked, segments, shellWord, unquoted } = require('./quoting')
 
-const VALUED = '--(?:git-dir|work-tree|namespace|config-env|attr-source)'
+// Las globales de git que llevan valor, pegado con `=` o en la palabra siguiente (`git --help`, 2.53.0). Los guards
+// que saltean globales la toman de acá.
+const VALUED_FLAGS = ['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env', '--attr-source']
+const VALUED = `--(?:${VALUED_FLAGS.filter((flag) => flag.startsWith('--')).map((flag) => flag.slice(2)).join('|')})`
 const FLAG = new RegExp(`-[Cc](?=\\s|\\\\\\n)|${VALUED}(?:=|(?=\\s|\\\\\\n))`
   + '|--exec-path=|(?:-[pP]|--(?:paginate|no-pager|no-replace-objects|bare|no-optional-locks|no-advice|no-lazy-fetch'
   + '|(?:literal|glob|noglob|icase)-pathspecs))(?=\\s|$)', 'y')
@@ -197,9 +200,8 @@ const withoutGitGlobals = (command) => {
   return out + text.slice(copied)
 }
 
-// Dónde está el valor del primer `-C` de `text`, o null. Fuera de la primera palabra se lee como antes:
-// hasta un separador
-// o una comilla, y si las comillas no cierran ahí, no hay valor y cuenta la carpeta de la sesión.
+// Dónde está el valor del primer `-C` de `text`, o null. Fuera de la primera palabra se lee como antes: hasta un
+// separador o una comilla, y si las comillas no cierran ahí, no hay valor y cuenta la carpeta de la sesión.
 function directoryFlag(text) {
   const isHead = commandHeads(text)
   for (const found of text.matchAll(/(?:^|\s)git(?=\s)/g)) {
@@ -279,6 +281,13 @@ function isCommit(command) {
   return COMMIT.test(withoutGitGlobals(command)) && COMMIT.test(withoutGitGlobals(withoutQuotedData(String(command))))
 }
 
+// Lo que hace de un `git clean` una simulación, para los guards que lo juzgan: una `n` del racimo antes de cualquier
+// `e` —en `-einit` la `n` es del patrón que se queda—, o un prefijo de `--dry-run`. `-i` no simula: borra si recibe la
+// orden por la entrada. Sin `-f` también borra si la configuración lo permite, y `--forc` es `--force`. Cuenta sólo
+// una opción de verdad: no el valor de `-e` ni lo que va después de `--` (`git clean -fdx -e -n`).
+const CLEAN_DRY = String.raw`-[a-df-zA-Z]*n[a-zA-Z]*|--d(?:r(?:y(?:-(?:r(?:u(?:n)?)?)?)?)?)?`
+
 module.exports = {
-  directoryFlag, FEEDS_SHELL, isCommit, shellScriptOf, withoutGitGlobals, withoutQuotedData, WRAPPER,
+  CLEAN_DRY, directoryFlag, FEEDS_SHELL, GIT_VALUED: new Set(VALUED_FLAGS), isCommit, shellScriptOf, withoutGitGlobals,
+  withoutQuotedData, WRAPPER,
 }

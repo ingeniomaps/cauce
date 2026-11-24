@@ -166,3 +166,34 @@ Contrastado contra su `.jsonl` y contra el README del paquete:
   commit nuevo sin registrar lo sigue dando.
 - **No volvieron a aparecer:** `/onboard` como skill (no la usó) y el `.gitignore` sin la línea.
 
+
+## Corrida del 2026-11-24, antes de 0.124.0
+
+Repetida por la regla de `AGENTS.md`, con el paquete de la rama `fix/cases-from-an-instance-audit` empaquetado con
+`npm pack` —0.124.0 no estaba publicada y `package.json` todavía decía 0.123.1, así que el tarball se llamó así— en
+`/var/tmp/ciego-124`, un proyecto Node de dos archivos con git. La consulta de control con `--setting-sources
+project,local --strict-mcp-config` contestó que no conocía Cauce. Claude Code 2.1.331, USD 1,85, 67 turnos, 4,2 minutos.
+Instaló en `ops/` (sidecar dentro del repositorio) y llevó «fijar con pruebas el contrato de `notas.js`» de punta a
+punta: épica, promoción, reclamo, WIP, prueba con dos mutaciones vistas en rojo, commit en rama, `ops done` y `check` en
+verde. El informe quedó en `/tmp/INFORME-CIEGO.md` del banco, con 10 puntos.
+
+Contrastado contra su `.jsonl` y contra el README del paquete:
+- **Lo nuevo anduvo:** `ops done` cerró la tarea en una llamada —DONE, backlog, épica cerrada, WIP en IDLE y reclamo
+  soltado (casos 537 y 538)—, y `evidence` encontró cada criterio en la prueba.
+- **Confirmado, menor:** una épica escrita con `status: active` y sin ninguna tarea en el backlog pasa `check` en verde y
+  recién `promote` la rechaza («sólo se promueve una épica open»). Reproducido con el motor de la rama sobre la épica que
+  escribió la sesión: `✓ planning válido: 1 épica(s), 0 tarea(s) en cola`, exit 0. El molde trae `status: template` y
+  `roadmap/README.md` sí enumera los estados; la sesión no lo leyó antes de adivinar. Costó un reintento, y el mensaje
+  de `promote` dice la salida. Sale como caso propio sólo si vuelve a aparecer o si un `active` huérfano aparece por otro
+  camino.
+- **Sin documentar en el README, y menor:** tres guards que la sesión encontró al commitear —la firma de IA (R8), que
+  Claude Code agrega por defecto; `git add` y `git commit` en un mismo comando; y el archivo de `ops done --fields` fuera
+  de las raíces—. Los tres frenaron con un mensaje que decía la salida, y la sesión la tomó a la primera.
+- **Bloqueos del diseño de la prueba, repetidos:** el commit de la instalación lo frenó la gobernanza (unas 60 rutas) y
+  el informe en la raíz, `plan-first`, porque siguió en la sesión en que instaló. El README (línea 152 del paquete) dice
+  que lo pedido antes de instalar no cuenta y que hay que abrir una sesión nueva; con `-p` no puede. Igual que en las
+  dos corridas anteriores.
+- **Artefactos de la prueba:** instalar desde un tarball (el README sólo documenta el registro), el `file:` que quedó en
+  `ops/package.json`, y que `npm view` mostrara 0.123.1 publicada, que es el nombre que le dio `npm pack`.
+- **No es defecto:** `--runner claude` sin `--install` no dejó el wiring puesto, y la salida lo dijo
+  (`siguiente: node tools/ops.js automation install . claude`), que es lo que el README promete en la línea 104.

@@ -14,7 +14,7 @@ const learning = require('../../engine/agents/learning')
 const { documentUrls, sourceUrls } = require('../../engine/agents/learning-sources')
 const { REPO, installedProject, writeSkill } = require('../support/agents-fixtures')
 
-const CONTRATOS_EN_LA_REFERENCIA = [
+const CONTRACTS_IN_REFERENCE = [
   'analytics-engineer', 'backend-engineer', 'customer-support-specialist', 'data-analyst',
   'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
   'devops-engineer', 'fraud-risk-analyst', 'frontend-engineer', 'implementation-manager',
@@ -32,45 +32,44 @@ test('evaluate rechaza la misma URL bajo dos nombres', () => {
   fs.mkdirSync(path.join(dir, 'evaluations'), { recursive: true })
   fs.writeFileSync(path.join(dir, 'SKILL.md'),
     '---\nname: probe\ndescription: x\nsummary: y\n---\nno inventar autorización evidencia observable\n')
-  const fuentes = (segunda) => fs.writeFileSync(path.join(dir, 'learning', 'sources.yaml'),
-    `sources:\n  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n${segunda}`)
+  const writeSources = (second) => fs.writeFileSync(path.join(dir, 'learning', 'sources.yaml'),
+    `sources:\n  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n${second}`)
 
   // La barra final no hace otra fuente: es la misma página escrita distinto.
-  fuentes('  - name: Otro nombre\n    url: https://ej.test/a/\n    tier: platform\n')
+  writeSources('  - name: Otro nombre\n    url: https://ej.test/a/\n    tier: platform\n')
   assert.match(learning.evaluate(root, 'probe').errors.join('\n'),
     /https:\/\/ej\.test\/a está dos veces, como "Uno" y como "Otro nombre"/)
 
   // El mismo nombre repetido no es el defecto que esto busca: eso es una entrada duplicada, no un alias.
-  fuentes('  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n')
+  writeSources('  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n')
   assert.equal(learning.evaluate(root, 'probe').errors.some((one) => one.includes('dos veces')), false)
 })
 
 // Una URL, un nombre. `evaluate` sólo ve el archivo de un cargo, así que la misma fuente bajo dos
-// nombres en dos cargos distintos se le escapa — y es la forma que de verdad apareció: la
-// especificación OpenAPI vivía como `OpenAPI Specification`, `...latest published` y `...3.2.0`, así
-// que corregirle el `tier` a un cargo no se lo corregía a los otros dos.
+// nombres en dos cargos distintos se le escapa — y es la forma que de verdad apareció (el ejemplo, en
+// `sourceUrls`).
 test('el catálogo no repite una fuente bajo dos nombres', () => {
   const dir = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
-  const porUrl = new Map()
-  const repetidas = []
+  const byUrl = new Map()
+  const repeated = []
   for (const slug of fs.readdirSync(dir)) {
     const file = path.join(dir, slug, 'learning', 'sources.yaml')
     if (!fs.existsSync(file)) continue
     let name = ''
-    const texto = fs.readFileSync(file, 'utf8')
-    const corte = texto.search(/^pending:/m)
-    for (const line of (corte === -1 ? texto : texto.slice(0, corte)).split('\n')) {
-      const nombre = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
-      if (nombre) { name = nombre[1].replace(/^['"]|['"]$/g, ''); continue }
+    const text = fs.readFileSync(file, 'utf8')
+    const cut = text.search(/^pending:/m)
+    for (const line of (cut === -1 ? text : text.slice(0, cut)).split('\n')) {
+      const label = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
+      if (label) { name = label[1].replace(/^['"]|['"]$/g, ''); continue }
       const url = line.match(/^\s*url:\s*(\S+)/)
       if (!url || !name) continue
-      const clave = url[1].replace(/\/+$/, '')
-      const antes = porUrl.get(clave)
-      if (antes && antes.name !== name) repetidas.push(`${clave}: "${antes.name}" y "${name}"`)
-      else porUrl.set(clave, { name, slug })
+      const key = url[1].replace(/\/+$/, '')
+      const earlier = byUrl.get(key)
+      if (earlier && earlier.name !== name) repeated.push(`${key}: "${earlier.name}" y "${name}"`)
+      else byUrl.set(key, { name, slug })
     }
   }
-  assert.deepEqual([...new Set(repetidas)], [], 'una URL, un nombre en todo el catálogo')
+  assert.deepEqual([...new Set(repeated)], [], 'una URL, un nombre en todo el catálogo')
 })
 
 // `www.iso.org` devuelve 403 al catálogo entero; por qué la ficha de una norma vive en otro host lo
@@ -78,15 +77,15 @@ test('el catálogo no repite una fuente bajo dos nombres', () => {
 // ausencia: ver que las 41 entradas apuntan a otro lado no dice que ninguna haya vuelto a éste.
 test('ninguna fuente del catálogo se cita en www.iso.org', () => {
   const dir = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
-  const bloqueadas = []
+  const blockedOnes = []
   for (const slug of fs.readdirSync(dir)) {
     const file = path.join(dir, slug, 'learning', 'sources.yaml')
     if (!fs.existsSync(file)) continue
     for (const one of sourceUrls(fs.readFileSync(file, 'utf8'))) {
-      if (/^https?:\/\/(www\.)?iso\.org\//.test(one.url)) bloqueadas.push(`${slug}: ${one.name} → ${one.url}`)
+      if (/^https?:\/\/(www\.)?iso\.org\//.test(one.url)) blockedOnes.push(`${slug}: ${one.name} → ${one.url}`)
     }
   }
-  assert.deepEqual(bloqueadas, [], 'la ficha legible es la del IEC Webstore o la de committee.iso.org')
+  assert.deepEqual(blockedOnes, [], 'la ficha legible es la del IEC Webstore o la de committee.iso.org')
 })
 
 // Las URLs que un cargo cita fuera de `sources.yaml`. Lo que se cuida es la exclusión —el porqué lo
@@ -94,10 +93,10 @@ test('ninguna fuente del catálogo se cita en www.iso.org', () => {
 // nada sobre si además se coló alguna de las que un caso inventa.
 test('el lector de documentos toma references y SKILL, y deja afuera lo inventado', () => {
   const qa = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system', 'qa-engineer')
-  const leidas = documentUrls(qa)
-  assert.ok(leidas.length > 5, `leyó ${leidas.length} URLs de qa-engineer`)
-  assert.ok(leidas.some((one) => one.origin.startsWith('references/')), 'entra references/')
-  assert.deepEqual(leidas.filter((one) => /evaluations|learning/.test(one.origin)), [],
+  const read = documentUrls(qa)
+  assert.ok(read.length > 5, `leyó ${read.length} URLs de qa-engineer`)
+  assert.ok(read.some((one) => one.origin.startsWith('references/')), 'entra references/')
+  assert.deepEqual(read.filter((one) => /evaluations|learning/.test(one.origin)), [],
     'y no entra ni lo inventado ni la evidencia')
 
   // El origen viaja con la URL porque decide quién la arregla, y la prueba lo fija: sin él el aviso
@@ -117,9 +116,9 @@ test('el lector de documentos toma references y SKILL, y deja afuera lo inventad
   // red por cada línea que sale de acá, así que repetirla cuesta y no dice nada nuevo.
   fs.writeFileSync(path.join(dir, 'references', 'notas.txt'), 'https://ej.test/txt\n')
   fs.writeFileSync(path.join(dir, 'references', 'otra.md'), 'https://ej.test/hondo otra vez\n')
-  const otra = documentUrls(dir).map((one) => one.url)
-  assert.equal(otra.filter((url) => url === 'https://ej.test/hondo').length, 1, 'una vez, no dos')
-  assert.equal(otra.includes('https://ej.test/txt'), false, 'y el .txt no se lee')
+  const other = documentUrls(dir).map((one) => one.url)
+  assert.equal(other.filter((url) => url === 'https://ej.test/hondo').length, 1, 'una vez, no dos')
+  assert.equal(other.includes('https://ej.test/txt'), false, 'y el .txt no se lee')
 
   // Un cargo a medio escribir todavía no tiene ninguna de las dos cosas, y eso no es un error: se está
   // escribiendo. Devolver vacío es lo que deja que el paso siga con sus fuentes.
@@ -128,23 +127,23 @@ test('el lector de documentos toma references y SKILL, y deja afuera lo inventad
 
 test('el inventario de contratos en las referencias es el que está declarado', () => {
   const roles = path.join(REPO, 'agents', 'roles', 'system')
-  const conDos = fs.readdirSync(roles).filter((slug) => {
+  const withTwo = fs.readdirSync(roles).filter((slug) => {
     const file = path.join(roles, slug, 'references', 'operating-model.md')
     if (!fs.existsSync(file)) return false
     const text = fs.readFileSync(file, 'utf8')
     return [...text.matchAll(/```markdown\n([\s\S]*?)\n```/g)].some((block) => {
-      const campos = block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length
+      const fieldCount = block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length
       const heads = [...text.slice(0, block.index).matchAll(/^## (.+)$/gm)]
       const head = heads.length ? heads[heads.length - 1][1] : ''
-      return campos >= 6 && head.toLowerCase().startsWith('contrato')
+      return fieldCount >= 6 && head.toLowerCase().startsWith('contrato')
     })
   })
 
-  const nuevos = conDos.filter((slug) => !CONTRATOS_EN_LA_REFERENCIA.includes(slug))
-  assert.deepEqual(nuevos, [], 'apareció un contrato en una referencia: decidí si duplica la entrega')
+  const fresh = withTwo.filter((slug) => !CONTRACTS_IN_REFERENCE.includes(slug))
+  assert.deepEqual(fresh, [], 'apareció un contrato en una referencia: decidí si duplica la entrega')
 
-  const cerrados = CONTRATOS_EN_LA_REFERENCIA.filter((slug) => !conDos.includes(slug))
-  assert.deepEqual(cerrados, [], 'estos ya no tienen dos listas: sacalos de CONTRATOS_EN_LA_REFERENCIA')
+  const closed = CONTRACTS_IN_REFERENCE.filter((slug) => !withTwo.includes(slug))
+  assert.deepEqual(closed, [], 'estos ya no tienen dos listas: sacalos de CONTRATOS_EN_LA_REFERENCIA')
 })
 
 // El `tier` de una fuente decidía nada: el motor comprobaba que `sources.yaml` existiera y nunca lo
@@ -159,27 +158,27 @@ test('una fuente declara su tipo dentro del vocabulario cerrado', () => {
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   fs.mkdirSync(path.join(own, 'learning'), { recursive: true })
   const sources = path.join(own, 'learning', 'sources.yaml')
-  const escribir = (tier) => fs.writeFileSync(sources, 'version: 1\nsources:\n'
+  const write = (tier) => fs.writeFileSync(sources, 'version: 1\nsources:\n'
     + `  - name: Alguna norma\n    url: https://example.org/x\n    tier: ${tier}\n`)
 
   for (const tier of learning.SOURCE_TIERS) {
-    escribir(tier)
-    const errores = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
-    assert.deepEqual(errores, [], `${tier} es del vocabulario y no debería objetarse`)
+    write(tier)
+    const errorList = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
+    assert.deepEqual(errorList, [], `${tier} es del vocabulario y no debería objetarse`)
   }
 
-  escribir('primary-standard')
-  const malo = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
-  assert.equal(malo.length, 1, 'una etiqueta fuera del vocabulario es un error, no un silencio')
-  assert.match(malo[0], /primary-standard/, 'y dice cuál')
-  assert.match(malo[0], new RegExp(learning.SOURCE_TIERS.join('|')), 'y cuáles sí valen')
+  write('primary-standard')
+  const bad = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
+  assert.equal(bad.length, 1, 'una etiqueta fuera del vocabulario es un error, no un silencio')
+  assert.match(bad[0], /primary-standard/, 'y dice cuál')
+  assert.match(bad[0], new RegExp(learning.SOURCE_TIERS.join('|')), 'y cuáles sí valen')
 
   // Sin fuentes el ciclo semanal no tiene qué investigar, pero un cargo a medio escribir es legítimo:
   // avisa, no bloquea.
   fs.writeFileSync(sources, 'version: 1\n')
-  const vacio = learning.evaluate(target, 'probe')
-  assert.deepEqual(vacio.errors.filter((one) => one.includes('fuente')), [])
-  assert.ok(vacio.warnings.some((one) => one.includes('sin fuentes')), 'avisa que no hay qué investigar')
+  const empty = learning.evaluate(target, 'probe')
+  assert.deepEqual(empty.errors.filter((one) => one.includes('fuente')), [])
+  assert.ok(empty.warnings.some((one) => one.includes('sin fuentes')), 'avisa que no hay qué investigar')
 })
 
 // Cada cuánto investiga un cargo no puede vivir en una lista escrita a mano: el día que alguien le
@@ -189,27 +188,27 @@ test('la cadencia de investigación se deriva de las fuentes, no de una lista', 
   const target = installedProject('Cadencia')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   fs.mkdirSync(path.join(own, 'learning'), { recursive: true })
-  const declarar = (...tiers) => fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'),
+  const declare = (...tiers) => fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'),
     'version: 1\nsources:\n' + tiers.map((tier, i) =>
       `  - name: F${i}\n    url: https://example.org/${i}\n    tier: ${tier}\n`).join(''))
 
-  declarar('standard')
+  declare('standard')
   assert.equal(learning.cadence(target, 'probe'), 'mensual', 'una norma se revisa por edición')
-  declarar('profession')
+  declare('profession')
   assert.equal(learning.cadence(target, 'probe'), 'trimestral')
-  declarar('advisory')
+  declare('advisory')
   assert.equal(learning.cadence(target, 'probe'), 'mensual', 'un aviso también: el contrato cambia una vez al mes')
 
   // Basta una fuente rápida: mirar antes no le cuesta nada a las lentas.
-  declarar('standard', 'profession', 'platform')
+  declare('standard', 'profession', 'platform')
   assert.equal(learning.cadence(target, 'probe'), 'mensual', 'la manda la más rápida, no la mayoría')
 
   // La cadencia semanal se quitó (caso 182): ningún tipo de fuente la devuelve, ni solo ni combinado.
   for (const tier of learning.SOURCE_TIERS) {
-    declarar(tier)
+    declare(tier)
     assert.notEqual(learning.cadence(target, 'probe'), 'semanal', `${tier} no vuelve a investigar cada semana`)
   }
-  declarar(...learning.SOURCE_TIERS)
+  declare(...learning.SOURCE_TIERS)
   assert.notEqual(learning.cadence(target, 'probe'), 'semanal', 'ni todos juntos')
 
   // Sin fuentes no hay cadencia que derivar, y eso ya lo avisa `evaluate`: no se inventa una.
@@ -224,34 +223,34 @@ test('la cadencia de investigación se deriva de las fuentes, no de una lista', 
 test('una fuente se lee escrita en una línea o repartida en varias', () => {
   const { sourceUrls } = require('../../engine/agents/learning-sources')
 
-  const repartida = `version: 1
+  const spread = `version: 1
 sources:
   - name: Repartida
     url: https://example.org/a
     tier: standard
 `
-  assert.deepEqual(sourceUrls(repartida), [{ name: 'Repartida', url: 'https://example.org/a' }])
+  assert.deepEqual(sourceUrls(spread), [{ name: 'Repartida', url: 'https://example.org/a' }])
 
-  const enLinea = `version: 1
+  const inLine = `version: 1
 sources:
   - {name: En Linea, url: "https://example.org/b", tier: standard, topics: [x, y]}
   - {name: Sin Comillas, url: https://example.org/c, tier: platform}
 `
-  assert.deepEqual(sourceUrls(enLinea), [
+  assert.deepEqual(sourceUrls(inLine), [
     { name: 'En Linea', url: 'https://example.org/b' },
     { name: 'Sin Comillas', url: 'https://example.org/c' },
   ])
 
   // Mezcladas en el mismo archivo, que es lo que hace un cargo al que se le agrega una fuente a mano.
-  assert.equal(sourceUrls(`${repartida}  - {name: Tercera, url: "https://example.org/d", tier: project}\n`).length, 2)
+  assert.equal(sourceUrls(`${spread}  - {name: Tercera, url: "https://example.org/d", tier: project}\n`).length, 2)
 
   // Y la validación que dependía de esto vuelve a ver a los que no miraba.
-  const duplicada = `version: 1
+  const duplicated = `version: 1
 sources:
   - {name: Uno, url: "https://example.org/z", tier: standard}
   - {name: Otro, url: "https://example.org/z", tier: platform}
 `
-  const urls = sourceUrls(duplicada)
+  const urls = sourceUrls(duplicated)
   assert.equal(urls.length, 2, 'las dos entradas se ven')
   assert.equal(urls[0].url, urls[1].url, 'y comparten URL, que es lo que evaluate rechaza')
 })
@@ -260,24 +259,24 @@ sources:
 // todas: una entrada que no se ve no se valida ni se comprueba, y eso no deja rastro.
 test('el lector no se saltea ninguna fuente del catálogo', () => {
   const { sourceUrls } = require('../../engine/agents/learning-sources')
-  const raiz = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
-  const desajustes = []
+  const root = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const mismatches = []
   let total = 0
-  for (const slug of fs.readdirSync(raiz)) {
-    const file = path.join(raiz, slug, 'learning', 'sources.yaml')
+  for (const slug of fs.readdirSync(root)) {
+    const file = path.join(root, slug, 'learning', 'sources.yaml')
     if (!fs.existsSync(file)) continue
     const text = fs.readFileSync(file, 'utf8')
     // El corte en `pending:` se transcribe acá en vez de reusar el del motor: si las dos cuentas
     // salieran del mismo código, la prueba no comprobaría nada.
-    const cuerpo = text.slice(text.indexOf('sources:'))
-    const hasta = cuerpo.search(/^pending:/m)
-    const declaradas = ((hasta === -1 ? cuerpo : cuerpo.slice(0, hasta)).match(/url:/g) || []).length
-    const vistas = sourceUrls(text).length
-    total += declaradas
-    if (vistas !== declaradas) desajustes.push(`${slug}: declara ${declaradas} y se leen ${vistas}`)
+    const body = text.slice(text.indexOf('sources:'))
+    const until = body.search(/^pending:/m)
+    const declaredOnes = ((until === -1 ? body : body.slice(0, until)).match(/url:/g) || []).length
+    const readCount = sourceUrls(text).length
+    total += declaredOnes
+    if (readCount !== declaredOnes) mismatches.push(`${slug}: declara ${declaredOnes} y se leen ${readCount}`)
   }
   assert.ok(total > 200, `el recorrido tiene que ver el catálogo entero, vio ${total}`)
-  assert.deepEqual(desajustes, [], `fuentes que el lector no ve:\n  ${desajustes.join('\n  ')}`)
+  assert.deepEqual(mismatches, [], `fuentes que el lector no ve:\n  ${mismatches.join('\n  ')}`)
 })
 
 // Una pendiente no es una fuente y confundirlas cuesta en las dos direcciones: leída como fuente, el
@@ -287,13 +286,13 @@ test('el lector no se saltea ninguna fuente del catálogo', () => {
 // esas entradas están pendientes justamente porque no hay ninguna URL que responda; `why` no lo es.
 test('una pendiente se lee con o sin URL, y su razón sobrevive al salto de línea', () => {
   const { pendingSources } = require('../../engine/agents/learning-sources')
-  const texto = 'version: 1\nsources:\n  - name: A\n    url: https://a.test\n    tier: standard\n'
+  const text = 'version: 1\nsources:\n  - name: A\n    url: https://a.test\n    tier: standard\n'
     + 'pending:\n'
     + '  - name: IEEE 1028\n    url: https://ieee.test/1028\n'
     + '    why: la ficha se arma con JavaScript y sirve el título genérico, así\n'
     + '      que no se pudo confirmar la edición\n    since: 2026-08-22\n'
     + '  - name: ISO 24765\n    why: no hay URL primaria que responda\n    since: 2026-08-22\n'
-  assert.deepEqual(pendingSources(texto), [
+  assert.deepEqual(pendingSources(text), [
     {
       name: 'IEEE 1028',
       url: 'https://ieee.test/1028',
@@ -305,27 +304,27 @@ test('una pendiente se lee con o sin URL, y su razón sobrevive al salto de lín
 
   // La aserción que importa es de ausencia: la pendiente no puede salir por el lector de fuentes. Si
   // saliera, el chequeo semanal la reportaría rota para siempre — el aviso permanente que esto evita.
-  assert.deepEqual(sourceUrls(texto), [{ name: 'A', url: 'https://a.test' }],
+  assert.deepEqual(sourceUrls(text), [{ name: 'A', url: 'https://a.test' }],
     'y ninguna de las dos aparece como fuente')
 })
 
 test('las pendientes no entran como fuentes declaradas', () => {
   const { pendingSources, sourceUrls } = require('../../engine/agents/learning-sources')
-  const raiz = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
-  const coladas = []
-  let pendientes = 0
-  for (const slug of fs.readdirSync(raiz)) {
-    const file = path.join(raiz, slug, 'learning', 'sources.yaml')
+  const root = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const slipped = []
+  let pending = 0
+  for (const slug of fs.readdirSync(root)) {
+    const file = path.join(root, slug, 'learning', 'sources.yaml')
     if (!fs.existsSync(file)) continue
     const text = fs.readFileSync(file, 'utf8')
-    const declaradas = new Set(sourceUrls(text).map((one) => one.url))
+    const declaredOnes = new Set(sourceUrls(text).map((one) => one.url))
     for (const one of pendingSources(text)) {
-      pendientes += 1
-      if (one.url && declaradas.has(one.url.replace(/\/+$/, ''))) coladas.push(`${slug}: ${one.url}`)
+      pending += 1
+      if (one.url && declaredOnes.has(one.url.replace(/\/+$/, ''))) slipped.push(`${slug}: ${one.url}`)
     }
   }
-  assert.ok(pendientes > 0, 'el catálogo declara alguna pendiente, o esta prueba no mide nada')
-  assert.deepEqual(coladas, [], 'una pendiente leída como fuente se reporta rota todas las semanas')
+  assert.ok(pending > 0, 'el catálogo declara alguna pendiente, o esta prueba no mide nada')
+  assert.deepEqual(slipped, [], 'una pendiente leída como fuente se reporta rota todas las semanas')
 })
 
 // `learning/HISTORY.md` es el mismo artefacto en los 53 cargos y su encabezado llegó a decir trece cosas
@@ -335,27 +334,27 @@ test('las pendientes no entran como fuentes declaradas', () => {
 // Nadie generó estos archivos desde un molde: cada uno se escribió a mano al entrar su cargo al catálogo.
 // Sin algo que lo mida, vuelven a divergir con el próximo.
 test('el historial dice lo mismo en todos los cargos, y coincide con su tabla', () => {
-  const raiz = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
-  const encabezados = new Map()
-  const sinTabla = []
-  let vistos = 0
-  for (const slug of fs.readdirSync(raiz)) {
-    const file = path.join(raiz, slug, 'learning', 'HISTORY.md')
+  const root = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const headers = new Map()
+  const withoutTable = []
+  let seen = 0
+  for (const slug of fs.readdirSync(root)) {
+    const file = path.join(root, slug, 'learning', 'HISTORY.md')
     if (!fs.existsSync(file)) continue
-    vistos += 1
-    const texto = fs.readFileSync(file, 'utf8')
-    const linea = texto.split('\n')[2] || ''
-    encabezados.set(linea, [...(encabezados.get(linea) || []), slug])
-    if (!/^\| Fecha \| Propuesta \| Decisión \| Aprobó \| Cambio aplicado \|$/m.test(texto)) sinTabla.push(slug)
+    seen += 1
+    const text = fs.readFileSync(file, 'utf8')
+    const line = text.split('\n')[2] || ''
+    headers.set(line, [...(headers.get(line) || []), slug])
+    if (!/^\| Fecha \| Propuesta \| Decisión \| Aprobó \| Cambio aplicado \|$/m.test(text)) withoutTable.push(slug)
   }
-  assert.ok(vistos > 40, `el recorrido tiene que ver el catálogo entero, vio ${vistos}`)
-  assert.equal(encabezados.size, 1,
-    `el encabezado dice ${encabezados.size} cosas distintas:\n  ${[...encabezados.keys()].join('\n  ')}`)
-  assert.deepEqual(sinTabla, [], `sin la tabla que su encabezado describe:\n  ${sinTabla.join('\n  ')}`)
+  assert.ok(seen > 40, `el recorrido tiene que ver el catálogo entero, vio ${seen}`)
+  assert.equal(headers.size, 1,
+    `el encabezado dice ${headers.size} cosas distintas:\n  ${[...headers.keys()].join('\n  ')}`)
+  assert.deepEqual(withoutTable, [], `sin la tabla que su encabezado describe:\n  ${withoutTable.join('\n  ')}`)
 
   // Lo que la unificación no puede borrar: una exigencia propia del cargo va como línea aparte, así que
   // el encabezado común sigue siendo uno solo y lo suyo no se pierde.
-  const propia = (slug) => fs.readFileSync(path.join(raiz, slug, 'learning', 'HISTORY.md'), 'utf8')
-  assert.match(propia('kyc-aml-specialist'), /país alcanzado/, 'kyc-aml conserva el país')
-  assert.match(propia('legal-counsel'), /jurisdicción/, 'legal-counsel conserva la jurisdicción')
+  const own = (slug) => fs.readFileSync(path.join(root, slug, 'learning', 'HISTORY.md'), 'utf8')
+  assert.match(own('kyc-aml-specialist'), /país alcanzado/, 'kyc-aml conserva el país')
+  assert.match(own('legal-counsel'), /jurisdicción/, 'legal-counsel conserva la jurisdicción')
 })

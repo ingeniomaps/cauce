@@ -78,8 +78,7 @@ test('con causas mezcladas, el rebote pide sólo las pruebas que faltan', async 
   assert.ok(!hollow.result.detail.includes(doc), 'la parada nombra sólo lo que de verdad falta')
 })
 
-// Caso 345. La causa se decide por criterio: con la regla atada al diff, una condición que se cumple en un
-// documento salía `missing-test` apenas la tarea tocaba código, y el recorrido pedía una prueba para prosa.
+// Caso 345: una tarea mixta, código y un documento. Lo que se le pide a Verify, con y sin la condición por diff.
 test('a Verify se le pide la causa criterio por criterio, sin atarla a lo que tocó el diff', async () => {
   const ctx = withAcceptance('el alta rechaza un duplicado; docs/RIESGOS.md anota el riesgo aceptado')
   const out = await runFlow({ [KEY.context]: ctx }, { contexts: [ctx] })
@@ -92,8 +91,8 @@ test('a Verify se le pide la causa criterio por criterio, sin atarla a lo que to
   assert.doesNotMatch(ask, /con cualquier otro en el diff es missing-test/)
 })
 
-// Caso 345, el borde que la causa por criterio abría: una tarea que escribió pruebas y a la que Verify le
-// declara todo sin superficie. `check` la rechazaba recién en Done, con el trabajo entero hecho; frena acá.
+// Caso 345. Todos los criterios llegan como no-surface sobre una tarea con pruebas: la corrida pide las
+// pruebas, termina en verify-hollow y no llega a QA.
 test('una tarea con pruebas no cierra con todos sus criterios declarados sin superficie', async () => {
   const crits = ['el alta rechaza un duplicado', 'el comentario del handler queda corregido']
   const ctx = withAcceptance(crits.join('; '))
@@ -138,10 +137,9 @@ test('una condición fuera de verify que Verify devuelve sin cubrir no frena el 
   assert.doesNotMatch(hollow.result.detail, /e2e/, 'la parada nombra sólo lo que de verdad falta')
 })
 
-// Done escribía `tests: CN → prueba` sin que nadie le pasara qué prueba cubría qué: el mapeo lo tenía
-// Verify, que lo contrastó leyendo el fuente, y no viajaba (hallazgo del 189). Y viajando como una frase no
-// se podía contrastar: nadie distingue el nombre de la prueba de la aclaración que le sigue (caso 331). Verify
-// lo da por partes y la traza la arma el recorrido, siempre con la misma forma.
+// Done escribía `tests: CN → prueba` sin el mapeo que tenía Verify (hallazgo del 189, caso 331; por qué viaja por
+// partes, junto al esquema en `automatization/workflows/autobuild.js`). La traza la arma el recorrido, siempre con la
+// misma forma.
 test('Done recibe cada traza ya armada con el archivo, el nombre de la prueba y la aclaración', async () => {
   const root = '/srv/acme/ops'
   const rows = [
@@ -159,7 +157,7 @@ test('Done recibe cada traza ya armada con el archivo, el nombre de la prueba y 
     // El archivo no puede traer lo que separa las partes.
     [{ criterion: 'c', file: 'test/x.test.js › «crea» — y', name: 'inventada' },
       '«inventada» — archivo: test/x.test.js crea — y · criterio: c'],
-    // Una ruta con espacios no cabe en la forma, y sin nombre no hay prueba que buscar: van en la aclaración.
+    // Lo que no cabe en la forma va a la aclaración.
     [{ criterion: 'c', file: 'mi carpeta/y.test.js', name: 'crea' },
       '«crea» — archivo: mi carpeta/y.test.js · criterio: c'],
     [{ criterion: 'c', file: 'test/y.test.js', name: ' ' }, 'archivo: test/y.test.js · criterio: c'],

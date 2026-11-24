@@ -185,8 +185,8 @@ const verdicts = await pipeline(
         `Leelos antes de contestar. Sé exacto sobre la procedencia de lo que afirmes: lo que leíste, ` +
         `leelo; lo que no, no lo supongas.`
       : '')
-    // Lo que el cargo escriba termina en un registro del repositorio, y una ruta bajo el `/home` de
-    // alguien no le sirve a nadie más. El recorte del registro la saca igual, pero recortar deja el
+    // Lo que el cargo escriba termina en un registro del repositorio, que no admite rutas de esta máquina
+    // (ver `shared/eval-measured.js`). El recorte del registro la saca igual, pero recortar deja el
     // hueco a la vista —«todos bajo ``»— y nombrar bien no. En `flow-eval` no hace falta: ahí el
     // sujeto es el recorrido y devuelve datos, no prosa.
     + `\n\nNombrá los archivos relativos a la raíz desde la que trabajás. Ninguna ruta absoluta de esta `
@@ -302,9 +302,9 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  const nota = oneLine(one.verdict.contractNote)
-  const para = nota ? `- Para el contrato: ${nota}\n` : ''
-  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Respuesta del cargo**\n\n`
+  const note = oneLine(one.verdict.contractNote)
+  const contractLine = note ? `- Para el contrato: ${note}\n` : ''
+  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${contractLine}\n**Respuesta del cargo**\n\n`
     + `${one.answer}\n\n**Contraste**\n\n${one.verdict.reasoning}`, ROOT)
 }).join('\n\n')
 

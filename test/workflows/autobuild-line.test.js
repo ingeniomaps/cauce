@@ -62,8 +62,8 @@ test('si el árbol no se puede armar, la corrida para antes de planificar', asyn
   assert.match(result.detail, /T-1: la tomó otro/)
   assert.ok(!reached(asked, 'Plan') && !reached(asked, 'Build'), 'sin gastar en lo que no va a poder construir')
 
-  const sinRuta = await runFlow(inLine({ [WORKTREE]: { ok: true } }))
-  assert.equal(sinRuta.result.reason, 'worktree-failed', 'un sí sin dónde trabajar tampoco alcanza')
+  const withoutPath = await runFlow(inLine({ [WORKTREE]: { ok: true } }))
+  assert.equal(withoutPath.result.reason, 'worktree-failed', 'un sí sin dónde trabajar tampoco alcanza')
 })
 
 test('al retomar en una línea se vuelve al mismo árbol', async () => {
@@ -107,8 +107,7 @@ test('en una línea el checkpoint del hito lleva el nombre de la línea', async 
   assert.doesNotMatch(gate, /"line:" a secas/)
 })
 
-// El archivo lo escribe un agente, y un `line:` mal escrito deja el checkpoint pendiente sin frenar a su
-// línea. Por eso se relee `context` después de escribirlo: lo que cuenta es que frene, no que exista.
+// Cuatro relecturas: frena a la primera, frena tras una corrección, no frena nunca, y frena por otro checkpoint.
 test('el checkpoint recién escrito se relee, y si no frena se corrige una vez y se dice', async () => {
   const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
   const held = (...answers) => {
@@ -146,7 +145,8 @@ test('el checkpoint recién escrito se relee, y si no frena se corrige una vez y
   assert.equal(fixes(blind).length, 0, 'sin lectura no se reescribe nada')
 })
 
-// La línea llega transcripta por un agente, y un valor vacío a veces llega con sus comillas escritas.
+// Una línea entre comillas o que no es un nombre no se dicta (caso 083; por qué, en
+// `automatization/workflows/autobuild.js`).
 test('una línea que llega entre comillas o no es un nombre no se escribe en el checkpoint', async () => {
   const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
   const gateOf = async (line) => {
@@ -168,11 +168,14 @@ test('la línea sale del argumento, y los comandos que contestan por la sesión 
   for (const args of ['pagos', '--line pagos', { line: 'pagos' }]) {
     const { result, prompts } = await runFlow(declared(), { args })
     ranToEnd(result)
-    const commands = asked(prompts, /tools\/ops\.js (context|claim|release) /)
+    const commands = asked(prompts, /tools\/ops\.js (context|claim|release|done) /)
     assert.ok(commands.length > 1, JSON.stringify(args))
     for (const prompt of commands) {
-      assert.match(prompt, /tools\/ops\.js (context|claim|release) \S+( T-1)? --line pagos[" ]/, JSON.stringify(args))
+      const asks = /tools\/ops\.js (context|claim|release|done) \S+( T-1)?( --fields <[^>]+>)? --line pagos[" ]/
+      assert.match(prompt, asks, JSON.stringify(args))
     }
+    // El cierre suelta la reserva de la línea por `ops done` (caso 538).
+    assert.ok(commands.some((one) => / done \S+ T-1 --fields /.test(one)), JSON.stringify(args))
     assert.doesNotMatch(prompts.map((one) => one.prompt).join('\n'), /pidió[^»]*«pagos»/,
       'el nombre de la línea se tomó por un pedido')
   }

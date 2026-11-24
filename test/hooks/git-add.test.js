@@ -1,10 +1,10 @@
 'use strict'
 
-// Cómo se lee un comando de git: dónde empieza una palabra, dónde termina un comando, y qué
-// parte de su texto es dato y no orden.
+// Qué frenan los guards de git y qué dejan pasar cuando el comando trae banderas, varios comandos encadenados
+// o texto entre comillas.
 
 const { tempRoot } = require('../support/environment')
-const { blocked, git, initRepo, repoPublicado } = require('../support/hooks-harness')
+const { blocked, git, initRepo, publishedRepo } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -20,16 +20,32 @@ test('guard-git-add exige stage explícito', () => {
   assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git add src/app.js' } }))
 })
 
-// El salto de línea separa comandos igual que `;`, `&` y `|`, y las siete reglas que acotan «dentro de
-// este comando» sólo excluían los tres primeros. Cualquier bandera de una línea posterior se leía como
-// parte del comando de arriba: `git commit -m "x"` seguido de `ls -a` se bloqueaba como si stageara al
-// commitear, y `git push origin main` seguido de `rm -f /tmp/x` como si fuera un force push — un mensaje
-// que además nombraba una violación que no estaba.
+// Un `cd` en una subcapa o en un `$(…)` que ya cerró no mueve al comando de después: tomarlo hacía que el `git add -A`
+// del repositorio de la sesión se leyera como de otro, y dejaba de frenar (regresión hallada al cerrar el caso 540).
+test('un cd en una subcapa cerrada no saca al git add del repositorio de la sesión', () => {
+  const root = tempRoot('cauce-git-add-subcapa-')
+  initRepo(root)
+  const other = tempRoot('cauce-git-add-otro-')
+  initRepo(other)
+  const saved = process.env.CLAUDE_PROJECT_DIR
+  process.env.CLAUDE_PROJECT_DIR = root
+  try {
+    for (const command of [`(cd ${other} && ls); git add -A`, `x=$(cd ${other} && pwd); git add -A`]) {
+      blocked('git-add', { cwd: root, tool_input: { command } }, /Stagea rutas explícitas/)
+    }
+  } finally {
+    if (saved === undefined) delete process.env.CLAUDE_PROJECT_DIR
+    else process.env.CLAUDE_PROJECT_DIR = saved
+  }
+})
+
+// Caso 067: `git commit -m "x"` seguido de `ls -a` en otra línea no es stagear al commitear. El porqué del
+// corte está en `SAME_COMMAND` de `engine/hooks/quoting.js`.
 //
 // Se mide en las dos direcciones a propósito. Sólo lo primero pasaría con las reglas apagadas, y sólo lo
 // segundo pasaría con el `[^;&|]` de antes: es el par lo que fija el corte donde va.
 test('un guard no cruza el salto de línea, que también separa comandos', () => {
-  const dosLineas = (primero, segundo) => ({ tool_input: { command: `${primero}\n${segundo}` } })
+  const twoLines = (first, second) => ({ tool_input: { command: `${first}\n${second}` } })
 
   // Sigue bloqueando lo que le toca, escrito en una sola línea.
   blocked('git-add', { tool_input: { command: 'git commit -am "x"' } }, /stagea al commitear/)
@@ -37,14 +53,14 @@ test('un guard no cruza el salto de línea, que también separa comandos', () =>
   blocked('dependencies', { tool_input: { command: 'npm install -g cosa' } }, /acción humana/)
 
   // Y deja pasar lo que vive en la línea de abajo y no es asunto suyo.
-  assert.doesNotThrow(() => execute('git-add', dosLineas('git commit -q -m "x"', 'set -a; . ./.env; set +a')))
-  assert.doesNotThrow(() => execute('git-add', dosLineas('git commit -m "x"', 'ls -a')))
-  assert.doesNotThrow(() => execute('git-add', dosLineas('git add uno.js', 'ls .')))
-  assert.doesNotThrow(() => execute('dependencies', dosLineas('npm install', 'grep -g x archivo')))
+  assert.doesNotThrow(() => execute('git-add', twoLines('git commit -q -m "x"', 'set -a; . ./.env; set +a')))
+  assert.doesNotThrow(() => execute('git-add', twoLines('git commit -m "x"', 'ls -a')))
+  assert.doesNotThrow(() => execute('git-add', twoLines('git add uno.js', 'ls .')))
+  assert.doesNotThrow(() => execute('dependencies', twoLines('npm install', 'grep -g x archivo')))
 
   // El push de la línea de arriba sigue frenado, pero por lo que de verdad es: publicar pide una acción
   // humana (R10). Lo que dejó de decir es que fuera un force push.
-  const push = dosLineas('git push origin main', 'rm -f /tmp/x.log')
+  const push = twoLines('git push origin main', 'rm -f /tmp/x.log')
   blocked('destructive', push, /requiere una acción humana/)
   assert.throws(() => execute('destructive', push), (error) => !/reescribe historia/.test(String(error)),
     'y ya no lo anuncia como una reescritura de historia publicada')
@@ -59,36 +75,33 @@ test('guard-governance bloquea commits con reglas staged', () => {
   blocked('governance', { cwd: root, tool_input: { command: 'git commit -m test' } }, /gobernanza protegida/)
 })
 
-// El salto de línea no terminaba una lista de argumentos, así que el destino de un `cp` se leía de la
-// línea de abajo y el bloqueo nombraba una ruta que no estaba en el comando. Se asercia **qué destino
-// lee**, no si pasa: con la clase vieja la variante sin heredoc también leía mal y pasaba igual, porque
-// el último token era la marca de lo entrecomillado. `writeTargets` cuenta por qué el heredoc no era la
-// causa.
+// Un comando seguido de otra línea, con heredoc y sin él; el defecto, sobre EVERY_ARG en `shell-writes.js`.
+// Se asercia **qué destino lee**, no si pasa: con la clase vieja la variante sin heredoc pasaba igual.
 test('el salto de línea termina la lista de argumentos de un comando', () => {
   const root = tempRoot('ops-hook-salto-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.mkdirSync(path.join(root, 'api'))
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ workspaceRoots: [{ name: 'api', path: 'api' }] }))
-  const entrada = (command) => ({ cwd: root, tool_input: { command } })
-  const afuera = path.join(os.homedir(), 'afuera', 'x')
+  const entry = (command) => ({ cwd: root, tool_input: { command } })
+  const outside = path.join(os.homedir(), 'afuera', 'x')
 
   // Las dos formas de segunda línea, con heredoc y sin él, contra las tres familias que leen argumentos:
   // la que toma el último (`cp`), la que toma todos (`tee`) y la que exige `-i` (`sed`). Cambiar una
   // sola y probar una sola deja las otras dos leyendo la línea de abajo.
   // El intérprete va con ruta absoluta a propósito: si el token de la segunda línea resolviera adentro
   // de la raíz, leerlo mal no bloquearía y el caso pasaría con el defecto puesto.
-  for (const segunda of ["/usr/bin/python3 - <<'PY'\nprint(1)\nPY", '/usr/bin/python3 -c "print(1)"']) {
-    for (const primera of ['cp /etc/hostname api/h', 'printf x | tee api/log', "sed -i 's/a/b/' api/f"]) {
-      assert.doesNotThrow(() => execute('shell-boundary', entrada(`${primera}\n${segunda}`)),
-        `acusó una escritura que no está en el comando: ${primera}`)
+  for (const second of ["/usr/bin/python3 - <<'PY'\nprint(1)\nPY", '/usr/bin/python3 -c "print(1)"']) {
+    for (const first of ['cp /etc/hostname api/h', 'printf x | tee api/log', "sed -i 's/a/b/' api/f"]) {
+      assert.doesNotThrow(() => execute('shell-boundary', entry(`${first}\n${second}`)),
+        `acusó una escritura que no está en el comando: ${first}`)
     }
   }
 
   // Y la dirección contraria, que es la que se rompe si uno corta de más: un destino real de la primera
   // línea se sigue viendo aunque haya otra línea debajo.
-  blocked('shell-boundary', entrada(`cp /etc/hostname ${afuera}\npython3 -c "print(1)"`), /fuera de las raíces/)
-  blocked('shell-boundary', entrada(`echo hola\ncp /etc/hostname ${afuera}`), /fuera de las raíces/)
+  blocked('shell-boundary', entry(`cp /etc/hostname ${outside}\npython3 -c "print(1)"`), /fuera de las raíces/)
+  blocked('shell-boundary', entry(`echo hola\ncp /etc/hostname ${outside}`), /fuera de las raíces/)
 })
 
 // Se cruzan todas las reglas contra todas las formas, y no una contra una, porque lo que falló no fue
@@ -112,22 +125,21 @@ test('una opción global de git no desactiva la regla que mira el subcomando', (
     ['destructive', 'git push origin main --force', /reescribe historia ya publicada/],
     ['destructive', 'git push origin main', /publica cambios/],
     ['destructive', 'git reset --hard HEAD', /destruye cambios locales/],
-    // El amend se mide sobre historia publicada, que es donde la regla aplica: sin publicar no hay
-    // bloqueo que las opciones globales puedan desactivar. Por qué, junto a la regla en `shell.js`.
-    ['destructive', 'git commit --amend -m x', /publicad/, repoPublicado('ops-amend-globals-')],
+    // El amend va sobre historia publicada: sin ella no hay bloqueo que las opciones globales desactiven.
+    ['destructive', 'git commit --amend -m x', /publicad/, publishedRepo('ops-amend-globals-')],
     ['destructive', 'git clean -fd', /sin seguimiento/],
     ['destructive', 'git checkout -- .', /no sólo lo que estás mirando/],
   ]
-  for (const [guard, command, motivo, cwd] of rules) {
+  for (const [guard, command, reason, cwd] of rules) {
     for (const form of forms(command)) {
-      blocked(guard, { ...(cwd ? { cwd } : {}), tool_input: { command: form } }, motivo)
+      blocked(guard, { ...(cwd ? { cwd } : {}), tool_input: { command: form } }, reason)
     }
   }
 })
 
 // La contracara, que es la que evita que el arreglo se cumpla bloqueando de más: sacar las opciones
 // globales no puede convertir en prohibido lo que no lo era, y `-C` después del subcomando es otra
-// cosa —`git commit -C <commit>` reusa el mensaje de otro commit— que no se toca.
+// cosa (ver `engine/hooks/git-globals.js`) que no se toca.
 test('sacar las opciones globales no inventa un bloqueo', () => {
   for (const fine of [
     'git -C /tmp status --short',
@@ -141,13 +153,8 @@ test('sacar las opciones globales no inventa un bloqueo', () => {
   }
 })
 
-// `git commit -a` stagea al commitear, o sea **después** de este hook, y `git add … && git commit` lo
-// stagea dentro del mismo comando: en los dos casos los guards que juzgan mirando el índice leen el de
-// antes y concluyen que no hay nada que revisar. No fallan, dejan pasar.
-//
-// Se separan porque las razones son distintas y viven en lugares distintos. `-a` viola R8 por escrito
-// —stagear rutas explícitas— y por eso lo frena el guard de esa regla; encadenar `add` y `commit` no
-// viola ninguna, sólo rompe el momento en que se pregunta, y lo frena quien lee el índice.
+// Cada ortografía de `commit -a`, también con la bandera después del mensaje. Por qué la frena `git-add` y
+// no el guard que lee el índice está en `engine/hooks/input.js`.
 test('git-add frena `commit -a`, que es stagear todo con otra ortografía', () => {
   for (const command of ['git commit -a -m sonda', 'git commit -am sonda', 'git commit --all -m sonda',
     'git -C . commit -am sonda', 'git commit -v -a -m sonda', 'git commit -aF m',

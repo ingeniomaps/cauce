@@ -415,6 +415,10 @@ const MESSAGE_OF = (id) => ` Si escribís el mensaje en un archivo, hacelo con e
 // rama de la anterior: en una corrida real dos tareas terminaron en una rama con el nombre de la primera, y
 // hubo que abrirlas en un solo PR (caso 307). Una rama que la persona eligió y no es de ninguna tarea se
 // respeta como antes.
+// Qué ramas son vivas, como las cuenta `live-commit`: las de siempre más las que el proyecto declara en
+// `runner.liveBranches` (caso 533).
+const LIVE = () => [...new Set(['main', 'master', ...(contract.liveBranches || [])])].join(', ')
+  + ' o la rama por defecto del remoto'
 const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
   ? ` El repositorio es el árbol de la línea ${tree.line}, ${tree.path}, en la rama ${tree.branch}: commiteá ahí y `
     + 'en esa rama, sin cortar otra ni renombrarla. El árbol no se saca: es de la línea y sigue después de esta '
@@ -426,8 +430,8 @@ const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
     + `\`git -C ${tree.repo} worktree remove ${tree.path}\`: la rama queda.`
   : contract.commitToLiveBranch
   ? ' Commiteá en la rama en la que esté el repositorio.'
-  : ' Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —main, master o la rama por '
-    + 'defecto del remoto— no commitees ahí ni lo consultes: cortá una con `git switch -c <tipo>/' + slug
+  : ` Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —${LIVE()}— no commitees ahí ni `
+    + 'lo consultes: cortá una con `git switch -c <tipo>/' + slug
     + '`, donde tipo es el del Conventional Commit, que se lleva los cambios sin commitear; si esa rama ya '
     + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa, salvo que '
     + `sea la rama de otra tarea: ${earlier.length ? `las que esta corrida ya usó —${earlier.join(', ')}—, o ` : ''}`
@@ -439,8 +443,8 @@ const BRANCHED = (slug, tree, earlier = []) => (tree && tree.line
 // se acumula con un PR abierto, así que antes de cortar una se busca la que ya exista.
 const PLANNING_BRANCH = () => (contract.commitToLiveBranch
   ? ' Commiteá en la rama en la que esté ese repositorio.'
-  : ' Antes de stagear mirá en qué rama está. Si es una rama viva —main, master o la rama por defecto del '
-    + 'remoto— no commitees ahí ni lo consultes: pasate a la rama de trabajo de planning que ya exista —la '
+  : ` Antes de stagear mirá en qué rama está. Si es una rama viva —${LIVE()}— no commitees ahí ni lo consultes: `
+    + 'pasate a la rama de trabajo de planning que ya exista —la '
     + 'que ya lleva commits de estado de planning sin mergear— y si no hay ninguna cortá `work/planning`. '
     + 'Es una sola rama que se acumula, nunca una por tarea. Si ya está en una rama que no es viva, '
     + 'commiteá en ésa.' + LINE_INSTANCE())
@@ -521,6 +525,7 @@ const CONTRACT = {
     gates: { type: 'array', items: { type: 'string' } },
     maxTaskHours: { type: 'number' }, commitPerTask: { type: 'boolean' },
     commitToLiveBranch: { type: 'boolean' },
+    liveBranches: { type: 'array', items: { type: 'string' } },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
     // Qué archivos de un runner quedaron atrás del motor instalado; por qué importa, donde se lee.
@@ -534,16 +539,29 @@ const CONTRACT = {
     reviewExempt: { type: 'array', items: { type: 'string' } },
   },
 }
-// La lista de archivos de un diff, que devuelve un clerk; para qué, donde se pide.
+// La lista de archivos de un diff, que devuelve un clerk; para qué, donde se pide. `ran` separa «no hay nada» de «no
+// pude mirar»: sin él, un comando denegado volvía como una lista vacía y el cruce de Review no pedía nada (caso 552).
 const DIFFED = {
-  type: 'object', additionalProperties: false, required: ['files'],
-  properties: { files: { type: 'array', items: { type: 'string' } } },
+  type: 'object', additionalProperties: false, required: ['ran', 'files'],
+  properties: {
+    ran: { type: 'boolean' }, why: { type: 'string' }, files: { type: 'array', items: { type: 'string' } },
+  },
+}
+// Lo que la transcripción de quien revisó muestra leído, contra lo que declaró en `opened` (caso 549). Por ahora sólo
+// se anota en el hecho: frenar por esto se decide con los números de las corridas reales.
+const REVIEW_READ = {
+  type: 'object', additionalProperties: false, required: ['found', 'unread'],
+  properties: {
+    found: { type: 'boolean' }, why: { type: 'string' }, unread: { type: 'array', items: { type: 'string' } },
+  },
 }
 // El pedido de archivos del diff, igual para la foto de antes de Build y para lo que juzga Review: si los dos se
 // pidieran distinto, la resta compararía listas escritas de dos formas.
-const DIFF_FILES = (what, how) => `Listá ${what}. ${how}. Devolvé en files cada ruta relativa a la raíz de ese `
-  + 'repositorio, una vez cada una, sin comillas: de un renombre, sólo la ruta nueva; un archivo borrado no va. '
-  + 'No abras ningún archivo ni corras otra cosa.'
+const DIFF_FILES = (what, how) => `Listá ${what}. ${how}, con git -C <raíz del repositorio> y no con cd. Devolvé en `
+  + 'files cada ruta relativa a la raíz de ese repositorio, una vez cada una, sin comillas: de un renombre, sólo la '
+  + 'ruta nueva; un archivo borrado no va. ran es true sólo si el comando corrió y files es su salida; si no corrió '
+  + '—denegado, error, repositorio que no está—, ran es false, files va vacío y en why va qué pasó. No abras ningún '
+  + 'archivo ni corras otra cosa.'
 // Un glob de `reviewExempt` a expresión: `**` cruza carpetas, `*` y `?` no. El recorrido no tiene `require`, así que
 // `path.matchesGlob` no está a mano.
 const globbed = (pattern) => new RegExp(`^${String(pattern).trim().replace(/\/$/, '/**')
@@ -1508,7 +1526,7 @@ while (rounds++ < MAX_TASKS) {
         // lugar donde eso se dice es la épica: ahí es donde la unidad vivía. En `done/` no va —su README
         // declara que es la evidencia de lo que una tarea **entregó**, y una partida no entregó nada—
         // (caso 169).
-        const historias = task.epic
+        const storyNote = task.epic
           ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
             + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
           : ''
@@ -1518,7 +1536,7 @@ while (rounds++ < MAX_TASKS) {
         // paralelas, esperar a una sola lo dejaría arrancar antes.
         await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
           `independiente: ${JSON.stringify(estimate.subtasks)}. Cada subtarea lleva un slug nuevo, distinto de ` +
-          `${task.id}: las partes son unidades nuevas y la partida deja de existir.${historias} ` +
+          `${task.id}: las partes son unidades nuevas y la partida deja de existir.${storyNote} ` +
           'Y toda tarea de la cola —en ' +
           `${QUEUE}— que declare (depende: …) nombrando a ${task.id} pasa a depender de todas las subtareas ` +
           'nuevas, con los demás slugs que ya declaraba.', { label: 'split' })
@@ -1973,10 +1991,16 @@ while (rounds++ < MAX_TASKS) {
         + `bajo ${P}`)
       + WHERE, { schema: DIFFED, label: 'review-diff' })
     if (!diffed) return halt('agent-unavailable', 'la lista de archivos del diff no devolvió resultado')
+    if (diffed.ran !== true) {
+      return halt('agent-unavailable', 'la lista de archivos del diff no se pudo sacar '
+        + `(${diffed.why || 'sin motivo'}), y sin ella Review no tiene contra qué cruzar lo que abrió quien revisa`)
+    }
     const exempt = (contract.reviewExempt || []).map(globbed)
     const clean = (one) => String(one).trim().replace(/,$/, '').replace(/(?::\d+(?:[-:]\d+)*|#L\d+(?:-L?\d+)?)$/, '')
       .replace(/^["'`]+|["'`]+$/g, '').replace(/(?::\d+(?:[-:]\d+)*|#L\d+(?:-L?\d+)?)$/, '').replace(/^\.\//, '')
-    const earlier = new Set(((handed && handed.hash) || !before ? [] : before.files).map(clean))
+    // Una foto de antes que no se pudo sacar deja todo como del diff, que es pedir de más y no de menos.
+    if (before && before.ran !== true) log(`la foto de antes de Build no se pudo sacar (${before.why || 'sin motivo'})`)
+    const earlier = new Set(((handed && handed.hash) || !before || before.ran !== true ? [] : before.files).map(clean))
     const required = [...new Set(diffed.files.map(clean))]
       .filter((file) => file && !earlier.has(file) && !exempt.some((pattern) => pattern.test(file)))
     const unopened = (verdict) => required.filter((file) => !(verdict.opened || []).map(clean).includes(file))
@@ -2173,11 +2197,21 @@ while (rounds++ < MAX_TASKS) {
     // cerrar ya no existe (caso 277).
     const seated = (one) => [tree && tree.work, tree && tree.path]
       .reduce((out, from) => (from ? out.split(from).join(declared) : out), one)
+    const contrasted = required.length ? await clerk(`Corré "node tools/ops.js review-read <raíz del repositorio git `
+      + `dueño de ${task.service}> --files ${required.join(',')}" desde ${ROOT} y copiá found, why y unread de lo que `
+      + 'imprima, también si sale con 1. No abras ningún archivo ni corras otra cosa.' + WHERE,
+    { schema: REVIEW_READ, label: 'review-read' }) : null
     reviewFact = `${review.verdict} por ${cast.review}, sobre `
       + review.consulted.map((one) => local(seated(one))).join(', ')
       + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
       + (decided.length > filed.length ? ` · ${decided.length - filed.length} decisión(es) sin volcar` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
+    if (required.length) {
+      reviewFact += !contrasted ? ' · opened declarado, no comprobado (el contraste no devolvió resultado)'
+        : !contrasted.found ? ` · opened declarado, no comprobado (${contrasted.why || 'sin transcripción'})`
+          : contrasted.unread.length ? ` · la transcripción no muestra leídos: ${contrasted.unread.join(', ')}`
+            : ' · la transcripción muestra leído todo el diff'
+    }
     // Qué superficie crítica tocó, dicho siempre: «no toca ninguna» también es lo que se miró. Y si la tabla
     // está sin declarar se dice acá, que es lo que llega a `done/`, en vez de suponer que no hay ninguna.
     reviewFact += review.critical ? ` · toca la superficie crítica ${review.critical}`
@@ -2483,20 +2517,35 @@ while (rounds++ < MAX_TASKS) {
   // La crítica corrió acá, o el carril no la corre, y entonces es un hecho. Si la corrió la sesión que construyó, está
   // en el WIP, y eso va como pedido aparte: entre los hechos, que se copian textuales, se lee como el valor a copiar.
   const critiqueFact = critiqued || (lite || mechanical ? `n/a — el carril ${lane} no corre Critique` : '')
-  // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
+  // `review` y `critique` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
   // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
   // las traía (caso 211).
+  //
+  // El agente escribe lo que juzga y `ops done` hace el resto: la cola, el hito, la épica, el WIP en IDLE, la reserva
+  // y `check --closed`, validando la entrada entera antes de escribir nada. Esa mecánica estaba acá en prosa,
+  // implementada otra vez, y ya había divergido del comando (caso 538).
+  // Con el nombre de la sesión: el temporal del sistema es de todas, y en una corrida real el agente encontró el
+  // archivo que otra instancia había dejado para la misma tarea, y lo leyó antes de pisarlo (caso 538).
+  const fieldsFile = `done-${String(planning.wipFile || '').replace(/^wip\/|\.md$/g, '') || 'sesion'}-${task.id}.md`
   await scribe(settled(
-    `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
-    `fecha: ${planning.today}, done, qa, tests, commit, lane, review y critique, en el formato de entrada que ` +
-    `trae este preámbulo—; ` +
-    `sacala junto con sus notas indentadas de ${queueFile()} —si es un archivo de ${P}/backlog/ y su hito queda ` +
-    'sin tareas, borrá ese archivo—; cerrá su épica sólo si no queda ' +
-    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE —una línea «status: IDLE» en su ` +
-    // Dicho con su forma: sin eso quien cierra la buscaba en el fuente del motor, una llamada por tarea.
-    `frontmatter es lo que lee el motor—; y soltá la reserva corriendo ` +
-    `"node tools/ops.js release ${P} ${task.id}${ON_LINE}". lane, review y critique van textuales, copiados de ` +
-    `estos hechos sin ` +
+    `Cerrá ${task.id} de forma atómica con ops done. Primero escribí, con la herramienta de archivos y en el ` +
+    `temporal —el de esta sesión si tenés uno, si no el del sistema; si ya existe de otra corrida, reemplazalo ` +
+    `entero—, un archivo ${fieldsFile} con lo que juzgás del cierre: cada campo en una sola línea «campo: valor», ` +
+    'con las trazas de tests y las entradas de decisions separadas por «; ». Los campos son ' +
+    'done, qa, tests, commit, review y critique, más decisions si corresponde; acept, fecha y lane no van, porque ' +
+    `ops done los saca del disco. Después corré "cd ${ROOT} && node tools/ops.js done ${P} ${task.id} --fields <ruta ` +
+    `de ${fieldsFile}>${ON_LINE}", tal cual y en un solo comando: escribe ${doneFile(task.id)}, saca la tarea de ` +
+    `la cola, cierra el hito y la épica si corresponde, deja ${P}/${planning.wipFile} en status IDLE, suelta la ` +
+    'reserva y ' +
+    // El WIP que deja en IDLE es el de quien lo corre, y quién es sale de la carpeta: corrido desde otra, en una
+    // corrida real cerró la tarea y dejó el WIP de esta sesión apuntándola, como de otra (caso 538).
+    `corre check --closed. Si dice que ${planning.wipFile} es de otra sesión, lo corriste desde otra carpeta: volvé ` +
+    `a correrlo desde ${ROOT}, que no reescribe la entrada y deja ese WIP en IDLE. Si dice «No se ` +
+    'escribió nada», corregí el campo que nombra, sin cambiar los hechos, y volvé a correrlo; si escribió y el ' +
+    'check del final queda en rojo, no toques la entrada y decí qué marcó, que lo mira el cierre de la corrida; si ' +
+    'se niega por otra razón —la tarea es de otra línea, o hay una entrada que no la cierra—, no lo fuerces y ' +
+    'decilo; si sale con 2, el comando quedó mal armado: revisá la tarea y la ruta de --fields. ' +
+    'review y critique van textuales, copiados de estos hechos sin ' +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
     // `done` y `qa` no van textuales, y hay que decirlo: lo que llega se escribió con la tarea abierta. Sin
     // decirlo dependía de que quien escribe lo acomodara por su cuenta, y cuando en 0.103.4 cambió quién
@@ -2512,7 +2561,7 @@ while (rounds++ < MAX_TASKS) {
       + 'tiene, n/a — no quedó registrada. ') +
     (buildNotes.length ? 'Cada entrada de notas-de-build va en decisions, con [supuesto: …]. ' : '') +
     `En decisions no nombres una fase ni un cargo ` +
-    `que no figure en estos hechos. Hechos: lane=${lane}; ` +
+    `que no figure en estos hechos. Hechos: ` +
     `review=${reviewFact}; ${critiqueFact ? `critique=${critiqueFact}; ` : ''}fases=${ran.join(' → ')}; ` +
     `build=${buildFact}; ` +
     (buildNotes.length ? `notas-de-build=${JSON.stringify(buildNotes)}; ` : '') +
@@ -2533,11 +2582,8 @@ while (rounds++ < MAX_TASKS) {
     `aclaración—` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
     (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '. ' +
-    // La entrada se valida antes de commitearla. Sin esto el formato lo descubría `closing`, con la entrada
-    // ya commiteada: una traza escrita «A (condición) → prueba» dejó `check` en rojo y un arreglo suelto.
     'Cada traza de tests empieza con «A →» o «C<n> →» y sigue con la prueba; la condición, si la nombrás, va ' +
-    `después. Al terminar corré "node tools/ops.js check ${P}" desde ${ROOT}: si marca esta entrada, corregí ` +
-    'el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo. Si marca la entrada de otra ' +
+    'después. Si ops done marca la entrada de otra ' +
     // En una corrida real quien cerraba una tarea «arregló» la entrada de otra y le sacó una condición de la
     // traza: evidencia ajena editada de paso, y commiteada con el cierre de la propia (caso 310).
     'tarea, no la toques: es evidencia que no escribiste, y la mira el cierre de la corrida.'),
@@ -2610,9 +2656,11 @@ const CHECKED = {
         tasks: { type: 'array', items: { type: 'string' } }, reopened: { type: 'boolean' } } } },
   },
 }
-const checkedBy = `Corré "node tools/ops.js check ${P} --json" desde ${ROOT} y copiá de su salida ok, errors y `
-  + 'warnings tal cual, sin resumir ni reordenar. Que salga con un código distinto de 0 no es una falla tuya: es '
-  + 'lo que hay que devolver.'
+// `--closed` le dice a check qué cerró esta corrida (caso 463).
+const closedFlag = completed.length ? ` --closed ${completed.join(',')}` : ''
+const checkedBy = `Corré "node tools/ops.js check ${P} --json${closedFlag}" desde ${ROOT} y copiá de su salida ok, `
+  + 'errors y warnings tal cual, sin resumir ni reordenar. Que salga con un código distinto de 0 no es una falla tuya: '
+  + 'es lo que hay que devolver.'
 const readCheck = () => clerk(
   `${checkedBy} No arregles nada. Después corré "node tools/ops.js lessons ${P} --json" y copiá su campo ` +
   'proposals tal cual en lessons, vacío si no hay.',
@@ -2626,8 +2674,8 @@ const failures = (verdict) => (verdict.errors || []).join(' | ') || 'check sali�
 if (!closing.ok) {
   const broken = failures(closing)
   const repaired = await write(
-    `"node tools/ops.js check ${P}" salió en rojo al cerrar la corrida, con estos errores: ${broken}. Reparás ` +
-    'sólo estado derivado determinista —un formato, un campo que se deduce de otro, una referencia que quedó ' +
+    `"node tools/ops.js check ${P}${closedFlag}" salió en rojo al cerrar la corrida, con estos errores: ${broken}. ` +
+    'Reparás sólo estado derivado determinista —un formato, un campo que se deduce de otro, una referencia que quedó ' +
     'vieja—; nunca reescribas aceptación, evidencia ni decisiones para forzar el verde, y si un error pide eso ' +
     'lo dejás como está. En fixed, cada archivo que tocaste; vacío si ninguno.',
     { label: 'closing-repair', schema: {
@@ -2649,8 +2697,8 @@ if (!closing.ok) {
     const noted = await registerHuman(
       `Registrá en ${HUMAN} una fila: al cerrar la corrida` +
       `${currentMilestone ? ` del hito ${currentMilestone}` : ''}, ` +
-      `"node tools/ops.js check ${P}" quedó en rojo y repararlo pedía algo que no es estado derivado. Los ` +
-      `errores, textuales: ${left}. El task es autobuild, nunca una tarea: esto no frena ninguna en ` +
+      `"node tools/ops.js check ${P}${closedFlag}" quedó en rojo y repararlo pedía algo que no es estado derivado. ` +
+      `Los errores, textuales: ${left}. El task es autobuild, nunca una tarea: esto no frena ninguna en ` +
       'particular. Decí qué lo cierra —quien pueda aportar lo que falta, o decidir qué se hace con la entrada— ' +
       'sin inventar responsables ni fechas.',
       'closing-human',

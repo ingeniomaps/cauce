@@ -46,7 +46,7 @@ test('las reglas vigentes son las propias y las del sistema que el proyecto no s
 // adopta Cauce sobre su propio proceso, y el override es por nombre de archivo: se llevaba puesto el
 // archivo entero. R16, R20, R21 y R22 —lo que cuesta una corrida, cuándo una medición vale, cómo se
 // retoma, qué no se toca mientras se mide— dejaban de llegarle a todo agente sin que nadie lo decidiera.
-// Una instancia real las declaró «adoptadas por referencia» en una tabla de prosa que el motor no lee, y
+// Una instancia real las declaró «adoptadas por referencia» en una tabla que el motor no lee, y
 // dos de ellas no estaban rigiendo el día que le costaron una sesión (caso 160).
 //
 // Por eso viven en `runs.md`: la prueba no es que el override ande —eso ya se mide arriba— sino que el
@@ -56,13 +56,13 @@ test('sobrescribir el proceso propio no se lleva puesto lo que cuesta una corrid
   fs.writeFileSync(path.join(target, 'planning', 'rules', 'process.md'),
     '# Proceso (propio)\n\n## R1 — Pensar antes de codear\n\nLa versión de la empresa.\n')
 
-  const vigentes = O.effectiveRules(target)
-  assert.equal(vigentes.includes('planning/rules/system/process.md'), false, 'el override rige')
-  assert.ok(vigentes.includes('planning/rules/system/runs.md'), `se perdió runs.md: ${vigentes.join(', ')}`)
+  const current = O.effectiveRules(target)
+  assert.equal(current.includes('planning/rules/system/process.md'), false, 'el override rige')
+  assert.ok(current.includes('planning/rules/system/runs.md'), `se perdió runs.md: ${current.join(', ')}`)
 
   // Y llegan de verdad, no sólo en la lista: es el texto lo que un agente lee.
-  const texto = read(path.join(target, 'planning', 'rules', 'system', 'runs.md'))
-  for (const id of ['R16', 'R20', 'R21', 'R22']) assert.match(texto, new RegExp(`^## ${id} — `, 'm'), id)
+  const text = read(path.join(target, 'planning', 'rules', 'system', 'runs.md'))
+  for (const id of ['R16', 'R20', 'R21', 'R22']) assert.match(text, new RegExp(`^## ${id} — `, 'm'), id)
 })
 
 test('cada runner instala las reglas vigentes y ninguna que el proyecto retiró', () => {
@@ -180,9 +180,9 @@ test('una regla que declara su superficie se nombra sin cargarse, y una sin decl
   assert.match(text, /^@ops\/planning\/rules\/security\.md$/m, 'sin `aplica:` se carga como siempre')
 
   // 4. `context` las devuelve las dos: es por donde el recorrido arma qué reglas rigen.
-  const { rules: rigen } = JSON.parse(runCli(['context', path.join(target, 'planning'), '--json']).stdout)
-  assert.ok(rigen.includes('planning/rules/pagos.md'), 'la condicional sigue rigiendo')
-  assert.ok(rigen.includes('planning/rules/security.md'))
+  const { rules: apply } = JSON.parse(runCli(['context', path.join(target, 'planning'), '--json']).stdout)
+  assert.ok(apply.includes('planning/rules/pagos.md'), 'la condicional sigue rigiendo')
+  assert.ok(apply.includes('planning/rules/security.md'))
 
   // 5. Y el aviso de deriva calla, que es lo que evita que una instancia con una regla condicional pida
   // reinstalar para siempre. Lo sostiene `listed`, que lee del bloque tanto los imports como las líneas
@@ -193,8 +193,7 @@ test('una regla que declara su superficie se nombra sin cargarse, y una sin decl
     'doctor no reporta como faltante la que a propósito no se carga')
 })
 
-// Escribir una regla propia encarece todas las corridas futuras de todos los agentes, y hasta acá eso no
-// lo decía nadie: había que sumar los tamaños a mano después de una corrida cara (caso 141). Las dos
+// Por qué se dice lo que pesa una regla propia, en `engine/automation/index.js` (caso 141). Las dos
 // mitades de decirlo son distintas — `install` lo declara cuando se elige, `check` avisa cuando ya pesa—
 // y las dos cuentan lo mismo: lo que el bloque **carga**. Una regla con `aplica:` no suma, porque si
 // sumara declararla no serviría de nada.
@@ -208,8 +207,8 @@ const heavyRule = (n) => `# Propia ${n}\n\n## P${n} — Regla de la empresa\n\n$
 
 test('install declara lo que el bloque de reglas va a pesar en cada agente', () => {
   const { target, runCli } = installedProject('cauce-rules-peso-')
-  const salida = runCli(['automation', 'install', target, 'claude'])
-  assert.equal(salida.status, 0, salida.stderr)
+  const output = runCli(['automation', 'install', target, 'claude'])
+  assert.equal(output.status, 0, output.stderr)
   // En bytes y no en tokens: los bytes los mide el motor, y la equivalencia en tokens depende del
   // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
   // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB del total se mueven cuando el
@@ -221,15 +220,17 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // nombrar en vez de cargar la doctrina de cómo se prueba, R29 (caso 440), 45,9 al llevar al README el relato de
   // los incidentes (caso 441), 46,3 al devolverle a R9 las tres exigencias de R29 que no admiten excepción, 45,6
   // al llevar también el relato de `process.md` (caso 443), 45,7 al sumarle a R9 el antes y el después de cambiar
-  // quién hace algo, y 45,9 al sumarle que una confirmación que estorba está cuidando algo— y la ventana se deja
+  // quién hace algo, 45,9 al sumarle que una confirmación que estorba está cuidando algo, 46,0 al decir en R10
+  // que la API de GitHub y el destino de un PR también se comprueban (casos 539 y 540), y 46,3 al decir en R12
+  // dónde se frena lo que se escribe por MCP (caso 541)— y la ventana se deja
   // angosta a propósito: que esta prueba falle en cada edición de una regla **es** la función, y es lo único que
   // obliga a medir lo que cada agente paga antes de moverla.
   //
   // Y las propias son 0,0 acá, que es la propiedad que compra medir lo propio: una instancia recién
   // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
   // aritmética que había que recalcular; ahora es una invariante y por eso se asercia.
-  assert.match(salida.stdout,
-    /claude: el bloque de reglas carga 5 archivo\(s\), 45\.\d KB en cada agente \(0\.0 KB propias\)/,
+  assert.match(output.stdout,
+    /claude: el bloque de reglas carga 5 archivo\(s\), 46\.\d KB en cada agente \(0\.0 KB propias\)/,
     'declara cuántas, cuánto pesan y cuánto de eso puso el proyecto')
 })
 
@@ -301,12 +302,12 @@ test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia 
   const rules = path.join(target, 'planning', 'rules')
   for (const n of [1, 2]) fs.writeFileSync(path.join(rules, `P${n}-propia.md`), heavyRule(n))
   assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
-  const avisa = runCli(['check', planning])
-  assert.equal(avisa.status, 0, 'avisa y no frena: la instancia sigue siendo válida')
-  assert.match(avisa.stderr,
+  const warns = runCli(['check', planning])
+  assert.equal(warns.status, 0, 'avisa y no frena: la instancia sigue siendo válida')
+  assert.match(warns.stderr,
     /el bloque de reglas carga 7 archivo\(s\), \d+\.\d KB en cada agente \(6[6-9]\.\d KB propias\)/,
     'dice cuánto pesa en total y cuánto de eso es del proyecto, que es lo que cruzó')
-  assert.match(avisa.stderr, /P1-propia\.md/, 'y nombra las más grandes, que es lo accionable')
+  assert.match(warns.stderr, /P1-propia\.md/, 'y nombra las más grandes, que es lo accionable')
 
   // La mitad de ausencia: el piso del toolkit **no** cuenta para el umbral. Tiene que medirse con una
   // sola regla propia y no con cero, y la diferencia es lo único que la vuelve una prueba: con cero, el
@@ -314,8 +315,8 @@ test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia 
   // propio son 33 KB y el total ~84: el que mide lo propio calla y el que mide el total avisa.
   fs.rmSync(path.join(rules, 'P2-propia.md'))
   assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
-  const sola = runCli(['check', planning])
-  assert.doesNotMatch(sola.stderr, /bloque de reglas/,
+  const alone = runCli(['check', planning])
+  assert.doesNotMatch(alone.stderr, /bloque de reglas/,
     'una sola regla propia no cruza, aunque con el piso del sistema el total sí')
   fs.writeFileSync(path.join(rules, 'P2-propia.md'), heavyRule(2))
   assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)

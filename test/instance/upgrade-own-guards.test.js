@@ -45,17 +45,17 @@ test('upgrade no pisa un guard propio cuando el paquete empieza a traer su nombr
   const chat = path.join(hooks, 'guard-chat.sh')
   const shipped = fs.readFileSync(chat, 'utf8')
   // Sin huella: así queda el guard de la empresa que ya existía antes de que el paquete trajera el nombre.
-  const sinHuella = () => {
+  const withoutFootprint = () => {
     const files = M.read(target)
     delete files[key('guard-chat.sh')]
     M.write(target, files)
   }
-  sinHuella()
+  withoutFootprint()
   fs.writeFileSync(chat, '#!/usr/bin/env bash\n# guard-chat de ACME\n')
 
-  const conservado = run(['upgrade', target])
-  assert.equal(conservado.status, 0, conservado.stderr)
-  assert.match(conservado.stdout,
+  const kept = run(['upgrade', target])
+  assert.equal(kept.status, 0, kept.stderr)
+  assert.match(kept.stdout,
     /conservado automatization\/hooks\/guard-chat\.sh: ya existía y Cauce no lo entregó/)
   assert.match(fs.readFileSync(chat, 'utf8'), /guard-chat de ACME/)
   assert.match(run(['upgrade', target]).stdout, /conservado automatization\/hooks\/guard-chat\.sh/, 'y en la siguiente')
@@ -66,12 +66,12 @@ test('upgrade no pisa un guard propio cuando el paquete empieza a traer su nombr
   assert.match(auto.stderr, /guard-chat\.sh: es tuyo y se llama como uno que trae el paquete/)
   assert.doesNotMatch(auto.stderr, /guard-chat\.sh: quedó atrás/)
 
-  const reemplazado = run(['upgrade', target, '--force'])
-  assert.match(reemplazado.stdout, /reemplazado automatization\/hooks\/guard-chat\.sh/)
+  const replaced = run(['upgrade', target, '--force'])
+  assert.match(replaced.stdout, /reemplazado automatization\/hooks\/guard-chat\.sh/)
   assert.equal(fs.readFileSync(chat, 'utf8'), shipped, 'y lo que dice es lo que quedó en disco')
 
   // Sin huella pero idéntico al del paquete no es un choque: se registra en silencio.
-  sinHuella()
+  withoutFootprint()
   assert.doesNotMatch(run(['upgrade', target]).stdout, /guard-chat/)
   assert.ok(M.read(target)[key('guard-chat.sh')])
 
@@ -82,8 +82,8 @@ test('upgrade no pisa un guard propio cuando el paquete empieza a traer su nombr
   for (const name of Object.keys(files)) if (name.startsWith('automatization/hooks/')) delete files[name]
   M.write(target, files)
   fs.writeFileSync(chat, '#!/usr/bin/env bash\n# viejo\n')
-  const sinRegistro = run(['upgrade', target])
-  assert.match(sinRegistro.stdout, /conservado automatization\/hooks\/guard-chat\.sh: ya existía/)
+  const withoutRecord = run(['upgrade', target])
+  assert.match(withoutRecord.stdout, /conservado automatization\/hooks\/guard-chat\.sh: ya existía/)
   assert.match(fs.readFileSync(chat, 'utf8'), /# viejo/, 'lo propio sobrevive al primer upgrade')
 })
 

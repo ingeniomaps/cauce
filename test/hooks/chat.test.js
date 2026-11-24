@@ -2,7 +2,7 @@
 
 // Lo que la persona concede hablando: qué nombró, qué negó y hasta cuándo vale.
 
-const { blocked, chatSession, messageOf, planFirstRoot, WIP_IDLE, WIP_CON_PLAN } = require('../support/hooks-harness')
+const { blocked, chatSession, messageOf, planFirstRoot, WIP_IDLE, WIP_WITH_PLAN } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -13,7 +13,7 @@ const { execute, executeAll, guards } = require('../../engine/hooks/run')
 const { DIR, authorized } = require('../../engine/hooks/chat')
 
 test('lo que la persona nombró en el chat pasa; lo que no nombró, negó o no pidió ella se sigue frenando', () => {
-  const root = planFirstRoot('ops-hook-chat-nombra-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-nombra-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -45,7 +45,7 @@ test('lo que la persona nombró en el chat pasa; lo que no nombró, negó o no p
 })
 
 test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () => {
-  const root = planFirstRoot('ops-hook-chat-dale-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-dale-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -80,7 +80,7 @@ test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () =>
 // Un pedido de una persona ocupa varios mensajes, y hasta 0.82.0 su autorización moría en el primero: lo
 // que ella acababa de autorizar se volvía a frenar apenas escribía cualquier otra cosa (caso 116).
 test('lo que la persona autorizó sigue valiendo en los mensajes siguientes, hasta que ella lo niegue', () => {
-  const root = planFirstRoot('ops-hook-chat-concede-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-concede-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -100,7 +100,7 @@ test('lo que la persona autorizó sigue valiendo en los mensajes siguientes, has
 
 // El registro es por sesión, que es lo que hace que cerrarla alcance para que nada siga concedido.
 test('lo que se concedió en una sesión no vale en otra', () => {
-  const root = planFirstRoot('ops-hook-chat-concede-sesion-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-concede-sesion-', WIP_WITH_PLAN)
   const reads = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
   const first = chatSession()
   const other = chatSession()
@@ -116,7 +116,7 @@ test('lo que se concedió en una sesión no vale en otra', () => {
 // Nombrar no es pedir (caso 109): la frase del nombre tiene que pedir algo. Una pregunta o un comentario al
 // pasar no autorizan; un pedido con verbo sí, también con el pronombre pegado o en inglés.
 test('mencionar algo en el chat no lo autoriza: la frase tiene que pedirlo', () => {
-  const root = planFirstRoot('ops-hook-chat-pide-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-pide-', WIP_WITH_PLAN)
   const reads = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -132,12 +132,10 @@ test('mencionar algo en el chat no lo autoriza: la frase tiene que pedirlo', () 
   } finally { chat.close() }
 })
 
-// Caso 120. En inglés la negación se escribe contraída, y `NEGATION` sólo conocía `don't`: «the tool
-// doesn't read the .env» nombra el archivo, trae un verbo de la lista y ninguna negación reconocida, así
-// que una frase que **prohíbe** pasaba a autorizar. Es el error en la dirección peligrosa, al revés que el
-// 109: ahí lo que sobraba era permiso por nombrar; acá, permiso por no entender que se estaba negando.
+// Caso 120: cada auxiliar contraído que reconoce `NEGATION` frena una lectura del .env, y la frase que sí
+// pide la lectura sigue pasando. El porqué está junto a `CONTRACTED`, en engine/hooks/chat.js.
 test('una negación contraída en inglés revoca igual que la escrita entera', () => {
-  const root = planFirstRoot('ops-hook-chat-negacion-en-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-negacion-en-', WIP_WITH_PLAN)
   const reads = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -198,7 +196,7 @@ test('un pedido delegado no tiene la autoridad de la persona', () => {
 
 test('los guards de límites no dejan al agente escribirse la aprobación ni el registro del chat', () => {
   const { DIR } = require('../../engine/hooks/chat')
-  const root = planFirstRoot('ops-hook-autoaprueba-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-autoaprueba-', WIP_WITH_PLAN)
   const approval = path.join(root, 'planning', '.ops-approval')
   const writes = (file) => ({ cwd: root, tool_input: { file_path: file, content: 'src/x.js\n' } })
   const runs = (command) => ({ cwd: root, tool_input: { command } })
@@ -227,7 +225,7 @@ test('los guards de límites no dejan al agente escribirse la aprobación ni el 
 // sobre el formato, que es lo que separa medir de adivinar acá. Y llega hasta el «dale» del mensaje
 // siguiente, porque ofrecer la salida sin anotar lo frenado no serviría de nada.
 test('una notificación de tarea de fondo no se lleva puesta a la persona del chat', () => {
-  const root = planFirstRoot('ops-hook-chat-despertado-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-despertado-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -251,7 +249,7 @@ test('una notificación de tarea de fondo no se lleva puesta a la persona del ch
 // 0.103.0 esta prueba fijaba lo contrario. La contracara es la que importa: el aviso no agrega nada —ni lo
 // que ella no nombró, ni lo que el propio aviso dice— y ofrecer el «dale» sigue sin conceder.
 test('lo que la persona pidió sobrevive al aviso del runner, y el aviso no pide nada', () => {
-  const root = planFirstRoot('ops-hook-chat-aviso-orden-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-aviso-orden-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -277,7 +275,7 @@ test('lo que la persona pidió sobrevive al aviso del runner, y el aviso no pide
 // Lo que dijo la persona sobrevive al aviso en las dos direcciones: su «no» y lo que quedó esperando su
 // respuesta. Por qué, junto a `spoken` en engine/hooks/chat.js.
 test('un aviso en el medio no borra lo que dijo la persona', () => {
-  const root = planFirstRoot('ops-hook-chat-aviso-medio-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-aviso-medio-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const notice = '<task-notification>\n<task-id>abc</task-id>\n</task-notification>'
   const denies = chatSession()
@@ -311,7 +309,7 @@ test('un aviso en el medio no borra lo que dijo la persona', () => {
 // mensajes podía dejar el «dale» ofrecido durante un flow y nada lo notaba — el mensaje que se imprime no
 // lo mira ninguna otra.
 test('durante un recorrido no se ofrece el «dale», ni antes ni después de una notificación', () => {
-  const root = planFirstRoot('ops-hook-chat-flow-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-flow-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -329,7 +327,7 @@ test('durante un recorrido no se ofrece el «dale», ni antes ni después de una
 // la de la duración es la que nadie extraña porque lo que no ocurre es un bloqueo. Y el espejo, que es lo
 // que impide anunciar un alcance de algo que no se ofreció (caso 170).
 test('el bloqueo dice hasta dónde llega el «dale», en sus dos mitades', () => {
-  const root = planFirstRoot('ops-hook-chat-alcance-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-alcance-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -349,7 +347,7 @@ test('el bloqueo dice hasta dónde llega el «dale», en sus dos mitades', () =>
 // Y las dos mitades son ciertas, no una promesa del texto: se comprueban contra el mecanismo en el mismo
 // caso, porque un mensaje que describe un alcance que el código no tiene es peor que no decir nada.
 test('lo que el mensaje promete sobre el «dale» es lo que el mecanismo hace', () => {
-  const root = planFirstRoot('ops-hook-chat-alcance-real-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-alcance-real-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {
@@ -368,7 +366,7 @@ test('lo que el mensaje promete sobre el «dale» es lo que el mecanismo hace', 
 // que el guard sigue decidiendo es la dirección segura: negar, frenar o preguntar no aprueban, y lo que se
 // frena mientras ella dice que no, no queda esperando una confirmación.
 test('un bloqueo se confirma con cualquier palabra, y negar, frenar o preguntar no lo aprueba', () => {
-  const root = planFirstRoot('ops-hook-chat-confirma-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-confirma-', WIP_WITH_PLAN)
   const reads = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
   // Una sesión por respuesta, para que ninguna confirme el bloqueo de otra.
   const sessions = []
@@ -394,7 +392,7 @@ test('un bloqueo se confirma con cualquier palabra, y negar, frenar o preguntar 
 // Caso 188: dónde se lee la negación, junto a `hold` en engine/hooks/chat.js. Las dos direcciones, y el
 // bloqueo diciendo lo que no quedó anotado.
 test('una negación sobre otra cosa no borra el bloqueo, y la que nombra lo frenado sí', () => {
-  const root = planFirstRoot('ops-hook-chat-negacion-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-negacion-', WIP_WITH_PLAN)
   const reads = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
   const sessions = []
   const after = (request) => {
@@ -422,7 +420,7 @@ test('una negación sobre otra cosa no borra el bloqueo, y la que nombra lo fren
 // Caso 186, junto a `confirmed` en engine/hooks/chat.js. Que una orden o lo concedido antes no alcancen al
 // subagente lo fija «lo que la persona nombró en el chat pasa».
 test('el trabajo delegado ofrece preguntar, y lo que la persona confirma le llega al subagente', () => {
-  const root = planFirstRoot('ops-hook-chat-delegado-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-delegado-', WIP_WITH_PLAN)
   const reads = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const sub = (call) => (extra) => call({ agent_id: 'a1', ...extra })
   const chat = chatSession()
@@ -472,7 +470,7 @@ test('el último tramo pide una ruta, aunque traiga espacios o su verbo, y no un
 })
 
 test('el bloqueo dice que la persona nombró lo frenado fuera de la frase que lo pide (caso 521)', () => {
-  const root = planFirstRoot('ops-hook-chat-enumera-', WIP_CON_PLAN)
+  const root = planFirstRoot('ops-hook-chat-enumera-', WIP_WITH_PLAN)
   const reads = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
   const chat = chatSession()
   try {

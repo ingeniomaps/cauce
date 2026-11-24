@@ -243,8 +243,8 @@ test('flow declara qué deja cada recorrido y ramifica según eso', () => {
   assert.match(flowWorkflow, /equipo-inexistente/)
 })
 
-// Un recorrido que frena en la etapa 3 tiraba el trabajo de las dos primeras: los handoffs vivían sólo
-// en memoria. Lo notó el ciclo de aprendizaje de un cargo, que no encontraba sus propios veredictos.
+// Lo que las etapas que cerraron establecieron llega a la acción humana del bloqueo; por qué, en `flow.js`.
+// Lo notó el ciclo de aprendizaje de un cargo, que no encontraba sus propios veredictos.
 test('un bloqueo conserva lo que las etapas anteriores ya resolvieron', () => {
   const flow = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
   assert.match(

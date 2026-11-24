@@ -20,9 +20,8 @@
 // CLI, el runtime que ejecutan los guards, los schemas y las tres funciones del contrato de proveedor,
 // todos nombrados en un README— sin una lista aparte que mantener y que se pudriría.
 //
-// `evaluations/results/` queda afuera de esa búsqueda: es la transcripción de una corrida, no un
-// documento que alguien siga, y nombra de paso lo que el cargo leyó. Misma razón por la que
-// `repo.test.js` lo excluye de su propio barrido.
+// `evaluations/results/` queda afuera de esa búsqueda por la misma razón por la que `repo.test.js` lo
+// excluye de su propio barrido; además nombra de paso lo que el cargo leyó.
 //
 // Y el costo, que es lo que decide qué entra en `ci`. Los dos modos de import cuentan primero y confirman
 // después: el conteo propone y la corrida decide, así que en un repositorio sano no se paga ninguna.

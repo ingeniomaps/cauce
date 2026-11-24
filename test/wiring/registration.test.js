@@ -71,8 +71,8 @@ test('un plugin ajeno que se llama cauce no es asunto de doctor', () => {
   assert.deepEqual(doctorWithHome(project.home, project.target).errors, [])
 })
 
-// Los hooks de Codex que nadie confió (caso 434). `CODEX_HOME` va a un temporal: la confianza vive bajo el home, y una
-// prueba no lee la de quien la corre (R23). Qué cuenta como confiado, en `trustProblems`.
+// Los hooks de Codex que nadie confió (caso 434), con un `CODEX_HOME` propio de la prueba donde se los confía; por qué
+// no el de quien la corre, en `test/support/environment.js`. Qué cuenta como confiado, en `trustProblems`.
 test('doctor da error con los hooks de Codex sin confiar, y calla cuando están confiados', () => {
   const base = tempRoot('cauce-codex-trust-')
   const codexHome = path.join(base, 'codex-home')

@@ -58,4 +58,16 @@ function holdMachine(waitMs, file = lockFile()) {
   }
 }
 
-module.exports = { holdMachine, lockFile }
+// Si la memoria libre no alcanza para arrancar un gate, el motivo; si alcanza, vacío (caso 550). Decide y no frena, así
+// la prueba le pasa la lectura sin llenar la máquina. Con el candado tomado no hay otro gate de Cauce corriendo que
+// vaya a devolver memoria, así que esperar no compra nada. Fuera de Linux no se calibró qué mide `os.freemem()`, y
+// la llave no frena: en Linux da `MemAvailable`, medido en Node 24.18.
+function memoryShort(minMb, { free = os.freemem(), platform = process.platform } = {}) {
+  if (!(minMb > 0) || platform !== 'linux') return ''
+  const freeMb = Math.floor(free / 1024 / 1024)
+  if (freeMb >= minMb) return ''
+  return `hay ${freeMb} MB de memoria libre y runner.gateMinFreeMb en ops.config.json pide ${minMb} para arrancar un `
+    + 'gate: una suite sin memoria es la que tira la máquina. Cerrá lo que la esté usando y volvé a commitear.'
+}
+
+module.exports = { holdMachine, lockFile, memoryShort }

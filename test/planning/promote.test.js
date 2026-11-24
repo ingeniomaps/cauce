@@ -78,13 +78,13 @@ test('promote escribe un hito por cada uno propuesto, con su orden, su línea y 
   assert.equal(result.stdout.includes('no está armada'), false, 'la línea admin existe')
   assert.match(result.stdout, /backlog\/alta-pedidos\.md.*2 tarea/)
   assert.match(result.stdout, /backlog\/consola\.md.*line: admin.*1 tarea/)
-  const alta = fs.readFileSync(path.join(planning, 'backlog', 'alta-pedidos.md'), 'utf8')
-  assert.match(alta, /^---\norder: 20\n---\n\n## Hito alta-pedidos — Alta de pedidos\n/)
-  assert.match(alta, new RegExp('^- \\[ \\] \\*\\*validar-stock\\*\\* — Rechazar sin stock\\. _Aceptación: 409\\._ '
+  const added = fs.readFileSync(path.join(planning, 'backlog', 'alta-pedidos.md'), 'utf8')
+  assert.match(added, /^---\norder: 20\n---\n\n## Hito alta-pedidos — Alta de pedidos\n/)
+  assert.match(added, new RegExp('^- \\[ \\] \\*\\*validar-stock\\*\\* — Rechazar sin stock\\. _Aceptación: 409\\._ '
     + '\\(service: app\\) \\(→ C1\\) \\(epic: 004\\)$', 'm'))
-  const consola = fs.readFileSync(path.join(planning, 'backlog', 'consola.md'), 'utf8')
-  assert.match(consola, /^---\norder: 30\nline: admin\n---\n/)
-  assert.match(consola, /\*\*ver-pedido\*\*/)
+  const consoleMilestone = fs.readFileSync(path.join(planning, 'backlog', 'consola.md'), 'utf8')
+  assert.match(consoleMilestone, /^---\norder: 30\nline: admin\n---\n/)
+  assert.match(consoleMilestone, /\*\*ver-pedido\*\*/)
   assert.match(fs.readFileSync(path.join(planning, 'roadmap', 'epic-004-pedidos.md'), 'utf8'), /^status: active$/m)
 
   const check = run(['check', planning])

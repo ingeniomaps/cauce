@@ -11,6 +11,7 @@ const IN = require('./instance')
 const PL = require('./planning')
 const LN = require('./lines')
 const LJ = require('./lines-join')
+const LE = require('./line-env')
 const PR = require('./promote')
 const CT = require('./contract')
 const BN = require('./bench')
@@ -165,11 +166,12 @@ function usage() {
            [--runner claude|codex|gemini|antigravity] [--integration <proveedor>] [--install|--no-install]
   ops scan [workspace] [--json]
   ops onboard [ops-root] [--json]
-  ops check <planning-dir> [--json] [--skip-roots]
+  ops check <planning-dir> [--json] [--skip-roots] [--closed <tarea>[,<tarea>]]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--hito <slug>] [--line <nombre>] [--json]
   ops contract <ops-root> [--json]
   ops bench <suelto|tarea|sidecar> [--force]
+  ops copy <repo> [destino] [--max-mb N]
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops lessons <planning-dir> [--json]
   ops inbox <planning-dir> [--json]
@@ -177,14 +179,17 @@ function usage() {
   ops split-backlog <planning-dir>
   ops promote <planning-dir> <epic-NNN-slug>
   ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>
-  ops line <ops-root> <nombre> [<repo>...] [--json]
+  ops line <ops-root> <nombre> [<repo>...] [--env] [--json]
   ops lines <ops-root> [--json]
   ops lines join <ops-root> <nombre> [--apply] [--json]
   ops lines migrate <ops-root> <nombre> <repo>... [--apply] [--json]
+  ops lines env <ops-root> <nombre> [--apply] [--json]
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea> [--line <nombre>]
   ops release <planning-dir> <tarea> [--line <nombre>]
+  ops done <planning-dir> <tarea> --fields <archivo> [--line <nombre>] [--skip-roots]
   ops governed <planning-dir> <archivo>... [--service <dir>] [--json]
+  ops review-read <raíz-del-repositorio> --files <a,b> [--label review] [--session <id>]
   ops worktree <planning-dir> <tarea> [--line <nombre>] [--json]
   ops evidence <planning-dir> [--task <slug>] [--json]
   ops upgrade <ops-root> [--check] [--force]
@@ -257,6 +262,7 @@ async function run(cli) {
   else if (command === 'context') PL.context(arg[1], cli)
   else if (command === 'contract') CT.contract(arg[1], cli)
   else if (command === 'bench') BN.bench(arg[1], cli)
+  else if (command === 'copy') require('./copy').copy(arg[1], arg[2], cli)
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'lessons') PL.lessons(arg[1], cli)
   else if (command === 'inbox') PL.inbox(arg[1], cli)
@@ -267,10 +273,13 @@ async function run(cli) {
   else if (command === 'line') LN.line(arg[1], arg[2], arg.slice(3), cli)
   else if (command === 'lines' && arg[1] === 'join') LJ.join(arg[2], arg[3], cli)
   else if (command === 'lines' && arg[1] === 'migrate') LJ.migrate(arg[2], arg[3], arg.slice(4), cli)
+  else if (command === 'lines' && arg[1] === 'env') LE.env(arg[2], arg[3], cli)
   else if (command === 'lines') LN.lines(arg[1], cli)
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2], cli)
+  else if (command === 'done') require('./done').done(arg[1], arg[2], cli)
+  else if (command === 'review-read') require('./review-read').reviewRead(arg[1], cli)
   else if (command === 'governed') GOV.governed(arg[1], arg.slice(2), cli)
   else if (command === 'worktree') WT.worktree(arg[1], arg[2], cli)
   else if (command === 'evidence') PL.evidence(arg[1], cli)

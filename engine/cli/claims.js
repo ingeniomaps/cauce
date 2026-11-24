@@ -1,8 +1,8 @@
 'use strict'
 
-// Tomar y soltar una tarea, y ver quién tiene trabajo abierto. Los dos primeros son los únicos comandos
-// del motor que escriben un archivo de coordinación, y escriben **el propio**: `BACKLOG.md` no lo toca
-// ninguno, porque la cola es de lo aprobado y la escribe una persona.
+// Tomar y soltar una tarea, y ver quién tiene trabajo abierto. Los dos primeros escriben un archivo de
+// coordinación, y escriben **el propio**: la cola no la tocan, porque es de lo aprobado y la promueve una
+// persona. Lo único que la saca de ahí es cerrar la tarea, y eso es `ops done` (caso 537).
 
 const fs = require('node:fs')
 const { spawnSync } = require('node:child_process')
@@ -58,10 +58,10 @@ function claim(dir, slug, cli) {
   // `CAUCE_RUNNER`. Sin esto, el segundo se llevaría la tarea del primero creyéndola suya.
   //
   // La que se está pidiendo queda afuera del conteo: volver a pedir la propia es reintentar, no llevar dos.
-  const ocupado = state.claims
+  const holding = state.claims
     .find((one) => one.runner === from && one.slug !== slug && !state.done.set.has(one.slug))
-  if (ocupado) {
-    return fail(`este runner ya tiene ${ocupado.slug}. Cerrala o soltala primero; y si sos otro agente `
+  if (holding) {
+    return fail(`este runner ya tiene ${holding.slug}. Cerrala o soltala primero; y si sos otro agente `
       + 'en la misma máquina, exportá CAUCE_RUNNER con un valor propio.', REFUSED)
   }
 

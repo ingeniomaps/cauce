@@ -110,8 +110,7 @@ test('lo corregido lleva tope y cuenta lo que no entra', async () => {
   assert.match(doneFacts(run), /y 2 más/)
 })
 
-// Caso 210. Review juzga el diff contra la aceptación, así que la recibe —y la que rige, que puede ser la
-// que Ready refinó en esta corrida, no la que sigue escrita en el BACKLOG—.
+// Caso 210: la aceptación llega a la revisión y a la re-revisión, y con Ready refinándola llega la refinada.
 test('las dos pasadas de Review reciben la aceptación que rige', async () => {
   const run = await flow([finding({ ref: RULE, verified: true })])
   const passes = run.prompts.filter((one) => one.key === KEY.review)
@@ -131,10 +130,10 @@ test('las dos pasadas de Review reciben la aceptación que rige', async () => {
 
 // Caso 211. El prompt de Done traía el hecho de revisión y el agente lo resumía al escribirlo: lo que mide
 // esta prueba es el pedido de copia textual; que se cumpla lo midió la corrida real que el caso cita.
-test('Done pide lane, review y critique textuales', async () => {
+test('Done pide review y critique textuales', async () => {
   const run = await flow([])
   assert.match(prompt(run, 'Done|done'),
-    /lane, review y critique van textuales, copiados de estos hechos sin resumir/)
+    /review y critique van textuales, copiados de estos hechos sin resumir/)
 })
 
 // Revisión de la tanda: una sospecha de la primera pasada se perdía si la re-revisión no la repetía.

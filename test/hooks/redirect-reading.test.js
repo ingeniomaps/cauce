@@ -8,7 +8,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { tempRoot } = require('../support/environment')
-const { blocked, repoPublicado } = require('../support/hooks-harness')
+const { blocked, publishedRepo } = require('../support/hooks-harness')
 const { execute } = require('../../engine/hooks/run')
 const I = require('../../engine/hooks/input')
 
@@ -23,7 +23,7 @@ function bench(allowPush) {
 
 test('la bandera que reescribe historia se ve detrás de una redirección', () => {
   const at = bench(true)
-  const published = repoPublicado('ops-redirect-amend-')
+  const published = publishedRepo('ops-redirect-amend-')
   for (const command of [
     'git push origin rama 2>&1 --force', 'git push origin rama &> log -f', 'git push origin rama >| log +rama',
     'git 2>&1 push --force origin rama', 'git > log push -f origin rama', 'git 2>&1 -C . push --force origin rama',
@@ -58,7 +58,7 @@ test('un push con una redirección antes del subcomando pide la aprobación de c
 // Lo que sigue a un separador real es otro comando, y una redirección sola no frena nada.
 test('el separador sigue cortando y la redirección sola deja pasar', () => {
   const at = bench(true)
-  const published = repoPublicado('ops-redirect-pasa-')
+  const published = publishedRepo('ops-redirect-pasa-')
   for (const command of ['git push origin rama 2>&1', 'git 2>&1 push origin rama', 'git push origin rama | tee -f']) {
     assert.doesNotThrow(() => execute('destructive', at(command)), command)
   }

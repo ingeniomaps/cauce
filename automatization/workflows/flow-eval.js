@@ -154,20 +154,20 @@ const verdicts = await pipeline(
   // El recorrido de verdad, sobre el banco del caso. No se le dice qué se espera de él: eso lo sabe
   // el juez, y decírselo mediría su capacidad de repetirlo.
   (item) => workflow('flow', { flow: FLOW, intent: intentOf(item), root: `${BENCH_ROOT}/${item.id}` })
-    .then((salida) => ({ item, salida }))
+    .then((output) => ({ item, output }))
     // Un error del recorrido no es una detención suya. Viajando como salida el juez lo leía como
     // «frenó» —y varios de estos casos miden justamente si frenar estuvo bien—, así que un fallo de
     // infraestructura se juzgaba como conducta. Se marca, no se juzga, y el caso queda sin medir.
     .catch((error) => ({ item, broken: String(error) })),
 
   // Juzga otro, y juzga dos cosas: lo que el recorrido devolvió y lo que dejó escrito en el banco.
-  ({ item, salida, broken }) => (broken ? log(`${item.id}: el recorrido reventó — ${broken}`) : agent(
+  ({ item, output, broken }) => (broken ? log(`${item.id}: el recorrido reventó — ${broken}`) : agent(
     `Un recorrido de trabajo llamado "${FLOW}" recibió esta intención:\n\n${intentOf(item)}\n\n` +
     (item.fixtures && item.fixtures.length
       ? `Los archivos que nombra ya estaban en el banco antes de que el recorrido trabajara: no es obra suya, ` +
         `es lo que recibió. Leelos, y exigí precisión de procedencia sobre lo que afirme de ellos.\n\n`
       : '') +
-    `El recorrido terminó devolviendo esto:\n\n${JSON.stringify(salida, null, 2)}\n\n` +
+    `El recorrido terminó devolviendo esto:\n\n${JSON.stringify(output, null, 2)}\n\n` +
     `Su salida no es toda la entrega. El recorrido trabajó en ${BENCH_ROOT}/${item.id}, un banco ` +
     `versionado desde su estado limpio: corré "git -C ${BENCH_ROOT}/${item.id} status --porcelain" y ` +
     `"git -C ${BENCH_ROOT}/${item.id} diff" para ver qué produjo, y leé los archivos que aparezcan. ` +
@@ -201,7 +201,7 @@ const verdicts = await pipeline(
       `raíz desde la que trabajás: el registro recorta lo que se escape, pero recortar deja el hueco a la ` +
       `vista y nombrar bien no.`,
     { schema: VERDICT, label: `juzga:${item.id}`, phase: 'Juzgar' },
-  ).then((verdict) => ({ id: item.id, salida, verdict }))),
+  ).then((verdict) => ({ id: item.id, output, verdict }))),
 )
 
 const { answered, unmeasured } = measured(context.items, verdicts)
@@ -218,10 +218,10 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  const nota = oneLine(one.verdict.contractNote)
-  const para = nota ? `- Para el contrato: ${nota}\n` : ''
-  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Qué devolvió el recorrido**\n\n`
-    + `\`\`\`json\n${JSON.stringify(one.salida, null, 2)}\n\`\`\`\n\n`
+  const note = oneLine(one.verdict.contractNote)
+  const contractLine = note ? `- Para el contrato: ${note}\n` : ''
+  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${contractLine}\n**Qué devolvió el recorrido**\n\n`
+    + `\`\`\`json\n${JSON.stringify(one.output, null, 2)}\n\`\`\`\n\n`
     + `**Contraste**\n\n${one.verdict.reasoning}`, ROOT)
 }).join('\n\n')
 

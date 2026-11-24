@@ -1,21 +1,21 @@
 'use strict'
 
-// El estado de la firma vive en «Aprobación humana», y una propuesta puede traer las mismas líneas dentro del fixture
-// de un caso nuevo (caso 501). Sellar, archivar y contar firmadas leen sólo esa sección (caso 507).
+// Una propuesta cuya «Evaluación» trae, en el fixture de un caso nuevo, las mismas líneas que escribe la firma
+// (caso 501): sellar, archivar y contar firmadas no las toman por las de «Aprobación humana» (caso 507).
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const learning = require('../../engine/agents/learning')
-const { installedProject, writeSkill, firmarPropuesta } = require('../support/agents-fixtures')
+const { installedProject, writeSkill, signProposal } = require('../support/agents-fixtures')
 
 // Un fixture con las cuatro líneas que escribe la firma, en «Evaluación».
-const fixture = (estado) => '## Evaluación\n\n```markdown\n'
-  + `- Estado: ${estado}\n- Responsable: por definir\n- Fecha: por definir\n- Huella: sha256:${'0'.repeat(64)}\n`
+const fixture = (status) => '## Evaluación\n\n```markdown\n'
+  + `- Estado: ${status}\n- Responsable: por definir\n- Fecha: por definir\n- Huella: sha256:${'0'.repeat(64)}\n`
   + '```\n\n## Aprobación humana'
 
-function proposal(name, estado) {
+function proposal(name, status) {
   const target = installedProject(name)
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const report = learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file
@@ -24,7 +24,7 @@ function proposal(name, estado) {
   learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
   const file = path.join(own, 'learning', 'proposals', '2099-06.md')
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
-    .replace(/^## Evaluación\n[\s\S]*?^## Aprobación humana/m, fixture(estado)))
+    .replace(/^## Evaluación\n[\s\S]*?^## Aprobación humana/m, fixture(status)))
   return { target, file }
 }
 const fixtureOf = (file) => fs.readFileSync(file, 'utf8').match(/```markdown\n([\s\S]*?)```/)[1]
@@ -32,7 +32,7 @@ const approvalOf = (file) => fs.readFileSync(file, 'utf8').split(/^## Aprobació
 
 test('sellar escribe la firma y deja intacto el fixture que trae las mismas líneas', () => {
   const { target, file } = proposal('Sello con fixture', 'pendiente')
-  firmarPropuesta(file)
+  signProposal(file)
   const before = fixtureOf(file)
   assert.equal(learning.checkSignature(target, 'probe', '2099-06').ok, true, 'leyó la huella del fixture')
   learning.seal(target, 'probe', '2099-06')

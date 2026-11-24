@@ -24,9 +24,9 @@ test('reinstalar conserva el guard propio del proyecto en la configuración del 
   const { workspace, target, runCli } = installedProject('cauce-guard-propio-', 'claude')
   const settings = path.join(workspace, '.claude', 'settings.json')
 
-  const mio = path.join(target, 'automatization', 'hooks', 'guard-mio.sh')
-  fs.writeFileSync(mio, '#!/usr/bin/env bash\nexit 0\n')
-  fs.chmodSync(mio, 0o755)
+  const mine = path.join(target, 'automatization', 'hooks', 'guard-mio.sh')
+  fs.writeFileSync(mine, '#!/usr/bin/env bash\nexit 0\n')
+  fs.chmodSync(mine, 0o755)
   const command = '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-mio.sh'
   const config = JSON.parse(fs.readFileSync(settings, 'utf8'))
   config.hooks.PreToolUse.push({ matcher: 'Bash', hooks: [{ type: 'command', command }] })
@@ -43,9 +43,9 @@ test('reinstalar conserva el guard propio del proyecto en la configuración del 
     { type: 'command', command: '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-destructive.sh' },
   ] })
   fs.writeFileSync(settings, JSON.stringify(legacy, null, 2))
-  const tercera = runCli(['automation', 'install', target, 'claude'])
-  assert.equal(tercera.status, 0, tercera.stderr)
-  assert.match(tercera.stdout, /guard-destructive\.sh/, 'el guard suelto del toolkit se reemplaza')
+  const third = runCli(['automation', 'install', target, 'claude'])
+  assert.equal(third.status, 0, third.stderr)
+  assert.match(third.stdout, /guard-destructive\.sh/, 'el guard suelto del toolkit se reemplaza')
   assert.ok(fs.readFileSync(settings, 'utf8').includes('guard-mio.sh'), 'y el propio sigue ahí')
 })
 
@@ -70,11 +70,11 @@ test('doctor no llama divergente a un grupo que suma un hook propio', () => {
   assert.equal(A.doctor(target, 'claude', { warn() {}, error() {} }).errors.length, 0)
 
   // Y lo que importa se sigue detectando: que falte una entrada esperada.
-  const roto = JSON.parse(fs.readFileSync(settings, 'utf8'))
-  roto.hooks.PreToolUse.find((group) => group.matcher === 'Bash').hooks = [
+  const broken = JSON.parse(fs.readFileSync(settings, 'utf8'))
+  broken.hooks.PreToolUse.find((group) => group.matcher === 'Bash').hooks = [
     { type: 'command', command: '$CLAUDE_PROJECT_DIR/ops/mio.sh' },
   ]
-  fs.writeFileSync(settings, JSON.stringify(roto, null, 2))
+  fs.writeFileSync(settings, JSON.stringify(broken, null, 2))
   assert.ok(A.doctor(target, 'claude', { warn() {}, error() {} }).errors.length > 0, 'una ausencia sí es error')
 })
 
@@ -90,16 +90,16 @@ test('reinstalar retira un guard que el toolkit entregó y ya no trae', () => {
 
   // Una instancia como la dejó una versión anterior: el guard registrado como entregado por nosotros,
   // y su entrada viva en la configuración del runner. El nombre ya no existe en el motor de hoy.
-  const retirado = '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-retirado.sh'
-  const propio = '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-mio.sh'
-  const registro = JSON.parse(fs.readFileSync(manifest, 'utf8'))
-  registro.runners['claude/config.hooks'] = [...registro.runners['claude/config.hooks'] || [], retirado]
-  fs.writeFileSync(manifest, JSON.stringify(registro, null, 2))
+  const retired = '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-retirado.sh'
+  const own = '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-mio.sh'
+  const manifestData = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  manifestData.runners['claude/config.hooks'] = [...manifestData.runners['claude/config.hooks'] || [], retired]
+  fs.writeFileSync(manifest, JSON.stringify(manifestData, null, 2))
 
   const config = JSON.parse(fs.readFileSync(settings, 'utf8'))
   config.hooks.PreToolUse.push({ matcher: 'Bash', hooks: [
-    { type: 'command', command: retirado },
-    { type: 'command', command: propio },
+    { type: 'command', command: retired },
+    { type: 'command', command: own },
   ] })
   fs.writeFileSync(settings, JSON.stringify(config, null, 2))
 
@@ -111,10 +111,10 @@ test('reinstalar retira un guard que el toolkit entregó y ya no trae', () => {
   assert.match(again.stdout, /guard-retirado\.sh/, 'y se dice cuál se fue')
 
   // El registro queda al día: lo entregado ahora es lo de esta versión, sin el que se retiró.
-  const anotado = JSON.parse(fs.readFileSync(manifest, 'utf8')).runners['claude/config.hooks']
-  assert.ok(Array.isArray(anotado) && anotado.length, 'la instalación anota lo que puso')
-  assert.equal(anotado.includes(retirado), false)
-  assert.equal(anotado.includes(propio), false, 'lo que no pusimos no entra en el registro')
+  const annotated = JSON.parse(fs.readFileSync(manifest, 'utf8')).runners['claude/config.hooks']
+  assert.ok(Array.isArray(annotated) && annotated.length, 'la instalación anota lo que puso')
+  assert.equal(annotated.includes(retired), false)
+  assert.equal(annotated.includes(own), false, 'lo que no pusimos no entra en el registro')
 })
 
 // Por qué el archivo se anota en las dos secciones está donde se decide, en `automation/index.js`. Acá se
@@ -127,8 +127,8 @@ test('el bloque que install escribe en AGENTS.md no queda como edición de la em
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'embedded', '--no-install']).status, 0)
   linkEngine(target)
 
-  const limpio = run(['upgrade', target, '--check'])
-  assert.equal(limpio.status, 0, 'recién creada no tiene nada editado')
+  const clean = run(['upgrade', target, '--check'])
+  assert.equal(clean.status, 0, 'recién creada no tiene nada editado')
 
   assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
   const body = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')
@@ -144,6 +144,54 @@ test('el bloque que install escribe en AGENTS.md no queda como edición de la em
   assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/)
 })
 
+// Caso 546: el `AGENTS.md` que la empresa ya tenía, conservado por `init --force`, está editado. Meterle el bloque
+// de un runner no lo vuelve del molde: si se anotara, el `upgrade` siguiente lo reemplazaría entero, y su texto.
+test('el bloque que install escribe en un AGENTS.md de la empresa no blanquea su edición', () => {
+  const base = tempRoot('cauce-bloque-ajeno-')
+  const target = path.join(base, 'acme')
+  fs.mkdirSync(target, { recursive: true })
+  fs.writeFileSync(path.join(target, 'AGENTS.md'), '# Nuestro AGENTS.md\n\nTEXTO-DE-LA-EMPRESA\n')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'embedded', '--no-install', '--force']).status, 0)
+  linkEngine(target)
+  assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/, 'la precondición')
+
+  assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
+  assert.match(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /<!-- cauce:codex inicio/)
+  assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/, 'sigue editado')
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.doesNotMatch(upgraded.stdout, /AGENTS\.md: se reemplazó entero/)
+  const body = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')
+  assert.match(body, /TEXTO-DE-LA-EMPRESA/, 'y su texto queda')
+})
+
+// Los dos bordes del 546 que el arreglo dejaba del lado seguro: un archivo sin editar al que se le quita el bloque
+// sigue siendo del molde, y uno que la empresa devolvió al molde, con el bloque adentro, vuelve a serlo.
+test('desinstalar el runner, o devolver el AGENTS.md al molde, no lo deja como edición de la empresa', () => {
+  const base = tempRoot('cauce-bloque-vuelta-')
+  const clean = path.join(base, 'limpio')
+  fs.mkdirSync(clean, { recursive: true })
+  assert.equal(run(['init', clean, '--name', 'Acme', '--mode', 'embedded', '--no-install']).status, 0)
+  linkEngine(clean)
+  const template = fs.readFileSync(path.join(clean, 'AGENTS.md'), 'utf8')
+  assert.equal(run(['automation', 'install', clean, 'codex']).status, 0)
+  assert.equal(run(['automation', 'uninstall', clean, 'codex']).status, 0)
+  assert.doesNotMatch(run(['upgrade', clean, '--check']).stdout, /editado localmente: AGENTS\.md/, 'sin el bloque')
+
+  const returned = path.join(base, 'devuelto')
+  fs.mkdirSync(returned, { recursive: true })
+  fs.writeFileSync(path.join(returned, 'AGENTS.md'), '# Nuestro AGENTS.md\n')
+  assert.equal(run(['init', returned, '--name', 'Acme', '--mode', 'embedded', '--no-install', '--force']).status, 0)
+  linkEngine(returned)
+  assert.equal(run(['automation', 'install', returned, 'codex']).status, 0)
+  const body = fs.readFileSync(path.join(returned, 'AGENTS.md'), 'utf8')
+  const block = body.slice(body.indexOf('<!-- cauce:codex inicio'))
+  fs.writeFileSync(path.join(returned, 'AGENTS.md'), `${template}\n${block}`)
+  assert.equal(run(['automation', 'install', returned, 'codex']).status, 0)
+  assert.doesNotMatch(run(['upgrade', returned, '--check']).stdout, /editado localmente: AGENTS\.md/,
+    'devuelto al molde con el bloque, vuelve a ser del molde')
+})
+
 // `list` es el comando que informa si un runner está instalado, y componía la ruta contra la instancia
 // en vez de resolverla como sus tres hermanos —`install`, `doctor` y `uninstall` usan `runnerPaths`—.
 // En `sidecar`, que es el modo por defecto, el wiring vive en el padre: los cuatro adaptadores salían
@@ -154,11 +202,11 @@ test('automation list ve el runner instalado también en sidecar', () => {
   assert.ok(fs.existsSync(path.join(workspace, '.claude', 'settings.json')), 'el wiring va al padre')
   assert.equal(fs.existsSync(path.join(target, '.claude', 'settings.json')), false, 'y no a la instancia')
 
-  const listado = runCli(['automation', 'list', target])
-  assert.equal(listado.status, 0, listado.stderr)
-  assert.match(listado.stdout, /● claude \[instalado\]/)
+  const listing = runCli(['automation', 'list', target])
+  assert.equal(listing.status, 0, listing.stderr)
+  assert.match(listing.stdout, /● claude \[instalado\]/)
   // Y lo que no está sigue sin estar: el glifo tiene que distinguir, no decir que sí a todo.
-  assert.match(listado.stdout, /○ codex/)
+  assert.match(listing.stdout, /○ codex/)
 })
 
 // Que la pérdida del bloque se diga, y sólo cuando ocurre. El porqué vive donde se decide, en
@@ -174,14 +222,14 @@ test('upgrade dice que se llevó el bloque del runner', () => {
 
   const upgraded = run(['upgrade', target])
   assert.equal(upgraded.status, 0, upgraded.stderr)
-  const dicho = upgraded.stdout.split('\n').filter((line) => /instrucciones de codex/.test(line))
-  assert.equal(dicho.length, 1, 'una vez, no una por archivo que el runner tenga registrado')
-  assert.match(dicho[0], /AGENTS\.md/, 'nombra el archivo que lo llevaba')
+  const said = upgraded.stdout.split('\n').filter((line) => /instrucciones de codex/.test(line))
+  assert.equal(said.length, 1, 'una vez, no una por archivo que el runner tenga registrado')
+  assert.match(said[0], /AGENTS\.md/, 'nombra el archivo que lo llevaba')
   assert.match(upgraded.stdout, /reinstalá tu runner/, 'junto al paso que lo repone')
   assert.doesNotMatch(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /cauce:codex inicio/)
 
   // Una instancia sin runner instalado no recibe un aviso sobre un bloque que nunca tuvo.
-  const limpia = path.join(base, 'otra')
-  assert.equal(run(['init', limpia, '--name', 'Otra', '--mode', 'sidecar', '--no-install']).status, 0)
-  assert.doesNotMatch(run(['upgrade', limpia]).stdout, /bloque/)
+  const clean = path.join(base, 'otra')
+  assert.equal(run(['init', clean, '--name', 'Otra', '--mode', 'sidecar', '--no-install']).status, 0)
+  assert.doesNotMatch(run(['upgrade', clean]).stdout, /bloque/)
 })

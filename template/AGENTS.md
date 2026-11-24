@@ -295,7 +295,8 @@ aprobación que pide BR-OPS-002 — `context` la nombra para que la vea una pers
 
 Publicar es lo único de todo eso que este proyecto puede habilitar, y `runner.allowPush` en
 `ops.config.json` es la autorización que R10 pide para las ramas de trabajo. La rama viva —`main`,
-`master` o la rama por defecto del remoto— no la alcanza si el proyecto no la nombra en
+`master`, la rama por defecto del remoto o las que el proyecto declara en `runner.liveBranches`, como
+`develop` o `production` con GitFlow— no la alcanza si el proyecto no la nombra en
 `runner.pushToLiveBranches`, y un subagente no publica con ningún permiso. Sin la llave, pasa el push
 que la persona pide en el chat nombrando el remoto y la rama, o el que ella confirma cuando se frena.
 Reescribir historia publicada no entra en el trato: un `push --force` se frena con la llave prendida o

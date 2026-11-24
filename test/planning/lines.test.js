@@ -18,7 +18,7 @@ const git = (cwd, ...args) => {
   const result = spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, encoding: 'utf8' })
   assert.equal(result.status, 0, result.stderr)
 }
-const hito = (slug, task, line) => `---\norder: 10\n${line ? `line: ${line}\n` : ''}---\n\n`
+const milestone = (slug, task, line) => `---\norder: 10\n${line ? `line: ${line}\n` : ''}---\n\n`
   + `## Hito ${slug} — ${slug}\n\n- [ ] **${task}** — Algo. _Aceptación: se ve._ (service: app)\n`
 
 // Una instancia con un hito sin línea y uno de `admin`, y dos árboles más: la línea y una rama cualquiera.
@@ -27,8 +27,8 @@ function instance() {
   const ops = path.join(base, 'demo-ops')
   assert.equal(run(['init', ops, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   fs.mkdirSync(path.join(ops, 'planning', 'backlog'), { recursive: true })
-  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), hito('auth', 'auth-token', ''))
-  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'admin'))
+  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), milestone('auth', 'auth-token', ''))
+  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), milestone('admin', 'admin-consulta', 'admin'))
   git(ops, 'init', '-q', '-b', 'main')
   // La identidad vive en el repositorio, como en una instancia real: el `git merge` de `join --apply` la
   // necesita para su commit, y en CI no hay una global. Local tapaba el defecto (el CI del PR #817 lo vio).
@@ -84,7 +84,7 @@ test('un reclamo hecho en otro árbol se ve y frena', () => {
 test('lo que ya tenés no se esconde aunque su hito pase a ser de otra línea', () => {
   const trees = instance()
   assert.equal(claim(trees.line, 'r-line', 'admin-consulta').status, 0)
-  fs.writeFileSync(path.join(trees.line, 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'otra'))
+  fs.writeFileSync(path.join(trees.line, 'backlog', 'admin.md'), milestone('admin', 'admin-consulta', 'otra'))
   const line = context(trees.line, 'r-line').json
   assert.equal(line.task.slug, 'admin-consulta')
   assert.equal(line.claimed, true)
@@ -92,7 +92,7 @@ test('lo que ya tenés no se esconde aunque su hito pase a ser de otra línea', 
 
 test('check rechaza una línea mal escrita, y la unidad no toca lo que no declara línea', () => {
   const trees = instance()
-  fs.writeFileSync(path.join(trees.main, 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'Admin Nueva'))
+  fs.writeFileSync(path.join(trees.main, 'backlog', 'admin.md'), milestone('admin', 'admin-consulta', 'Admin Nueva'))
   const result = run(['check', trees.main])
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /backlog\/admin\.md: line «Admin Nueva» no es un nombre de línea/)
@@ -107,10 +107,10 @@ test('check rechaza una línea mal escrita, y la unidad no toca lo que no declar
 // worktrees de la instancia y no sólo el propio; que cada uno muestre la cola de su línea y no la ajena; que
 // un reclamo y un checkpoint hechos en una línea se vean en su bloque y en ningún otro; y que los commits
 // adelante y lo que falta commitear salgan de cada árbol.
-const checkpoint = (planning, hito, line) => {
+const checkpoint = (planning, milestone, line) => {
   fs.mkdirSync(path.join(planning, 'checkpoints'), { recursive: true })
-  fs.writeFileSync(path.join(planning, 'checkpoints', `${hito}.md`),
-    `---\nstatus: pendiente\nhito: ${hito}\nline: ${line}\n---\n\n# Checkpoint: hito ${hito}\n`)
+  fs.writeFileSync(path.join(planning, 'checkpoints', `${milestone}.md`),
+    `---\nstatus: pendiente\nhito: ${milestone}\nline: ${line}\n---\n\n# Checkpoint: hito ${milestone}\n`)
 }
 
 test('lines muestra cada árbol con la cola, los reclamos y el checkpoint de su línea', () => {
@@ -196,7 +196,7 @@ test('join en seco clasifica cada conflicto, ve las épicas repetidas y avisa de
   const trees = instance()
   const ops = { main: path.dirname(trees.main), line: path.dirname(trees.line) }
   lessons(trees.main, 'r-main'); epic(trees.main, 'epic-001-a')
-  const backlog = (hito, slug) => `# Backlog\n\n## Hito ${hito} — ${hito}\n\n`
+  const backlog = (milestone, slug) => `# Backlog\n\n## Hito ${milestone} — ${milestone}\n\n`
     + `- [ ] **${slug}** — X. _Aceptación: x._ (service: app)\n`
   fs.writeFileSync(path.join(trees.main, 'BACKLOG.md'), backlog('base', 'x'))
   commitIn(ops.main, 'main side', 'planning')
@@ -346,8 +346,8 @@ function declared() {
   const ops = path.join(tempRoot('cauce-lineas-declaradas-'), 'demo-ops')
   assert.equal(run(['init', ops, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   fs.mkdirSync(path.join(ops, 'planning', 'backlog'), { recursive: true })
-  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), hito('auth', 'auth-token', ''))
-  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), hito('admin', 'admin-consulta', 'admin'))
+  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'auth.md'), milestone('auth', 'auth-token', ''))
+  fs.writeFileSync(path.join(ops, 'planning', 'backlog', 'admin.md'), milestone('admin', 'admin-consulta', 'admin'))
   const config = JSON.parse(fs.readFileSync(path.join(ops, 'ops.config.json'), 'utf8'))
   fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ ...config, lines: { admin: ['app'] } }))
   git(ops, 'init', '-q', '-b', 'main')

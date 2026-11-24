@@ -385,8 +385,7 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   const reports = pendingReports(target, sealing)
   const red = verdictFindings(root, target)
   const reportPaths = reports.map((name) => path.join(reportDir, name))
-  // La misma regla que la rama de recorridos, por el mismo motivo: un documento que no puede decir qué
-  // corregir no cambia ningún contrato y cuesta igual la firma humana que uno que sí. Un informe puede
+  // La misma regla que la rama de recorridos, por el mismo motivo. Un informe puede
   // encontrar cosas y no proponer ningún cambio —resultado legítimo—, y un mes entero así abría una
   // propuesta cuyas entradas decían todas «Sin recomendación registrada»: se lee entera, no propone
   // nada, y nadie la iba a firmar.

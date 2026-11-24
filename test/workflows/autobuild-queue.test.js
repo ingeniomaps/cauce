@@ -10,20 +10,17 @@ const { KEY, baseScript, ranToEnd, runFlow } = require('../support/autobuild-har
 const inFile = (file) => ({ [KEY.context]: { ...baseScript()[KEY.context], file } })
 const doneOf = ({ written }) => written.find((one) => one.includes('Cerrá T-1 de forma atómica')) || ''
 
-test('Done cierra la tarea en el archivo de su hito y borra el archivo si el hito queda vacío', async () => {
-  const run = await runFlow(inFile('backlog/h1.md'))
-  ranToEnd(run.result)
-  assert.match(doneOf(run), /sacala junto con sus notas indentadas de \.\/planning\/backlog\/h1\.md/)
-  assert.match(doneOf(run), /su hito queda sin tareas, borrá ese archivo/)
+// Caso 538: dónde vive la tarea y si su hito queda vacío lo resuelve `ops done` desde el disco, que lo prueba
+// `test/planning/done-command.test.js`; el prompt sólo nombra la instancia y la tarea, viva donde viva.
+test('Done cierra por ops done viva la tarea en el archivo de su hito o en BACKLOG.md', async () => {
+  for (const run of [await runFlow(inFile('backlog/h1.md')), await runFlow({})]) {
+    ranToEnd(run.result)
+    assert.match(doneOf(run), /&& node tools\/ops\.js done \.\/planning T-1 --fields /)
+    assert.doesNotMatch(doneOf(run), /backlog\/h1\.md|BACKLOG\.md|borrá ese archivo/)
+  }
 })
 
-test('sin archivo declarado, la tarea vive en BACKLOG.md como siempre', async () => {
-  const run = await runFlow({})
-  assert.match(doneOf(run), /sacala junto con sus notas indentadas de \.\/planning\/BACKLOG\.md/)
-})
-
-// Clasificar toda la cola escribía en los hitos de otra línea (caso 239): lo que se mide es que el prompt nombre
-// el archivo de la tarea y ya no la cola entera, y que proteger la siga mirando entera.
+// Caso 239, con la tarea en un hito: el prompt de Classify no nombra backlog/ y el de Build sí.
 test('clasificar mira el archivo del hito, y proteger la cola mira BACKLOG.md y backlog/', async () => {
   const run = await runFlow(inFile('backlog/h1.md'), { lane: 'full', vouched: true })
   const prompt = (key) => (run.prompts.find((one) => one.key === key) || {}).prompt || ''

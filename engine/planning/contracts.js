@@ -52,6 +52,15 @@ function unverifiableAcceptance(milestones = []) {
   return warnings
 }
 
+// Un WIP activo sobre una tarea que ya está en `done/`: la sesión se cortó entre escribir la entrada y dejarlo en IDLE
+// (caso 535). Es aviso y no error, porque el WIP no viaja por git y lo que se repara es local.
+const STALE_ADVICE = 'El cierre quedó a medias: dejá el WIP en status: IDLE (PROTOCOL, punto 4 de los gates de '
+  + 'arranque); lo que sigue es la cola.'
+function staleWips(wips = [], done = { set: new Set() }) {
+  return wips.filter((wip) => done.set.has(wip.task))
+    .map((wip) => `wip/${wip.runner}.md: ${wip.task} ya está en done/. ${STALE_ADVICE}`)
+}
+
 function duplicates(values) {
   return [...new Set(values.filter((value, index) => values.indexOf(value) !== index))]
 }
@@ -171,7 +180,10 @@ function validateState({
       if (!story.service) errors.push(`${at}: ${story.slug} no declara (service: <ruta>)`)
     }
     const missing = epic.stories.filter((story) => !done.set.has(story.slug))
-    if (epic.status === 'active' && !missing.length) errors.push(`${at}: active sin historias pendientes; debe cerrar`)
+    // `open` también: es el estado en que se queda la épica cuando el recorrido no pasa por promote (caso 529).
+    if (['open', 'active'].includes(epic.status) && epic.stories.length && !missing.length) {
+      errors.push(`${at}: ${epic.status} sin historias pendientes; debe cerrar`)
+    }
   }
 
   const milestoneSlugs = new Set()
@@ -247,12 +259,11 @@ function validateState({
         + `${P.HUMAN_ACTION_STATES.join(' | ')}; mientras no se entienda, la tarea queda bloqueada`)
       continue
     }
-    // La primera columna es a la vez lo que una persona lee y la clave con la que el motor bloquea:
-    // la selección de tarea (`state.js`) arma su conjunto de bloqueadas con ella tal cual. Esa doble
-    // función es libre a propósito —el molde manda
-    // nombrar la épica o el recorrido cuando la tarea todavía no existe— así que lo que no se puede
-    // recortar es la libertad, y lo que sí se puede es la forma intermedia: la celda que **menciona** una
-    // tarea de la cola sin ser su slug.
+    // La primera columna es a la vez lo que una persona lee y la clave con la que el motor bloquea: la selección de
+    // tarea (`state.js`) arma su conjunto de bloqueadas con ella tal cual. Esa doble función es libre a propósito —el
+    // molde manda nombrar la épica o el recorrido cuando la tarea todavía no existe— así que lo que no se puede
+    // recortar es la libertad, y lo que sí se puede es la forma intermedia: la celda que **menciona** una tarea de la
+    // cola sin ser su slug.
     //
     // Es la peor de las tres porque promete un bloqueo que no ocurre, y nada lo dice: la fila se escribe
     // sin error, sale en `ops context` bajo HUMAN como si estuviera registrada, y la tarea se sigue
@@ -277,6 +288,15 @@ function validateState({
   return errors
 }
 
+// Lo que dice quien cerró: estas tareas salieron de la cola en su vuelta. El estado solo no distingue «salió» de «nunca
+// estuvo», así que una entrada con otro slug pasaba en verde (caso 463); con la lista, cada una se busca por su slug.
+function closedErrors(slugs, { milestones, done }) {
+  const queued = new Set(milestones.flatMap((milestone) => milestone.tasks).map((task) => task.slug))
+  return slugs.filter((slug) => !done.set.has(slug)).map((slug) => `${slug}: se dio por cerrada y no tiene entrada en `
+    + `done/ con ese slug${queued.has(slug) ? ', y sigue en la cola' : ''}. Si la entrada quedó con otro nombre, la `
+    + 'viñeta lleva el mismo slug que la cola (R25)')
+}
+
 // Los umbrales de R17, contados. La regla existía desde antes y nada la medía: una épica de veinte
 // criterios pasaba `check` sin una queja, siempre que cada uno tuviera su historia. Es la enumeración
 // que nadie contrasta de la que habla R15, y acá el que no contrastaba era el motor.
@@ -293,6 +313,8 @@ function validateState({
 // deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
 // condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
 module.exports = {
+  staleWips, STALE_ADVICE,
+  closedErrors,
   validateState,
   unverifiableAcceptance,
   validateEpic,

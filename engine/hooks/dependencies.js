@@ -104,11 +104,11 @@ function dependencies(input) {
   }
   const inIndex = new Set(index.output.split('\n').filter(Boolean))
   for (const [parent, state] of byDir) {
-    const enParent = (name) => (parent === '.' ? name : path.posix.join(parent, name))
+    const inParent = (name) => (parent === '.' ? name : path.posix.join(parent, name))
     // La regla de «varios lockfiles» sí es sobre el disco y sólo sobre el disco: lo que rompe ahí es que
     // el gestor que corra elija uno, y el que corre lee el árbol.
     const onDisk = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
-    const existingLocks = [...new Set([...onDisk, ...[...locks].filter((n) => inIndex.has(enParent(n)))])]
+    const existingLocks = [...new Set([...onDisk, ...[...locks].filter((n) => inIndex.has(inParent(n)))])]
     if (onDisk.length > 1) {
       block(`${key(parent)}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
     }

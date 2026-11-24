@@ -93,15 +93,15 @@ test('la ruta del banco se imprime relativa a la raíz', () => {
 test('el banco se recrea entero en cada corrida', () => {
   const toolkit = path.resolve(__dirname, '..', '..')
   const dir = benchDir(run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit), toolkit)
-  const rastro = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
-  fs.writeFileSync(rastro, 'lo que escribió el cargo la vez pasada\n')
+  const trail = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
+  fs.writeFileSync(trail, 'lo que escribió el cargo la vez pasada\n')
   // El resultado de la segunda corrida se mira. Descartarlo era lo que volvía mudo este caso: **toda**
   // falla del comando —`EACCES`, `ENOTEMPTY`, `EEXIST`— terminaba en el mismo `true !== false` sobre el
   // rastro, con el stderr tirado. Tres investigaciones dejaron escrito «no está establecido por qué» y
   // ésta es la razón: el instrumento borraba la evidencia justo cuando importaba (caso 066).
-  const rehecho = run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit)
-  assert.equal(rehecho.status, 0, `rehacer el banco falló: ${rehecho.stderr}`)
-  assert.equal(fs.existsSync(rastro), false, 'la corrida anterior no contamina la siguiente')
+  const rebuilt = run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit)
+  assert.equal(rebuilt.status, 0, `rehacer el banco falló: ${rebuilt.stderr}`)
+  assert.equal(fs.existsSync(trail), false, 'la corrida anterior no contamina la siguiente')
 })
 
 // Un banco que no se puede rehacer corta la corrida nombrando la ruta, en vez de seguir sobre un árbol
@@ -114,9 +114,9 @@ test('un banco que no se puede rehacer lo dice, en vez de seguir', { skip: proce
   const dir = benchDir(run(['evaluate', 'product-manager', '--bench', '13-sin-permiso', '--force'], toolkit), toolkit)
   fs.chmodSync(dir, 0o500)
   try {
-    const negado = run(['evaluate', 'product-manager', '--bench', '13-sin-permiso', '--force'], toolkit)
-    assert.notEqual(negado.status, 0, 'no sigue como si el banco fuera nuevo')
-    assert.match(negado.stderr, /13-sin-permiso/, 'y nombra la ruta, que es lo que permite diagnosticar')
+    const denied = run(['evaluate', 'product-manager', '--bench', '13-sin-permiso', '--force'], toolkit)
+    assert.notEqual(denied.status, 0, 'no sigue como si el banco fuera nuevo')
+    assert.match(denied.stderr, /13-sin-permiso/, 'y nombra la ruta, que es lo que permite diagnosticar')
   } finally {
     fs.chmodSync(dir, 0o755)
     discard(dir)
@@ -157,14 +157,14 @@ test('rehacer un banco con trabajo sin recoger se niega', () => {
   const dir = benchDir(run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit), toolkit)
   fs.appendFileSync(path.join(dir, 'planning', 'INBOX.md'), '\n- lo que produjo el cargo\n')
 
-  const negado = run(['evaluate', 'product-manager', '--bench', '09-proteccion'], toolkit)
-  assert.equal(negado.status, 2)
-  assert.match(negado.stderr, /trabajo sin recoger/)
+  const denied = run(['evaluate', 'product-manager', '--bench', '09-proteccion'], toolkit)
+  assert.equal(denied.status, 2)
+  assert.match(denied.stderr, /trabajo sin recoger/)
   assert.match(fs.readFileSync(path.join(dir, 'planning', 'INBOX.md'), 'utf8'), /lo que produjo el cargo/)
 
   // Con el registro ya guardado, rehacerlo es intencional y se permite.
-  const forzado = run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit)
-  assert.equal(forzado.status, 0, forzado.stderr)
+  const forced = run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit)
+  assert.equal(forced.status, 0, forced.stderr)
   assert.equal(fs.readFileSync(path.join(dir, 'planning', 'INBOX.md'), 'utf8').includes('produjo'), false)
 })
 
@@ -173,23 +173,23 @@ test('rehacer un banco con trabajo sin recoger se niega', () => {
 // el caso pedía medir — uno evaluó cuatro candidatas que en su enunciado no existían.
 test('cada caso recibe su propio banco', () => {
   const toolkit = path.resolve(__dirname, '..', '..')
-  const primero = run(['evaluate', 'product-manager', '--bench', '10-uno', '--force'], toolkit)
-  const segundo = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
-  assert.equal(primero.status, 0, primero.stderr)
-  assert.equal(segundo.status, 0, segundo.stderr)
-  const one = benchDir(primero, toolkit)
-  const other = benchDir(segundo, toolkit)
+  const first = run(['evaluate', 'product-manager', '--bench', '10-uno', '--force'], toolkit)
+  const second = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
+  assert.equal(first.status, 0, first.stderr)
+  assert.equal(second.status, 0, second.stderr)
+  const one = benchDir(first, toolkit)
+  const other = benchDir(second, toolkit)
   assert.notEqual(one, other, 'dos casos no comparten directorio')
 
   fs.appendFileSync(path.join(one, 'planning', 'INBOX.md'), '\n- lo que escribió el primer caso\n')
-  const vecino = fs.readFileSync(path.join(other, 'planning', 'INBOX.md'), 'utf8')
-  assert.equal(vecino.includes('el primer caso'), false, 'y no se leen entre sí')
+  const neighbor = fs.readFileSync(path.join(other, 'planning', 'INBOX.md'), 'utf8')
+  assert.equal(neighbor.includes('el primer caso'), false, 'y no se leen entre sí')
 
   // Preparar el banco de un caso no puede borrar el del vecino, que quizá esté a mitad de corrida.
   // El `stderr` va en la aserción como en las dos de arriba: sin él, un rojo en CI dice `1 !== 0` y
   // nada más, y distinguir una intermitencia de una regresión cuesta descartar hipótesis a mano.
-  const rehecho = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
-  assert.equal(rehecho.status, 0, rehecho.stderr)
+  const rebuilt = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
+  assert.equal(rebuilt.status, 0, rebuilt.stderr)
   assert.match(fs.readFileSync(path.join(one, 'planning', 'INBOX.md'), 'utf8'), /el primer caso/)
 
   // El nombre entra en una ruta: no puede escaparse del directorio de bancos.
@@ -217,26 +217,26 @@ test('en una instancia, el banco de un cargo del catálogo se niega nombrando c�
 // el banco se queda sin el suyo. Por qué `-C` no alcanza lo dice `engine/cli/catalog.js`.
 test('el banco commitea en el banco aunque el entorno traiga GIT_DIR', () => {
   const toolkit = path.resolve(__dirname, '..', '..')
-  const señuelo = tempRoot('cauce-senuelo-')
-  spawnSync('git', ['-C', señuelo, 'init', '-q'], { encoding: 'utf8' })
+  const decoy = tempRoot('cauce-senuelo-')
+  spawnSync('git', ['-C', decoy, 'init', '-q'], { encoding: 'utf8' })
 
-  const antes = process.env.GIT_DIR
-  process.env.GIT_DIR = path.join(señuelo, '.git')
+  const earlier = process.env.GIT_DIR
+  process.env.GIT_DIR = path.join(decoy, '.git')
   let bench
   try {
     bench = run(['evaluate', 'product-manager', '--bench', '09-git-dir', '--force'], toolkit)
   } finally {
-    if (antes === undefined) delete process.env.GIT_DIR
-    else process.env.GIT_DIR = antes
+    if (earlier === undefined) delete process.env.GIT_DIR
+    else process.env.GIT_DIR = earlier
   }
   assert.equal(bench.status, 0, bench.stderr)
 
-  const señueloLog = spawnSync('git', ['-C', señuelo, 'log', '--oneline'], { encoding: 'utf8' }).stdout
-  assert.equal(/banco limpio/.test(señueloLog), false, 'el banco commiteó en el repositorio del entorno')
+  const decoyLog = spawnSync('git', ['-C', decoy, 'log', '--oneline'], { encoding: 'utf8' }).stdout
+  assert.equal(/banco limpio/.test(decoyLog), false, 'el banco commiteó en el repositorio del entorno')
 
   const dir = benchDir(bench, toolkit)
-  const propio = spawnSync('git', ['-C', dir, 'log', '--oneline'], { encoding: 'utf8' }).stdout
-  assert.match(propio, /banco limpio/, 'y el banco quedó sin su propio commit')
+  const own = spawnSync('git', ['-C', dir, 'log', '--oneline'], { encoding: 'utf8' }).stdout
+  assert.match(own, /banco limpio/, 'y el banco quedó sin su propio commit')
 })
 
 // Se prueba la función y no el comando porque **no se sabe cómo provocar el fallo**: es el caso 073, y
@@ -246,23 +246,23 @@ test('el banco commitea en el banco aunque el entorno traiga GIT_DIR', () => {
 // `benchSurvived`; acá se fija que efectivamente lo traiga.
 test('la guarda del banco trae con qué diagnosticar, no una muestra', () => {
   const dir = tempRoot('cauce-sobrevivio-')
-  const antiguo = path.join(dir, 'viejo.txt')
+  const older = path.join(dir, 'viejo.txt')
   fs.mkdirSync(path.join(dir, 'hondo', 'mas'), { recursive: true })
-  fs.writeFileSync(antiguo, 'lo que el borrado no tocó')
+  fs.writeFileSync(older, 'lo que el borrado no tocó')
   fs.writeFileSync(path.join(dir, 'hondo', 'mas', 'nuevo.txt'), 'lo que se escribió después')
   // El corte va entre los dos archivos: el primero queda con fecha anterior y el segundo, posterior.
   const since = fs.statSync(path.join(dir, 'hondo', 'mas', 'nuevo.txt')).mtimeMs
-  fs.utimesSync(antiguo, new Date(since - 10_000), new Date(since - 10_000))
+  fs.utimesSync(older, new Date(since - 10_000), new Date(since - 10_000))
 
-  const dicho = CAT.benchSurvived(dir, since)
-  assert.match(dicho, /Sobrevivieron 2 archivo\(s\) en 2 directorio\(s\)/, 'cuántos, no una muestra')
-  assert.match(dicho, /viejo\.txt \(anterior al borrado\)/, 'lo que el borrado no tocó se ve como tal')
-  assert.match(dicho, /nuevo\.txt \(escrito durante el borrado\)/, 'y lo que alguien reescribió, también')
-  assert.match(dicho, new RegExp(process.version.replace(/\./g, '\\.')),
+  const said = CAT.benchSurvived(dir, since)
+  assert.match(said, /Sobrevivieron 2 archivo\(s\) en 2 directorio\(s\)/, 'cuántos, no una muestra')
+  assert.match(said, /viejo\.txt \(anterior al borrado\)/, 'lo que el borrado no tocó se ve como tal')
+  assert.match(said, /nuevo\.txt \(escrito durante el borrado\)/, 'y lo que alguien reescribió, también')
+  assert.match(said, new RegExp(process.version.replace(/\./g, '\\.')),
     'con la versión de Node, que es la única correlación que las dos fallas tienen')
   // El segundo borrado no rodea nada —quien la llama corta igual— y acá sí puede sacarlo, que es la
   // respuesta «era transitorio». Sin este dato, «quedó» y «quedó para siempre» se leen igual.
-  assert.match(dicho, /un segundo borrado sí lo sacó/)
+  assert.match(said, /un segundo borrado sí lo sacó/)
   assert.equal(fs.existsSync(dir), false, 'y efectivamente lo sacó')
 })
 
@@ -296,11 +296,11 @@ test('el decisor de borrado rechaza todo lo que no cuelga de un banco desechable
   // Nombres inventados a propósito: nada de esto existe, y así la prueba puede hablar de una casa y de
   // la raíz de un repositorio sin escribir en el disco la ruta real de ninguna máquina.
   const roots = ['/desechable', '/scratch/banco', '/proyecto/.cauce-eval']
-  for (const jamas of ['/', '/casa/alguien', '/casa/alguien/Code/suyo', '/proyecto', '/proyecto/engine']) {
-    const negativa = undeletable(jamas, roots)
-    assert.ok(negativa, `${jamas} tiene que rechazarse`)
-    assert.ok(negativa.includes(jamas), 'y el rechazo dice qué ruta iba a borrar')
-    assert.ok(negativa.includes('/desechable'), 'y contra qué la comparó')
+  for (const never of ['/', '/casa/alguien', '/casa/alguien/Code/suyo', '/proyecto', '/proyecto/engine']) {
+    const refusal = undeletable(never, roots)
+    assert.ok(refusal, `${never} tiene que rechazarse`)
+    assert.ok(refusal.includes(never), 'y el rechazo dice qué ruta iba a borrar')
+    assert.ok(refusal.includes('/desechable'), 'y contra qué la comparó')
   }
   // Las raíces desechables tampoco: se comparan como padres, con el separador puesto.
   assert.ok(undeletable('/desechable', roots), 'una raíz desechable no se borra a sí misma')
@@ -313,16 +313,16 @@ test('el decisor de borrado rechaza todo lo que no cuelga de un banco desechable
 // Y el borrado, sobre lo único que se le pasa en toda la suite: un temporal que la prueba acaba de crear.
 // Nada de acá depende del decisor para ser seguro.
 test('el borrado de la suite se lleva lo desechable y devuelve el motivo cuando no', () => {
-  const desechable = tempRoot('cauce-discard-')
-  fs.writeFileSync(path.join(desechable, 'algo.txt'), 'x')
-  discard(desechable)
-  assert.equal(fs.existsSync(desechable), false)
+  const disposable = tempRoot('cauce-discard-')
+  fs.writeFileSync(path.join(disposable, 'algo.txt'), 'x')
+  discard(disposable)
+  assert.equal(fs.existsSync(disposable), false)
 
   // El objetivo que se rechaza es una ruta **inventada** dentro del propio temporal, no una real: lo que
   // se mide es que el motivo llegue, y para eso no hace falta apuntarle a nada que importe.
-  const fuera = path.join(tempRoot('cauce-discard-fuera-'), '..', '..', 'no-deberia-borrarse')
+  const outside = path.join(tempRoot('cauce-discard-fuera-'), '..', '..', 'no-deberia-borrarse')
   assert.throws(() => discard(path.resolve('/', 'no-existe', 'nada')), /borrado abortado/)
-  assert.ok(undeletable(fuera, [path.join(fuera, 'sub')]), 'el mismo motivo, sin borrar nada')
+  assert.ok(undeletable(outside, [path.join(outside, 'sub')]), 'el mismo motivo, sin borrar nada')
 })
 
 // La ruta del banco, en sus dos direcciones. Nada de esto borra: `benchDir` sólo asercia, así que puede
@@ -333,8 +333,8 @@ test('la ruta de un banco no sale de una salida vacía ni de fuera de .cauce-eva
   assert.throws(() => benchDir({ stdout: '', stderr: 'el comando falló' }, toolkit), /el banco no se creó/)
   assert.throws(() => benchDir({ stdout: 'engine', stderr: '' }, toolkit), /no es un banco/)
 
-  const bueno = run(['evaluate', 'product-manager', '--bench', '15-ruta', '--force'], toolkit)
-  const dir = benchDir(bueno, toolkit)
+  const good = run(['evaluate', 'product-manager', '--bench', '15-ruta', '--force'], toolkit)
+  const dir = benchDir(good, toolkit)
   assert.ok(dir.includes(`${path.sep}.cauce-eval${path.sep}`), 'y un banco de verdad pasa')
   discard(dir)
 })
@@ -352,17 +352,17 @@ test('un banco que sobrevive a su borrado corta la corrida, y sólo se borra den
   fs.writeFileSync(path.join(dir, 'quedo.txt'), 'lo que el borrado no se llevó')
 
   // El borrado que no borra: es la única forma de ejercer la rama, y por eso la función lo recibe.
-  const dicho = CAT.clearBench(dir, scratch, () => {})
-  assert.match(dicho, /no se pudo borrar entero/, 'la guarda habla')
-  assert.match(dicho, /quedo\.txt/, 'y nombra lo que sobrevivió')
+  const said = CAT.clearBench(dir, scratch, () => {})
+  assert.match(said, /no se pudo borrar entero/, 'la guarda habla')
+  assert.match(said, /quedo\.txt/, 'y nombra lo que sobrevivió')
 
   // Y el destino se comprueba antes de destruir: una ruta que no cuelga del banco se rechaza nombrando
   // las dos. El objetivo es inventado y el borrado inyectado no borra, así que ni mutando la comprobación
   // esta prueba puede llevarse nada.
-  const afuera = CAT.clearBench(path.join(scratch, '..', 'no-es-un-banco'), scratch, () => {})
-  assert.match(afuera, /no cuelga de/, 'se niega')
-  assert.match(afuera, /no-es-un-banco/, 'y dice qué ruta iba a borrar')
-  assert.ok(afuera.includes(path.resolve(scratch)), 'y contra qué la comparó')
+  const outside = CAT.clearBench(path.join(scratch, '..', 'no-es-un-banco'), scratch, () => {})
+  assert.match(outside, /no cuelga de/, 'se niega')
+  assert.match(outside, /no-es-un-banco/, 'y dice qué ruta iba a borrar')
+  assert.ok(outside.includes(path.resolve(scratch)), 'y contra qué la comparó')
 
   // Descendiente estricto, y las dos formas en que eso importa: el banco no se borra a sí mismo, y un
   // vecino que empieza igual no se cuela. Sin el separador las dos pasarían, y ninguna de las aserciones
@@ -376,27 +376,25 @@ test('un banco que sobrevive a su borrado corta la corrida, y sólo se borra den
   assert.equal(fs.existsSync(dir), false)
 })
 
-// Caso 509: en una instancia el banco es para lo propio. Un cargo forkeado se evalúa con los archivos de sus casos a
-// mano, en una instancia desechable que lo resuelve a él —no al del catálogo— y que git no ve; uno del catálogo se
-// sigue evaluando en el toolkit.
+// Caso 509: el banco de un cargo forkeado lleva los archivos de sus casos a mano, en una instancia desechable que lo
+// resuelve a él —no al del catálogo— y que git no ve.
 test('en una instancia, un cargo propio tiene banco con sus archivos, y uno del catálogo no', () => {
   const { installedProject, CLI } = require('../support/environment')
   const { target, runCli: atRoot, env } = installedProject('cauce-banco-instancia-')
   const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { cwd: target, encoding: 'utf8', env })
   spawnSync('git', ['init', '-q'], { cwd: target })
-  const catalogo = runCli(['evaluate', 'software-architect', '--bench', '07-approval-without-looking'])
-  assert.equal(catalogo.status, 2)
-  assert.match(catalogo.stderr, /del catálogo de Cauce.*agents fork software-architect/s)
+  const catalog = runCli(['evaluate', 'software-architect', '--bench', '07-approval-without-looking'])
+  assert.equal(catalog.status, 2)
+  assert.match(catalog.stderr, /del catálogo de Cauce.*agents fork software-architect/s)
   assert.equal(JSON.parse(runCli(['evaluate', 'software-architect', '--cases', '--json']).stdout).owned, false)
 
   assert.equal(atRoot(['agents', 'fork', 'software-architect', target]).status, 0)
   fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nUna empresa que vende ruteo.\n')
   fs.writeFileSync(path.join(target, 'planning', 'rules', 'propias.md'), '# Reglas propias\n')
-  // Un enlace relativo de la empresa viaja como enlace relativo: absoluto, lo que el banco escribiera ahí caería en la
-  // instancia viva.
+  // Un enlace relativo de la empresa, que tiene que viajar tal cual; por qué, en engine/cli/bench.js.
   fs.symlinkSync(path.join('..', 'software-architect', 'SKILL.md'),
     path.join(target, 'agents', 'roles', 'software-architect', 'references', 'enlace.md'))
-  // Uno absoluto apuntaría a la instancia viva desde el banco: no viaja.
+  // Y uno absoluto, que no tiene que viajar.
   fs.symlinkSync(path.join(target, 'organization', 'workspace.md'), path.join(target, 'organization', 'vivo.md'))
   assert.equal(JSON.parse(runCli(['evaluate', 'software-architect', '--cases', '--json']).stdout).owned, true)
   const made = runCli(['evaluate', 'software-architect', '--bench', '07-approval-without-looking'])
@@ -424,14 +422,14 @@ test('en una instancia, un recorrido propio tiene banco, y uno del catálogo no'
   const { installedProject, CLI } = require('../support/environment')
   const { target, env } = installedProject('cauce-banco-recorrido-')
   const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { cwd: target, encoding: 'utf8', env })
-  const [caso] = JSON.parse(runCli(['evaluate', 'intake', '--flow', '--cases', '--json']).stdout).cases
-  const catalogo = runCli(['evaluate', 'intake', '--flow', '--bench', caso.id])
-  assert.equal(catalogo.status, 2)
-  assert.match(catalogo.stderr, /copiá su carpeta a flows\/intake\//)
+  const [caseName] = JSON.parse(runCli(['evaluate', 'intake', '--flow', '--cases', '--json']).stdout).cases
+  const catalog = runCli(['evaluate', 'intake', '--flow', '--bench', caseName.id])
+  assert.equal(catalog.status, 2)
+  assert.match(catalog.stderr, /copiá su carpeta a flows\/intake\//)
 
   fs.cpSync(path.join(TOOLKIT, 'flows', 'system', 'intake'), path.join(target, 'flows', 'intake'), { recursive: true })
   fs.appendFileSync(path.join(target, 'flows', 'intake', 'README.md'), '\nNuestra versión.\n')
-  const made = runCli(['evaluate', 'intake', '--flow', '--bench', caso.id])
+  const made = runCli(['evaluate', 'intake', '--flow', '--bench', caseName.id])
   assert.equal(made.status, 0, made.stderr)
   const dir = path.resolve(target, made.stdout.trim())
   assert.match(fs.readFileSync(path.join(dir, 'flows', 'intake', 'README.md'), 'utf8'), /Nuestra versión/)

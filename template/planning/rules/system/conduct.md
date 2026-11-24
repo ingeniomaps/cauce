@@ -14,6 +14,11 @@ Las excepciones se documentan en la sección «Integraciones y ambientes» de
 `organization/workspace.md`, nombrando el entorno concreto: ese archivo es del proyecto y
 `upgrade` no lo toca.
 
+En Claude Code, una herramienta MCP cuyo nombre no empieza con un verbo de lectura frena hasta esa
+aprobación, que vale para ella el resto de la sesión. Un servidor que es un sandbox se declara además en
+`mcpSandbox` de `ops.config.json`. En los otros runners, y por cualquier otro camino, lo sostienen esta
+regla y el review.
+
 ## R13 — Negarse no es entregar
 
 Cada límite tiene una contraparte positiva, y respetarlo no exime de ella. Negarse bien y no dejar nada
@@ -71,7 +76,8 @@ corrida — cuesta el trabajo de alguien.
 **Dónde se prueba importa tanto como qué se prueba.** Un cambio que puede hacer fallar la herramienta que
 las pruebas invocan se ejercita en una copia, nunca en el árbol que contiene el trabajo. Y una mutación
 que apaga una defensa se corre en una copia **siempre**: es, literalmente, ejecutar el código sin lo que
-lo hace seguro.
+lo hace seguro. La copia la arma `ops copy <repo>`: lleva lo trackeado y la prueba nueva sin trackear,
+deja afuera lo ignorado y el `.git`, y se niega pasado un tope.
 
 De ahí sale la única forma que sostiene todo lo anterior cuando falla: **decidir y destruir se separan**.
 La función que decide si algo se puede borrar no borra —recibe rutas y devuelve un motivo—, así que

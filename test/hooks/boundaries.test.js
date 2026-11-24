@@ -71,15 +71,15 @@ test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible
   const root = outsideTempRoot('ops-hook-exempt-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.mkdirSync(path.join(root, 'service'))
-  const memoria = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')
+  const memory = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     workspaceRoots: [{ name: 'service', path: 'service' }],
     writableOutsideRoots: ['~/.claude/projects/demo/memory', '../salidas'],
   }))
-  const escribe = (file) => execute('workspace-boundary', { cwd: root, tool_input: { file_path: file } })
+  const writes = (file) => execute('workspace-boundary', { cwd: root, tool_input: { file_path: file } })
 
-  assert.doesNotThrow(() => escribe(path.join(memoria, 'nota.md')), '`~` se expande a la casa del usuario')
-  assert.doesNotThrow(() => escribe('../salidas/informe.csv'), 'y lo relativo se resuelve contra la raíz')
+  assert.doesNotThrow(() => writes(path.join(memory, 'nota.md')), '`~` se expande a la casa del usuario')
+  assert.doesNotThrow(() => writes('../salidas/informe.csv'), 'y lo relativo se resuelve contra la raíz')
 
   // Exentar una ruta no exenta a su padre ni a su vecina: es una lista de rutas, no un permiso de zona.
   // Sin esto, `startsWith` sobre la ruta escrita habría dejado pasar media casa por una sola línea.
@@ -98,17 +98,17 @@ test('guard-shell-boundary mira el destino de un comando, sin morder lo corrient
     workspaceRoots: [{ name: 'main', path: '.' }],
     writableOutsideRoots: ['~/.claude/projects/demo/memory'],
   }))
-  const corre = (command) => execute('shell-boundary', { cwd: root, tool_input: { command } })
-  const afuera = path.join(os.homedir(), 'afuera')
+  const runs = (command) => execute('shell-boundary', { cwd: root, tool_input: { command } })
+  const outside = path.join(os.homedir(), 'afuera')
 
   for (const command of [
-    `echo x > ${afuera}/nota.md`,
+    `echo x > ${outside}/nota.md`,
     'cat > ~/afuera/nota.md <<EOF',
     'echo x > $HOME/afuera/nota.md',
-    `printf x | tee ${afuera}/nota.md`,
-    `cp nota.md ${afuera}/nota.md`,
-    `sed -i 's/a/b/' ${afuera}/nota.md`,
-    `truncate -s 0 ${afuera}/registro.log`,
+    `printf x | tee ${outside}/nota.md`,
+    `cp nota.md ${outside}/nota.md`,
+    `sed -i 's/a/b/' ${outside}/nota.md`,
+    `truncate -s 0 ${outside}/registro.log`,
   ]) {
     blocked('shell-boundary', { cwd: root, tool_input: { command } }, /fuera de las raíces/)
   }
@@ -123,10 +123,10 @@ test('guard-shell-boundary mira el destino de un comando, sin morder lo corrient
     // `sed` sin `-i` lee y manda a stdout: el destino de afuera es el archivo que abre, no uno que
     // escriba. Va con una ruta fuera de las raíces a propósito — con una de adentro el caso pasaría
     // aunque el guard dejara de exigir el flag.
-    `sed 's/a/b/' ${afuera}/entrada.txt`,
+    `sed 's/a/b/' ${outside}/entrada.txt`,
     'cp solo',
   ]) {
-    assert.doesNotThrow(() => corre(command), `frenó lo corriente: ${command}`)
+    assert.doesNotThrow(() => runs(command), `frenó lo corriente: ${command}`)
   }
 })
 
@@ -146,11 +146,11 @@ test('el override de noclobber no es una puerta de atrás al destino', () => {
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     workspaceRoots: [{ name: 'main', path: '.' }],
   }))
-  const afuera = path.join(os.homedir(), 'afuera', 'nota.md')
+  const outside = path.join(os.homedir(), 'afuera', 'nota.md')
 
   // Las tres formas de redirigir escriben lo mismo, así que las tres tienen que contestar lo mismo.
   for (const redirect of ['>', '>>', '>|']) {
-    blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x ${redirect} ${afuera}` } },
+    blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x ${redirect} ${outside}` } },
       /fuera de las raíces/)
   }
 
@@ -167,13 +167,13 @@ test('los dos guards de límites responden lo mismo sobre la misma ruta', () => 
     workspaceRoots: [{ name: 'main', path: '.' }],
     writableOutsideRoots: ['~/.claude/projects/demo/memory'],
   }))
-  const exenta = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory', 'nota.md')
-  const prohibida = path.join(os.homedir(), '.claude', 'projects', 'demo', 'otra.md')
+  const exempt = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory', 'nota.md')
+  const forbidden = path.join(os.homedir(), '.claude', 'projects', 'demo', 'otra.md')
 
-  assert.doesNotThrow(() => execute('workspace-boundary', { cwd: root, tool_input: { file_path: exenta } }))
-  assert.doesNotThrow(() => execute('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${exenta}` } }))
-  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: prohibida } }, /fuera de las raíces/)
-  blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${prohibida}` } }, /fuera de las raíces/)
+  assert.doesNotThrow(() => execute('workspace-boundary', { cwd: root, tool_input: { file_path: exempt } }))
+  assert.doesNotThrow(() => execute('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${exempt}` } }))
+  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: forbidden } }, /fuera de las raíces/)
+  blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${forbidden}` } }, /fuera de las raíces/)
 })
 
 // El agujero declarado, fijado para que se note si alguien lo «arregla»: `writeTargets` dice por qué un
@@ -206,11 +206,11 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
 
   // Y si la persona lo pide, pasa: el guard cuida que el agente no parchee el motor por su cuenta, no que
   // ella no pueda tocarlo a sabiendas (caso 117).
-  const motor = 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js'
+  const engineFile = 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js'
   const chat = chatSession()
   try {
     assert.doesNotThrow(() => execute('engine',
-      chat.says(`editá ${motor}`)({ cwd: root, tool_input: { file_path: motor } })))
+      chat.says(`editá ${engineFile}`)({ cwd: root, tool_input: { file_path: engineFile } })))
   } finally { chat.close() }
 
   // En el toolkit el motor es el producto: acá editarlo es el trabajo, no una infracción.
@@ -309,9 +309,9 @@ test('el temporal de proyecto de Gemini se puede escribir, y sólo el de la sesi
   assert.doesNotMatch(hinted, /temporal del sistema/)
 })
 
-// De la revisión del 516: una carpeta de la sesión que es un enlace abriría lo que tiene detrás —el home entero, si
-// alguien la enlaza ahí—, porque el límite juzga por dónde cae la escritura. Ni la de Gemini ni el scratchpad cuentan
-// si son un enlace. El home es falso y cuelga de /var/tmp: ninguna prueba arma nada bajo el home real.
+// De la revisión del 516: ni la carpeta de Gemini ni el scratchpad cuentan si son un enlace; el porqué está en
+// `linked` de `engine/hooks/input.js`. El home es falso y cuelga de /var/tmp: ninguna prueba arma nada bajo el
+// home real.
 test('una carpeta de la sesión que es un enlace no abre nada', () => {
   const root = outsideTempRoot('ops-hook-sesion-enlace-')
   fs.mkdirSync(path.join(root, 'planning'))

@@ -7,10 +7,9 @@ const { eachQuoted, masked, segments, unquoted, withoutHeredocBodies } = require
 // no el texto de alrededor: `-m "v$(date): no usar git push -f"` no empuja nada. Una sustitución anidada se
 // deja entera.
 //
-// El heredoc con el delimitador entre comillas se tapa entero y antes de leer nada: su cuerpo puede traer
-// comillas, y ahí
-// la cadena terminaba a mitad del mensaje y lo que seguía se leía como orden. Termina en su primera línea de cierre, y
-// si lo que sigue no cierra el mensaje, no era sólo un mensaje y no se tapa.
+// El heredoc con el delimitador entre comillas se tapa entero y antes de leer nada: su cuerpo puede traer comillas, y
+// ahí la cadena terminaba a mitad del mensaje y lo que seguía se leía como orden. Termina en su primera línea de
+// cierre, y si lo que sigue no cierra el mensaje, no era sólo un mensaje y no se tapa.
 const QUOTED_HEREDOC = new RegExp(String.raw`(\s(?:-[a-zA-Z]*m\s*|--message[=\s]\s*))"\$\(\s*cat\s+<<-?\s*`
   + String.raw`(?:'|"|\\)([\w.-]+)['"]?\n`
   + String.raw`(?:(?!\s*\2\s*\n)[^\n]*\n)*\s*\2\s*\n?\s*\)"`, 'g')
@@ -59,10 +58,9 @@ function commitAsRun(command) {
 }
 
 // El comando tal como se va a ejecutar: sin lo entrecomillado que es dato y no orden. En un commit lo es su mensaje;
-// fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y por eso no se vaciaba
-// nunca. Pero
-// tampoco es orden el patrón de un `sed` ni el texto de un `grep`, y leerlos como tal frenaba un `sed` por la frase que
-// reemplazaba (caso 259).
+// fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y por eso no se vaciaba nunca.
+// Pero tampoco es orden el patrón de un `sed` ni el texto de un `grep`, y leerlos como tal frenaba un `sed` por la
+// frase que reemplazaba (caso 259).
 function asRun(command) {
   const raw = String(command)
   return isCommit(raw) ? commitAsRun(raw) : withoutQuotedData(raw)

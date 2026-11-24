@@ -1,8 +1,7 @@
 'use strict'
 
-// Lo que la revisión mandó a corregir una y otra vez, y qué se hizo con eso (caso 214). Lo que importa es
-// cuándo una regla vuelve como lección y cuándo no: proponer de más es ruido en el INBOX, y volver a
-// proponer lo rechazado sin evidencia nueva es insistir.
+// Caso 214: cuándo una regla corregida vuelve al INBOX como lección y cuándo no. El criterio, en el encabezado de
+// `engine/planning/lessons.js`.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
@@ -11,12 +10,12 @@ const fs = require('node:fs')
 const path = require('node:path')
 const LS = require('../../engine/planning/lessons')
 
-const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
+const TEMPLATE_PLANNING = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const RULE = 'planning/rules/system/commits.md#R8'
 
 function planning(name) {
   const dir = path.join(tempRoot(name), 'planning')
-  fs.cpSync(MOLDE, dir, { recursive: true })
+  fs.cpSync(TEMPLATE_PLANNING, dir, { recursive: true })
   return dir
 }
 

@@ -9,6 +9,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 const { execute, executeAll } = require('../../engine/hooks/run')
 const C = require('../../engine/config/validate')
 const { deliveryRules } = require('../../engine/hooks/delivery')
@@ -17,6 +18,9 @@ const run = (root, command, extra = {}) => ({ cwd: root, tool_input: { command }
 
 test('cada acto que publica frena, y su lectura no', () => {
   const root = pushRoot('cauce-delivery-')
+  // Con el destino nombrado, `gh pr create` pasa si es el origin del checkout (caso 540).
+  execFileSync('git', ['-C', root, 'init', '-q'])
+  execFileSync('git', ['-C', root, 'remote', 'add', 'origin', 'https://github.com/acme/app.git'])
   for (const command of [
     'gh pr merge 12 --squash --repo acme/app',
     'gh pr review 12 --approve',

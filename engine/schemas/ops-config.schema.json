@@ -48,7 +48,7 @@
           },
           "verify": {
             "type": "string",
-            "description": "Comando que corre la puerta de esta raíz —pruebas, lint, typecheck, build—, tal como se invoca desde ella. Sin él, quien verifica tiene que descubrirlo leyendo el repositorio en cada tarea, y eso es trabajo de modelo repetido para siempre sobre una respuesta que no cambia."
+            "description": "Comando que corre la puerta de esta raíz —pruebas, lint, typecheck, build—, tal como se invoca desde ella. Sin él, quien verifica tiene que descubrirlo leyendo el repositorio en cada tarea, y eso es trabajo de modelo repetido para siempre sobre una respuesta que no cambia. Es también lo que corre el hook de commit en lugar de los gates que adivina por el stack."
           },
           "scope": {
             "type": "array",
@@ -82,6 +82,22 @@
     "deployCommands": {
       "type": "array",
       "description": "Los comandos con que este proyecto despliega —\"make deploy\", \"./scripts/release.sh\"—, tal como se escriben al principio de un comando. El guard destructive los frena como frena terraform apply o kubectl apply, y se aprueban igual que un push: una persona, en el diálogo de Claude Code, nombrándolos en el chat, o en .ops-approval.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mcpSandbox": {
+      "type": "array",
+      "description": "Los servidores MCP que son un sandbox, por su nombre tal como aparece en mcp__<servidor>__<herramienta>. El guard mcp-writes no los frena; los demás se tratan como reales y lo que escriben lo aprueba una persona (R12).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mcpReads": {
+      "type": "array",
+      "description": "Las herramientas MCP que sólo leen y cuyo nombre no empieza con un verbo de lectura (get, list, search…). Con el prefijo mcp__<servidor>__ valen para ese servidor; sin él, para cualquiera.",
       "items": {
         "type": "string",
         "minLength": 1
@@ -150,6 +166,20 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "Cuánto puede durar cada gate de verify antes de cortarlo, con todo lo que lanzó. Por defecto 10."
+        },
+        "gateMinFreeMb": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Memoria libre, en MB, que verify pide para arrancar los gates de un commit; con menos, frena el commit y lo dice. Sin declarar no mira la memoria. Sólo en Linux, donde se lee MemAvailable: en otro sistema no frena."
+        },
+        "liveBranches": {
+          "type": "array",
+          "description": "Ramas vivas además de main, master y la rama por defecto de cada remoto: develop, staging, production con GitFlow. Un commit que cae en ellas frena, y publicar en ellas pide nombrarlas en pushToLiveBranches. Nombres exactos, sin patrones.",
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\s*?\\[]+$"
+          },
+          "uniqueItems": true
         },
         "pushToLiveBranches": {
           "type": "array",

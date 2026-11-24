@@ -14,6 +14,256 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.124.0] - 2026-11-21
+
+### Agregado
+
+- **`ops review-read` dice qué archivos del diff leyó de verdad quien revisó, según su transcripción** (caso 549). En
+  `/autobuild` el revisor declara en `opened` lo que abrió y nada lo comprobaba. Ahora, después de Review, el hecho que
+  va a `done/` dice si la transcripción muestra leído todo el diff, qué no muestra leído, o que `opened` quedó declarado
+  sin comprobar y por qué. Todavía no frena: eso se decide con los números de las corridas. Sólo en Claude Code, que es
+  el que deja la transcripción; su forma no es una API documentada, y está medida en 2.1.330.
+
+- **`runner.gateMinFreeMb` frena un commit cuando no hay memoria para correr sus gates** (caso 550). Una QA en una
+  instancia real congeló la máquina, y el candado de un gate por vez cuenta gates, no memoria. Con la llave declarada,
+  `verify` mira la memoria disponible al tomar el candado y, si no alcanza, frena sin correr nada, diciendo cuánta hay y
+  cuánta pide. No tiene default: sin la llave todo sigue igual. Sólo en Linux, donde se lee `MemAvailable`; en otro
+  sistema no frena. Bajarla o quitarla pide confirmación. El cupo de varios gates a la vez quedó aplazado (caso 553).
+
+- **Armar una línea de trabajo, sumarle un repositorio o retirarla frena hasta que la persona la nombre** (caso 551).
+  Una sesión abrió una línea que nadie pidió: `ops line` declara la línea, crea su rama y sus árboles, y declararla a
+  mano en `ops.config.json` ya frenaba, pero por la CLI no la miraba nadie. El guard nuevo `line-command`, en el grupo
+  `pre-shell`, frena la línea nueva, el repositorio nuevo y el `--apply` de `lines join` y `lines migrate`; deja pasar
+  las lecturas, la línea ya declarada, `ops worktree --line` y `lines env`. Se aprueba nombrando «la línea <nombre>» en
+  el turno, o confirmando después del bloqueo.
+
+- **`automation doctor . claude` dice cuánto carga de instrucciones una sesión entera** (caso 532). `install` y
+  `check` miden sólo el bloque de Cauce, en bytes; Claude Code avisa por otra cuenta, todos los archivos de
+  instrucciones en caracteres. La línea nueva da esa cuenta como la documenta Claude Code —el usuario, la carpeta y sus
+  ancestros, las reglas sin `paths:` y los `@` hasta cuatro saltos—, partida en usuario, proyecto y Cauce, contra el piso
+  de 120.000; los archivos que pasan los 40.000 de a uno se dicen aparte. Del archivo del usuario sólo mide el largo.
+
+- **`ops copy <repo> [destino]` arma la copia que R23 pide para mutar** (caso 536). Cada agente la armaba a mano, y las
+  dos formas que salían solas fallaban sin avisar: `git ls-files` dejaba afuera la prueba recién escrita y la mutación
+  corría sin ella; `cp -r` arrastraba lo ignorado, y una caché de 11 GB dejó sin memoria a una máquina. Copia lo
+  trackeado y lo nuevo no ignorado, sin el `.git`; mide antes y se niega pasado un tope (500 MB, o `--max-mb`, y un
+  cuarto de la memoria si el destino es un tmpfs); nunca borra el destino ni copia adentro del repositorio; avisa lo que
+  no copia —submódulos, repos anidados— y los enlaces que apuntan afuera de la copia; imprime la ruta sola por `stdout`.
+
+- **`ops done <planning> <tarea> --fields <archivo>` cierra una tarea en una llamada** (caso 537). Hace el paso 13 del
+  PROTOCOL, que fuera de `/autobuild` era una lista en prosa:
+  - El archivo de campos lleva lo que juzga quien cierra: `done`, `qa`, `tests`, `commit`, `review`, `critique` y
+    `decisions` si hubo alguna.
+  - `acept`, `fecha` y `lane` salen del disco, también la aceptación heredada de los criterios y el carril que anotó
+    quien construyó.
+  - Valida la entrada entera antes de escribir. Si algo está mal, no escribe nada.
+  - Escribe la entrada con el slug de la cola y saca la tarea y sus notas, sin tocar lo comentado.
+  - Borra el hito vacío salvo que guarde borradores, cierra la épica sin historias abiertas, deja el WIP en
+    `status: IDLE`, suelta el reclamo y termina con `check --closed`.
+  - No commitea.
+
+  Dos sesiones reales de Claude lo usaron sin que el pedido lo nombrara: lo encontraron en el PROTOCOL y en la ayuda.
+
+- **Lo que un agente escribe por MCP frena hasta que una persona lo apruebe** (caso 541). Es lo que R12 ya pedía:
+  crear o comentar una tarjeta, publicar una página, mandar un mensaje o mergear un PR por un servidor MCP pasaba
+  sin freno. El guard nuevo `mcp-writes` corre en Claude Code sobre toda herramienta MCP:
+  - Una herramienta cuyo nombre no empieza con un verbo de lectura (`get`, `list`, `search`, `fetch`, `read`…) frena,
+    sea del servidor que sea. Una que el servidor agregue mañana nace frenada.
+  - Aprobada una vez, por el diálogo, el chat o `.ops-approval`, vale para esa herramienta el resto de la sesión en la
+    conversación principal; un subagente la vuelve a pedir. Un «pará» la revoca.
+  - Un servidor que es un sandbox se declara en `mcpSandbox` de `ops.config.json`, y una lectura que el nombre no
+    delata, en `mcpReads`.
+  - Los adaptadores de Codex, Gemini y Antigravity no lo registran.
+
+  **Qué hacer:** reinstalá el runner (`make install-claude`), que reemplaza el hook de `guard-jira-adf.sh` por
+  `guard-mcp.sh` y suma `guard-mcp-granted.sh` en `PostToolUse`. Si usás un navegador por MCP sobre un ambiente de prueba, declaralo en
+  `mcpSandbox`.
+
+- **El árbol de una línea puede traer el `.env` del checkout de siempre** (caso 543). Un worktree no trae lo que git
+  ignora, y ahí suele estar el `.env`: la línea arrancaba sin la configuración de sus servicios, y nada lo decía.
+  - `ops line` nombra los `.env*` ignorados que el checkout de siempre tiene y el árbol no, sin leerlos.
+  - `ops line … --env` los copia sin pisar ninguno, y si hay compose deja el `COMPOSE_PROJECT_NAME` de la línea.
+  - `ops lines env <ops-root> <línea>` dice qué clave envejeció, sin mostrar valores, y con `--apply` copia el original
+    y guarda el anterior en `lines/<línea>/.env-prev/`.
+  - El retiro en seco (`ops lines join`) avisa lo que la línea deja del lado del producto: el proyecto de compose, con
+    cómo bajarlo si es propio, y los `.env*` que el retiro se lleva (caso 544).
+
+- **Un archivo que sobrescribe uno de reglas del sistema puede conservar las que no reemplaza** (caso 545). Hasta
+  ahora, sobrescribir `process.md` retiraba las siete reglas del archivo, aunque la instancia quisiera cambiar dos, y lo
+  que escribía para conservarlas no le llegaba a ningún agente. `adopts: R3, R17, R28` en el frontmatter del archivo
+  propio hace que `automation install` copie esas secciones a `planning/rules/adopted/` y que el bloque de reglas las
+  cargue. `check` deja de darlas por perdidas, avisa si lo copiado quedó viejo y falla si se adopta una regla que no
+  existe o que el archivo propio redefine. **Qué hacer:** si tu instancia sobrescribe un archivo y conserva reglas «por
+  referencia», declaralas en `adopts:` y reinstalá el runner.
+
+### Corregido
+
+- **`destructive` y `test-evidence-shell` ven el borrado detrás de cualquier prefijo de shell.** Cada uno llevaba su
+  propia lista de ocho prefijos, así que `setsid rm -rf .`, `doas rm -rf .` o `stdbuf -oL rm test/x.test.js` pasaban
+  donde `sudo rm -rf .` frenaba. Ahora leen el verbo con la misma función que `secrets-shell`, que conoce todos los
+  prefijos de `shell-wrappers` con sus banderas y valores. No hay nada que hacer en la instancia: llega con `upgrade`.
+
+- **`runtime-shell` y `shell-boundary` ven el `git` detrás de `--attr-source` y `--config-env`.** Las opciones globales
+  de git que llevan valor estaban copiadas en cuatro guards, y las copias no coincidían: `git --attr-source HEAD rm`
+  sobre un script de los guards, o `git --attr-source HEAD config core.hooksPath h`, pasaban donde `git -C . rm`
+  frenaba. Ahora las cuatro leen la misma lista. No hay nada que hacer en la instancia: llega con `upgrade`.
+
+- **`secrets-shell` frena leer una credencial con un programa que no conoce.** Contaba como lector sólo lo que estaba
+  en su lista, así que `comm .env x`, `zcat .env.gz`, `column -t .env` o `git diff .env` pasaban; `nl` había entrado
+  después de que un agente lo usara en una sesión real. Ahora cuenta cualquier programa instalado, y lo que sólo nombra
+  el archivo se declara aparte: `ls`, `test`, `cp`, `rm`, `echo`, `git add`, `git log` sin parche, `ssh -i`,
+  `docker compose --env-file`, entre otros. Medido sobre 101.218 comandos reales de sesiones: frena 7 más y ninguno que
+  antes frenara pasa. Lo que pasa un archivo de credenciales a otro programa sin que el guard lo conozca —`openssl`,
+  `npx dotenv -e .env`, `tar`— ahora frena y se aprueba en el chat. No hay nada que hacer en la instancia: llega con
+  `upgrade`.
+
+- **`secrets-shell` lee el comando respetando las comillas y mira lo que corre otro shell.** Un `;` o un `|` entre
+  comillas partía el comando, así que `grep -E '^(TOKEN|KEY)=' .env` o `python3 -c "import os; print(open('.env').read())"`
+  pasaban, y el script de un `docker exec … sh -c '. ./.env; …'` o de un `ssh host` se leía sólo por accidente. Ahora el
+  valor de `-c` o `--command`, lo que sigue a `eval` y el comando remoto de `ssh` se leen como comandos; `\cat`, `"cat"`
+  y `git show HEAD:.env` también frenan. Sobre 101.218 comandos reales de sesiones frena 132 lecturas de una
+  credencial que pasaban, y deja de frenar 31 que no leían nada: texto con `.env` adentro o código como `x.key`.
+
+- **`runtime-shell` frena cualquier programa que nombre un script de los guards, no sólo los que conoce.** Contaba
+  `cp`, `mv`, `chmod` y sus parecidos, así que `dd of=automatization/hooks/guard-files.sh`, `perl -pi -e … guard.sh`,
+  `patch`, `git clean` o un `node -e` que escribía el archivo pasaban. Ahora cuenta cualquier programa que nombre el
+  archivo exacto o un glob que lo alcance, salvo los que sólo lo leen o lo ejecutan (`cat`, `diff`, `bash guard.sh`,
+  `git log`). Sobre 101.218 comandos reales de sesiones frena 40 más, casi todos scripts de Python que reescribían el
+  motor con `open(p, 'w')` y parches aplicados en el repositorio de la instancia, y ninguno que antes frenara pasa.
+
+- **`patch`, `git apply` y `git am` piden confirmación siempre que apliquen en el repositorio de la instancia.** Escriben
+  lo que trae su diff, que el comando no nombra, así que un diff podía reescribir un script de los guards sin que nada lo
+  viera. Leer el diff no alcanzó: cada forma de leerlo dejaba pasar otra (un heredoc, una tubería, `-p`, `--directory`,
+  una sesión de `git am`). Ahora frenan dentro del repositorio que contiene a la instancia o sobre una carpeta que la
+  contiene, sin excepciones de modo: también `git apply --check` y `patch --dry-run`. Fuera de ese repositorio se
+  juzgan igual cuando no se puede saber dónde escriben: `git apply` o `git am` con `--directory` o `--unsafe-paths`
+  (también abreviadas, como las acepta git), `--work-tree`, `--git-dir`, `GIT_WORK_TREE`, `GIT_DIR` o un `-C` relativo
+  cuando no se sabe desde dónde corre, y `patch` con cualquier opción fuera de las que no mueven dónde escribe (`-p`,
+  `-R`, `-N`, `-i`, `-F`, `--dry-run` y parecidas), como `-d`, `-o` o `-B`.
+
+- **`destructive` pregunta antes de todo `git clean` que no simula.** Preguntaba sólo con `-f` o `--force`, así que
+  `git clean --forc` (git acepta cualquier prefijo de una opción larga), un `clean.requireForce` apagado en la
+  configuración, o un `-e` cuyo valor parecía un `-n` borraban sin preguntar. Un `git clean -d` que git rechaza sin `-f`
+  ahora también pregunta.
+
+- **`jira-adf` deja pasar la descripción de una tarjeta en HTML** (caso 554). Frenaba todo lo que no fuera ADF, y el
+  conector v2 de Atlassian sólo acepta `markdown` o `html` (su esquema: `contentFormat` con `enum: ["markdown",
+  "html"]`, default markdown). Con el v2 ninguna edición de descripción pasaba sin pegar una línea en `.ops-approval`
+  por tarjeta, y el mensaje proponía una salida que no existe. Ahora `html` pasa, en cualquier mayúscula, y el mensaje
+  nombra las dos salidas. Markdown, y una llamada sin formato, siguen frenando. Revierte en parte el caso 229.
+
+- **`upgrade` suma al `.gitignore` de una instancia sidecar lo que el molde empezó a ignorar después** (caso 555). El
+  molde lo copia una sola vez, en `init`, así que los rastros de aprobaciones y el staging de una integración quedaban
+  listos para commitear en toda sidecar anterior a su línea. Ahora llegan por el bloque de Cauce, como en embebido desde
+  el caso 513, sin tocar lo que la empresa escribió afuera; una línea del molde que la empresa sacó a propósito vuelve
+  dentro del bloque, y la forma de dejarla afuera es versionar lo que cubriría. Y la línea del staging del molde pasa a
+  ignorar el contenido y no la carpeta —`integrations/*/staging/*`, con su `README.md` y su `.gitkeep` afuera—: una
+  instancia con Jira anterior a 0.100.0 los versiona, y con la línea vieja `upgrade` la saltaba y lo bajado seguía sin
+  ignorar. Una instancia que ya tiene la línea vieja la conserva: lo bajado sigue ignorado, y el README de su staging
+  también queda ignorado, como antes.
+
+- **Un guard del proyecto que pide confirmar con `HOW` deja lo frenado esperando el sí** (caso 556). Dentro de su
+  proceso la llamada parecía tener diálogo, así que `HOW` lo prometía y no retenía nada, y el diálogo no se abre para
+  un guard del proyecto: la única salida era nombrar el ítem literal. Ahora, en cualquier modo, el mensaje siguiente que
+  no pregunta ni niega lo aprueba, como ese mismo guard ya hacía en `plan` y en los runners sin diálogo. Un guard que
+  necesite la orden literal la sigue pudiendo pedir con `unauthorizedNow` sin `HOW`.
+
+- **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
+  no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
+  Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
+  motivo. Una foto de antes que no se pudo sacar no le resta nada a lo que se exige.
+
+- **El `verify` que declara una raíz es el gate que corre el hook de commit** (caso 547). El hook lo ignoraba y elegía
+  los comandos por el stack, así que el gate que el proyecto declaró —y que corre el agente en Verify— y el que frenaba
+  el commit eran dos cosas distintas, y un gate propio no tenía dónde ponerse. Ahora, si la raíz declara `verify`, corre
+  ése en lugar de los del stack, con el mismo tope, el mismo candado y sobre la misma copia del índice. **Un `verify`
+  que hasta ahora estaba declarado sólo como dato pasa a frenar commits**: si está mal escrito, se ve en el próximo.
+  El registro lo anota como `verify`, que `gate-known-red` ya acepta; una entrada vieja con `test` para esa raíz deja
+  de aplicar. Además, cada corrida anota el árbol que juzgó, para medir cuántas veces se repite la puerta sobre el mismo.
+
+- **Instalar Codex ya no hace que el `upgrade` reemplace el `AGENTS.md` de la empresa** (caso 546). En una instancia
+  embebida, `init --force` conserva el `AGENTS.md` que la empresa ya tenía y lo marca como editado. `automation install
+  codex` metía su bloque y lo volvía a anotar como del molde, y el `upgrade` siguiente lo reemplazaba entero: avisaba
+  que se llevaba el bloque, no que con él se iba el texto de la empresa. Ahora un archivo editado sigue editado, el `upgrade` lo conserva, y ya no dice
+  que se llevó el bloque del runner de un archivo que conservó. **Qué hacer:** si una instancia perdió así su
+  `AGENTS.md`, el historial de git lo tiene.
+
+  `automation uninstall` también vuelve a anotar un `AGENTS.md` sin editar al que le quita el bloque, y uno que la
+  empresa devolvió al molde, con el bloque adentro, vuelve a ser del molde.
+- **El cierre de `/autobuild` lo hace `ops done`** (caso 538). El agente de Done reimplementaba en prosa lo que `ops
+  done` hace en una llamada, y las dos versiones ya habían divergido. Ahora escribe lo que juzga en un archivo de campos
+  y corre `ops done`, que valida antes de escribir. La validación previa suma la regla que rechaza un `tests: n/a` sobre
+  un commit que toca código, y el carril sale del WIP antes que de la cola: una corrida puede subir una `express` a
+  `directo`. En la misma tarea real, el agente de Done pasó de 10 herramientas a 3, y de 1.253.124 tokens de
+  entrada a 420.109.
+
+- **`check` avisa un enlace relativo roto en `planning/` u `organization/`** (caso 531). Una regla que enlazaba un
+  archivo movido o partido pasaba en verde. Ahora se avisa el archivo que no existe y el ancla que el destino no tiene.
+  No mira `done/`, `archive/`, los bloques de código ni los placeholders de plantilla (`NNN-slug.md`, `{{…}}`). Es aviso,
+  no error: una instancia con enlaces viejos no pasa a rojo de golpe, y el ancla depende de cómo slugifica el visor.
+
+  Mira también los enlaces entre `<…>`, las definiciones `[x]: ruta` y los títulos setext.
+- **Una instancia con GitFlow puede declarar sus otras ramas vivas** (caso 533). Cauce contaba como vivas `main`,
+  `master` y la rama por defecto de cada remoto, así que con `allowPush` un agente empujaba y commiteaba directo en
+  `develop` o `production`. `runner.liveBranches` suma las que el proyecto nombra: un commit que cae en ellas frena, y
+  publicar en ellas pide nombrarlas en `pushToLiveBranches`, como con `main`. El agente no se la escribe, como
+  `allowPush`. **Qué hacer:** si trabajás con GitFlow, declará `develop` y las ramas de ambiente.
+
+  Los prompts de `/autobuild` que commitean también las nombran, así que el agente corta su rama antes de commitear
+  en vez de esperar el freno.
+- **Un WIP que quedó apuntando a una tarea ya cerrada ya no se ofrece como la tarea en curso** (caso 535). Si una
+  sesión se cortaba entre escribir `done/<tarea>.md` y dejar el WIP en IDLE, `ops context` presentaba esa tarea y
+  mandaba a reclamarla, `claim` la rechazaba, y `/autobuild` la retomaba como reanudación. Ahora `context` lo dice en una
+  línea `STALE`, no la ofrece y su JSON la trae sin WIP; `check` lo avisa. La reparación sigue siendo dejar el WIP en
+  `status: IDLE`.
+- **`check` avisa la entrada de `done/` que no pega el resultado de verificar** (caso 534). El PROTOCOL pedía exit codes
+  y nada lo comprobaba: «verifiqué que las pruebas pasan» pasaba igual que `npm test → exit 0, 41 passed`. Ahora una
+  entrada cuyo `done:` y `qa:` no traen un exit code, un `N/M` o un número de pruebas, ni lo justifican con `n/a —
+  razón`, se avisa por su nombre. Rige desde la primera entrada de la instancia que pega uno: lo anterior se cuenta y
+  queda como está, y lo adoptado no cuenta. Es aviso, no error.
+
+- **Una credencial en la URL de un remoto ya no se imprime sin freno** (caso 530). `git remote -v`, `git remote
+  get-url`, `git config --get remote.origin.url` o `cat .git/config` mostraban entero un
+  `https://usuario:<token>@host/…`, y ningún guard lo veía porque esos comandos no nombran un archivo de credenciales.
+  Ahora `secrets-shell` lee las URLs del repositorio y frena sólo si alguna trae usuario y clave, o un token suelto.
+  El mensaje nombra el remoto, nunca el valor, y da el `git remote set-url` con la URL limpia. Un remoto sin
+  credencial se lee como siempre. `check` avisa además cada remoto así, en la instancia y en sus raíces.
+
+- **Un `gh pr create --repo` que nombra un repositorio que no es el `origin` frena** (caso 540). R10 dice
+  que lo que se publica va al repositorio en el que se trabaja, y en un fork eso es el fork. Hasta ahora sólo se
+  comprobaba que el destino estuviera escrito, así que `--repo` al original pasaba. Ahora se compara con el `origin`
+  del checkout donde corre `gh`, por dueño y nombre, también con GitHub Enterprise. Sin `origin`, o con un destino
+  que no se puede leer (una variable), frena. Abrir un PR
+  por la API frena siempre. Se aprueba como el resto, con la línea `gh pr create --repo <dueño>/<nombre>`.
+  Desde una subcapa, `(cd app && gh pr create …)`, se lee el `origin` de `app`, y ya no frena de más.
+- **`delivery` frena también los actos de R10 pedidos a la API de GitHub** (caso 539). Hasta ahora, el merge, la
+  aprobación o el workflow que `gh pr merge`, `gh pr review` o `gh workflow run` frenan pasaban si se pedían de otra
+  forma. Ahora frenan también así:
+  - por `gh api` (un `dispatches`, un `PATCH` que cierra el PR) o por una mutación de GraphQL;
+  - con `curl`, `wget`, httpie o `xh` contra `api.github.com`;
+  - con el repositorio escrito antes del subcomando (`gh -R acme/app pr merge 5`).
+
+  Se lee el método, no sólo la ruta, así que leer un PR, sus reviews o si ya se mergeó pasa: la regla de antes frenaba
+  `gh api …/pulls/N/merge` también como lectura. Mover una rama o escribir un archivo por la API frena como un push.
+  Comentar o cerrar por la API de issues frena aunque el número sea de un issue, porque desde el comando no se
+  distingue de un PR. Se aprueba como el resto, con el tramo del comando tal como se escribió.
+  Sin método, httpie manda POST cuando stdin no es una terminal, que es como corre un agente, así que un `http URL` a
+  secas contra la API frena salvo con `GET` o `--ignore-stdin`; xh se trata igual. Y wget y httpie se leen con sus
+  propias banderas: `wget -T 10` y `http -F` ya no frenan de más, y curl suma `--data-ascii` y `--form-string`.
+- **`decisions:` es opcional en una entrada de `done/`, como dice el PROTOCOL**, y la plantilla y el rechazo de `check`
+  ahora lo dicen: si no hubo una decisión no obvia, la línea no va (caso 537).
+
+- **`check` pide cerrar una épica `open` con todas sus historias en `done/`, igual que una `active`** (caso 529). Una
+  épica que nunca pasó por `ops promote` se quedaba `open` terminada y en verde, y `context` y `tree` la seguían
+  contando entre lo que queda. Ahora sale `✗ roadmap/epic-NNN-….md: open sin historias pendientes; debe cerrar`, y se
+  arregla cerrándola. Una épica que todavía no tiene historias no recibe ese consejo: ya le falta la historia.
+
+- **Una tarea cerrada con otro slug ya no vuelve a la cola sin que nada lo diga** (caso 463). `ops check` acepta
+  `--closed <tarea>[,<tarea>]`: quien cierra declara qué cerró, y si esa tarea no tiene entrada en `done/` con su slug
+  —o sigue en la cola— sale `✗ <tarea>: se dio por cerrada y no tiene entrada en done/ con ese slug`. `/autobuild` lo
+  pasa al cerrar cada tarea y al cerrar la corrida, así que una entrada escrita con otro nombre se corrige ahí en vez de
+  que la corrida siguiente tome de nuevo una tarea ya construida. Sin la bandera, `check` no cambia.
+
 ## [0.123.1] - 2026-11-19
 
 ### Corregido

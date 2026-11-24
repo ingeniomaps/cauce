@@ -122,9 +122,8 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /Leelos antes de contestar/, 'y le dice al cargo que lo lea')
   assert.match(evalWf, /no es obra suya/, 'y al juez, que vino con el banco')
 
-  // Comprobar las afirmaciones de mecanismo lo hacía a mano quien lanzaba la corrida, así que el hallazgo
-  // dependía de que a alguien se le ocurriera la comprobación correcta y la vara se movía entre corridas.
-  // Va con redacción fija y fuera del bloque de conducta prohibida: un cargo puede afirmar de más aunque
+  // El juez comprueba las afirmaciones de mecanismo (por qué, en `agent-eval.js`). Va con redacción fija
+  // y fuera del bloque de conducta prohibida: un cargo puede afirmar de más aunque
   // su contrato no declare ninguna.
   assert.match(evalWf, /Enumeralas con el registro que cada una lleva/, 'el juez busca las afirmaciones')
   assert.match(evalWf, /comprobá las que se puedan comprobar barato/, 'y comprueba las baratas')
@@ -160,11 +159,11 @@ test('un banco que no se pudo rehacer detiene la corrida', () => {
 // los que fallaron ya están en la mano cuando se arma el mensaje.
 test('el banco que se manda a borrar es el del caso, no el del recorrido', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'flow-eval.js'), 'utf8')
-  const aviso = evalWf.slice(evalWf.indexOf("stop('banco-sin-rehacer'"))
-  const mensaje = aviso.slice(0, aviso.indexOf('\n}'))
-  assert.match(mensaje, /benches\.failed\.map\(\(id\) => `\$\{BENCH_ROOT\}\/\$\{id\}`\)/,
+  const warning = evalWf.slice(evalWf.indexOf("stop('banco-sin-rehacer'"))
+  const message = warning.slice(0, warning.indexOf('\n}'))
+  assert.match(message, /benches\.failed\.map\(\(id\) => `\$\{BENCH_ROOT\}\/\$\{id\}`\)/,
     'la ruta a borrar se arma por caso')
-  assert.equal(/o borrá \$\{BENCH_ROOT\}\./.test(mensaje), false,
+  assert.equal(/o borrá \$\{BENCH_ROOT\}\./.test(message), false,
     'y ya no propone el directorio del recorrido, que se lleva los casos ajenos')
 })
 
@@ -217,11 +216,8 @@ test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
 
 // El caso son los dos evaluadores a la vez, no uno cada uno: el arreglo entró en `agent-eval` y
 // `flow-eval` quedó sin él. Un caso por gemelo deja pasar exactamente eso.
-// `agent-promote` entra a la lista tarde y por lo que costó: suponía `tools/ops.js` en sus tres
-// comandos. El primero se salvó porque el agente improvisó —que es exactamente lo que este caso existe
-// para impedir— y el último, el que sella, no: aplicó el cambio al `SKILL.md`, escribió el historial y
-// dejó la propuesta en `proposed`. El comentario de ese paso ya lo nombraba: marcar el estado a mano es
-// «el paso que se hace mal en silencio», y salió mal por no poder correrse.
+// `agent-promote` entra a la lista tarde y por lo que costó (lo que pasó, en su campo `cli`): suponía
+// `tools/ops.js`, y que el agente improvise el comando es exactamente lo que este caso existe para impedir.
 test('los tres recorridos que corren el CLI preguntan cuál existe, no lo suponen', () => {
   for (const name of ['agent-eval.js', 'flow-eval.js', 'agent-promote.js']) {
     const source = fs.readFileSync(path.join(WF, name), 'utf8')
@@ -230,8 +226,8 @@ test('los tres recorridos que corren el CLI preguntan cuál existe, no lo supone
       `${name}: el primer agente la averigua nombrando las dos`)
     // Los que el evaluador corre. Queda afuera la sugerencia de `fork`, que no se ejecuta acá: se le
     // muestra a una empresa, y ahí `tools/ops.js` es la ruta correcta.
-    const corridos = [...source.matchAll(/node tools\/ops\.js (evaluate|agents list|learn)/g)]
-    assert.deepEqual(corridos.map((hit) => hit[0]), [], `${name}: queda un comando con el CLI supuesto`)
+    const ran = [...source.matchAll(/node tools\/ops\.js (evaluate|agents list|learn)/g)]
+    assert.deepEqual(ran.map((hit) => hit[0]), [], `${name}: queda un comando con el CLI supuesto`)
   }
 })
 
@@ -260,24 +256,22 @@ test('agent-promote distingue el mes cerrado sin cambios del que nadie decidió'
   assert.match(src, /const applied = NOTHING \? \{ applied: true/, 'no se aplica lo que no cambia')
   assert.match(src, /learn \$\{AGENT\} --applied/, 'pero se sella igual: es lo que cierra el período')
 
-  // Y no se manda a re-evaluar un contrato que no se movió: cuesta la corrida entera y mide varianza.
   assert.match(src, /no hace falta re-evaluar/, 'un contrato quieto no compra una re-corrida')
 })
 
-// Que la cobertura llegue al archivo. El porqué está en `shared/eval-only.js`, con el helper.
 // Que el recorte recorte, no que exista. La versión anterior de esta prueba comprobaba que los dos
 // gemelos llamaran a `stripRoot` y los dos lo llamaban — y no recortaba nada, porque partía por un `ROOT`
 // que en este repositorio vale `'.'`. El registro del 2026-08-30 salió con tres rutas absolutas y la
 // prueba en verde: es el caso que R18 nombra, afirmar estructura en vez de conducta.
 test('el recorte de la raíz saca la ruta del banco, con root relativo o absoluto', () => {
-  const fuente = fs.readFileSync(path.join(WF, '..', 'shared', 'eval-measured.js'), 'utf8')
-  const stripRoot = new Function(`${fuente}; return stripRoot`)()
-  const linea = '- `/srv/equipo/repo/.cauce-eval/qa-engineer/11-x/planning/INBOX.md` (2 deuda)'
-  const esperado = '- `.cauce-eval/qa-engineer/11-x/planning/INBOX.md` (2 deuda)'
+  const sourceText = fs.readFileSync(path.join(WF, '..', 'shared', 'eval-measured.js'), 'utf8')
+  const stripRoot = new Function(`${sourceText}; return stripRoot`)()
+  const line = '- `/srv/equipo/repo/.cauce-eval/qa-engineer/11-x/planning/INBOX.md` (2 deuda)'
+  const expected = '- `.cauce-eval/qa-engineer/11-x/planning/INBOX.md` (2 deuda)'
 
   // El caso que falló: sin instalar, `{{OPS_DIR}}` queda vacío y `ROOT` es `'.'`.
-  assert.equal(stripRoot(linea, '.'), esperado, 'con root relativo, que es el de este repositorio')
-  assert.equal(stripRoot(linea, '/srv/equipo/repo'), esperado, 'y con el root de una instancia')
+  assert.equal(stripRoot(line, '.'), expected, 'con root relativo, que es el de este repositorio')
+  assert.equal(stripRoot(line, '/srv/equipo/repo'), expected, 'y con el root de una instancia')
   // La rama que parte por `root` no la cubre el recorte de `.cauce-eval`: existe para la ruta que un juez
   // escribe hacia un archivo del propio repositorio, y sin esta línea se podía borrar sin que nada cayera.
   assert.equal(stripRoot('leí /srv/equipo/repo/agents/roles/x/SKILL.md', '/srv/equipo/repo'),
@@ -306,10 +300,10 @@ for (const name of ['agent-eval', 'flow-eval']) {
     assert.match(src, /Dejalo vacío si no encontraste nada/, 'y vacío es lo normal')
 
     // Y termina en el registro como línea propia, que es lo que el motor sabe leer.
-    assert.match(src, /- Para el contrato: \$\{nota\}/, 'va al archivo, no sólo al esquema')
-    assert.match(src, /const nota = oneLine\(one\.verdict\.contractNote\)/,
+    assert.match(src, /- Para el contrato: \$\{note\}/, 'va al archivo, no sólo al esquema')
+    assert.match(src, /const note = oneLine\(one\.verdict\.contractNote\)/,
       'aplanada: un salto de línea partiría el registro donde hay un dato')
-    assert.match(src, /- Veredicto: \$\{mark\}\\n\$\{para\}/, 'debajo del veredicto, no dentro del contraste')
+    assert.match(src, /- Veredicto: \$\{mark\}\\n\$\{contractLine\}/, 'debajo del veredicto, no dentro del contraste')
   })
 }
 
@@ -320,8 +314,7 @@ for (const name of ['agent-eval', 'flow-eval']) {
 
     // Determinista y no un pedido al modelo: lo que el sujeto y el juez escriben pasa por el recorte.
     assert.match(src, /const stripRoot = \(text, root\)/, 'el recorte existe')
-    // La fila entera y no campo por campo: así ninguno queda afuera. La nota lo estaba, y era el pedazo
-    // que más fácil filtra una ruta, porque lo escribe el juez mirando dónde trabajó el sujeto.
+    // Incluida la nota del juez, que la escribe mirando dónde trabajó el sujeto.
     assert.match(src, /return stripRoot\(`### \$\{one\.id\}/, 'la fila entera pasa por el recorte')
 
     // Y antes del recorte, la regla: recortar deja el hueco a la vista y nombrar bien no.

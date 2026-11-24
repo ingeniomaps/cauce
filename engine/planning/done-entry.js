@@ -79,7 +79,8 @@ function validateDoneEntry(entry, cited = []) {
   }
   if (!validDecisionTrace(entry.decisions)) {
     errors.push(`${at}: decisions debe citar [fuente: ...] o [supuesto: ...]. Con los registros de R14: lo verificado `
-      + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>].')
+      + 'o documentado va como [fuente: <qué se corrió o se citó>], y una hipótesis como [supuesto: <qué falta>]. '
+      + 'Si no hubo ninguna decisión no obvia, la línea no va.')
   }
   return errors
 }
@@ -177,6 +178,36 @@ function doneCeremonyWarnings(done, adopted = new Set()) {
   return warnings
 }
 
+// Lo que una entrada pega como resultado de verificar, en `done:` o `qa:` (caso 534): un exit code, un conteo `N/M`, o
+// un número con su unidad. Es forma y no verdad —dice que hay un número, no que sea cierto—, y alcanza para que
+// «verifiqué que las pruebas pasan» deje de ser una entrada aceptable. `n/a — razón` lo justifica, como en `tests:`.
+const RESULT = new RegExp(String.raw`\bexit(?:\s*(?:code|status))?\s*[=:]?\s*\d|c[oó]digo de salida\s*[=:]?\s*\d`
+  + String.raw`|\b\d+\s*\/\s*\d+\b|\b\d+\s+(?:passed|failed|pass|fail|pruebas?|tests?|casos?|verdes?|ok)\b`
+  // El resumen de `node --test`, que es el que corre este toolkit: `ℹ pass 41`, `# fail 0`.
+  + String.raw`|\b(?:pass|fail|tests)\s+\d+\b`, 'i')
+const JUSTIFIED = /(?:^|[;.]\s*)n\/a\s*[—-]\s*\S/i
+const proven = (entry) => [entry.done, entry.qa]
+  .some((field) => RESULT.test(field || '') || JUSTIFIED.test(field || ''))
+
+// Desde cuándo se debe no lo dice una fecha del toolkit, sino el registro de la instancia: su primera entrada que pega
+// un resultado, como con `critique:`. Lo anterior se cuenta y no se nombra, porque reescribirlo para el verde sería
+// fabricar el registro; lo posterior se nombra. Lo adoptado no cuenta.
+function unprovenWarnings(done, adopted = new Set()) {
+  const own = done.entries.filter((entry) => !adopted.has(entry.slug))
+  const since = own.filter(proven).map((entry) => entry.fecha).filter(Boolean).sort()[0]
+  const missing = own.filter((entry) => !proven(entry))
+  const owed = missing.filter((entry) => since !== undefined && (entry.fecha || '') >= since)
+  const before = missing.length - owed.length
+  return [
+    ...(before ? [`planning/done: ${before} entrada(s) sin un resultado pegado en done: ni qa: —un exit code, un `
+      + 'N/M o un número de pruebas—, cerradas antes de que esta instancia los pegara; quedan como están']
+      : []),
+    ...(owed.length ? [`planning/done: ${owed.map((entry) => entry.slug).join(', ')} no pega(n) en done: ni qa: el `
+      + 'resultado de verificar —un exit code, un N/M o un número de pruebas—, ni lo justifica con n/a — razón']
+      : []),
+  ]
+}
+
 // `tests: n/a` dice que la tarea no produjo nada que se ejecute, y quien lo escribe es el mismo que quiere
 // cerrar: desde el 189 el recorrido lo emite cuando Verify declara `no-surface`, que es la palabra de un
 // modelo. Lo que la vuelve creíble es mirar qué tocó el commit, y eso no lo decide nadie. Se juzga el n/a
@@ -222,6 +253,7 @@ module.exports = {
   commitParts,
   doneEntryErrors,
   doneCeremonyWarnings,
+  unprovenWarnings,
   surfaceWithoutTests,
   validCommitTrace,
   validDecisionTrace,

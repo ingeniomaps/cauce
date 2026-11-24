@@ -38,10 +38,10 @@ function oversizedUnits({ epics = [], milestones = [] }) {
       // propia, casi nunca las dos, y sumarlas contaría dos veces a la que repite en prosa lo que ya
       // citó. Nombrarla importa porque el mensaje llega solo: «criterios: 8» sobre una tarea sin un
       // `(→ CN)` a la vista manda a buscar ocho referencias que no existen.
-      const propias = task.conditions || 0
-      const heredados = task.criteria.length
-      const que = heredados >= propias ? 'criterios' : 'condiciones de aceptación'
-      judge(task, `BACKLOG ${task.slug}: ${que}`, Math.max(heredados, propias), R17.taskCriteria)
+      const own = task.conditions || 0
+      const inherited = task.criteria.length
+      const measured = inherited >= own ? 'criterios' : 'condiciones de aceptación'
+      judge(task, `BACKLOG ${task.slug}: ${measured}`, Math.max(inherited, own), R17.taskCriteria)
     }
   }
   return errors

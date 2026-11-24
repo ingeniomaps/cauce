@@ -450,7 +450,9 @@ esa mitad no alcanza vive en R29; acá está sólo cuándo se aplica.
 
 `test/repo/issues.test.js` comprueba que la sección exista, que el estado del frontmatter coincida con el
 encabezado, que `resuelto-en` no se adelante a la versión abierta, —desde 0.75.0— que el cierre nombre su prueba,
-—desde 0.118.0— que traiga su línea `**Sin probar:**`, y —desde el caso 464— su lista de cierre sin puntos pendientes. **No comprueba que el cierre sea honesto**, y
+—desde 0.118.0— que traiga su línea `**Sin probar:**`, —desde el caso 464— su lista de cierre sin puntos pendientes, y que
+el CHANGELOG de su versión nombre el caso cuando el punto 16 lo afirma. **No comprueba que el resto del cierre sea
+honesto**, y
 decirlo es parte de la puerta: una que se presenta como más fuerte de lo que es enseña a no creerle al
 resto. El contraste rige desde 0.65.0 y la prueba nombrada desde 0.75.0; los casos cerrados antes se
 quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo que el contraste
@@ -509,6 +511,13 @@ El cierre escrito:
     `nada`.
 16. El estado coincide en sus dos lugares, `resuelto-en` es la versión abierta, y hay entrada en el CHANGELOG.
 
+**Antes de dar el caso por cerrado, un subagente contrasta la lista contra la evidencia.** Recibe el caso, la lista y
+dónde está la evidencia —scripts y salidas de la sesión, commits, el código actual—, no la conclusión de quien cerró, y
+rehace lo barato: una sonda por la entrada real, la prueba contra el motor anterior. Lo que encuentre se corrige antes
+de cambiar el estado. Va escrito porque los cierres con huecos tenían puntos marcados «hecho» que no eran ciertos, y se
+vieron sólo al contrastarlos: el 484 y el 485 el 2026-11-13, y el 524, el 527 y el 528 el 2026-11-20. Ninguna prueba
+puede ver eso: la evidencia y la línea «hecho» las escribe la misma sesión.
+
 Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales ni firmas de IA.
 
 ## Convenciones
@@ -534,8 +543,17 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   `esArchivoCompartido`— cuesta más que cualquiera de los dos idiomas: obliga a adivinar en cuál está
   escrito el siguiente. **Al escribir código nuevo se nombra en inglés desde el principio**, y eso
   incluye mover o partir un archivo: los identificadores viajan tal cual y la deuda termina repartida
-  en más archivos que antes. El repositorio todavía tiene nombres en español anteriores a esta regla;
-  se traducen cuando se toca el archivo, no en un barrido aparte.
+  en más archivos que antes.
+
+  **La regla tiene puerta desde el 2026-11-23**: `test/repo/language.test.js` falla con cualquier nombre
+  en español del JavaScript, el shell y los `run:` de los workflows. Antes no la tenía, y entre 0.90.0 y
+  0.123.1 se acumularon unos 670 nombres que hubo que traducir de una vez. La prueba detecta por una lista
+  de palabras, por la forma y por la prosa del propio repositorio: una palabra de un nombre que la prosa en
+  español usa cuenta como español hasta que `test/support/english-words.txt` la declara inglesa. Una palabra
+  nueva en inglés que la prosa también usa la pone en rojo y se agrega ahí. Lo que sigue abierto es la palabra
+  que la prosa nunca usó. El vocabulario que el código nombra igual que el
+  documento que escribe se declara en la propia prueba, con su razón. No mira claves ni propiedades, ni
+  los fixtures de los casos de evaluación.
 
   Traducir uno se revisa **leyendo el diff, no corriendo la puerta**, porque un rename entra en tres
   lugares donde no debe y ninguno rompe una prueba: la prosa española dentro de un template literal,
@@ -548,8 +566,14 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
   vencidos, 227 de ellos de un solo commit que agregó un párrafo a todos los SKILL.md y 58 de cambios de octubre aplicados
   sin re-evaluar. Renovarlos costó una corrida entera del catálogo. El promote mensual ya lo cumple; la regla es para lo
   demás, sobre todo el cambio transversal, que vence todo el catálogo a la vez. Ahí la re-evaluación es parte del costo
-  que se decide, a unos 0,24M tokens por caso, y no algo que queda para después. Si no se va a medir, se dice en el PR
-  y el cambio no se entrega como si estuviera probado.
+  que se decide, a unos 0,24M tokens por caso, y no algo que queda para después. Si no se va a medir, se declara en
+  `UNMEASURED` de `test/repo/verdicts.test.js`, con su razón, y el cambio no se entrega como si estuviera probado.
+  Desde el 2026-11-23 esa prueba falla con cualquier veredicto vencido o caso sin medir que no esté declarado. Por eso
+  el job de CI clona con historia: sin ella no hay fechas contra qué comparar.
+
+- **Un doble de prueba sale de `test/support/fakes.js` y dice por qué existe** (R18). Hoy los dobles de este repo son
+  comandos falsos puestos delante en el `PATH`; `test/repo/doubles.test.js` frena el que se escriba a mano y el que no
+  tenga encima el comentario con su porqué.
 
 - **Un guard no decide con una lista de palabras permitidas.** Lo que la persona quiso lo lee el agente, que
   es quien entiende intención; un guard es un script y sólo ve palabras. Por eso un guard nunca exige que
@@ -567,13 +591,15 @@ Después, ya con el cierre escrito: commits por naturaleza, sin nombres reales n
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - **La pasada de comentarios que pide R11 no la cubre la puerta.** «Ninguna razón está escrita en dos
-  lugares sin decir por qué» compara párrafos de ocho palabras o más y marca desde 0.45 de solapamiento,
-  así que una razón repetida un poco por debajo pasa en verde: dejó pasar dos pares a 0.38 y 0.35 en la
-  misma sesión en la que atrapó un tercero. Bajar el umbral no es la salida —hay pares legítimos
-  preexistentes en 0.36 y 0.38, que empezarían a fallar—, y el otro medio fallo, el comentario que repite
-  el nombre de su propia prueba, no repite a ningún otro y ninguna comparación lo va a ver.
-  Para mirar lo que la puerta deja pasar alcanza con reusar el tokenizador de esa prueba con el umbral en
-  0.22: lo propio no debería aparecer por encima de lo preexistente.
+  lugares sin decir por qué» compara párrafos de ocho palabras o más y marca desde 0.35 de solapamiento;
+  lo que queda arriba sin ser copia se acepta en `ACCEPTED_PAIRS`, con su razón. Hasta el 2026-11-23 el
+  umbral fue 0.45, y por debajo se acumularon 97 pares nuevos en dos meses, casi todos una prueba que
+  transcribía el porqué del código que cubre. Desde el mismo día, otra prueba marca dos comentarios que
+  comparten doce palabras seguidas, que es la oración copiada dentro de un párrafo que cambió alrededor:
+  había 127. Lo que sigue sin verse es la copia reescrita con otras palabras por debajo de 0.35 y el
+  comentario que repite el nombre que tiene al lado, que está en otro idioma y ninguna comparación lo va a
+  ver. Para mirar lo que la puerta deja pasar alcanza con reusar el tokenizador de esa prueba con
+  el umbral en 0.22: lo propio no debería aparecer por encima de lo preexistente.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
 - **En `main` no se trabaja.** El ruleset del repositorio exige pull request y dos status checks, y el

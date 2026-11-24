@@ -12,8 +12,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execute } = require('../../engine/hooks/run')
 
-// Caso 258. Los guards de commit miraban el comando y no a dónde apuntaba: un `git -C` hacia un repositorio
-// que la sesión no tiene abierto se frenaba por su forma y se le corría su propia suite. Las dos mitades
+// Caso 258; el porqué, en `engine/hooks/input.js`. Las dos mitades
 // van juntas —el ajeno pasa, el propio sigue frenando— porque dejar pasar todo daría el mismo verde.
 test('un commit en un repositorio que no es de la sesión no se juzga, y el propio sí', () => {
   const I = require('../../engine/hooks/input')

@@ -214,8 +214,8 @@ function elsewhere(input, markers = MARKERS) {
 }
 
 // `agy` 1.4.12 no le muestra al modelo el `reason` de un `allow` ni un `systemMessage` inyectado; sí
-// `ephemeralMessage`,
-// en `PreInvocation`, que corre antes del siguiente turno (caso 466). El aviso espera ahí, por conversación.
+// `ephemeralMessage`, en `PreInvocation`, que corre antes del siguiente turno (caso 466). El aviso espera ahí, por
+// conversación.
 function noticesFile(input) {
   const id = String((input && input.conversationId) || '').replace(/[^a-zA-Z0-9_-]/g, '_')
   return id ? path.join(os.tmpdir(), `cauce-agy-avisos-${id}`) : ''

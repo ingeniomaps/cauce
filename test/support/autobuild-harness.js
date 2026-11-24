@@ -189,11 +189,13 @@ async function runFlow(changes = {}, options = {}) {
     if (options.label === 'governed' && !(key in script)) return { readOk: true, pending: [] }
     // Los archivos que toca el diff que Review juzga, contra los que se cruza lo que dice haber abierto (caso 485).
     // Vacío por defecto: el cruce lo ejerce la prueba que lo mide, y el resto no tiene que contestar `opened`.
-    if (options.label === 'review-diff' && !(key in script)) return { files: [] }
-    // La corrección de Review contesta qué notas de construcción dejó sin efecto (caso 511): por defecto, ninguna.
+    if (options.label === 'review-diff' && !(key in script)) return { ran: true, files: [] }
+    // Lo que la transcripción del revisor muestra leído (caso 549): por defecto, todo.
+    if (options.label === 'review-read' && !(key in script)) return { found: true, unread: [] }
+    // La corrección de Review (caso 511): por defecto no descarta ni suma notas.
     if (options.label === 'review-fix' && !(key in script)) return { dropped: [], added: [] }
     // Y lo que ya estaba sin commitear antes de construir: en el camino feliz, nada.
-    if (options.label === 'review-baseline' && !(key in script)) return { files: [] }
+    if (options.label === 'review-baseline' && !(key in script)) return { ran: true, files: [] }
     // La relectura del checkpoint recién escrito, que en el camino feliz dice que frena.
     if (options.label === 'checkpoint-held' && !(key in script)) {
       return { readOk: true, blocked: 'awaiting-review', checkpoints: ['checkpoints/H1.md'] }

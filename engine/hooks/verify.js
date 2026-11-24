@@ -17,12 +17,12 @@ const EV = require('../core/evidence')
 const KR = require('../core/known-red')
 const SC = require('../core/scope')
 const { run } = require('./shell')
-const { holdMachine } = require('./machine-lock')
+const { holdMachine, memoryShort } = require('./machine-lock')
 
 // Salidas de build y cachés que cualquier gate rehace solo. Se comparan contra el nombre entero de la
 // entrada para que valga también anidado —`packages/app/dist`—, y con el separador de `git status`, que
 // siempre usa `/`.
-const RECREABLE = new RegExp('(^|/)(?:dist|build|out|coverage|__pycache__'
+const REBUILDABLE = new RegExp('(^|/)(?:dist|build|out|coverage|__pycache__'
   + '|\\.next|\\.nuxt|\\.svelte-kit|\\.turbo|\\.output|\\.parcel-cache|\\.pytest_cache)$')
 
 // Dónde tiene que correr un gate: sobre lo que el commit va a grabar, que es el índice y no el árbol.
@@ -86,7 +86,7 @@ function commitTree(dir, input) {
     // falte un nombre— deja el comportamiento de antes; errarle por exceso hace que un gate reconstruya,
     // que es más lento y no incorrecto. Lo que **sí** se enlaza es lo que un gate no puede fabricar:
     // `node_modules`, un `.env`, las credenciales de una herramienta.
-    if (RECREABLE.test(name)) continue
+    if (REBUILDABLE.test(name)) continue
     const link = path.join(temp, name)
     if (fs.existsSync(link)) continue
     fs.mkdirSync(path.dirname(link), { recursive: true })
@@ -236,9 +236,13 @@ function verify(input) {
   // Quien lo tiene puede correr hasta cuatro gates, cada uno con su tope: esperar uno solo se rendía con
   // una corrida sana a la mitad.
   const release = holdMachine(timeoutMs * 4)
+  const tree = treeOf(repo)
   try {
+    const ops = opsRoot(input)
+    const short = memoryShort(ops ? Number((configOf(ops).runner || {}).gateMinFreeMb) : NaN)
+    if (short) block(`Verify no arrancó: ${short}\n${AP.HOW('OPS_SKIP_VERIFY', unapproved, input, unapproved)}`)
     for (const place of gatePlaces(input, repo, staged, root, temp)) {
-      verifyGates(place.run, place.dir, unapproved, env, input, timeoutMs)
+      verifyGates(place.run, place.dir, unapproved, env, input, timeoutMs, tree)
     }
   } finally {
     release()
@@ -268,17 +272,11 @@ function gatePlaces(input, repo, staged, root, temp) {
   return places
 }
 
-// Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice
-// materializado o el árbol, que ahí son lo mismo— y `dir` es el repositorio, que es el nombre que le
-// dice algo a quien lee el mensaje.
-//
-// Cada gate deja su rastro en `ops`; para qué sirve ese registro lo dice `core/evidence.js`. Lo que se
-// decide acá es que el rojo se anota igual que el verde: un gate que falló y se commiteó con
-// aprobación es exactamente lo que alguien va a querer ver después.
 // Lo que se sabe de un gate que falló, en la forma en que se va a leer. El mensaje decía sólo
 // `test (exit 1)` y tiraba la salida de la herramienta: cualquier causa —una suite en rojo, un gestor
-// que se negó a arrancar el script, un binario que no está— llegaba con el mismo texto. Es la misma
-// forma de fallar que el caso 066 encontró en una prueba, acá en el mensaje que lee una persona.
+// que se negó a arrancar el script, un binario que no está— llegaba con el mismo texto, y la salida que el
+// guard ofrece empujaba a aprobar el commit como «rojo conocido». Es la misma forma de fallar que el caso
+// 066 encontró en una prueba, acá en el mensaje que lee una persona.
 //
 // Se muestra **una** línea y acotada: la salida de un gate puede traer cualquier cosa del entorno, y lo
 // que hace falta para diagnosticar es la primera línea de error, no el volcado.
@@ -336,41 +334,59 @@ function gateTimeout(input) {
 
 // Lo que escribe no corre en el árbol vivo (R26, caso 240): ahí el árbol **es** el trabajo de quien
 // commitea, y un `build` que limpia su salida o un lint con `--fix` lo tocan. Sobre la copia del índice
-// corren igual, porque se descarta. `build` vuelve al árbol si la raíz lo pide en su `verify`; correrlo
-// siempre en una copia no es la salida, porque ahí `node_modules` viaja por enlace y eso rompe Turbopack
-// (caso 153). `go build ./...` no se toca: con más de un paquete no escribe nada en el árbol.
+// corren igual, porque se descarta. Una raíz que necesita su `build` sobre el árbol lo pone en su `verify`, que
+// corre tal cual (caso 547): en una copia `node_modules` viaja por enlace y eso rompe Turbopack (caso 153).
+// `go build ./...` no se toca: con más de un paquete no escribe nada en el árbol.
 const WRITES = { build: () => true, lint: (line) => /(?:^|\s)--(?:fix|write)\b/.test(line) }
-function writesInTree(script, line, rootConfig) {
-  if (!WRITES[script] || !WRITES[script](line)) return false
-  return !(script === 'build' && rootConfig && /\bbuild\b/.test(rootConfig.verify || ''))
+function writesInTree(script, line) {
+  return Boolean(WRITES[script] && WRITES[script](line))
+}
+
+// El árbol que el índice grabaría, para contar cuántas veces se juzga el mismo (caso 547). Es el objeto que
+// `git commit` escribe un instante después; si la lectura falla, la corrida se anota sin él.
+function treeOf(repo) {
+  const result = run('git', ['write-tree'], repo)
+  return result.ok ? result.output : ''
 }
 
 function rootOf(input, dir) {
   const ops = opsRoot(input)
   if (!ops) return null
-  return (configOf(ops).workspaceRoots || []).find((one) => one && one.path && path.resolve(ops, one.path) === dir)
+  // Las dos reales: `dir` sale real de `gatePlaces` y la raíz ops conserva el enlace con que se abrió la sesión.
+  return (configOf(ops).workspaceRoots || [])
+    .find((one) => one && one.path && realPath(path.resolve(ops, one.path)) === realPath(dir))
 }
 
-function verifyGates(root, dir, unapproved, env, input, timeoutMs) {
+// Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice
+// materializado o el árbol, que ahí son lo mismo— y `dir` es el repositorio, que es el nombre que le
+// dice algo a quien lee el mensaje.
+//
+// Cada gate deja su rastro en `ops`; para qué sirve ese registro lo dice `core/evidence.js`. Lo que se
+// decide acá es que el rojo se anota igual que el verde: un gate que falló y se commiteó con
+// aprobación es exactamente lo que alguien va a querer ver después.
+function verifyGates(root, dir, unapproved, env, input, timeoutMs, tree) {
   const ops = opsRoot(input)
   const failures = []
   // El rojo que la instancia declaró se anota igual y no frena (caso 241); qué se declara, en `core/known-red.js`.
   const known = ops ? KR.readKnownRed(path.join(ops, 'planning')).entries : []
-  const repo = (rootOf(input, dir) || {}).name
+  const config = rootOf(input, dir) || {}
   const gate = (label, program, args) => {
     const result = run(program, args, root, env, { timeoutMs })
-    EV.record(ops, label, result.status, result.ms)
-    if (!result.ok && !KR.isKnownRed(known, repo, label)) failures.push(failure(label, result, timeoutMs))
+    EV.record(ops, label, result.status, result.ms, tree ? { tree } : {})
+    if (!result.ok && !KR.isKnownRed(known, config.name, label)) failures.push(failure(label, result, timeoutMs))
   }
-  if (fs.existsSync(path.join(root, 'package.json'))) {
+  // El gate que la raíz declara reemplaza al que se adivina por el stack (caso 547): es el que el agente corre en
+  // Verify y el que el proyecto dijo que es su puerta, y correr los dos pagaba dos veces la misma suite.
+  if (typeof config.verify === 'string' && config.verify.trim()) {
+    gate('verify', 'sh', ['-c', config.verify])
+  } else if (fs.existsSync(path.join(root, 'package.json'))) {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
     const usesPnpm = fs.existsSync(path.join(root, 'pnpm-lock.yaml'))
       && !fs.existsSync(path.join(root, 'package-lock.json'))
     const pm = usesPnpm ? 'pnpm' : 'npm'
-    const declared = root === dir ? rootOf(input, dir) : null
     for (const script of ['test', 'lint', 'typecheck', 'build']) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
-      if (root === dir && writesInTree(script, pkg.scripts[script], declared)) continue
+      if (root === dir && writesInTree(script, pkg.scripts[script])) continue
       gate(script, pm, ['run', script])
     }
   } else if (fs.existsSync(path.join(root, 'go.mod'))) {

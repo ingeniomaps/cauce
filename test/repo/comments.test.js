@@ -170,11 +170,11 @@ test('ningún comentario cita algo que dejó de existir',
         if (!defined.has(hit[1]) && !FOREIGN.has(hit[1])) dangling.push(`${file}:${i + 1}: \`${hit[1]}\` no existe`)
       }
       for (const hit of line.matchAll(CITED_AT)) {
-        const [, name, cita] = hit
-        const target = tracked.includes(cita) ? cita : tracked.find((one) => one.endsWith(`/${cita}`))
-        if (!target) { dangling.push(`${file}:${i + 1}: ${cita} no existe`); continue }
+        const [, name, quote] = hit
+        const target = tracked.includes(quote) ? quote : tracked.find((one) => one.endsWith(`/${quote}`))
+        if (!target) { dangling.push(`${file}:${i + 1}: ${quote} no existe`); continue }
         const body = fs.readFileSync(path.join(root, target), 'utf8')
-        if (!new RegExp(`\\b${name}\\b`).test(body)) dangling.push(`${file}:${i + 1}: ${name} ya no está en ${cita}`)
+        if (!new RegExp(`\\b${name}\\b`).test(body)) dangling.push(`${file}:${i + 1}: ${name} ya no está en ${quote}`)
       }
     })
   }
@@ -187,10 +187,10 @@ test('ningún comentario cita algo que dejó de existir',
 // cubría, dos módulos del motor con el mismo hecho escrito de dos maneras, dos suites explicando cada
 // una dónde aterriza un runner. Ninguna rompió nada; simplemente dejaron de coincidir.
 //
-// El umbral es lo único de acá que no es un hecho, y por eso se eligió midiendo: los puntajes forman un
-// continuo con saltos de milésimas salvo un hueco, entre 0.50 y 0.395. 0.45 cae adentro. Contra el árbol
-// de antes del repaso nombra treinta y uno de los cincuenta y cinco; el resto vivía por debajo, donde
-// vocabulario compartido y copia dejan de distinguirse solos.
+// El umbral es lo único de acá que no es un hecho. Fue 0.45, elegido en el hueco que los puntajes tenían
+// entre 0.50 y 0.395, y por debajo se siguieron acumulando copias: la auditoría del 2026-11-23 encontró 97
+// pares nuevos entre 0.30 y 0.45, casi todos una prueba que transcribía el porqué del código. Se bajó a
+// 0.35 después de arreglarlos; lo que queda arriba y no es copia se acepta abajo con su razón.
 //
 // Y por eso el registro, con la misma forma que el piso de cobertura: un par nuevo falla hasta que
 // alguien lo arregla o lo acepta **con su razón escrita**. Sin esa segunda salida el gate se apagaría el
@@ -201,8 +201,24 @@ const ACCEPTED_PAIRS = {
     { pairs: 1, reason: 'Workflows gemelos: cada uno viaja y se lee solo, y difieren en el verbo que importa.' },
   'automatization/hooks/guard-files.sh::automatization/hooks/guard-shell.sh':
     { pairs: 1, reason: 'Los quince shims son una plantilla; lo que cambia es a qué guard delegan.' },
+  'automatization/hooks/guard-files.sh::automatization/hooks/guard-mcp.sh':
+    { pairs: 1, reason: 'Shims de la misma plantilla, como el par de arriba.' },
+  'automatization/hooks/guard-mcp.sh::automatization/hooks/guard-shell.sh':
+    { pairs: 1, reason: 'Shims de la misma plantilla, como el par de arriba.' },
+  'engine/planning/promote.js::engine/planning/renumber.js':
+    { pairs: 1, reason: 'Cada encabezado dice qué garantiza su propio `plan`; comparten el patrón, no la razón.' },
+  'test/hooks/boundary-approval.test.js::test/hooks/chat-effects.test.js':
+    { pairs: 1, reason: 'Dos salidas distintas de un bloqueo: declarar la ruta, y el «dale» de la persona.' },
+  'engine/cli/line-env.js::engine/cli/lines.js':
+    { pairs: 1, reason: 'El contrato de `copyInto` y por qué `lines` copia antes de avisar: razones distintas.' },
+  'test/hooks/task-tree-boundary.test.js::test/planning/worktree.test.js':
+    { pairs: 1, reason: 'El límite de escritura en el árbol de una tarea, y `ops worktree` reusando el checkout.' },
+  'test/wiring/runners-contract.test.js::test/wiring/runners-contract.test.js':
+    { pairs: 3, reason: 'El registro del número exacto: una entrada por cambio, cada una con su consigna.' },
+  'test/wiring/shared-skills.test.js::test/wiring/shared-skills.test.js':
+    { pairs: 1, reason: 'Dos enlaces distintos: uno dentro de la carpeta y la carpeta entera hacia afuera.' },
 }
-const SIMILAR = 0.45
+const SIMILAR = 0.35
 
 test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
   const root = path.resolve(__dirname, '..', '..')
@@ -254,4 +270,66 @@ test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
   }
   assert.ok(blocks.length > 300, `sólo se compararon ${blocks.length} párrafos`)
   assert.deepEqual(unexplained, [], `razones repetidas:\n  ${unexplained.join('\n  ')}`)
+})
+
+// La comparación de arriba no ve una oración copiada dentro de un párrafo que cambió alrededor: el párrafo entero se
+// parece poco. Doce palabras seguidas iguales en dos comentarios no son casualidad. El 2026-11-23 había 127 lugares
+// así por debajo del umbral, casi todos la razón del código transcrita en su prueba. Lo que se repite a propósito se
+// acepta abajo, con su razón y cuántas veces, igual que arriba.
+const SEQUENCE = 12
+const ACCEPTED_SEQUENCES = {
+  'automatization/hooks/run-hook.sh::automatization/runners/antigravity/hook.js':
+    { pairs: 1, reason: 'La marca de cada copia de `packagePath`, puesta a propósito para que apunte al original.' },
+}
+// Los shims salen de una misma plantilla y su línea repetida es la forma: reescritos por separado divergirían.
+const SHIM = /^automatization\/hooks\/guard-[\w-]+\.sh:\d+$/
+
+function commentRuns(file) {
+  const mark = file.endsWith('.sh') ? /^\s*#(?!!)/ : /^\s*\/\//
+  const lines = fs.readFileSync(file, 'utf8').split('\n')
+  const runs = []
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!mark.test(lines[i])) continue
+    const start = i
+    const body = []
+    while (i < lines.length && mark.test(lines[i])) { body.push(lines[i].replace(mark, '').trim()); i += 1 }
+    runs.push({ line: start + 1, words: body.join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .match(/[a-z0-9`]+/g) || [] })
+  }
+  return runs
+}
+
+test('ningún comentario repite doce palabras seguidas de otro sin decir por qué', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const where = new Map()
+  for (const file of sourceFiles()) {
+    const name = path.relative(root, file)
+    for (const { line, words } of commentRuns(file)) {
+      for (let at = 0; at + SEQUENCE <= words.length; at += 1) {
+        const key = words.slice(at, at + SEQUENCE).join(' ')
+        if (!where.has(key)) where.set(key, new Set())
+        where.get(key).add(`${name}:${line}`)
+      }
+    }
+  }
+  const found = {}
+  for (const [sequence, spots] of where) {
+    if (spots.size < 2 || [...spots].every((spot) => SHIM.test(spot))) continue
+    const list = [...spots].sort()
+    const files = [...new Set(list.map((one) => one.replace(/:\d+$/, '')))]
+    const key = files.length > 1 ? files.join('::') : `${files[0]}::${files[0]}`
+    found[key] = found[key] || new Map()
+    if (!found[key].has(list.join(' ↔ '))) found[key].set(list.join(' ↔ '), sequence)
+  }
+  const unexplained = []
+  for (const [key, hits] of Object.entries(found)) {
+    const accepted = ACCEPTED_SEQUENCES[key]
+    if (!accepted) unexplained.push(...[...hits].map(([spots, sequence]) => `${spots} — «${sequence}»`))
+    else if (hits.size > accepted.pairs) unexplained.push(`${key}: ${hits.size} y el registro acepta ${accepted.pairs}`)
+  }
+  for (const key of Object.keys(ACCEPTED_SEQUENCES)) {
+    if (!found[key]) unexplained.push(`${key}: aceptado en el registro y ya no existe`)
+  }
+  assert.ok(where.size > 50000, `sólo se miraron ${where.size} secuencias`)
+  assert.deepEqual(unexplained, [], `comentarios que repiten doce palabras de otro:\n  ${unexplained.join('\n  ')}`)
 })

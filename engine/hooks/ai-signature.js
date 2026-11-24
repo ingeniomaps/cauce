@@ -120,8 +120,7 @@ function signatureIn(text) {
 }
 
 // Lo que la persona pide en el chat no se frena: si su mensaje nombra la firma —«dejale el Co-Authored-By»—,
-// pasa. Se comprueba que la nombre, no con qué palabras la pidió; y el lado seguro: no vale si la frase que la
-// nombra la niega, ni si el mensaje pregunta.
+// pasa, con el mismo lado seguro que `ordersCommit` de live-commit.js.
 function ordersSignature(text) {
   if (/[?¿]/.test(text)) return false
   return String(text).split(/[;\n]+|\.\s/).some((clause) => /co-authored-by|generated with/i.test(clause)

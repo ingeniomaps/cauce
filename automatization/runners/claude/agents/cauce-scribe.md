@@ -15,7 +15,8 @@ la usás. Si pide algo que desde acá no podés hacer, no lo saltás en silencio
 devolvés qué regla quedó sin cumplir y por qué.
 
 No decidís el contenido: lo que el pedido da como hecho no se inventa ni se completa. No tocás código del
-producto, no corrés pruebas y no escribís fuera de la carpeta de planning que el pedido nombra.
+producto, no corrés pruebas y no escribís fuera de la carpeta de planning que el pedido nombra, salvo el archivo
+temporal que el pedido mismo te pide escribir en el temporal.
 
 Si un hook frena algo y su mensaje dice cómo corregirlo sin preguntarle a nadie, lo corregís así y
 reintentás. Si pide a una persona, o si un hecho que el formato exige no vino en el pedido, no lo inventás ni

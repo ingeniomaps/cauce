@@ -24,8 +24,7 @@ test('onboard acota las vueltas dentro de cada fase, no sólo la cantidad de fas
 })
 
 test('onboard tiene techo de llamadas y no sale a explorar', () => {
-  // Tres agentes como máximo, y ninguno recorre nada: un arranque que hace esperar diez minutos deja de
-  // serlo. Escribir el contexto y registrar lo que le toca a una persona salen de la misma evidencia.
+  // Tres agentes como máximo, y ninguno recorre nada; por qué, en el encabezado de `onboard.js`.
   assert.equal(onboardWorkflow.split('await agent(').length - 1, 3)
   assert.match(onboardWorkflow, /No ` \+\n  `recorras directorios/)
   assert.match(onboardWorkflow, /no leas código fuente/)

@@ -14,6 +14,7 @@ const path = require('node:path')
 
 const { spawnSync } = require('node:child_process')
 const { execute, guards } = require('../../engine/hooks/run')
+const { fakeCommand } = require('../support/fakes')
 
 test('la copia recibe la palanca que apaga la sincronización, y ya no la que desarma confirmaciones', () => {
   const root = tempRoot('ops-hook-ci-')
@@ -73,9 +74,8 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
 
 // La regresión del caso 070, medida como R29 pide que se mida una quita: por ausencia de daño. Poner
 // `CI=true` en la copia no agregaba una conducta, **quitaba** una —la confirmación con la que pnpm frena
-// antes de purgar—, y esa confirmación era lo único que protegía al `node_modules` del proyecto. Sin
-// ella la reinstalación avanza y borra por el enlace; el gate igual termina en verde, así que nada lo
-// dice.
+// antes de purgar— (el daño, en `engine/hooks/verify.js`); el gate igual termina en verde, así que nada
+// lo dice.
 //
 // Se usa un `pnpm` de mentira porque el de verdad exige una instalación real, y lo que hay que fijar no es
 // qué hace pnpm sino **qué le pedimos**: con la comprobación previa apagada no toca nada, y con cualquier
@@ -101,11 +101,11 @@ test('un gate no puede purgar el node_modules del proyecto por el enlace', () =>
   // El `pnpm` de mentira: reinstala —o sea, empieza borrando— salvo que se le haya apagado la
   // comprobación previa. Sigue el enlace, que es exactamente por donde ocurrió el daño.
   const fake = tempRoot('ops-hook-purga-bin-')
-  fs.writeFileSync(path.join(fake, 'pnpm'), '#!/usr/bin/env bash\n'
+  fakeCommand(fake, 'pnpm', '#!/usr/bin/env bash\n'
     + 'if [ "${pnpm_config_verify_deps_before_run:-}" != "false" ]; then\n'
     + '  rm -f node_modules/marca.txt\n'
     + 'fi\n'
-    + 'exit 0\n', { mode: 0o755 })
+    + 'exit 0\n')
 
   // Árbol e índice difieren, que es cuando se materializa la copia y aparece el enlace.
   fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
@@ -156,10 +156,8 @@ test('un gate no pisa lo que el usuario ya construyó, y sigue viendo sus depend
     'VERSION = "lo-que-estoy-editando"', 'y la salida de build del usuario queda como estaba')
 })
 
-// El mensaje decía `test (exit 1)` y tiraba la salida de la herramienta, así que una suite en rojo y un
-// gestor que se negó a arrancar el script llegaban con el mismo texto — y la salida que el guard ofrece
-// empuja a aprobar el commit como «rojo conocido». Es la misma forma de fallar que el caso 066 encontró
-// en una prueba, acá en lo que lee una persona.
+// Una suite en rojo y un gestor que se negó a arrancar el script tienen que llegar con mensajes distintos;
+// el porqué está en `engine/hooks/verify.js`.
 test('un gate que falla dice cuánto tardó y qué dijo la herramienta', () => {
   const EV = require('../../engine/core/evidence')
   const root = tempRoot('ops-hook-mudo-')

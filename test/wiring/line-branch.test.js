@@ -68,8 +68,7 @@ test('un árbol en HEAD separado con trabajo sin mergear tampoco se retira', () 
   assert.match(applied.stderr, /está en HEAD separado, que no llegó a main/)
 })
 
-// Lo que se comprueba es lo que tiene el árbol: una rama renombrada que ya llegó se retira sin volver a la de la
-// línea, y la rama que queda se nombra, porque el retiro sólo borra `line/<línea>`.
+// Se juzga por la rama en que está el árbol, sin volver a la de la línea.
 test('una rama renombrada que ya llegó se retira, y la rama que queda se nombra', () => {
   const { ops, repo, tree } = moved('cauce-line-branch-merged-', { drop: true })
   ok(repo, 'merge', '-q', '--no-ff', '-m', 'merge', 'line/ana-pagos')

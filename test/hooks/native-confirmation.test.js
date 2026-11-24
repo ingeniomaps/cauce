@@ -5,7 +5,7 @@
 // una pregunta dentro del mismo grupo, que el proceso responda lo que Claude Code lee, y que Codex —sin
 // diálogo— siga como estaba.
 
-const { blocked, chatSession, pushRoot, planFirstRoot, WIP_CON_PLAN } = require('../support/hooks-harness')
+const { blocked, chatSession, pushRoot, planFirstRoot, WIP_WITH_PLAN } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
@@ -99,18 +99,21 @@ test('dentro de un grupo, un bloqueo de verdad le gana a una pregunta', () => {
 })
 
 test('una lectura de credencial también pide el diálogo, y la salida es la que Claude Code lee', () => {
-  const reader = planFirstRoot('cauce-native-lectura-', WIP_CON_PLAN)
+  const reader = planFirstRoot('cauce-native-lectura-', WIP_WITH_PLAN)
   const input = { hook_event_name: 'PreToolUse', permission_mode: 'default', prompt_id: 'm1',
     session_id: 'cauce-native-proceso',
     cwd: reader, tool_name: 'Read', tool_input: { file_path: path.join(reader, '.env') } }
   asks(() => executeAll(['pre-read'], input))
-  const ran = spawnSync('node', [RUN, 'pre-read'], { input: JSON.stringify(input), encoding: 'utf8',
-    env: { ...process.env, OPS_ROOT: reader } })
-  assert.equal(ran.status, 0, ran.stderr)
-  const out = JSON.parse(ran.stdout).hookSpecificOutput
-  assert.equal(out.hookEventName, 'PreToolUse')
-  assert.equal(out.permissionDecision, 'ask')
-  assert.match(out.permissionDecisionReason, /\.env/)
+  // Y con `CAUCE_HOOK_EVENT` heredado: por qué no cuenta, al arrancar `run.js`.
+  for (const inherited of [{}, { CAUCE_HOOK_EVENT: 'pre-shell' }]) {
+    const ran = spawnSync('node', [RUN, 'pre-read'], { input: JSON.stringify(input), encoding: 'utf8',
+      env: { ...process.env, OPS_ROOT: reader, ...inherited } })
+    assert.equal(ran.status, 0, ran.stderr)
+    const out = JSON.parse(ran.stdout).hookSpecificOutput
+    assert.equal(out.hookEventName, 'PreToolUse')
+    assert.equal(out.permissionDecision, 'ask')
+    assert.match(out.permissionDecisionReason, /\.env/)
+  }
 })
 
 test('sin nada que aprobar no hay diálogo: plan-first con un plan a la vista pide el plan, no un sí', () => {
@@ -124,7 +127,7 @@ test('sin nada que aprobar no hay diálogo: plan-first con un plan a la vista pi
 })
 
 test('lo que pasa por HOW tampoco queda esperando un sí del chat', () => {
-  const reader = planFirstRoot('cauce-native-how-', WIP_CON_PLAN)
+  const reader = planFirstRoot('cauce-native-how-', WIP_WITH_PLAN)
   const read = { cwd: reader, tool_name: 'Read', tool_input: { file_path: path.join(reader, '.env') } }
   const chat = chatSession()
   try {

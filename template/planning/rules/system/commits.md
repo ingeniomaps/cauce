@@ -61,11 +61,12 @@ no entra en esa autorización y se frena siempre — también cuando la reescrit
 guard distingue mirando si algún remoto alcanza al commit.
 
 Los otros cinco los comprueba donde tienen una forma reconocible en un comando, y en ningún otro lado. Se
-frenan hasta que una persona los apruebe: actuar sobre un PR con `gh` —mergear, aprobar, cerrar, comentar—,
-abrirlo sin nombrar el destino, disparar un workflow o una release, y desplegar con `terraform`, `tofu`,
-`kubectl`, `helm`, `pulumi` o `cdk`, más los comandos que el proyecto declare en `deployCommands`. Un deploy
-por un script que nadie declaró, o por un botón, no tiene forma: ése lo sostienen esta regla y el review,
-no un guard.
+frenan hasta que una persona los apruebe: actuar sobre un PR con `gh` —mergear, aprobar, cerrar,
+comentar—, abrirlo sin nombrar el destino o en uno que no es el `origin`, disparar un workflow o una
+release, lo mismo por la API de GitHub —donde mover una rama es un push—, y desplegar con `terraform`,
+`tofu`, `kubectl`, `helm`, `pulumi` o `cdk`, más los comandos que el proyecto declare en `deployCommands`.
+Un deploy por un script que nadie declaró, o por un botón, no tiene forma: ése lo sostienen esta regla y
+el review, no un guard.
 
 Decirlo es parte de la regla y no una nota al pie. Una norma que se presenta como comprobada donde no
 lo está enseña a no creerle al resto: quien descubre que puede desplegar sin que nada lo frene concluye

@@ -17,6 +17,7 @@ const { spawnSync } = require('node:child_process')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
 const LNP = require('../planning/lines')
 const LT = require('../core/line-trees')
+const LE = require('./line-env')
 const { shellWord } = require('../core/files')
 const { BRANCH, NAME } = LNP
 
@@ -79,7 +80,7 @@ function ignoreLines(session) {
 // Un árbol de la línea: el que ya está se reusa, uno borrado a mano se retira del registro y se vuelve a armar,
 // y la rama nueva sale de la rama viva del repositorio (caso 395). La que ya existe se usa tal cual: es también
 // la salida para montar una línea sobre otra rama a propósito, creándola antes.
-function plant(session, name, repo, warnings) {
+function plant(session, name, repo, warnings, options = {}) {
   const source = path.join(session, repo)
   const tree = LT.treeOf(session, name, repo)
   const branch = `${BRANCH}${name}`
@@ -143,35 +144,30 @@ function plant(session, name, repo, warnings) {
     warnings.push(`${repo}: core.hooksPath apunta a ${hooks}, que este árbol no tiene; hasta que la instalación del `
       + 'repositorio la genere, git commitea sin hooks y no lo dice.')
   }
-  if (COMPOSE.some((file) => fs.existsSync(path.join(tree, file))) && !composeNamed(tree, source)) {
-    const project = `${path.basename(repo)}-${name}`.toLowerCase().replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^[^a-z0-9]+/, '')
-    warnings.push(`${repo}: su compose, desde este árbol, es el mismo proyecto que desde el checkout de siempre, con `
-      + `los mismos volúmenes y contenedores. Poné COMPOSE_PROJECT_NAME=${project} en el .env del árbol, sin copiar `
-      + 'el del original; lo que el compose fija a mano —name:, container_name, una IP— se separa del lado del '
-      + 'producto.')
+  // Antes que el aviso de compose: la copia deja el nombre de proyecto de la línea en el `.env`, y ahí el aviso calla.
+  const copied = options.env ? LE.copyMissing(source, tree, repo, name) : []
+  const absent = options.env ? [] : LE.missing(source, tree)
+  if (absent.length) {
+    warnings.push(`${repo}: el checkout de siempre tiene ${absent.join(' y ')}, que git ignora y este árbol no trae, `
+      + `así que sus servicios arrancan sin esa configuración. Copialos con \`ops line <ops-root> ${name} --env\`, `
+      + 'que no pisa ninguno que ya esté.')
   }
-  return { repo, tree, branch, from, reused }
+  if (LE.hasCompose(tree) && !composeNamed(tree, source)) {
+    const project = LE.composeProject(repo, name)
+    warnings.push(`${repo}: su compose, desde este árbol, es el mismo proyecto que desde el checkout de siempre, con `
+      + `los mismos volúmenes y contenedores. Poné ${LE.NAME_KEY}=${project} en el .env del árbol, sin copiar `
+      + 'el del original —`--env` lo deja al copiarlo—; lo que el compose fija a mano —name:, container_name, una '
+      + 'IP— se separa del lado del producto.')
+  }
+  return { repo, tree, branch, from, reused, copied }
 }
 
-// Compose nombra el proyecto por la carpeta, y el árbol se llama como el repositorio para que `../` resuelva igual:
-// desde el árbol es el mismo proyecto (caso 399). Se dice sólo donde hay compose, con los nombres que él busca, y sin
-// leerlo: lo que choca primero es ese nombre, que no está escrito en el archivo.
-const COMPOSE = ['compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml']
 // Con un nombre propio en el `.env` del árbol el aviso calla: es lo que pide hacer, y uno que no se apaga se deja de
 // leer. Propio es distinto del que tiene el checkout de siempre: un `.env` versionado que fija el nombre lo trae igual
 // al árbol, y ahí el choque sigue.
-const composeName = (dir) => {
-  try {
-    // Un valor vacío no es un nombre: con `\s*` el `=` sin nada tomaba la línea de abajo.
-    const text = fs.readFileSync(path.join(dir, '.env'), 'utf8')
-    return (text.match(/^[ \t]*COMPOSE_PROJECT_NAME[ \t]*=[ \t]*(\S+)/m) || [])[1]
-  } catch { return undefined }
-}
-const composeNamed = (tree, source) => {
-  const own = composeName(tree)
-  return Boolean(own) && own !== composeName(source)
-}
+// Se compara el proyecto con que corre cada uno, como lo lee Compose: un `"app"` entre comillas es `app`.
+const composeNamed = (tree, source) => Boolean(LE.projectIn(tree)) && LE.projectOf(source) !== null
+  && LE.projectOf(tree) !== LE.projectOf(source)
 
 const occupied = (at) => {
   try { return Boolean(fs.lstatSync(at)) } catch { return false }
@@ -193,7 +189,7 @@ const no = (error, code) => ({ error, code })
 
 // Arma la línea y devuelve qué quedó, o `{ error, code }`. Separado de la salida porque lo usa también
 // `ops lines migrate`, que imprime lo suyo.
-function assemble(root, name, given) {
+function assemble(root, name, given, options = {}) {
   if (!name || !NAME.test(name)) {
     return no('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre> [<repo>...]`', USAGE)
   }
@@ -241,7 +237,7 @@ function assemble(root, name, given) {
   const unlinked = unlinkSiblings(session, name)
   const trees = []
   for (const repo of repos) {
-    const planted = plant(session, name, repo, warnings)
+    const planted = plant(session, name, repo, warnings, options)
     if (planted.error) {
       const done = trees.length
         ? ` Quedaron armados ${trees.map((one) => one.tree).join(', ')}; repetir los reusa.` : ''
@@ -264,7 +260,7 @@ function assemble(root, name, given) {
 
 function line(dir, name, given, cli) {
   // Real, porque git devuelve rutas reales: mezcladas con una que pasa por un enlace, ningún árbol coincidía.
-  const report = assemble(real(opsRoot(dir)), name, given)
+  const report = assemble(real(opsRoot(dir)), name, given, { env: cli.has('--env') })
   if (report.error) return report.code === USAGE ? fail(report.error, USAGE) : fail(report.error, REFUSED)
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   print(report)
@@ -279,6 +275,9 @@ function print({ line: name, trees, unlinked, warnings, declared }) {
   for (const one of trees) {
     console.log(`${one.reused ? '=' : '✓'} ${one.tree}  (${one.branch})`)
     if (one.from) console.log(`  sale de: ${one.from}`)
+    if (one.copied && one.copied.length) {
+      console.log(`  copiados del checkout de siempre: ${one.copied.join(', ')} (no se muestra su contenido)`)
+    }
   }
   if (unlinked.length) {
     console.log(`  sin los enlaces de antes: ${unlinked.join(', ')} (una línea ya no enlaza lo que no trabaja)`)

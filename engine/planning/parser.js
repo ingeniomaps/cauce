@@ -463,8 +463,8 @@ function inboxSections(dir) {
     if (/Propuestas/i.test(title)) entries.propuestas = found
     if (/Lecciones/i.test(title)) entries.lecciones = found
   }
-  // Las entradas nuevas viven una por archivo en `inbox/<sección>/` (caso 216): dos líneas de trabajo que
-  // anotan en la misma sección de `INBOX.md` escriben la misma zona y chocan; cada una en su archivo, no.
+  // A lo de `INBOX.md` se suman los archivos de `inbox/<sección>/`, donde va cada entrada nueva; por qué, junto a
+  // `inboxWhere` en `automatization/shared/inbox.js`.
   for (const section of Object.keys(entries)) {
     for (const file of inboxFiles(dir, section)) {
       const found = inboxEntries(read(file), path.relative(dir, file))

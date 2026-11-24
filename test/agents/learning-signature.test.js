@@ -11,7 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const learning = require('../../engine/agents/learning')
 const { fingerprint } = require('../../engine/agents/learning-files')
-const { installedProject, writeSkill, firmarPropuesta } = require('../support/agents-fixtures')
+const { installedProject, writeSkill, signProposal } = require('../support/agents-fixtures')
 
 function signed(name) {
   const target = installedProject(name)
@@ -21,7 +21,7 @@ function signed(name) {
     .replace(/\n## Recomendación[^\S\n]*\n/, '\n## Recomendación\n\nCambiar algo (cierra H1).\n'))
   learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
   const file = path.join(own, 'learning', 'proposals', '2099-06.md')
-  firmarPropuesta(file)
+  signProposal(file)
   return { target, file }
 }
 // Una firma de antes del caso 486, que no dejaba huella.
@@ -84,7 +84,7 @@ test('la huella cubre «Evaluación» y lo que sigue a un título dentro de un b
   const file = path.join(own, 'learning', 'proposals', '2099-06.md')
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
     .replace(/^(## Cambio propuesto\n)/m, '$1\n```markdown\n## 2099-01-01 — Una entrada\nLo aprobado.\n```\n'))
-  firmarPropuesta(file)
+  signProposal(file)
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('Lo aprobado.', 'Lo que nadie aprobó.'))
   assert.equal(learning.checkSignature(target, 'probe', '2099-06').ok, false, 'lo que sigue al título del bloque pasó')
 })

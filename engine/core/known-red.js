@@ -12,8 +12,9 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const FILE = 'gate-known-red'
-// Los nombres con que `verify` anota cada gate, que son los únicos que puede encontrar.
-const GATES = ['test', 'lint', 'typecheck', 'build', 'go test', 'go build', 'make ci', 'make test']
+// Los nombres con que `verify` anota cada gate, que son los únicos que puede encontrar; `verify` es el que declara la
+// raíz (caso 547).
+const GATES = ['verify', 'test', 'lint', 'typecheck', 'build', 'go test', 'go build', 'make ci', 'make test']
 const LINE = /^([^:#\s][^:]*?)\s*:\s*(.+?)\s+—\s+(\S.*)$/
 
 // Lee `planning/gate-known-red`: una declaración por línea, `<raíz>: <gate> — <motivo>`; `#` comenta.

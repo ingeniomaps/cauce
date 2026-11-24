@@ -8,7 +8,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { runFlow, ranToEnd, baseScript, KEY } = require('../support/autobuild-harness')
 
-const DIFF = { 'Review|review-diff': { files: ['api/alta.go'] } }
+const DIFF = { 'Review|review-diff': { ran: true, files: ['api/alta.go'] } }
 const approves = (...opened) => ({ verdict: 'aprobado', consulted: opened.length ? opened : ['README.md'], opened,
   concerns: [] })
 const passes = (...answers) => {
@@ -28,7 +28,7 @@ test('una Review que no abrió un archivo del diff tiene una pasada más y, si s
 })
 
 test('Review recibe la lista exacta del diff, y la pasada de más sólo lo que faltó', async () => {
-  const run = await runFlow({ 'Review|review-diff': { files: ['api/alta.go', 'api/alta_test.go'] },
+  const run = await runFlow({ 'Review|review-diff': { ran: true, files: ['api/alta.go', 'api/alta_test.go'] },
     [KEY.review]: passes(approves('api/alta_test.go'), approves('api/alta.go')) })
   ranToEnd(run.result)
   const [first, second] = reviewPrompts(run)
@@ -66,7 +66,7 @@ test('la pasada de más no borra un bloqueo ni lo que la primera encontró', asy
 test('lo que el proyecto declara en reviewExempt no se exige', async () => {
   const script = {
     [KEY.contract]: { ...baseScript()[KEY.contract], reviewExempt: ['**/*.lock', 'api/__snapshots__/'] },
-    'Review|review-diff': { files: ['api/alta.go', 'api/go.sum.lock', 'api/__snapshots__/alta.snap'] },
+    'Review|review-diff': { ran: true, files: ['api/alta.go', 'api/go.sum.lock', 'api/__snapshots__/alta.snap'] },
     [KEY.review]: passes(approves('api/alta.go')),
   }
   const run = await runFlow(script)
@@ -80,14 +80,38 @@ test('lo que el proyecto declara en reviewExempt no se exige', async () => {
 
 test('lo que ya estaba sin commitear antes de construir no se exige', async () => {
   const run = await runFlow({
-    'Build|review-baseline': { files: ['previa/otra-tarea.go'] },
-    'Review|review-diff': { files: ['api/alta.go', 'previa/otra-tarea.go'] },
+    'Build|review-baseline': { ran: true, files: ['previa/otra-tarea.go'] },
+    'Review|review-diff': { ran: true, files: ['api/alta.go', 'previa/otra-tarea.go'] },
     [KEY.review]: passes(approves('api/alta.go')),
   })
   ranToEnd(run.result)
   assert.equal(reviews(run), 1)
   const before = (run.prompts.find((one) => one.key === 'Build|review-baseline') || {}).prompt || ''
   assert.match(before, /antes de que T-1 empiece: puede no haber nada/)
+})
+
+// Las cuatro corridas reales del caso 552: el comando del clerk se denegó y volvió una lista vacía.
+test('una lista del diff que no se pudo sacar para Review en vez de dejarla sin cruce', async () => {
+  const run = await runFlow({
+    'Review|review-diff': { ran: false, why: 'el comando se denegó', files: [] },
+    [KEY.review]: passes(approves('api/alta.go')),
+  })
+  assert.equal(run.result.reason, 'agent-unavailable')
+  assert.match(run.result.detail, /el comando se denegó/)
+  assert.equal(reviews(run), 0)
+  const diff = (run.prompts.find((one) => one.key === 'Review|review-diff') || {}).prompt || ''
+  assert.match(diff, /ran es true sólo si el comando corrió y files es su salida; si no corrió.*ran es false/)
+})
+
+test('una foto de antes que no se pudo sacar no le resta nada a lo que se exige', async () => {
+  const run = await runFlow({
+    'Build|review-baseline': { ran: false, why: 'el comando se denegó', files: ['previa/otra-tarea.go'] },
+    'Review|review-diff': { ran: true, files: ['api/alta.go', 'previa/otra-tarea.go'] },
+    [KEY.review]: passes(approves('api/alta.go')),
+  })
+  assert.equal(run.result.reason, 'review-unbacked')
+  assert.match(run.result.detail, /previa\/otra-tarea\.go/)
+  assert.ok(run.said.some((one) => /la foto de antes de Build no se pudo sacar \(el comando se denegó\)/.test(one)))
 })
 
 test('al retomar desde el WIP no se saca la foto de antes', async () => {
@@ -117,4 +141,28 @@ test('con --role review el diff sale de los commits de quien construyó, sin fot
   const diff = (run.prompts.find((one) => one.key.endsWith('|review-diff')) || {}).prompt || ''
   assert.match(diff, /git show --name-status --format= <hash>" para cada uno de abc123/)
   assert.ok(!run.asked.some((key) => key.endsWith('|review-baseline')), 'sacó una foto del árbol en el rol review')
+})
+
+// Caso 549: lo que la transcripción muestra leído se anota en el hecho, y todavía no frena.
+const doneFacts = ({ written }) => written.find((prompt) => prompt.includes('Cerrá T-1 de forma atómica')) || ''
+test('el hecho de revisión dice lo que la transcripción no muestra leído, o que no se pudo comprobar', async () => {
+  const unread = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')),
+    'Review|review-read': { found: true, unread: ['api/alta.go'] } })
+  ranToEnd(unread.result)
+  assert.match(doneFacts(unread), /review=[^;]*la transcripción no muestra leídos: api\/alta\.go/)
+  const ask = (unread.prompts.find((one) => one.key === 'Review|review-read') || {}).prompt || ''
+  assert.match(ask, /review-read <raíz del repositorio git dueño de \S+> --files api\/alta\.go/)
+  const none = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')),
+    'Review|review-read': { found: false, why: 'sin CLAUDE_CODE_SESSION_ID', unread: [] } })
+  ranToEnd(none.result)
+  assert.match(doneFacts(none), /review=[^;]*opened declarado, no comprobado \(sin CLAUDE_CODE_SESSION_ID\)/)
+  const lost = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')), 'Review|review-read': null })
+  assert.match(doneFacts(lost), /review=[^;]*opened declarado, no comprobado \(el contraste no devolvió resultado\)/)
+  const all = await runFlow({ ...DIFF, [KEY.review]: passes(approves('api/alta.go')) })
+  assert.match(doneFacts(all), /review=[^;]*la transcripción muestra leído todo el diff/)
+})
+
+test('sin archivos en el diff no se pregunta por la transcripción', async () => {
+  const run = await runFlow({ [KEY.review]: passes(approves()) })
+  assert.ok(!run.asked.some((key) => key.endsWith('|review-read')))
 })

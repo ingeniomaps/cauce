@@ -5,12 +5,11 @@ const assert = require('node:assert/strict')
 
 const { codeOnly } = require('../support/lexer')
 
-// Un `/` abre un regex o divide, y hasta 0.78.0 el lexer no lo decidía: leía el `//` que queda al
-// cerrar un regex escapado como el arranque de un comentario y se comía el resto de la línea. Las dos
-// direcciones van juntas porque una sola deja pasar a la otra — un lexer que tratara toda barra como
-// regex pasaría las tres primeras y se comería cada división.
+// Un `/` abre un regex o divide, y hasta 0.78.0 el lexer no lo decidía; cómo fallaba, en
+// `test/support/lexer.js`. Las dos direcciones van juntas porque una sola deja pasar a la otra — un lexer
+// que tratara toda barra como regex pasaría las tres primeras y se comería cada división.
 test('una barra se lee como regex o como división según lo que tenga delante', () => {
-  const casos = [
+  const cases = [
     ['const p = u.replace(/x\\//g, "") + noExiste(1)\n', /noExiste\(1\)/,
       'lo que sigue a un regex con // adentro tiene que quedar a la vista'],
     ['const x = t.replace(/^["\']+/g, "")\nconst z = "prosa."\n', /^(?!.*prosa)[\s\S]*$/,
@@ -26,8 +25,8 @@ test('una barra se lee como regex o como división según lo que tenga delante',
     ['const a = /sin cerrar\nconst b = x.y / z\n', /x\.y/,
       'un regex no cruza líneas: lo que no cierra en la suya no era uno y no se traga la siguiente'],
   ]
-  for (const [fuente, espera, porque] of casos) {
-    assert.match(codeOnly(fuente), espera, porque)
+  for (const [sourceText, wait, because] of cases) {
+    assert.match(codeOnly(sourceText), wait, because)
   }
 })
 
@@ -63,13 +62,13 @@ test('los recorridos que hoy existen se desnudan enteros, con sus regex adentro'
     // Se mide el balance de paréntesis y corchetes, que es lo que el modo de fallo rompe: comerse el
     // resto de una línea deja abiertos los que esa línea cerraba. Contar líneas no sirve —un template
     // multilínea se va entero y con razón—, y esto no depende de qué diga cada recorrido.
-    const abiertos = { '(': 0, '[': 0 }
+    const open = { '(': 0, '[': 0 }
     for (const ch of codeOnly(source)) {
-      if (ch in abiertos) abiertos[ch] += 1
-      if (ch === ')') abiertos['('] -= 1
-      if (ch === ']') abiertos['['] -= 1
+      if (ch in open) open[ch] += 1
+      if (ch === ')') open['('] -= 1
+      if (ch === ']') open['['] -= 1
     }
-    assert.deepEqual(abiertos, { '(': 0, '[': 0 },
+    assert.deepEqual(open, { '(': 0, '[': 0 },
       `${path.relative(WF, file)}: el lexer se comió el cierre de algo`)
   }
 })

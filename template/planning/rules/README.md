@@ -39,6 +39,20 @@ lo hace—, y ahí queda exigida sin estar escrita en ningún lado. Por eso `che
 —«deja de regir R2, R17…»— y por eso conviene, antes de sobrescribir un archivo, mirar si lo tuyo era
 una regla nueva: si lo era, va acá al lado como `P1..Pn` y no se lleva nada puesto.
 
+Si querés reemplazar unas reglas de un archivo y conservar otras, nombrá las que conservás en el frontmatter del
+tuyo:
+
+```markdown
+---
+adopts: R3, R17, R28
+---
+```
+
+`automation install` copia su texto del sistema a `adopted/<archivo>.md`, el bloque de reglas las carga, y `check`
+deja de darlas por perdidas. Ese archivo no se edita: se rehace en cada `install`, y `check` avisa si quedó viejo
+después de un `upgrade`. Adoptar una regla que el sistema no define, o una que tu archivo también define, es un error
+(caso 545).
+
 Las convenciones específicas de lenguaje viven junto al servicio que usa ese lenguaje.
 
 ## Una regla que sólo rige sobre una superficie

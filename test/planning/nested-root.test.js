@@ -1,6 +1,6 @@
 'use strict'
 
-// El aviso de `check` para un repositorio anidado que el de la instancia registra como enlace de git (caso
+// El aviso de `check` para un repositorio anidado, registrado como enlace de git en el de la instancia (caso
 // 352): cuándo sale, cuándo no, y qué ruta nombra. Por qué importa está en `nestedRootWarnings`.
 
 const { tempRoot, run } = require('../support/environment')

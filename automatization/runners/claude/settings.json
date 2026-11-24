@@ -20,9 +20,17 @@
         ]
       },
       {
-        "matcher": "mcp__.*__editJiraIssue",
+        "matcher": "mcp__.*",
         "hooks": [
-          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-jira-adf.sh" }
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-mcp.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-mcp-granted.sh" }
         ]
       }
     ],

@@ -45,6 +45,10 @@ jobs:
         node: ["24", current]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `verdicts.test.js` compara la fecha de cada veredicto con el último cambio de su caso y de su
+          # contrato, y en un clon de un solo commit todo cambió el día del checkout.
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
@@ -81,13 +85,13 @@ jobs:
             echo "el PR lo abrió el bot: quien firme va a poder aprobarlo"
             exit 0
           fi
-          pendientes=""
+          pending=""
           for file in $(git diff --name-only "$BASE"...HEAD -- '*/learning/proposals/*.md'); do
             grep -q '^- Estado: pendiente$' "$file" || continue
-            pendientes="$pendientes $file"
+            pending="$pending $file"
           done
-          if [ -z "$pendientes" ]; then
+          if [ -z "$pending" ]; then
             echo "este PR no lleva propuestas pendientes: no hay nada que avisar"
             exit 0
           fi
-          echo "::warning title=Esta propuesta no se va a poder firmar::Lo abrió @$AUTHOR y lleva una propuesta pendiente de firma:$pendientes. GitHub no deja aprobar el PR propio, así que si quien firma es @$AUTHOR no va a tener boton «Approve» y la firma no se dispara. Cerralo y reabrilo con el workflow «Open pull request», que lo abre como el bot."
+          echo "::warning title=Esta propuesta no se va a poder firmar::Lo abrió @$AUTHOR y lleva una propuesta pendiente de firma:$pending. GitHub no deja aprobar el PR propio, así que si quien firma es @$AUTHOR no va a tener boton «Approve» y la firma no se dispara. Cerralo y reabrilo con el workflow «Open pull request», que lo abre como el bot."

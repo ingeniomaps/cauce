@@ -14,6 +14,7 @@ const path = require('node:path')
 const { landing } = require('../core/files')
 const { confirmedOnly, inTemp } = require('./boundary')
 const AP = require('./approval')
+const { GIT_VALUED } = require('./git-globals')
 
 // `hooks/` y `config` del repositorio, el `config.worktree` de un árbol de trabajo en `.git/worktrees/<x>/`, y lo
 // mismo dentro de un submódulo, en `.git/modules/<x>/`. Sin distinguir mayúsculas: en un disco que no las distingue,
@@ -33,8 +34,6 @@ function internal(lands) {
     || (first === 'worktrees' && Boolean(second) && third === 'config.worktree')
 }
 
-// Las banderas globales de git que llevan su valor aparte: saltearlas sin el valor leía el valor como subcomando.
-const VALUED = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env', '--exec-path'])
 
 // Cómo se lee un `git config`. Las banderas de tipo o de formato no cambian si lee o escribe, y las que llevan valor
 // se saltean con él. `--global`, `--system` y `--blob` no tocan el `.git`; `-f` se juzga por dónde cae.
@@ -82,7 +81,7 @@ function gitWrites(ran) {
         const to = rest[at + 1] || ''
         dir = path.isAbsolute(to) ? to : dir && path.resolve(dir, to)
       }
-      if (VALUED.has(rest[at])) at += 1
+      if (GIT_VALUED.has(rest[at])) at += 1
     }
     const [sub, ...args] = rest.slice(at)
     // Un `-f` absoluto cae donde dice, sea cual sea la carpeta.

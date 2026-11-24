@@ -66,8 +66,7 @@ test('el informe trae escritas las convenciones de las que depende el ciclo', ()
   assert.match(scaffold, /H1, H2/, 'la etiqueta de hallazgo')
   assert.match(scaffold, /No renombres los títulos/, 'y que los títulos se leen con un patrón')
 
-  // El comentario va fuera de toda sección a propósito: dentro de «Recomendación» lo capturaría el
-  // patrón de consolidación y viajaría como texto a cada propuesta del catálogo.
+  // Con una recomendación escrita, la consolidación la lleva a la propuesta y deja el comentario afuera.
   fs.writeFileSync(report, scaffold.replace(
     '## Recomendación\n', '## Recomendación\n\n1. Rotar el token (cierra H1).\n',
   ))
@@ -94,17 +93,17 @@ test('una revisión no se abre sin material que la justifique', () => {
   fs.writeFileSync(report, fs.readFileSync(report, 'utf8')
     .replace('## Recomendación\n', '## Recomendación\n\n1. Rotar el token (cierra H1).\n'))
   assert.equal(run(['learn', 'probe', '--proposal'], target).status, 0)
-  const primera = fs.readdirSync(proposals)
-  assert.equal(primera.length, 1, 'el informe produjo su propuesta')
+  const first = fs.readdirSync(proposals)
+  assert.equal(first.length, 1, 'el informe produjo su propuesta')
 
   // Firmada y aplicada. El informe quedó sellado al consolidarse, así que no hay nada nuevo que decir.
-  const aplicada = path.join(proposals, primera[0])
-  fs.writeFileSync(aplicada, fs.readFileSync(aplicada, 'utf8').replace(/^status:.*$/m, 'status: applied'))
+  const applied = path.join(proposals, first[0])
+  fs.writeFileSync(applied, fs.readFileSync(applied, 'utf8').replace(/^status:.*$/m, 'status: applied'))
 
-  const vacia = learning.prepareProposal(target, 'probe')
-  assert.equal(vacia.created, false, 'no se fabrica el andamio de revisión')
-  assert.equal(vacia.file, '', 'y no queda archivo que el job lea como propuesta y mande a PR')
-  assert.deepEqual(fs.readdirSync(proposals), primera, 'el directorio queda como estaba')
+  const empty = learning.prepareProposal(target, 'probe')
+  assert.equal(empty.created, false, 'no se fabrica el andamio de revisión')
+  assert.equal(empty.file, '', 'y no queda archivo que el job lea como propuesta y mande a PR')
+  assert.deepEqual(fs.readdirSync(proposals), first, 'el directorio queda como estaba')
 
   // Y con material sí se abre: lo que se cierra es el andamio sin nada que corregir, no la revisión.
   const period = new Date().toISOString().slice(0, 7)
@@ -118,8 +117,8 @@ test('una revisión no se abre sin material que la justifique', () => {
 // El montaje que comparten las dos pruebas que aprenden de una corrida: un cargo con su propuesta ya
 // aplicada —así el material de la corrida es el único que hay— y un registro sin sellar con el cuerpo
 // que cada una quiera. Vive acá porque las dos lo arman igual y sólo cambia el cuerpo del registro.
-const cargoConRegistro = (nombre, cuerpo) => {
-  const target = installedProject(nombre)
+const roleWithResults = (label, body) => {
+  const target = installedProject(label)
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const proposals = path.join(own, 'learning', 'proposals')
   const results = path.join(own, 'evaluations', 'results')
@@ -127,9 +126,9 @@ const cargoConRegistro = (nombre, cuerpo) => {
   fs.writeFileSync(path.join(proposals, '2099-06.md'),
     '---\nagent: probe\nperiod: 2099-06\nstatus: applied\n---\n\n# Propuesta mensual — 2099-06\n')
   fs.mkdirSync(results, { recursive: true })
-  const registro = path.join(results, '2099-06-18.md')
-  fs.writeFileSync(registro, `---\nagent: probe\ndate: 2099-06-18\n---\n\n${cuerpo}`)
-  return { target, registro }
+  const recordFile = path.join(results, '2099-06-18.md')
+  fs.writeFileSync(recordFile, `---\nagent: probe\ndate: 2099-06-18\n---\n\n${body}`)
+  return { target, recordFile }
 }
 
 // Un cargo tenía sus propias mediciones desde siempre y nada las leía: aprendía de lo que cambiaba en
@@ -138,7 +137,7 @@ const cargoConRegistro = (nombre, cuerpo) => {
 // sostuvo— y hasta acá no abría ningún documento. El registro lo escribe el mismo `evaluate --record`
 // que el de un recorrido, así que se compone con el mismo lector.
 test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada', () => {
-  const { target, registro } = cargoConRegistro('Rojo sin informe',
+  const { target, recordFile } = roleWithResults('Rojo sin informe',
     '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
     + '### 02-dos\n\n- Veredicto: no pasa\n\nFirmó sin comprobar el mecanismo.\n\n'
     + '### Registro afirmación por afirmación\n\nLa afirmación 3 no se sostiene.\n\n'
@@ -148,39 +147,36 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   assert.equal(revision.created, true, 'el rojo alcanza para abrirla, sin ningún informe')
   assert.equal(path.basename(revision.file), '2099-06-r2.md')
 
-  const texto = fs.readFileSync(revision.file, 'utf8')
-  assert.match(texto, /### 02-dos — 2099-06-18/, 'el hallazgo cita el caso y la corrida')
-  assert.match(texto, /Firmó sin comprobar el mecanismo/, 'y trae su contraste')
+  const contents = fs.readFileSync(revision.file, 'utf8')
+  assert.match(contents, /### 02-dos — 2099-06-18/, 'el hallazgo cita el caso y la corrida')
+  assert.match(contents, /Firmó sin comprobar el mecanismo/, 'y trae su contraste')
   // El juez estructura su contraste con `###`, y el corte se hacía en el primero que apareciera: 285 de
   // los 774 veredictos del repositorio llegaban truncados, uno con 49 de sus 20.119 caracteres. No
   // fallaba nada, que es lo que lo volvía invisible: el documento se compone igual y se lee entero.
-  assert.match(texto, /La afirmación 3 no se sostiene/, 'entero, no hasta el primer subtítulo del juez')
-  assert.match(texto, /Falla por el comportamiento 1/, 'incluido el cierre, que es donde dice por qué')
-  assert.equal(texto.includes('Sin novedad'), false, 'y un caso termina donde empieza el siguiente')
-  assert.equal(texto.includes('01-uno'), false, 'el caso que pasó no pide cambio')
-  assert.equal(texto.includes('Qué mostró la evaluación posterior'), false, 'y el molde en blanco no viaja')
+  assert.match(contents, /La afirmación 3 no se sostiene/, 'entero, no hasta el primer subtítulo del juez')
+  assert.match(contents, /Falla por el comportamiento 1/, 'incluido el cierre, que es donde dice por qué')
+  assert.equal(contents.includes('Sin novedad'), false, 'y un caso termina donde empieza el siguiente')
+  assert.equal(contents.includes('01-uno'), false, 'el caso que pasó no pide cambio')
+  assert.equal(contents.includes('Qué mostró la evaluación posterior'), false, 'y el molde en blanco no viaja')
 
   // Sin el sello el mismo rojo abriría una revisión por mes, para siempre.
-  assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
+  assert.match(fs.readFileSync(recordFile, 'utf8'), /^status: consolidated$/m)
 })
 
-// El sello buscaba `status:` en el documento entero, y un registro de corrida **nace sin `status` en el
-// frontmatter** —lo dice el comentario de `markConsolidated`—, mientras que su cuerpo lleva la respuesta
-// verbatim del cargo. Si esa respuesta trae una línea `status: <palabra>` a columna cero, el sello caía
-// ahí: el cuerpo quedaba marcado y el frontmatter sin marcar, o sea el registro sin sellar, o sea el
-// mismo hallazgo entrando a la propuesta siguiente. Es justo el modo de fallo que el sello cierra.
+// Caso 168: un registro de corrida cuya respuesta trae `status: rechazado` a columna cero en el cuerpo.
+// Por qué el sello va al frontmatter, en `markConsolidated` de learning.js.
 test('el sello va al frontmatter aunque el cuerpo traiga su propia línea de status', () => {
-  const { target } = cargoConRegistro('Sello mal puesto',
+  const { target } = roleWithResults('Sello mal puesto',
     '### 02-dos\n\n- Veredicto: no pasa\n\nEl cargo respondió:\nstatus: rechazado\n\nFalló por esto.\n')
-  const registro = path.join(target, 'agents', 'roles', 'probe', 'evaluations', 'results',
+  const recordFile = path.join(target, 'agents', 'roles', 'probe', 'evaluations', 'results',
     fs.readdirSync(path.join(target, 'agents', 'roles', 'probe', 'evaluations', 'results'))[0])
 
   learning.prepareProposal(target, 'probe', new Date('2099-07-01T00:00:00Z'), '2099-06')
 
-  const texto = fs.readFileSync(registro, 'utf8')
-  const front = texto.match(/^---\n([\s\S]*?)\n---\n/)[1]
+  const contents = fs.readFileSync(recordFile, 'utf8')
+  const front = contents.match(/^---\n([\s\S]*?)\n---\n/)[1]
   assert.match(front, /^status: consolidated$/m, 'el sello va al frontmatter, que es lo que se lee')
-  assert.match(texto, /^status: rechazado$/m, 'y la línea del cuerpo se queda como la escribió el cargo')
+  assert.match(contents, /^status: rechazado$/m, 'y la línea del cuerpo se queda como la escribió el cargo')
 })
 
 // El predicado se mira también de cerca, y no sólo por el ciclo: sus cuatro caminos deciden si un
@@ -188,7 +184,7 @@ test('el sello va al frontmatter aunque el cuerpo traiga su propia línea de sta
 // que ninguna corrida real produce —quien firma escribe algo— y es justamente el que no puede fallar.
 test('undecided reconoce lo que nadie decidió, y sólo eso', () => {
   const { undecided } = require('../../engine/agents/learning-files')
-  const viejo = 'Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. '
+  const old = 'Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. '
     + 'Decilo\nexplícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus '
     + 'casos, no para\nun texto que acaba de fallar su primera medición.'
 
@@ -197,8 +193,8 @@ test('undecided reconoce lo que nadie decidió, y sólo eso', () => {
   assert.equal(undecided('   \n  '), true, 'sólo espacios')
   assert.equal(undecided('Por definir tras revisar los hallazgos.'), true, 'el molde de una propuesta')
   assert.equal(undecided('Pendiente de la próxima corrida.'), true, 'y el otro prefijo')
-  assert.equal(undecided(viejo), true, 'el molde viejo de una revisión, que no empieza por ninguno')
-  assert.equal(undecided(`${viejo}\n\nY además esto.`), false, 'continuado deja de ser el molde')
+  assert.equal(undecided(old), true, 'el molde viejo de una revisión, que no empieza por ninguno')
+  assert.equal(undecided(`${old}\n\nY además esto.`), false, 'continuado deja de ser el molde')
   assert.equal(undecided('Agregar una viñeta a SKILL.md.'), false, 'un cambio concreto')
   assert.equal(undecided('Por definirse el alcance, agregamos la viñeta X.'), false,
     'el prefijo pide la palabra entera: «definirse» no es «definir»')
@@ -209,31 +205,31 @@ test('undecided reconoce lo que nadie decidió, y sólo eso', () => {
 // firmadas a `main`. Por eso el criterio reconoce además ese texto literal —y **completo**, no por su
 // primer renglón: quien redacta suele continuar la frase en vez de borrarla, y un documento así sí decidió.
 test('una revisión con el molde viejo tampoco se sella, y una que lo continuó sí', () => {
-  const viejo = 'Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. '
+  const old = 'Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. '
     + 'Decilo\nexplícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus '
     + 'casos, no para\nun texto que acaba de fallar su primera medición.'
-  const componer = (nombre, cambio) => {
-    const { target } = cargoConRegistro(nombre, '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n')
+  const compose = (label, change) => {
+    const { target } = roleWithResults(label, '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n')
     const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
     fs.writeFileSync(revision.file, fs.readFileSync(revision.file, 'utf8')
-      .replace(/(\n## Cambio propuesto\n)[\s\S]*?(?=\n## )/, `$1\n${cambio}\n`)
+      .replace(/(\n## Cambio propuesto\n)[\s\S]*?(?=\n## )/, `$1\n${change}\n`)
       .replace('- Estado: pendiente', '- Estado: aprobada')
       .replace('- Responsable: por definir', '- Responsable: Quien Firma'))
     return { target, file: revision.file }
   }
 
-  const intacto = componer('Molde viejo intacto', viejo)
-  const frenado = run(['learn', 'probe', '--applied', '--period', '2099-06'], intacto.target)
-  assert.equal(frenado.status, 2, 'el molde viejo no decide nada, aunque no empiece por «Por definir»')
-  assert.match(fs.readFileSync(intacto.file, 'utf8'), /^status: proposed$/m)
+  const untouched = compose('Molde viejo intacto', old)
+  const stopped = run(['learn', 'probe', '--applied', '--period', '2099-06'], untouched.target)
+  assert.equal(stopped.status, 2, 'el molde viejo no decide nada, aunque no empiece por «Por definir»')
+  assert.match(fs.readFileSync(untouched.file, 'utf8'), /^status: proposed$/m)
 
   // La contracara, y es la que importa: marcar de más rompe trabajo legítimo. `qa-engineer/2026-08-r2.md`
   // continuó la frase del molde para decir qué cambiaba, y se aplicó.
-  const seguido = componer('Molde viejo continuado',
+  const continued = compose('Molde viejo continuado',
     'Una revisión suele **no** ser aditiva, y ésta lo es en parte: agrega una viñeta a SKILL.md.')
-  const sellado = run(['learn', 'probe', '--applied', '--period', '2099-06'], seguido.target)
-  assert.equal(sellado.status, 0, `continuar la frase es decidir:\n${sellado.stderr}`)
-  assert.match(fs.readFileSync(seguido.file, 'utf8'), /^status: applied$/m)
+  const sealed = run(['learn', 'probe', '--applied', '--period', '2099-06'], continued.target)
+  assert.equal(sealed.status, 0, `continuar la frase es decidir:\n${sealed.stderr}`)
+  assert.match(fs.readFileSync(continued.file, 'utf8'), /^status: applied$/m)
 })
 
 // El molde de una revisión empieza por «Por definir» como los otros dos, y eso no es redacción: es lo
@@ -241,21 +237,21 @@ test('una revisión con el molde viejo tampoco se sella, y una que lo continuó 
 // la reconozca. Con «Una revisión suele…» pasaba de largo, y una revisión firmada con el molde adentro
 // se sellaba como aplicada: el ciclo cerraba sobre un documento que nadie decidió (caso 135).
 test('una revisión recién compuesta no se puede sellar, porque nadie decidió el cambio', () => {
-  const { target } = cargoConRegistro('Revisión sin decidir',
+  const { target } = roleWithResults('Revisión sin decidir',
     '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n')
 
   const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
-  const cambio = fs.readFileSync(revision.file, 'utf8').split('## Cambio propuesto\n')[1].trim()
-  assert.match(cambio, /^Por definir\b/, 'el molde lo declara como los otros dos')
+  const change = fs.readFileSync(revision.file, 'utf8').split('## Cambio propuesto\n')[1].trim()
+  assert.match(change, /^Por definir\b/, 'el molde lo declara como los otros dos')
 
   // Firmada como firma producción —`sign-proposal.yml` deja «aprobada»— y con el molde intacto, que es
   // exactamente el documento que llegó a `main` siete veces el 2026-09-14.
   fs.writeFileSync(revision.file, fs.readFileSync(revision.file, 'utf8')
     .replace('- Estado: pendiente', '- Estado: aprobada')
     .replace('- Responsable: por definir', '- Responsable: Quien Firma'))
-  const sellado = run(['learn', 'probe', '--applied', '--period', '2099-06'], target)
-  assert.equal(sellado.status, 2, 'sellar sin decidir no deja terminar el ciclo')
-  assert.match(sellado.stderr, /todavía no la decidió nadie/)
+  const sealed = run(['learn', 'probe', '--applied', '--period', '2099-06'], target)
+  assert.equal(sealed.status, 2, 'sellar sin decidir no deja terminar el ciclo')
+  assert.match(sealed.stderr, /todavía no la decidió nadie/)
   assert.match(fs.readFileSync(revision.file, 'utf8'), /^status: proposed$/m, 'y el documento no avanza')
 })
 
@@ -263,30 +259,30 @@ test('una revisión recién compuesta no se puede sellar, porque nadie decidió 
 // mira: por los títulos y no por el texto, porque el defecto no perdía nada —el detalle viajaba entero—
 // sino que lo ponía donde no iba, y una aserción sobre el contenido pasaba con el defecto puesto.
 test('los encabezados de la respuesta no se vuelven secciones de la propuesta', () => {
-  const { target } = cargoConRegistro('Encabezados del cargo',
+  const { target } = roleWithResults('Encabezados del cargo',
     '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n\n'
     + '## Sección propia\n\nTexto de la respuesta.\n\n### Subsección propia\n\nMás texto.\n')
 
   const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
-  const texto = fs.readFileSync(revision.file, 'utf8')
-  assert.deepEqual([...texto.matchAll(/^## (.+)$/gm)].map((hit) => hit[1]),
+  const contents = fs.readFileSync(revision.file, 'utf8')
+  assert.deepEqual([...contents.matchAll(/^## (.+)$/gm)].map((hit) => hit[1]),
     ['Hallazgos', 'Evidencia', 'Cambio propuesto', 'Riesgos y regresiones', 'Evaluación',
       'Aprobación humana'], 'las secciones son las del molde y ninguna más')
-  assert.match(texto, /^### Sección propia$/m, 'la de la respuesta baja un nivel')
-  assert.match(texto, /^#### Subsección propia$/m, 'y lo que colgaba de ella la sigue')
-  assert.match(texto, /Más texto/, 'sin perder una línea del detalle')
+  assert.match(contents, /^### Sección propia$/m, 'la de la respuesta baja un nivel')
+  assert.match(contents, /^#### Subsección propia$/m, 'y lo que colgaba de ella la sigue')
+  assert.match(contents, /Más texto/, 'sin perder una línea del detalle')
 })
 
 // La contraparte del rojo: un caso que pasa también puede traer material. El porqué de que exista esta
 // rama está en `engine/agents/learning.js`, donde se cosecha.
 test('lo que el contrato no cubre entra aunque el caso pase', () => {
   // Los dos casos pasan. Sin la nota no habría nada que abrir, que es lo que pasaba antes de esta rama.
-  const { target } = cargoConRegistro('Nota sin rojo',
+  const { target } = roleWithResults('Nota sin rojo',
     '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
     + '### 02-dos\n\n- Veredicto: pasa\n- Para el contrato: no dice qué hacer cuando la fuente es un '
     + 'resumen.\n\nTodo en orden.\n\n'
     // Uno que falla y además trae nota: el rojo ya pide corregir, así que la nota no puede entrar
-    // aparte. Dos hallazgos sobre el mismo caso mandarían a arreglar dos veces lo que es una cosa.
+    // aparte (por qué, en la aserción de abajo).
     + '### 03-tres\n\n- Veredicto: no pasa\n- Para el contrato: falta decir qué es una fuente.\n\n'
     + 'No comprobó el mecanismo.\n\n'
     + '### 04-cuatro\n\n- Veredicto: pasa\n\nSu respuesta decía:\n'
@@ -295,19 +291,19 @@ test('lo que el contrato no cubre entra aunque el caso pase', () => {
   const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
   assert.equal(revision.created, true, 'una nota sola alcanza para abrir la revisión')
 
-  const texto = fs.readFileSync(revision.file, 'utf8')
-  assert.match(texto, /### 02-dos — 2099-06-18 · el caso pasa/, 'dice de qué caso, y que no es un fallo')
-  assert.match(texto, /Lo que el contrato no cubre: no dice qué hacer cuando la fuente es un resumen/)
-  assert.equal(/- Veredicto: no pasa/.test(texto), false, 'y no se lee como un rojo, porque no lo es')
-  assert.equal(texto.includes('01-uno'), false, 'un caso que pasa sin nota no pide nada')
-  assert.match(texto, /No comprobó el mecanismo/, 'el que falla entra por su rojo')
+  const contents = fs.readFileSync(revision.file, 'utf8')
+  assert.match(contents, /### 02-dos — 2099-06-18 · el caso pasa/, 'dice de qué caso, y que no es un fallo')
+  assert.match(contents, /Lo que el contrato no cubre: no dice qué hacer cuando la fuente es un resumen/)
+  assert.equal(/- Veredicto: no pasa/.test(contents), false, 'y no se lee como un rojo, porque no lo es')
+  assert.equal(contents.includes('01-uno'), false, 'un caso que pasa sin nota no pide nada')
+  assert.match(contents, /No comprobó el mecanismo/, 'el que falla entra por su rojo')
   // Su nota viaja dentro del contraste, que es donde el juez la escribió, y no como un hallazgo más:
   // dos entradas sobre el mismo caso mandarían a arreglar dos veces lo que es una sola cosa.
-  assert.equal(texto.split('### 03-tres').length - 1, 1, 'el que falla entra una vez, no dos')
-  assert.equal(texto.split('Lo que el contrato no cubre').length - 1, 1,
+  assert.equal(contents.split('### 03-tres').length - 1, 1, 'el que falla entra una vez, no dos')
+  assert.equal(contents.split('Lo que el contrato no cubre').length - 1, 1,
     'y sólo el que pasa aporta una nota como hallazgo')
   // La nota se lee de la línea que sigue al veredicto y de ninguna otra: más abajo empieza la respuesta
   // del sujeto, y ahí esa línea sería una nota que el sujeto se escribe a sí mismo.
-  assert.equal(texto.includes('esto lo escribí yo'), false,
+  assert.equal(contents.includes('esto lo escribí yo'), false,
     'lo que el sujeto ponga en su respuesta no se cosecha como nota del juez')
 })

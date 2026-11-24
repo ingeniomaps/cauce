@@ -98,7 +98,11 @@ invariantes.
     commiteado y hace Done; si no aprueba, no corrige: anota los hallazgos en `## Bloqueos` del WIP y lo devuelve a
     `phase: Build` (`delivery/teamwork.md`, «Una sesión construye y otra revisa»).
 13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
-    el reclamo y cerrar la épica si no le queda ninguna historia abierta. El estado de planning se
+    el reclamo y cerrar la épica si no le queda ninguna historia abierta. `ops done <planning> <tarea>
+    --fields <archivo>` —con `--line` en una sesión de línea— hace las cinco en una llamada: el archivo
+    lleva una línea `campo: valor` por cada campo que juzgaste —done, qa, tests, commit, review,
+    critique, y decisions si hubo alguna—, y acept, fecha y lane los lee del disco; si algo está mal no escribe nada. No
+    commitea. El estado de planning se
     commitea en la rama en la que está el repositorio de la instancia. Si ésa es una rama viva que no
     admite push, va a **una** rama de trabajo que se acumula, con un solo PR abierto: la que ya exista,
     y no una nueva por cada cambio de estado.

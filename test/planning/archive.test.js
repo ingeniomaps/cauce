@@ -63,9 +63,9 @@ service: app
 
   // Archivar una épica se retiró: no hay nada que descongestionar cuando cada tarea trae su archivo. Y
   // el comando lo dice, en vez de contestar «la épica debe ser NNN» sobre algo que dejó de existir.
-  const retirado = run(['archive', planning, '001'])
-  assert.equal(retirado.status, 2)
-  assert.match(retirado.stderr, /Sólo se archiva `human-actions`/)
+  const retired = run(['archive', planning, '001'])
+  assert.equal(retired.status, 2)
+  assert.match(retired.stderr, /Sólo se archiva `human-actions`/)
   assert.equal(fs.existsSync(path.join(planning, 'done', 'epic-001.md')), false)
 })
 
@@ -76,9 +76,9 @@ test('archive human-actions saca las filas resueltas y conserva todo lo demás',
   const base = tempRoot('cauce-archive-ha-')
   const planning = path.join(base, 'planning')
   fs.cpSync(path.resolve(__dirname, '..', '..', 'template', 'planning'), planning, { recursive: true })
-  const archivo = path.join(planning, 'HUMAN_ACTIONS.md')
-  const original = fs.readFileSync(archivo, 'utf8')
-  fs.writeFileSync(archivo, original.replace(
+  const file = path.join(planning, 'HUMAN_ACTIONS.md')
+  const original = fs.readFileSync(file, 'utf8')
+  fs.writeFileSync(file, original.replace(
     /(\|---\|---\|---\|---\|\n)/,
     '$1| alta-smtp | resuelta 2026-08-17 | Ready | Se creó la cuenta. |\n'
     + '| pago-plan | pendiente | QA | Aprobar el gasto del plan pago. |\n'
@@ -89,37 +89,37 @@ test('archive human-actions saca las filas resueltas y conserva todo lo demás',
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /2 fila\(s\) archivadas/)
 
-  const quedo = fs.readFileSync(archivo, 'utf8')
-  assert.match(quedo, /^\| pago-plan \| pendiente \|/m, 'la pendiente se queda')
-  assert.doesNotMatch(quedo, /alta-smtp|dns-staging/, 'las resueltas se van')
-  assert.ok(quedo.includes('| Tarea | Estado | Origen |'), 'el encabezado de la tabla sobrevive')
-  assert.ok(quedo.includes('vocabulario cerrado'), 'y la prosa que explica el archivo también')
-  assert.ok(quedo.includes('slug-de-tarea'), 'y el ejemplo comentado, que no es una fila real')
+  const remained = fs.readFileSync(file, 'utf8')
+  assert.match(remained, /^\| pago-plan \| pendiente \|/m, 'la pendiente se queda')
+  assert.doesNotMatch(remained, /alta-smtp|dns-staging/, 'las resueltas se van')
+  assert.ok(remained.includes('| Tarea | Estado | Origen |'), 'el encabezado de la tabla sobrevive')
+  assert.ok(remained.includes('vocabulario cerrado'), 'y la prosa que explica el archivo también')
+  assert.ok(remained.includes('slug-de-tarea'), 'y el ejemplo comentado, que no es una fila real')
 
-  const historial = fs.readFileSync(path.join(planning, 'done', 'human-actions.md'), 'utf8')
-  assert.match(historial, /^\| alta-smtp \| resuelta 2026-08-17 \| Ready \| Se creó la cuenta\. \|$/m)
-  assert.match(historial, /^\| dns-staging \| resuelta \| Verify \|/m)
-  assert.ok(historial.includes('| Tarea | Estado | Origen |'), 'el historial se lee solo')
+  const history = fs.readFileSync(path.join(planning, 'done', 'human-actions.md'), 'utf8')
+  assert.match(history, /^\| alta-smtp \| resuelta 2026-08-17 \| Ready \| Se creó la cuenta\. \|$/m)
+  assert.match(history, /^\| dns-staging \| resuelta \| Verify \|/m)
+  assert.ok(history.includes('| Tarea | Estado | Origen |'), 'el historial se lee solo')
 
   // Segunda corrida: no hay nada que mover y no se toca ningún archivo.
-  const otra = run(['archive', planning, 'human-actions'])
-  assert.equal(otra.status, 0, otra.stderr)
-  assert.match(otra.stdout, /no hay filas resueltas/)
-  assert.equal(fs.readFileSync(archivo, 'utf8'), quedo)
+  const other = run(['archive', planning, 'human-actions'])
+  assert.equal(other.status, 0, other.stderr)
+  assert.match(other.stdout, /no hay filas resueltas/)
+  assert.equal(fs.readFileSync(file, 'utf8'), remained)
 
   // Y lo archivado se acumula en vez de reemplazarse.
-  fs.appendFileSync(archivo, '| cuenta-meta | resuelta | Ready | Se habilitó el acceso. |\n')
+  fs.appendFileSync(file, '| cuenta-meta | resuelta | Ready | Se habilitó el acceso. |\n')
   assert.equal(run(['archive', planning, 'human-actions']).status, 0)
-  const segundo = fs.readFileSync(path.join(planning, 'done', 'human-actions.md'), 'utf8')
+  const second = fs.readFileSync(path.join(planning, 'done', 'human-actions.md'), 'utf8')
   for (const slug of ['alta-smtp', 'dns-staging', 'cuenta-meta']) {
-    assert.ok(segundo.includes(slug), `${slug} sigue en el historial`)
+    assert.ok(second.includes(slug), `${slug} sigue en el historial`)
   }
-  assert.equal((segundo.match(/^\| Tarea \| Estado/gm) || []).length, 1, 'un solo encabezado')
+  assert.equal((second.match(/^\| Tarea \| Estado/gm) || []).length, 1, 'un solo encabezado')
   // Una copia pelada de `planning/` no es una instancia —le falta `integrations/config.json`—, así que
   // se juzga lo que este comando toca y no el exit code entero.
-  const validacion = JSON.parse(run(['check', planning, '--json']).stdout)
+  const validation = JSON.parse(run(['check', planning, '--json']).stdout)
   assert.deepEqual(
-    validacion.errors.filter((error) => /HUMAN_ACTIONS|human-actions/.test(error)), [],
+    validation.errors.filter((error) => /HUMAN_ACTIONS|human-actions/.test(error)), [],
     'lo que quedó y lo que se archivó siguen siendo válidos',
   )
 })

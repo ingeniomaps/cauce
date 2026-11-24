@@ -160,7 +160,7 @@ test('cada gh de un comando se juzga por si nombra su repositorio', () => {
     // Los marcadores que `gh` completa desde la carpeta no nombran nada.
     const api = 'gh api -X PUT repos/:owner/:repo/pulls/3/merge'
     ws.approve(api)
-    blocked('destructive', runs(ws.repos.api, api), /pull request/)
+    blocked('destructive', runs(ws.repos.api, api), /API de GitHub/)
     // Lo que va entre comillas es un valor, y una llamada separada con `&` es otra llamada.
     for (const loose of ['gh pr comment 5 --body "pasá --repo la próxima"',
       'gh pr view 1 --repo o/r & gh api -X PUT repos/{owner}/{repo}/pulls/2/merge',
@@ -195,7 +195,7 @@ test('sin un lugar que se pueda saber no hay línea que pegar', () => {
     const unset = 'cd $REPO && git clean -fd'
     assert.doesNotMatch(messageOf('destructive', runs(ws.workspace, unset)), /estas líneas:/)
 
-    // `gh` corre en la carpeta del shell: el `-C` de un `git` del mismo comando no le cambia el repositorio.
+    // Un `git -C` en el mismo comando no le mueve el repositorio a `gh` (por qué, en `engine/hooks/approval.js`).
     const mixed = `git -C ${ws.repos.api} fetch && gh workflow run deploy.yml`
     blocked('destructive', chat.says('revisá el deploy')(runs(ws.repos.web, mixed)), /dispara o publica/)
     assert.doesNotThrow(() => execute('destructive', chat.says('dale')(runs(ws.repos.web, mixed))))
@@ -265,9 +265,8 @@ test('la carpeta que Gemini manda en dir_path es donde corre el comando', () => 
   } finally { ws.restore() }
 })
 
-// Caso 451. El ítem era el comando entero, y un agente que reintenta con un `cd` adelante o un `echo` atrás ya pedía
-// otra cosa: el «dale» de la persona no lo cubría. El ítem es el tramo que la regla reconoce; dónde corre lo dice
-// el lugar.
+// Caso 451: la aprobación pegada con un `cd` y un `echo` alrededor cubre los reintentos en api y no los de web. El
+// porqué está en `stretchOf` (shell.js).
 test('lo que rodea al comando no cambia lo que se aprueba: un cd adelante o un echo atrás', () => {
   const ws = sidecar('ops-approval-place-stretch-')
   const chat = chatSession()

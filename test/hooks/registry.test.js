@@ -65,7 +65,7 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
   const root = tempRoot('ops-failopen-')
   fs.mkdirSync(path.join(root, 'planning'))
   const config = path.join(root, 'ops.config.json')
-  const afuera = { cwd: root, tool_input: { file_path: '/etc/passwd' } }
+  const outside = { cwd: root, tool_input: { file_path: '/etc/passwd' } }
   const engine = {
     cwd: root,
     tool_input: { file_path: path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'x.js') },
@@ -74,7 +74,7 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
   fs.writeFileSync(config, JSON.stringify({
     project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], runner: {},
   }))
-  blocked('workspace-boundary', afuera, /fuera de las raíces/)
+  blocked('workspace-boundary', outside, /fuera de las raíces/)
   blocked('engine', engine, /pertenece al motor de Cauce/)
 
   // Una configuración que parsea pero trae un tipo cambiado no es «no se puede leer»: el guard sigue
@@ -84,12 +84,12 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
     project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }],
     writableOutsideRoots: '/etc', runner: {},
   }))
-  blocked('workspace-boundary', afuera, /fuera de las raíces/)
+  blocked('workspace-boundary', outside, /fuera de las raíces/)
 
   fs.writeFileSync(config, '{"project":"x",,"mode":"embedded"}')
   for (const guard of ['workspace-boundary', 'engine']) {
     assert.throws(
-      () => execute(guard, afuera),
+      () => execute(guard, outside),
       (error) => error.blocked === true && /no se puede leer/.test(error.message),
       `${guard} permitió con la configuración rota`,
     )
@@ -152,9 +152,8 @@ test('con la configuración ilegible pasa volver a la del último commit, y nada
   assert.equal(restoresConfig({ cwd: root, tool_input: { command: 'git checkout HEAD -- ops.config.json' } }), false)
 })
 
-// La misma regla, un paso antes: si la entrada del hook no se puede parsear, cada guard veía `{}`
-// —sin comando y sin archivos— y dejaba pasar todo. Sin stdin sí es «no hay nada que leer», y ahí los
-// guards caen a las variables de entorno; se comprueban las dos ramas para no cerrar la buena.
+// La misma regla, un paso antes; el porqué, en `readInput` (`engine/hooks/input.js`). Se comprueban las dos
+// ramas para no cerrar la buena.
 test('una entrada de hook ilegible bloquea; la ausencia de entrada no', () => {
   const runtime = path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'run.js')
   const invoke = (payload, env = {}) => spawnSync(

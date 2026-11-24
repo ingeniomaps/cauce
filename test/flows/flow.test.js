@@ -109,19 +109,19 @@ test('entre etapas viaja el resumen, y a la síntesis la ruta del análisis', as
 // las junta sí reciba los tres. Con la primera sola, un motor que no le pasara nada a nadie pasaría
 // igual. Por qué las hermanas tienen que ser independientes, en `levels`.
 test('las etapas hermanas no se leen entre sí, y la que las junta las lee a las tres', async () => {
-  const contrato = baseScript()['flow-contract']
-  const etapa = (id, agent, dependsOn) => ({
+  const flowContract = baseScript()['flow-contract']
+  const stage = (id, agent, dependsOn) => ({
     id, agent, dependsOn, phase: 'discovery', skill: '/s', produces: ['x'], exitGate: 'y',
   })
   const { prompts } = await runFlow({
     'flow-contract': {
-      ...contrato,
+      ...flowContract,
       stages: [
-        etapa('encuadre', 'a', []),
-        etapa('uno', 'b', ['encuadre']),
-        etapa('dos', 'c', ['encuadre']),
-        etapa('junta', 'd', ['uno', 'dos']),
-        etapa('solo-uno', 'e', ['uno']),
+        stage('encuadre', 'a', []),
+        stage('uno', 'b', ['encuadre']),
+        stage('dos', 'c', ['encuadre']),
+        stage('junta', 'd', ['uno', 'dos']),
+        stage('solo-uno', 'e', ['uno']),
       ],
     },
     'stage:encuadre': { gate: 'cumplido', summary: 'lo del encuadre', analysis: '/a.md' },
@@ -137,34 +137,34 @@ test('las etapas hermanas no se leen entre sí, y la que las junta las lee a las
   assert.equal(prompt('dos').includes('lo de uno'), false, 'en las dos direcciones')
 
   // La que las junta ve a las tres: sus dos dependencias y lo que aquéllas dependían.
-  const junta = prompt('junta')
-  for (const visto of ['lo del encuadre', 'lo de uno', 'lo de dos']) {
-    assert.match(junta, new RegExp(visto), `la que junta ve ${visto}`)
+  const joined = prompt('junta')
+  for (const seen of ['lo del encuadre', 'lo de uno', 'lo de dos']) {
+    assert.match(joined, new RegExp(seen), `la que junta ve ${seen}`)
   }
 
   // Y ésta es la que prueba el filtro y no el paralelismo. Entre hermanas alcanza con que corran a la
   // vez —cuando se arma su prompt ninguna devolvió todavía—, así que romper `ancestors` no las rompía.
   // Una etapa posterior que depende de una sola sí necesita el filtro: `dos` ya está en los handoffs
   // cuando le toca, y verla sería exactamente lo que el contrato dice que no pasa.
-  const soloUno = prompt('solo-uno')
-  assert.match(soloUno, /lo de uno/, 've a aquélla de la que depende')
-  assert.match(soloUno, /lo del encuadre/, 'y lo que aquélla dependía')
-  assert.equal(soloUno.includes('lo de dos'), false, 'y no a la que no declaró')
+  const onlyOne = prompt('solo-uno')
+  assert.match(onlyOne, /lo de uno/, 've a aquélla de la que depende')
+  assert.match(onlyOne, /lo del encuadre/, 'y lo que aquélla dependía')
+  assert.equal(onlyOne.includes('lo de dos'), false, 'y no a la que no declaró')
 })
 
 // Independencia es una afirmación, y una afirmación se declara. Un contrato que no dice de qué depende
 // se comporta como antes —cada etapa ve todo lo anterior—, porque lo contrario paralelizaría en silencio
 // recorridos escritos para correr en fila.
 test('una etapa sin dependsOn sigue viendo todo lo anterior', async () => {
-  const contrato = baseScript()['flow-contract']
+  const flowContract = baseScript()['flow-contract']
   const { prompts } = await runFlow({
     'flow-contract': {
-      ...contrato,
-      stages: contrato.stages.map(({ dependsOn, ...rest }) => rest),
+      ...flowContract,
+      stages: flowContract.stages.map(({ dependsOn, ...rest }) => rest),
     },
   })
-  const segunda = prompts.find((one) => one.key === 'stage:factibilidad').prompt
-  assert.match(segunda, /el problema es el alta duplicada/, 'sin declaración, ve a la anterior')
+  const second = prompts.find((one) => one.key === 'stage:factibilidad').prompt
+  assert.match(second, /el problema es el alta duplicada/, 'sin declaración, ve a la anterior')
 })
 
 test('un exit gate no cumplido corta y deja la acción humana escrita', async () => {
@@ -176,7 +176,7 @@ test('un exit gate no cumplido corta y deja la acción humana escrita', async ()
   })
   assert.equal(result.reason, 'gate-no-cumplido')
   assert.ok(!asked.includes('stage:factibilidad'), 'no se sigue con la etapa siguiente')
-  assert.ok(written.some((texto) => texto.includes('HUMAN_ACTIONS')), 'el bloqueo queda con su acción')
+  assert.ok(written.some((text) => text.includes('HUMAN_ACTIONS')), 'el bloqueo queda con su acción')
 })
 
 // El estado del medio: la etapa cumplió, y deja una condición que la síntesis tiene que respetar. Con dos
@@ -200,11 +200,11 @@ test('una etapa cumple con condiciones y esas condiciones llegan a la síntesis'
     'la condición llega señalada a quien redacta, no diluida en el handoff',
   )
   assert.ok(
-    written.some((texto) => texto.includes('HUMAN_ACTIONS') && texto.includes('sin medir')),
+    written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('sin medir')),
     'y queda como decisión pendiente, que es lo que impide que se lea como resuelta',
   )
   assert.equal(
-    written.some((texto) => texto.includes('naming del endpoint')), false,
+    written.some((text) => text.includes('naming del endpoint')), false,
     'lo que no condiciona nada no se convierte en acción humana',
   )
 })
@@ -270,16 +270,16 @@ test('una intención que empieza con el nombre de un recorrido, sin los dos punt
 // casos adversariales de los cargos miden y castigan. `flow list` sólo se corría cuando el slug fallaba,
 // para decir cuáles hay.
 //
-// Va en las reglas comunes y no sólo en la etapa que enruta: cualquier etapa puede nombrar un destino
-// al cerrar, y son seis slugs de contexto. Sale del registro, como la cadencia y como la matriz del
-// cron: una lista escrita al lado se pudre el día que alguien agrega un recorrido.
+// Que la lista llegue a todas las etapas y no sólo a la que enruta: el porqué, en `flow.js`. Sale del
+// registro, como la cadencia y como la matriz del cron: una lista escrita al lado se pudre el día que
+// alguien agrega un recorrido.
 test('cada etapa sabe qué recorridos existen, en vez de nombrarlos de memoria', async () => {
   const { prompts } = await runFlow({
     'flow-contract': { ...baseScript()['flow-contract'], flows: ['intake', 'incident-review'] },
   })
 
-  const contrato = prompts.find((one) => one.key === 'flow-contract').prompt
-  assert.match(contrato, /flow list/, 'el contrato los pide siempre, no sólo cuando el slug falla')
+  const flowContract = prompts.find((one) => one.key === 'flow-contract').prompt
+  assert.match(flowContract, /flow list/, 'el contrato los pide siempre, no sólo cuando el slug falla')
 
   for (const key of ['stage:encuadre', 'stage:factibilidad']) {
     const stage = prompts.find((one) => one.key === key).prompt
@@ -302,33 +302,25 @@ test('un recorrido que se bloquea entrega igual lo que las etapas anteriores est
   assert.equal(result.reason, 'gate-no-cumplido')
   assert.ok(written.some((one) => one.includes('HUMAN_ACTIONS')), 'el bloqueo queda con su acción')
 
-  const parcial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
-  assert.ok(parcial, 'y lo establecido se entrega, marcado como parcial')
-  assert.match(parcial, /encuadre/, 'con lo que la etapa que sí cerró dejó')
-  assert.match(parcial, /nadie estimó el esfuerzo/, 'y con qué falta para completarlo')
+  const partial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
+  assert.ok(partial, 'y lo establecido se entrega, marcado como parcial')
+  assert.match(partial, /encuadre/, 'con lo que la etapa que sí cerró dejó')
+  assert.match(partial, /nadie estimó el esfuerzo/, 'y con qué falta para completarlo')
 })
 
-// Y sobre todo cuando el bloqueo es de la primera etapa, que es donde el recorrido no deja nada. Con
-// etapas cerradas la fila de acción humana ya resume lo establecido; sin ninguna, la fila es todo lo
-// que existe — y ahí el informe estaba detrás de un `if (settled.length)` que lo apagaba justo
-// entonces. Cuatro casos de `intake` e `incident-review` lo midieron: los tres de intake tenían a mano
-// el pedido literal, sus supuestos y el destino recomendado, y el gate bloqueado pedía procedencia,
-// que no impide ninguna de las tres.
-// El análisis completo viaja por el input de la herramienta, y pasado cierto tamaño el modelo deja de
-// emitir los campos y emite `{"raw": "<el JSON como string>", "len": N}`, que no valida. 86 de las 1550
-// llamadas con schema de tres corridas salieron así, todas menos una declarando 6274 caracteres o más,
-// y dos casos murieron sin medirse. Es la otra mitad de lo que R16 pide —el análisis «queda donde se
-// escribió»— y el prompt no la decía.
+// El análisis completo viaja por el input de la herramienta, y pasado cierto tamaño vuelve envuelto en
+// `raw`, que no valida: el porqué y lo que se intentó, en `automatization/workflows/flow.js`. De las 86
+// llamadas envueltas, todas menos una declaraban 6274 caracteres o más, y dos casos murieron sin medirse.
 //
-// El envoltorio se nombra aparte del techo porque no se arregla acortando: la excepción de esas 86 era
-// un quinto reintento de 924 caracteres que conservó la forma de los cuatro largos anteriores.
+// El envoltorio se nombra aparte del techo porque no se arregla acortando: lo muestra el reintento de 924
+// caracteres que cuenta `flow.js`.
 test('el análisis largo va a un archivo, no por el handoff', async () => {
   const { prompts } = await runFlow()
-  const etapa = prompts.find((one) => one.key === 'stage:encuadre')
-  assert.ok(etapa, 'la etapa corrió')
-  assert.match(etapa.prompt, / como 2026-09-12-product-development-encuadre-analisis\.md /,
+  const stage = prompts.find((one) => one.key === 'stage:encuadre')
+  assert.ok(stage, 'la etapa corrió')
+  assert.match(stage.prompt, / como 2026-09-12-product-development-encuadre-analisis\.md /,
     'el análisis se escribe con la fecha, el recorrido y el id de la etapa')
-  assert.match(etapa.prompt,
+  assert.match(stage.prompt,
     /no lo pises: agregá -2, -3… antes de \.md, como 2026-09-12-product-development-encuadre-analisis-2\.md/,
     'y dos corridas del mismo día no comparten archivo, con el sufijo en un lugar fijo y el nombre entero')
   const undated = await runFlow({ 'flow-contract': { ...baseScript()['flow-contract'], today: undefined } })
@@ -336,21 +328,23 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   assert.match(undatedStage, / como <AAAA-MM-DD>-product-development-encuadre-analisis\.md /,
     'sin la fecha en el contrato, el agente la pone')
   assert.doesNotMatch(undatedStage, /undefined/, 'y el nombre no dice undefined, igual en cualquier día')
-  assert.match(etapa.prompt, /devolvé esa ruta en analysis/, 'y lo que vuelve por el esquema es la ruta')
-  assert.match(etapa.prompt, /cada campo tiene su tope/, 'el resto del esquema queda corto')
-  assert.match(etapa.prompt, /missing y humanAction hasta 400/,
+  assert.match(stage.prompt, /devolvé esa ruta en analysis/, 'y lo que vuelve por el esquema es la ruta')
+  assert.match(stage.prompt, /cada campo tiene su tope/, 'el resto del esquema queda corto')
+  assert.match(stage.prompt, /missing y humanAction hasta 400/,
     'y el tope nombra a los campos de la etapa que frena, que es la que más escribe')
   // En caracteres, por debajo del techo (caso 379) y sin nombrarlo (caso 386). El porqué del 379 está junto al
   // prompt y el del 386 junto al esquema, en `flow.js`; acá se fija que pida 800 y que no nombre ningún techo.
-  assert.match(etapa.prompt, /summary hasta 800 caracteres,/,
+  assert.match(stage.prompt, /summary hasta 800 caracteres,/,
     'y lo dice en la unidad que se rechaza, por debajo del techo')
-  assert.doesNotMatch(etapa.prompt, /admite \d+/, 'sin decirle el techo, que es el número al que escribe')
-  assert.match(etapa.prompt, /\{"raw": \.\.\., "len": \.\.\.\}/, 'y el envoltorio se prohíbe por su nombre')
+  assert.doesNotMatch(stage.prompt, /admite \d+/, 'sin decirle el techo, que es el número al que escribe')
+  assert.match(stage.prompt, /\{"raw": \.\.\., "len": \.\.\.\}/, 'y el envoltorio se prohíbe por su nombre')
   // Pedirlo no alcanzó —el prompt ya lo pedía cuando una corrida real murió con los cinco reintentos
   // envueltos—, así que el tope pasó a ser del esquema. Que ningún campo quede sin él lo comprueba
   // `test/workflows/workflows.test.js`; acá se fija que el prompt diga dónde va lo que no entra.
 })
 
+// El bloqueo es de la primera etapa, sin ninguna cerrada antes. Por qué el informe parcial va igual, junto
+// a su prompt en `flow.js`.
 test('el bloqueo de la primera etapa también entrega, y entrega el pedido', async () => {
   const { result, written } = await runFlow({
     'stage:encuadre': {
@@ -360,11 +354,11 @@ test('el bloqueo de la primera etapa también entrega, y entrega el pedido', asy
   })
 
   assert.equal(result.reason, 'gate-no-cumplido')
-  const parcial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
-  assert.ok(parcial, 'sin etapas cerradas el informe va igual: es cuando más falta hace')
-  assert.match(parcial, /transcribilo como se dijo/, 'y lo entregable es el pedido, no el acuse')
-  assert.match(parcial, /supuestos que da por ciertos/)
-  assert.match(parcial, /no consta quién lo pidió/, 'con lo que falta, sin rellenarlo')
+  const partial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
+  assert.ok(partial, 'sin etapas cerradas el informe va igual: es cuando más falta hace')
+  assert.match(partial, /transcribilo como se dijo/, 'y lo entregable es el pedido, no el acuse')
+  assert.match(partial, /supuestos que da por ciertos/)
+  assert.match(partial, /no consta quién lo pidió/, 'con lo que falta, sin rellenarlo')
 })
 
 // El caso pone el material que sostiene lo que iba a producir una etapa posterior, y esa etapa no va a
@@ -377,17 +371,17 @@ test('lo que una etapa posterior habría hecho, pero el material ya sostiene, se
     },
   })
 
-  const parcial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
-  assert.match(parcial, /esa etapa no va a correr/, 'la reserva se acota por lo que ya no va a pasar')
-  assert.match(parcial, /lo pierde/, 'y se dice qué cuesta reservárselo')
-  assert.match(parcial, /decí de qué etapa era/, 'sin borrar de quién era el trabajo')
+  const partial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
+  assert.match(partial, /esa etapa no va a correr/, 'la reserva se acota por lo que ya no va a pasar')
+  assert.match(partial, /lo pierde/, 'y se dice qué cuesta reservárselo')
+  assert.match(partial, /decí de qué etapa era/, 'sin borrar de quién era el trabajo')
 
   // Frenar no exime de la salida que el contrato reserva para no poder. `change-review` enumera tres
   // veredictos y el tercero es «no poder aprobar»; bloqueado, escribía «No hay veredicto», que no es
   // ninguno de los tres. Con el diff, el grep de importadores y las pruebas a la vista, un revisor sí
   // puede firmar que no aprueba: eso es un veredicto, no su ausencia.
-  assert.match(parcial, /salida para «no se pudo»/, 'la salida de no poder es una salida, no un hueco')
-  assert.match(parcial, /Frenar no exime/)
+  assert.match(partial, /salida para «no se pudo»/, 'la salida de no poder es una salida, no un hueco')
+  assert.match(partial, /Frenar no exime/)
 })
 
 // Caso 101. Los seguimientos de un informe los escribe un paso aparte con lo que el informe devolvió,
@@ -425,16 +419,16 @@ test('un seguimiento dice de qué informe salió y de cuándo', async () => {
 
 // Las otras dos salidas no producen informe, así que lo que nombran es el equipo que las corrió.
 test('la lección y la idea nombran el equipo que las escribió y la fecha', async () => {
-  const noHacer = await runFlow({
+  const dontDo = await runFlow({
     'epic-draft': { outcome: 'no-hacer', title: 'x', reason: 'nadie lo pide' },
   })
-  const lesson = noHacer.prompts.find((one) => one.key === 'inbox-lesson').prompt
+  const lesson = dontDo.prompts.find((one) => one.key === 'inbox-lesson').prompt
   assert.match(lesson, /Motivo: nadie lo pide \(flow · product-development · 2026-09-12\)/)
 
-  const averiguar = await runFlow({
+  const inquiry = await runFlow({
     'epic-draft': { outcome: 'investigar', title: 'x', reason: 'no se sabe dónde corre' },
   })
-  const idea = averiguar.prompts.find((one) => one.key === 'investigar').prompt
+  const idea = inquiry.prompts.find((one) => one.key === 'investigar').prompt
   assert.match(idea, /averiguar: no se sabe dónde corre \(flow · product-development · 2026-09-12\)/)
 })
 

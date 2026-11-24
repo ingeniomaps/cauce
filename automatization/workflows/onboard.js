@@ -2,8 +2,7 @@
 // contexto escrito —`organization/`, el mapa real en `organization/workspace.md`, las raíces— y en la primera
 // épica.
 //
-// El orden importa y se pagó caro: la primera versión le pedía a un agente que «inventariara el
-// repositorio», y en una carpeta vacía eso gastó doce minutos para no encontrar nada. Recorrer el árbol
+// El orden importa y se pagó caro (la historia, en `engine/core/scan.js`). Recorrer el árbol
 // es determinista y lo hace `ops onboard` en milisegundos; el modelo entra después, y sólo si hay algo
 // sobre lo que decidir.
 //

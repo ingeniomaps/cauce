@@ -4,13 +4,14 @@
 // reglas y ADR— antes de que alguien componga un estado con ellos.
 //
 // Vive aparte de `contracts.js` porque es la otra mitad de una costura: aquéllas reciben el estado ya
-// leído y se prueban sin tocar disco, éstas abren archivos. Se separaron cuando el archivo cruzó las 500
-// líneas, y lo que decidió el corte fue eso y no el número.
+// leído y se prueban sin tocar disco, éstas abren archivos. El archivo se partió al pasar de 500 líneas,
+// pero el corte lo decidió la costura, no el número.
 
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('./parser')
 const BK = require('./backlog')
+const AD = require('./adopted')
 
 const EPIC_AUXILIARY_FILES = new Set(['notes.md', 'plan.md', 'research.md', 'spec.md'])
 
@@ -22,7 +23,8 @@ function validateRoadmapStructure(dir) {
   for (const entry of entries) {
     // Un archivo que se llama como una épica y no cumple el patrón no lo lee nadie: ni `check`, ni
     // `tree`, ni el runner que busca trabajo. Ignorarlo en silencio es peor que rechazarlo, porque el
-    // planning se reporta válido mientras la épica que alguien escribió no existe para el sistema.
+    // planning se reporta válido mientras la épica que alguien escribió no existe para el sistema. Pasó
+    // en una corrida real con epic-001.md sin slug, y `check` respondía «planning válido: 0 épica(s)».
     if (/^epic-/.test(entry.name) && !/^epic-\d{3}-/.test(entry.name)) {
       errors.push(
         `roadmap/${entry.name}: nadie lo lee. Una épica se nombra epic-NNN-<slug>.md, `
@@ -179,7 +181,9 @@ function retiredByOverride(dir, name) {
   const system = path.join(rules, 'system', name)
   if (!fs.existsSync(system)) return []
   const redefined = ruleIds(path.join(rules, name))
-  return ruleIds(system).filter((id) => !redefined.includes(id))
+  // Las que adopta siguen rigiendo, desde `rules/adopted/` (caso 545).
+  const adopted = AD.adoptedIds(rules, name)
+  return ruleIds(system).filter((id) => !redefined.includes(id) && !adopted.includes(id))
 }
 
 function validateRules(dir) {
@@ -212,6 +216,7 @@ function validateRules(dir) {
         : `rules/${name}: ${id} ya lo define ${definedBy}`)
     }
   }
+  errors.push(...AD.errorsOf(rules))
   return errors
 }
 

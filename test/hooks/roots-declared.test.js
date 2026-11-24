@@ -95,7 +95,7 @@ test('lo que no ensancha no se pregunta: angostar, reordenar, reescribir igual o
   fs.writeFileSync(localFile, JSON.stringify({ writableOutsideRoots: [OUT] }))
   passes({ ...BASE, writableOutsideRoots: ['~/fuera-de-las-raices'] })
   passes({ ...BASE, workspaceRoots: [...BASE.workspaceRoots, { name: 'x', path: `${OUT}/sub` }] })
-  // Las dos llaves del push se siguen juzgando como antes, aparte.
+  // Las llaves del push se siguen juzgando como antes, aparte.
   blocked('ops-config', write({ ...declared, runner: { allowPush: true } }), /runner\.allowPush/)
 })
 

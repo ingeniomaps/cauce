@@ -86,15 +86,15 @@ function sourceTiers(text) {
 function sourcesBody(text) {
   if (!text.includes('sources:')) return ''
   const body = text.slice(text.indexOf('sources:'))
-  const corte = body.search(/^pending:/m)
-  return corte === -1 ? body : body.slice(0, corte)
+  const cut = body.search(/^pending:/m)
+  return cut === -1 ? body : body.slice(0, cut)
 }
 
 // Una entrada escrita en una sola línea: seis cargos del catálogo la escriben así y cuarenta y siete la
 // reparten en varias. Leyendo sólo la segunda forma, esos seis no tenían el chequeo de URL duplicada que
 // hay más abajo, y nada lo decía porque no encontrar duplicados y no mirar se ven igual.
 const FLOW_ENTRY = /^\s*-\s*\{[^}]*\bname:\s*([^,}]+?)\s*,[^}]*\burl:\s*"?([^",}\s]+)/
-const quitar = (value) => value.replace(/^['"]|['"]$/g, '')
+const unquote = (value) => value.replace(/^['"]|['"]$/g, '')
 
 // Las fuentes de un cargo, por su URL. La misma URL con dos nombres es una sola fuente contada dos
 // veces: el catálogo llegó a tener la especificación OpenAPI bajo tres —`OpenAPI Specification`,
@@ -106,9 +106,9 @@ function sourceUrls(text) {
   let name = ''
   for (const line of body.split('\n')) {
     const flow = line.match(FLOW_ENTRY)
-    if (flow) { out.push({ name: quitar(flow[1]), url: flow[2].replace(/\/+$/, '') }); continue }
+    if (flow) { out.push({ name: unquote(flow[1]), url: flow[2].replace(/\/+$/, '') }); continue }
     const declared = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
-    if (declared) { name = quitar(declared[1]); continue }
+    if (declared) { name = unquote(declared[1]); continue }
     const url = line.match(/^\s*url:\s*(\S+)/)
     if (url && name) out.push({ name, url: url[1].replace(/\/+$/, '') })
   }
@@ -166,25 +166,25 @@ function documentUrls(dir) {
 // oración sin que nada fallara—, y prohibir la forma no evita que la próxima persona la escriba.
 const PENDING_FIELD = /^\s{4}(name|url|why|since):\s*(.+?)\s*$/
 function pendingSources(text) {
-  const corte = text.search(/^pending:/m)
-  if (corte === -1) return []
+  const cut = text.search(/^pending:/m)
+  if (cut === -1) return []
   const out = []
   let one = null
   let last = ''
-  for (const line of text.slice(corte).split('\n').slice(1)) {
+  for (const line of text.slice(cut).split('\n').slice(1)) {
     if (/^\S/.test(line)) break
     if (/^\s{2}-\s/.test(line)) {
       if (one) out.push(one)
       one = {}
       last = ''
       const first = line.match(/^\s{2}-\s*(name|url|why|since):\s*(.+?)\s*$/)
-      if (first) { one[first[1]] = quitar(first[2]); last = first[1] }
+      if (first) { one[first[1]] = unquote(first[2]); last = first[1] }
       continue
     }
     const field = line.match(PENDING_FIELD)
-    if (field && one) { one[field[1]] = quitar(field[2]); last = field[1]; continue }
-    const sigue = line.match(/^\s{6,}(\S.*?)\s*$/)
-    if (sigue && one && last) one[last] += ` ${sigue[1]}`
+    if (field && one) { one[field[1]] = unquote(field[2]); last = field[1]; continue }
+    const continuation = line.match(/^\s{6,}(\S.*?)\s*$/)
+    if (continuation && one && last) one[last] += ` ${continuation[1]}`
   }
   if (one) out.push(one)
   return out

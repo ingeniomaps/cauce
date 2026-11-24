@@ -162,7 +162,7 @@ test('una acción resuelta sin commit se avisa, y archivar la mueve entera a hum
   assert.deepEqual(check().errors.filter((one) => /human\//.test(one)), [], 'el archivo no es una acción ajena')
   assert.match(run(['archive', planning, 'human-actions']).stdout, /no hay filas resueltas/)
 
-  // Un segundo bloqueo de la misma tarea, resuelto con el mismo nombre, no pisa al primero.
+  // El mismo nombre resuelto otra vez se archiva al lado, con sufijo.
   write('t-uno', { status: 'resuelta 2026-10-10', action: 'otra decisión' })
   run(['archive', planning, 'human-actions'])
   assert.equal(fs.readFileSync(archived, 'utf8'), before)

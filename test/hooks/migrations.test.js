@@ -62,7 +62,7 @@ test('una migración con marcadores se juzga por el bloque que aplica, no por su
     /contiene SQL destructivo: `DROP TABLE`/)
 })
 
-// En un `Edit` el guard no ve el archivo, sólo el fragmento. De qué lado cae lo decide dónde está
+// Un `Edit` trae sólo el fragmento (por qué se reconstruye, en `judged`). De qué lado cae lo decide dónde está
 // `old_string` en disco; el repositorio es para que un archivo que no viajó no frene por existir.
 test('un Edit se juzga según el lado de la migración en disco donde cae', () => {
   const root = instance('ops-hook-mig-edit-', { extensions: LANGUAGE })
@@ -242,8 +242,7 @@ test('un parche se juzga archivo por archivo, y cada uno por el bloque que aplic
     /en el bloque que aplica.*DROP TABLE/)
   // Sin marcador en el contexto no se sabe de qué lado cae: se juzga lo agregado entero, como antes.
   blocked('migrations', patch(update(['@@', ' SELECT 1;', '+DROP TABLE legacy_items;'])), /SQL destructivo/)
-  // `*** Move to:` y `*** End of File` son líneas del formato dentro de una sección, no el fin de ella: tomarlas
-  // como tal dejaba sin juzgar lo que venía después, y el guard viejo, que juzgaba el sobre entero, sí lo frenaba.
+  // Un DROP detrás de `*** Move to:` o de `*** End of File` se juzga dentro de su sección.
   const renamed = [`*** Update File: ${file}`, '*** Move to: db/migrations/20260924000000_renamed.sql']
   blocked('migrations', patch([...renamed, '@@', ' SELECT 1;', '+DROP TABLE legacy_items;'].join('\n')),
     /SQL destructivo/)

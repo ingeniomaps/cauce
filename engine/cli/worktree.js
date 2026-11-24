@@ -59,12 +59,12 @@ function worktree(dir, slug, cli) {
     return fail(`${slug} ${LN.whereToTake(milestone)}.`, REFUSED)
   }
 
-  const candidatos = R.reposFor(path.join(root, '..'), task.service)
-  if (candidatos.length > 1) {
-    return fail(`${task.service || '.'} existe en más de un repositorio (${candidatos.join(', ')}), así que `
+  const candidates = R.reposFor(path.join(root, '..'), task.service)
+  if (candidates.length > 1) {
+    return fail(`${task.service || '.'} existe en más de un repositorio (${candidates.join(', ')}), así que `
       + 'no puedo saber cuál. Escribí un `service:` que sólo exista en uno.', USAGE)
   }
-  const repo = candidatos[0]
+  const repo = candidates[0]
   if (!repo) {
     return fail(`no encontré el repositorio de ${task.service || '(sin service)'}: revisá workspaceRoots `
       + 'en ops.config.json y que la ruta del servicio exista.', USAGE)

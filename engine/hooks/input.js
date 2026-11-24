@@ -226,9 +226,8 @@ function expandAssigned(command) {
     (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
 }
 
-// En un commit, `commit-repo.js` dice cuáles pueden ser, y con `input` se juzga el primero que sea de la
-// sesión. Fuera de
-// un commit lo entrecomillado puede ejecutarse, así que no se tapa.
+// En un commit, `commit-repo.js` dice cuáles pueden ser, y con `input` se juzga el primero que sea de la sesión. Fuera
+// de un commit lo entrecomillado puede ejecutarse, así que no se tapa.
 function gitDirectory(given, cwd, input) {
   const command = expandAssigned(given)
   const flag = directoryFlag(command)

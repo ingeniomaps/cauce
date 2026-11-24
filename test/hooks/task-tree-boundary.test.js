@@ -122,8 +122,8 @@ test('un enlace puesto donde va el árbol no abre adonde lleva', () => {
   refused(path.join(far, 'a.js'))
 })
 
-// En la carpeta de una línea el producto es un enlace al repositorio original, o a una carpeta suya. El
-// árbol se arma donde lo arma `ops worktree`: al lado del enlace si lleva al repositorio, y al lado del
+// Cuando el producto de una línea es un enlace al repositorio original, o a una carpeta suya, el árbol se
+// arma donde lo arma `ops worktree`: al lado del enlace si lleva al repositorio, y al lado del
 // repositorio de verdad si lleva más adentro.
 test('con la raíz enlazada al repositorio, o a una carpeta suya, se abre el árbol que ops worktree arma', () => {
   const { base, root, api, git, writes, refused, claim } = instance('ops-hook-task-tree-raiz-enlazada-')

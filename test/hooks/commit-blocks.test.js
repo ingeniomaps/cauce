@@ -9,7 +9,7 @@ const { tempRoot } = require('../support/environment')
 const I = require('../../engine/hooks/input')
 const { directoriesOf } = require('../../engine/hooks/commit-repo')
 
-// Lo que hay detrás de una palabra de bloque también corre, y una función puede correr en cualquier carpeta (caso 474).
+// Caso 474: cada palabra que abre un bloque y las dos formas de función; los negativos sólo nombran el commit.
 test('un commit dentro de un bloque o una función se juzga donde puede caer', () => {
   const root = tempRoot('ops-bloque-')
   const other = tempRoot('ops-bloque-otro-')
@@ -92,8 +92,8 @@ test('una carpeta sin repositorio no es candidata, y un sh -c decide dónde cae'
   assert.deepEqual(at('for r in a b; do git -C $r commit -m x; done'), [path.join(root, '$r')], 'un for no se expande')
   assert.deepEqual(at('bash -c "git -C /otro commit -m x"'), ['/otro'], 'lo de un sh -c decide')
   assert.deepEqual(directoriesOf(`bash -c "cd ${repo} && git commit -m x"`, session), [repo])
-  const nueva = path.join(session, 'nueva')
-  assert.ok(directoriesOf(`{ cd ${repo}; cd ${nueva}; }; git commit -m x`, session).includes(nueva), 'la nueva queda')
+  const fresh = path.join(session, 'nueva')
+  assert.ok(directoriesOf(`{ cd ${repo}; cd ${fresh}; }; git commit -m x`, session).includes(fresh), 'la nueva queda')
   assert.deepEqual(at('for r in $L; do git -C $r commit -m x; done'), [path.join(root, '$r')], 'esa lista no se lee')
   assert.deepEqual(directoriesOf(`{ cd ${repo}; }; git commit -m x`, session), [repo])
   assert.deepEqual(directoriesOf('git commit -m x', session), [session], 'sin otra, la de la sesión')

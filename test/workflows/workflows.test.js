@@ -36,11 +36,11 @@ function workflowFiles() {
 test('todos los workflows compilan, que es lo primero que el runtime les pide', () => {
   // El nombre es la ruta relativa y no el basename: dos recorridos viven en `integrations/`, y con el
   // basename `compileWorkflow` buscaba `workflows/promote.js`, que no existe.
-  const nombres = workflowFiles()
+  const names = workflowFiles()
     .map((file) => path.relative(WF, file).replace(/\\/g, '/').slice(0, -3)).sort()
-  assert.ok(nombres.length >= 6, `se esperaban los workflows del repositorio y aparecieron ${nombres.length}`)
-  for (const nombre of nombres) {
-    assert.doesNotThrow(() => compileWorkflow(nombre), `${nombre}.js no compila: el cargador lo descarta`)
+  assert.ok(names.length >= 6, `se esperaban los workflows del repositorio y aparecieron ${names.length}`)
+  for (const label of names) {
+    assert.doesNotThrow(() => compileWorkflow(label), `${label}.js no compila: el cargador lo descarta`)
   }
 })
 
@@ -50,7 +50,7 @@ test('todos los workflows compilan, que es lo primero que el runtime les pide', 
 // La barra entra a la lista en vez de enseñarle a leer regex a este desnudado: en un literal puro no
 // hay división, así que la única barra posible abre uno. Y el lexer compartido no sirve acá porque se
 // come el `${` que esta lista busca —lo lee como interpolación, que es su trabajo—. Caso 084.
-const META_PROHIBIDO = [
+const META_FORBIDDEN = [
   [/\w\s*\(/, 'una llamada'], [/\.\.\./, 'un spread'], [/\$\{/, 'interpolación'],
   [/\//, 'una barra, que en un literal puro sólo abre un regex'],
 ]
@@ -66,14 +66,14 @@ const bareMeta = (block) => block
   // que es exactamente lo que R9 dice de una aserción que nadie vio en rojo. Caso 084.
   .replace(/`(?:\\[\s\S]|[^`\\])*`/g, (t) => `\`\`${(t.match(/\$\{/g) || []).join('')}`)
 
-const metaOffences = (block) => META_PROHIBIDO
-  .filter(([patron]) => patron.test(bareMeta(block))).map(([, queEs]) => queEs)
+const metaOffences = (block) => META_FORBIDDEN
+  .filter(([pattern]) => pattern.test(bareMeta(block))).map(([, whatItIs]) => whatItIs)
 
 test('el meta de cada workflow es un literal puro, que es lo que el runtime acepta', () => {
   for (const file of workflowFiles()) {
-    const bloque = (fs.readFileSync(file, 'utf8').match(/export const meta = \{[\s\S]*?\n\}/) || [])[0]
-    assert.ok(bloque, `${path.relative(WF, file)}: sin bloque meta`)
-    assert.deepEqual(metaOffences(bloque), [], `${path.relative(WF, file)}: el meta tiene lo que no va`)
+    const block = (fs.readFileSync(file, 'utf8').match(/export const meta = \{[\s\S]*?\n\}/) || [])[0]
+    assert.ok(block, `${path.relative(WF, file)}: sin bloque meta`)
+    assert.deepEqual(metaOffences(block), [], `${path.relative(WF, file)}: el meta tiene lo que no va`)
   }
 })
 
@@ -81,12 +81,12 @@ test('el meta de cada workflow es un literal puro, que es lo que el runtime acep
 // del regex es el que este caso agrega y el que nadie iba a escribir: hasta 0.78.0 un `meta` con un
 // literal de regex pasaba en verde, porque las tres reglas de antes no lo nombraban.
 test('los detectores del meta ven lo que tienen que ver', () => {
-  const limpio = 'export const meta = {\n  name: \'x\',\n  description: \'hace algo (y algo más)\',\n}'
-  assert.deepEqual(metaOffences(limpio), [], 'la prosa entrecomillada no dispara nada')
-  assert.deepEqual(metaOffences(limpio.replace('\'x\'', 'slug(1)')), ['una llamada'])
-  assert.deepEqual(metaOffences(limpio.replace('\'x\'', '...otros')), ['un spread'])
-  assert.deepEqual(metaOffences(limpio.replace('\'x\'', '`${n}`')), ['interpolación'])
-  assert.deepEqual(metaOffences(limpio.replace('\'x\'', '/re/')),
+  const clean = 'export const meta = {\n  name: \'x\',\n  description: \'hace algo (y algo más)\',\n}'
+  assert.deepEqual(metaOffences(clean), [], 'la prosa entrecomillada no dispara nada')
+  assert.deepEqual(metaOffences(clean.replace('\'x\'', 'slug(1)')), ['una llamada'])
+  assert.deepEqual(metaOffences(clean.replace('\'x\'', '...otros')), ['un spread'])
+  assert.deepEqual(metaOffences(clean.replace('\'x\'', '`${n}`')), ['interpolación'])
+  assert.deepEqual(metaOffences(clean.replace('\'x\'', '/re/')),
     ['una barra, que en un literal puro sólo abre un regex'])
 })
 
@@ -102,28 +102,28 @@ test('ningún workflow lleva la ruta de una máquina', () => {
   // que `intención:\n` ofrecía un límite entre la `ó` y la `n`, y `n:\` pasaba por `C:\`. El
   // lookbehind pide que antes de la letra no haya otra, que es lo que distingue una unidad de la
   // última letra de una palabra.
-  const DE_UNA_MAQUINA = [/\/home\//, /\/Users\//, /(?<![A-Za-zÀ-ÿ])[A-Za-z]:\\/]
-  const filtradas = []
+  const MACHINE_BOUND = [/\/home\//, /\/Users\//, /(?<![A-Za-zÀ-ÿ])[A-Za-z]:\\/]
+  const filtered = []
   for (const file of workflowFiles()) {
     const source = A.render(file, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
-    for (const patron of DE_UNA_MAQUINA) {
-      if (patron.test(source)) filtradas.push(`${path.relative(WF, file)} → ${patron}`)
+    for (const pattern of MACHINE_BOUND) {
+      if (pattern.test(source)) filtered.push(`${path.relative(WF, file)} → ${pattern}`)
     }
   }
   assert.ok(workflowFiles().length >= 8, 'el recorrido encontró los workflows')
-  assert.deepEqual(filtradas, [])
+  assert.deepEqual(filtered, [])
 })
 
 test('un workflow sólo usa lo que el runtime le da', () => {
-  const prohibidas = /\b(process\.|require\(|Date\.now|new Date\(|Math\.random|__dirname|__filename)/g
-  const encontradas = []
+  const forbidden = /\b(process\.|require\(|Date\.now|new Date\(|Math\.random|__dirname|__filename)/g
+  const found = []
   for (const file of workflowFiles()) {
     const source = fs.readFileSync(file, 'utf8')
-    for (const hit of source.matchAll(prohibidas)) {
-      encontradas.push(`${path.relative(WF, file)} → ${hit[1]}`)
+    for (const hit of source.matchAll(forbidden)) {
+      found.push(`${path.relative(WF, file)} → ${hit[1]}`)
     }
   }
-  assert.deepEqual(encontradas, [])
+  assert.deepEqual(found, [])
 })
 
 // Un identificador que el runtime no da y el archivo no define revienta el workflow, y lo hace en el
@@ -161,16 +161,16 @@ function undeclaredCalls(rendered) {
 }
 
 test('un workflow no llama a nada que no exista', () => {
-  const faltantes = []
+  const missing = []
   const A = require('../../engine/automation')
   const automation = path.resolve(__dirname, '..', '..', 'automatization')
   for (const file of workflowFiles()) {
     // Renderizado: `finish`, `stop` y `ROOT` llegan por `{{INCLUDE:}}`, así que el archivo crudo no
     // los declara y cada uno parecería una llamada a algo inexistente.
     const rendered = A.render(file, '{{OPS_DIR}}', automation)
-    faltantes.push(...undeclaredCalls(rendered).map((name) => `${path.relative(WF, file)} → ${name}`))
+    missing.push(...undeclaredCalls(rendered).map((name) => `${path.relative(WF, file)} → ${name}`))
   }
-  assert.deepEqual([...new Set(faltantes)], [])
+  assert.deepEqual([...new Set(missing)], [])
 })
 
 // Sobre los nueve recorridos de hoy la puerta da verde con cualquier lexer, así que ese verde no dice
@@ -278,17 +278,17 @@ test('el schema del manifiesto acepta los campos que los contratos de recorrido 
   const missing = [...real].filter((key) => !accepted.has(key))
   assert.deepEqual(missing, [], 'el schema rechaza un campo de etapa que el contrato trae')
 
-  const arriba = new Set()
+  const topLevelKeys = new Set()
   for (const slug of fs.readdirSync(flowsDir)) {
     const file = path.join(flowsDir, slug, 'flow.json')
     if (!fs.existsSync(file)) continue
-    for (const key of Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')))) arriba.add(key)
+    for (const key of Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')))) topLevelKeys.add(key)
   }
   // `schemaVersion` y `slug` no viajan: el recorrido ya sabe cuál es. `decisionOwners` viaja aplanado
   // en `owners`, que es lo que el prompt pide.
-  const fuera = [...arriba].filter((key) => !topLevel.has(key)
+  const outside = [...topLevelKeys].filter((key) => !topLevel.has(key)
     && !['schemaVersion', 'slug', 'decisionOwners'].includes(key))
-  assert.deepEqual(fuera, [], 'el schema rechaza un campo de contrato que el manifiesto trae')
+  assert.deepEqual(outside, [], 'el schema rechaza un campo de contrato que el manifiesto trae')
 })
 
 // Un runner que sólo lee instrucciones cumple el contrato a medias, y falla siempre del mismo lado: se
@@ -306,13 +306,13 @@ test('los runners sin workflow llevan la lista de lo que se comprueba al final',
     const runner = A.runnerManifest(REPO, name)
     // La distinción real no es tener recorrido sino de qué está hecho: un workflow JS es un programa
     // con fases y esquemas, y el resto es prosa enmarcada, que es la que tiene que llevar la lista.
-    const arranque = (runner.artifacts || []).find((item) => /onboard/.test(item.source))
-    if (!arranque || arranque.source.endsWith('.js')) continue
+    const startup = (runner.artifacts || []).find((item) => /onboard/.test(item.source))
+    if (!startup || startup.source.endsWith('.js')) continue
     const dir = path.join(automation, 'runners', name)
-    const text = A.render(path.resolve(dir, arranque.source), '', automation)
-    for (const marca of [/Por definir/, /\(supuesto\)/, /epic-NNN-<slug>\.md/, /planning\/human\//,
+    const text = A.render(path.resolve(dir, startup.source), '', automation)
+    for (const marker of [/Por definir/, /\(supuesto\)/, /epic-NNN-<slug>\.md/, /planning\/human\//,
       /formulario/, /molde/]) {
-      assert.match(text, marca, `${name}: ${marca} falta en ${arranque.source}`)
+      assert.match(text, marker, `${name}: ${marker} falta en ${startup.source}`)
     }
   }
 })
@@ -320,21 +320,21 @@ test('los runners sin workflow llevan la lista de lo que se comprueba al final',
 test('cada runner ofrece el arranque en el formato que entiende', () => {
   const A = require('../../engine/automation')
   const REPO = path.resolve(__dirname, '..', '..')
-  const nativos = []
+  const native = []
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)
-    const artefactos = (runner.artifacts || []).map((item) => item.source)
-    if (artefactos.some((source) => /onboard/.test(source))) { nativos.push(name); continue }
+    const artifacts = (runner.artifacts || []).map((item) => item.source)
+    if (artifacts.some((source) => /onboard/.test(source))) { native.push(name); continue }
     // Sin artefacto nativo, el recorrido tiene que estar escrito en las instrucciones del runner:
     // Codex y Gemini operan el protocolo a mano y no tienen dónde ejecutarlo.
-    const instrucciones = (runner.instructions || []).map(
+    const instructions = (runner.instructions || []).map(
       (item) => fs.readFileSync(path.resolve(REPO, 'automatization', 'runners', name, item.source), 'utf8'),
     ).join('\n')
-    assert.match(instrucciones, /## El arranque/, `${name} no dice cómo arranca una instancia vacía`)
+    assert.match(instructions, /## El arranque/, `${name} no dice cómo arranca una instancia vacía`)
   }
   // Los cuatro instalan su arranque. Codex fue el último: su adaptador lo daba por incapaz de skills
   // desde 0.39.0, así que le llegaba sólo como prosa dentro de AGENTS.md mientras el CLI ya las leía.
-  assert.deepEqual(nativos.sort(), [...A.RUNNER_NAMES].sort())
+  assert.deepEqual(native.sort(), [...A.RUNNER_NAMES].sort())
 })
 
 // Por qué la respuesta de una etapa se acota por diseño y no pidiéndolo está junto al schema, en
@@ -350,16 +350,16 @@ test('la respuesta de una etapa de flow no tiene ningún campo de texto sin tech
   const block = source.slice(source.indexOf('const STAGE'), source.indexOf('const EPIC'))
   assert.ok(block.includes('gate:'), 'no se encontró el schema de etapa')
 
-  const sinTecho = []
+  const withoutCeiling = []
   for (const hit of block.matchAll(/([a-zA-Z]+): \{ type: 'string'([^}]*)\}/g)) {
-    const [, campo, resto] = hit
-    if (campo === 'analysis' || resto.includes('enum:') || resto.includes('maxLength')) continue
-    sinTecho.push(campo)
+    const [, field, rest] = hit
+    if (field === 'analysis' || rest.includes('enum:') || rest.includes('maxLength')) continue
+    withoutCeiling.push(field)
   }
-  assert.deepEqual(sinTecho, [], `campos de texto sin maxLength: ${sinTecho.join(', ')}`)
+  assert.deepEqual(withoutCeiling, [], `campos de texto sin maxLength: ${withoutCeiling.join(', ')}`)
 
   // Y los arreglos también: tres elementos sin tope pesan lo mismo que un campo largo.
-  const arreglos = [...block.matchAll(/([a-zA-Z]+): \{ type: 'array'([\s\S]*?)\} \},/g)]
-    .filter(([, , resto]) => !resto.includes('maxItems')).map(([, campo]) => campo)
-  assert.deepEqual(arreglos, [], `arreglos sin maxItems: ${arreglos.join(', ')}`)
+  const fixes = [...block.matchAll(/([a-zA-Z]+): \{ type: 'array'([\s\S]*?)\} \},/g)]
+    .filter(([, , rest]) => !rest.includes('maxItems')).map(([, field]) => field)
+  assert.deepEqual(fixes, [], `arreglos sin maxItems: ${fixes.join(', ')}`)
 })

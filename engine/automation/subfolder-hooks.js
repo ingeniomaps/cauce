@@ -45,7 +45,7 @@ function target(root, paths, runner) {
     return { file, repo, install, refused: 'home' }
   }
   if (git(repo, 'ls-files', '--error-unmatch', '--', runner.subfolderConfig).status === 0) {
-    return { file, repo, install, refused: 'versionado' }
+    return { file, repo, install, refused: 'tracked' }
   }
   return { file, repo, install }
 }
@@ -111,7 +111,7 @@ function read(file) {
 
 const REFUSED = {
   home: 'su raíz git contiene tu home, y lo cargaría toda sesión abierta bajo el home',
-  versionado: 'está versionado, y llevaría la ruta de esta máquina al repositorio',
+  tracked: 'está versionado, y llevaría la ruta de esta máquina al repositorio',
 }
 
 function install(root, paths, runner, name, output) {

@@ -77,7 +77,8 @@ function weight(root) {
       // Lo propio es lo que no vive en `rules/system/`, que es exactamente lo que el proyecto escribió:
       // una regla del sistema que sobrescribió deja de cargarse y la suya ocupa su lugar, así que
       // contarla como propia es correcto — la escribió él y la puede achicar.
-      if (!file.includes('/system/')) own += size
+      // Lo adoptado (caso 545) es texto del sistema que el proyecto eligió conservar, no algo que escribió.
+      if (!file.includes('/system/') && !file.includes('/adopted/')) own += size
       files.push({ file, size })
     } catch { /* la que no está en disco ya la reporta `check` por su lado */ }
   }

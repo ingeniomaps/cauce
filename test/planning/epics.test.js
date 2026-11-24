@@ -125,7 +125,7 @@ status: open
 test('una épica no se activa con un marcador sin resolver', () => {
   const root = tempRoot('ops-placeholder-')
   fs.mkdirSync(path.join(root, 'roadmap'))
-  const epica = (status, riesgo) => {
+  const epicFile = (status, risk) => {
     fs.writeFileSync(path.join(root, 'roadmap', 'epic-001-demo.md'), `---
 epic: 001
 title: Demo
@@ -147,30 +147,30 @@ service: app
 
 ## Riesgos y decisiones humanas
 
-- ${riesgo}
+- ${risk}
 `)
     return P.readEpics(root)[0]
   }
 
   // Borrador: el marcador es justamente para esto, y no es un error.
-  const borrador = epica('open', 'Qué proveedor de correo usamos: Por definir.')
-  assert.deepEqual(borrador.placeholders, ['- Qué proveedor de correo usamos: Por definir.'])
-  assert.deepEqual(PC.validateEpic(borrador), [])
+  const draft = epicFile('open', 'Qué proveedor de correo usamos: Por definir.')
+  assert.deepEqual(draft.placeholders, ['- Qué proveedor de correo usamos: Por definir.'])
+  assert.deepEqual(PC.validateEpic(draft), [])
 
-  const activa = epica('active', 'Qué proveedor de correo usamos: Por definir.')
-  assert.deepEqual(PC.validateEpic(activa), [
+  const active = epicFile('active', 'Qué proveedor de correo usamos: Por definir.')
+  assert.deepEqual(PC.validateEpic(active), [
     'roadmap/epic-001-demo.md: active con 1 marcador(es) sin resolver — '
     + '"- Qué proveedor de correo usamos: Por definir."',
   ])
 
   // Minúscula y el otro marcador del molde cuentan igual.
-  assert.equal(PC.validateEpic(epica('active', 'El umbral: por definir.')).length, 1)
-  assert.equal(PC.validateEpic(epica('active', 'Alcance: Por completar.')).length, 1)
+  assert.equal(PC.validateEpic(epicFile('active', 'El umbral: por definir.')).length, 1)
+  assert.equal(PC.validateEpic(epicFile('active', 'Alcance: Por completar.')).length, 1)
 
   // Resuelto, la épica activa pasa.
-  assert.deepEqual(PC.validateEpic(epica('active', 'Ninguno.')), [])
+  assert.deepEqual(PC.validateEpic(epicFile('active', 'Ninguno.')), [])
   // Y cerrada tampoco puede llevar uno: la evidencia quedaría apoyada en un borde sin decidir.
-  assert.equal(PC.validateEpic(epica('closed', 'El umbral: Por definir.'), new Set(['alta-nueva'])).length, 1)
+  assert.equal(PC.validateEpic(epicFile('closed', 'El umbral: Por definir.'), new Set(['alta-nueva'])).length, 1)
 })
 
 // El mismo salto que ya cortaba una historia envuelta cortaba un criterio: con la bandera `m`, `$` casa

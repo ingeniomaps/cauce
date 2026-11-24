@@ -152,13 +152,13 @@ test('la corrección de Review se lleva también lo que su propio cambio dejó d
       concerns: [{ detail: 'falta el caso vacío', blocking: true }],
     },
   })
-  const arreglo = prompts.find((one) => /Corregí sólo estos hallazgos/.test(one.prompt))
-  assert.ok(arreglo, 'la corrección corrió')
-  assert.match(arreglo.prompt, /desactualiz/i,
+  const fix = prompts.find((one) => /Corregí sólo estos hallazgos/.test(one.prompt))
+  assert.ok(fix, 'la corrección corrió')
+  assert.match(fix.prompt, /desactualiz/i,
     'sin pedirlo, la vuelta siguiente rechaza por la deriva que la corrección acaba de crear')
   // Y la otra mitad, que sin esto sobrevivía: el acote es lo que impide que «traé también lo que quedó
   // desactualizado» se lea como permiso para tocar lo que a nadie le pidieron (R6).
-  assert.match(arreglo.prompt, /y nada más que eso/,
+  assert.match(fix.prompt, /y nada más que eso/,
     'el pedido sigue acotado: traer los dependientes no abre la puerta a ampliar el alcance')
 })
 
@@ -173,9 +173,8 @@ test('un review que sigue rechazando después de corregir frena', async () => {
   assert.match(result.detail, /sigue faltando/)
 })
 
-// Un veredicto bloqueado nombra lo que lo bloquea, pero puede llegar sin nombrar nada. En la segunda
-// pasada eso frenaba con el detalle vacío: el motivo es lo único que queda para leer cuando la corrida
-// terminó, y la primera pasada ya tenía este respaldo.
+// Un veredicto bloqueado nombra lo que lo bloquea, pero puede llegar sin nombrar nada. En la segunda pasada eso frenaba
+// con el detalle vacío, y la primera ya tenía este respaldo (por qué, en `automatization/workflows/autobuild.js`).
 test('un bloqueo sin condiciones nombradas frena igual y lo dice', async () => {
   let reviewTurn = 0
   const review = await runFlow({
@@ -230,28 +229,28 @@ test('un plan que no sobrevive a la segunda crítica no llega a construirse', as
 // porque son la misma decisión por dos caminos —el veredicto bloqueado en la primera crítica, y el que
 // sigue bloqueado tras la corrección— y cubrir una sola deja la otra reintentándose en silencio.
 test('un plan que ninguna crítica aprueba queda pedido por escrito, no reintentado', async () => {
-  const bloqueado = {
+  const blocked = {
     verdict: 'bloqueado', consulted: ['api/alta.go'],
     concerns: [{ detail: 'la aceptación mezcla dos resultados', blocking: true }],
   }
-  const primera = await runFlow({ [KEY.critique]: bloqueado })
-  assert.equal(primera.result.reason, 'plan-blocked')
+  const first = await runFlow({ [KEY.critique]: blocked })
+  assert.equal(first.result.reason, 'plan-blocked')
   // Qué mirar se dice con la conducta y no con el número de la regla: el proyecto puede haberla retirado.
-  assert.ok(primera.written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('vidas distintas')
-    && text.includes('partirla')), `la fila dice qué mirar: ${JSON.stringify(primera.written)}`)
+  assert.ok(first.written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('vidas distintas')
+    && text.includes('partirla')), `la fila dice qué mirar: ${JSON.stringify(first.written)}`)
 
-  const segunda = await runFlow({
+  const second = await runFlow({
     [KEY.critique]: {
       verdict: 'con-condiciones', consulted: ['api/alta.go'],
       concerns: [{ detail: 'sigue mezclando dos resultados', blocking: true }],
     },
     [KEY.replan]: { approach: 'otro intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit' },
   })
-  assert.equal(segunda.result.reason, 'plan-rejected')
-  const fila = segunda.written.find((text) => text.includes('HUMAN_ACTIONS'))
-  assert.ok(fila, `también por este camino: ${JSON.stringify(segunda.written)}`)
-  assert.match(fila, /sigue mezclando dos resultados/, 'y lleva el motivo, que es lo que se lee después')
-  assert.ok(!reached(segunda.asked, 'Build'), 'y no se construye sobre un plan que nadie aprobó')
+  assert.equal(second.result.reason, 'plan-rejected')
+  const row = second.written.find((text) => text.includes('HUMAN_ACTIONS'))
+  assert.ok(row, `también por este camino: ${JSON.stringify(second.written)}`)
+  assert.match(row, /sigue mezclando dos resultados/, 'y lleva el motivo, que es lo que se lee después')
+  assert.ok(!reached(second.asked, 'Build'), 'y no se construye sobre un plan que nadie aprobó')
 })
 
 // La fila es el único rastro de la parada, así que se espera y se comprueba. Hasta 0.79.0 se lanzaba y
@@ -262,20 +261,20 @@ test('un plan que ninguna crítica aprueba queda pedido por escrito, no reintent
 // Que la suite no lo viera no fue por falta de caso —el de arriba lo aserciaba— sino por el arnés, que
 // anotaba la llamada en el mismo tick: una que nadie espera se veía igual que una esperada.
 test('la fila que registra la parada se espera, y si no ocurre la parada lo dice', async () => {
-  const bloqueado = {
+  const blocked = {
     verdict: 'bloqueado', consulted: ['api/alta.go'],
     concerns: [{ detail: 'la aceptación mezcla dos resultados', blocking: true }],
   }
-  const { result, wrote } = await runFlow({ [KEY.critique]: bloqueado })
+  const { result, wrote } = await runFlow({ [KEY.critique]: blocked })
   assert.ok(wrote.includes('Critique|plan-human'),
     `la escritura terminó antes de que el recorrido volviera: ${JSON.stringify(wrote)}`)
   assert.doesNotMatch(result.detail, /no se pudo registrar/, 'y cuando ocurre, no hay nada que avisar')
 
   // Y al revés: si el agente que la escribe no contesta, el motivo de la parada no cambia —sigue siendo
   // el que la causó— y el detalle dice que hay que escribirla a mano, en vez de dar por hecho que está.
-  const mudo = await runFlow({ [KEY.critique]: bloqueado }, { silent: ['plan-human'] })
-  assert.equal(mudo.result.reason, 'plan-blocked', 'el motivo es el de la parada, no el de la escritura')
-  assert.match(mudo.result.detail, /no se pudo registrar: escribila a mano/)
+  const mute = await runFlow({ [KEY.critique]: blocked }, { silent: ['plan-human'] })
+  assert.equal(mute.result.reason, 'plan-blocked', 'el motivo es el de la parada, no el de la escritura')
+  assert.match(mute.result.detail, /no se pudo registrar: escribila a mano/)
 })
 
 // La fila que registra una parada nace pendiente: la resuelve una persona, no el agente que la escribe.
@@ -283,37 +282,37 @@ test('la fila que registra la parada se espera, y si no ocurre la parada lo dice
 // desbloqueada sin que nadie decidiera nada (caso 180). Las cuatro paradas llevan la instrucción, y las
 // tres que registran la propia tarea releen si quedó pendiente.
 test('la fila de una parada nace pendiente, y si no quedó así la parada lo dice', async () => {
-  const bloqueado = {
+  const blocked = {
     verdict: 'bloqueado', consulted: ['api/alta.go'],
     concerns: [{ detail: 'la aceptación mezcla dos resultados', blocking: true }],
   }
-  const ambigua = {
+  const ambiguous = {
     passed: true, details: 'verde', commands: [{ cmd: 'go test ./...', exitCode: 0 }],
     uncovered: [{ criterion: 'el alta es rápida', cause: 'ambiguous' }],
   }
   const decision = { detail: 'el formato de la cota fija un contrato público', blocking: false, decision: true }
-  const paradas = [
-    ['plan-human', { [KEY.critique]: bloqueado }, KEY.planRow],
+  const stops = [
+    ['plan-human', { [KEY.critique]: blocked }, KEY.planRow],
     ['ready-human', { [KEY.ready]: { ready: false, needsHuman: true, reason: 'falta la cota' } }, KEY.readyRow],
-    ['verify-human', { [KEY.verify]: ambigua }, KEY.verifyRow],
+    ['verify-human', { [KEY.verify]: ambiguous }, KEY.verifyRow],
     ['review-human', { [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [decision] } }],
   ]
-  for (const [label, cambio, relectura] of paradas) {
-    const { prompts, result } = await runFlow(cambio)
-    const pedido = prompts.find((one) => one.key.endsWith(`|${label}`))
-    assert.ok(pedido, `${label} se pidió`)
-    assert.match(pedido.prompt, /nace con estado `pendiente`, sin excepción/, `${label} dice que nace pendiente`)
-    assert.match(pedido.prompt, /No escribas una decisión ni se la atribuyas a nadie/, label)
-    if (!relectura) continue
+  for (const [label, change, reread] of stops) {
+    const { prompts, result } = await runFlow(change)
+    const request = prompts.find((one) => one.key.endsWith(`|${label}`))
+    assert.ok(request, `${label} se pidió`)
+    assert.match(request.prompt, /nace con estado `pendiente`, sin excepción/, `${label} dice que nace pendiente`)
+    assert.match(request.prompt, /No escribas una decisión ni se la atribuyas a nadie/, label)
+    if (!reread) continue
     assert.doesNotMatch(result.detail, /no quedó pendiente|no se pudo comprobar/, `${label}: nada que avisar`)
 
     // La fila quedó resuelta: el motivo de la parada no cambia, y el detalle lo dice.
-    const resuelta = await runFlow({ ...cambio, [relectura]: { readOk: true, tasks: ['otra-tarea'] } })
-    assert.equal(resuelta.result.reason, result.reason, `${label}: el motivo es el de la parada`)
-    assert.match(resuelta.result.detail, /no quedó pendiente: la resuelve una persona/, label)
+    const resolved = await runFlow({ ...change, [reread]: { readOk: true, tasks: ['otra-tarea'] } })
+    assert.equal(resolved.result.reason, result.reason, `${label}: el motivo es el de la parada`)
+    assert.match(resolved.result.detail, /no quedó pendiente: la resuelve una persona/, label)
     // Y si no se pudo leer, no se afirma nada sobre la fila.
-    const ciega = await runFlow({ ...cambio, [relectura]: { readOk: false, tasks: [] } })
-    assert.match(ciega.result.detail, /no se pudo comprobar la fila de T-1/, label)
+    const blind = await runFlow({ ...change, [reread]: { readOk: false, tasks: [] } })
+    assert.match(blind.result.detail, /no se pudo comprobar la fila de T-1/, label)
   }
 })
 
@@ -332,7 +331,7 @@ test('Review no repite una decisión pendiente ni registra la aprobación que pi
   assert.match(review, /\.ops-approval que un guard va a pedir al commitear no es una decisión/)
 })
 
-// Caso 101. El tope lo aplica el recorrido sobre lo que le pasa al agente: cinco hallazgos no
+// Caso 101 (por qué el tope es del recorrido, en `automatization/shared/inbox.js`): cinco hallazgos no
 // bloqueantes llegan como tres, en una línea cada uno, y los dos que no entran quedan contados en el
 // hecho de revisión, que es lo que viaja a `done/`.
 test('lo anotado entra al INBOX con tope, con la forma del molde y sin repetir nombres', async () => {
@@ -397,8 +396,8 @@ test('lo anotado dentro del tope no deja nada contado sin volcar', async () => {
 // —y por qué sin él un revisor elige entre frenar la corrida o degradarla a propuesta— está junto al
 // esquema, en el recorrido.
 //
-// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera, la decisión no se
-// registra en ningún lado; sin la segunda, marcarla frenaría igual y el canal no serviría de nada.
+// Hace falta cada mitad: sin la primera, la decisión no se registra en ningún lado; sin la segunda, marcarla frenaría
+// igual y el canal no serviría de nada.
 test('una decisión que Review no puede tomar se registra y la corrida sigue', async () => {
   const { result, written } = await runFlow({
     [KEY.review]: {
@@ -409,9 +408,9 @@ test('una decisión que Review no puede tomar se registra y la corrida sigue', a
   // El orden importa: así cada mitad falla por lo suyo —marcarla no frena, y no frenar no alcanza si
   // además no queda escrita en ningún lado.
   ranToEnd(result)
-  const fila = written.find((text) => /Registrá en \S+planning\/human\//.test(text) && /revisión/i.test(text))
-  assert.ok(fila, 'la decisión queda registrada donde una persona la lee')
-  assert.match(fila, /El task nunca es T-1/, 'y sin bloquear la tarea que la encontró')
+  const row = written.find((text) => /Registrá en \S+planning\/human\//.test(text) && /revisión/i.test(text))
+  assert.ok(row, 'la decisión queda registrada donde una persona la lee')
+  assert.match(row, /El task nunca es T-1/, 'y sin bloquear la tarea que la encontró')
 })
 
 // Los tres destinos no pueden pisarse, y el hallazgo que los pisa es el que los propios prompts producen:
@@ -424,13 +423,13 @@ test('una decisión que Review no puede tomar se registra y la corrida sigue', a
 // registrada sin haberse escrito.
 test('una decisión cae en un solo destino y no desaparece por ningún camino', async () => {
   const decision = { detail: 'el formato de la cota fija un contrato público', blocking: false, decision: true }
-  const propuesta = (n) => ({ detail: `propuesta ${n}`, blocking: false })
+  const proposal = (n) => ({ detail: `propuesta ${n}`, blocking: false })
 
   // 1. No se duplica: va a la fila, no al INBOX, y no le come una ranura a una propuesta real.
   const dupe = await runFlow({
     [KEY.review]: {
       verdict: 'aprobado', consulted: ['api/alta.go'], rules: [],
-      concerns: [decision, propuesta(1), propuesta(2), propuesta(3)],
+      concerns: [decision, proposal(1), proposal(2), proposal(3)],
     },
   })
   ranToEnd(dupe.result)
@@ -449,11 +448,10 @@ test('una decisión cae en un solo destino y no desaparece por ningún camino', 
   })
   assert.match(blocked.result.detail, /contrato público/, 'el motivo lleva lo que el revisor nombró')
 
-  // 3. No se pierde entre pasadas: al corrector se le pasa sólo lo que manda a corregir, así que nunca se
-  // entera de la decisión y no la puede cerrar. Si la re-revisión no la repite, desaparecía sin rastro.
-  let vuelta = 0
-  const entrePasadas = await runFlow({
-    [KEY.review]: () => (vuelta++ === 0
+  // 3. Una decisión de la primera pasada, con una re-revisión que ya no la repite.
+  let round = 0
+  const betweenPasses = await runFlow({
+    [KEY.review]: () => (round++ === 0
       ? {
         verdict: 'con-condiciones', consulted: ['api/alta.go'], rules: [],
         concerns: [decision, { detail: 'falta el caso vacío', blocking: true }],
@@ -461,20 +459,20 @@ test('una decisión cae en un solo destino y no desaparece por ningún camino', 
       : { verdict: 'aprobado', consulted: ['api/alta.go'], rules: [], concerns: [],
         previous: [{ id: 'r1-B1', fixed: true, evidence: 'api/alta.go:12' }] }),
   })
-  ranToEnd(entrePasadas.result)
-  assert.ok(entrePasadas.written.some((text) => /contrato público/.test(text)),
+  ranToEnd(betweenPasses.result)
+  assert.ok(betweenPasses.written.some((text) => /contrato público/.test(text)),
     'la decisión de la primera pasada sigue llegando a la fila')
 
   // 4. Y no se cuenta como registrada si la escritura no ocurrió: `registerHuman` devuelve el aviso
   // justamente para eso, y descartarlo deja la entrega afirmando algo que el disco no tiene (caso 087).
-  const muda = await runFlow({
+  const mute = await runFlow({
     [KEY.review]: {
       verdict: 'aprobado', consulted: ['api/alta.go'], rules: [], concerns: [decision],
     },
   }, { silent: ['review-human'] })
-  ranToEnd(muda.result)
+  ranToEnd(mute.result)
   // El aviso viaja en el hecho de revisión, que es lo que queda escrito en `done/` — no en el log, que
   // muere con la corrida.
-  const cierre = muda.written.find((text) => /review=/.test(text)) || ''
-  assert.match(cierre, /no se pudo registrar/, 'lo que no se escribió no se cuenta como escrito')
+  const closing = mute.written.find((text) => /review=/.test(text)) || ''
+  assert.match(closing, /no se pudo registrar/, 'lo que no se escribió no se cuenta como escrito')
 })

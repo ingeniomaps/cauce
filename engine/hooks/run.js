@@ -21,7 +21,9 @@ const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell, restoresConfig } = require('./ops-config')
 const { runtimeWrites, runtimeShell } = require('./runtime')
+const { lineCommand } = require('./line-command')
 const { jiraAdf } = require('./jira')
+const { mcpWrites, mcpGranted } = require('./mcp-writes')
 const { testWorkers } = require('./workers')
 const { comments } = require('./comments')
 const { liveCommit } = require('./live-commit')
@@ -85,6 +87,7 @@ const guards = {
   engine: files.engineWrites,
   runtime: runtimeWrites,
   'runtime-shell': runtimeShell,
+  'line-command': lineCommand,
   migrations,
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
@@ -92,6 +95,8 @@ const guards = {
   'plan-first': files.planFirst,
   'secrets-read': files.secretsRead,
   'jira-adf': jiraAdf,
+  'mcp-writes': mcpWrites,
+  'mcp-granted': mcpGranted,
   'test-workers': testWorkers,
   comments,
   chat: chat.record,
@@ -103,11 +108,13 @@ const guards = {
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'ai-signature', 'comments',
     'verify',
-    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'runtime-shell', 'test-workers'],
+    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'runtime-shell', 'line-command',
+    'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config', 'runtime'],
   'pre-read': ['secrets-read'],
-  'pre-mcp': ['jira-adf'],
+  'pre-mcp': ['jira-adf', 'mcp-writes'],
+  'post-mcp': ['mcp-granted'],
   prompt: ['chat'],
   // Aparte de `prompt`: lo que `chat` imprime se descarta, y lo de éste es justo lo que tiene que llegar.
   'prompt-notice': ['rules-notice'],
@@ -183,6 +190,18 @@ const hookMetadata = [
     purpose: 'Frena editar por MCP la descripción de una tarjeta de Jira en markdown, que aplana el ADF.',
   },
   {
+    name: 'mcp-writes',
+    event: 'PreToolUse · mcp',
+    purpose: 'Frena lo que una herramienta MCP escribe en un sistema ajeno hasta que una persona lo apruebe; las '
+      + 'lecturas pasan, y lo declarado en mcpSandbox o mcpReads de ops.config.json también.',
+  },
+  {
+    name: 'mcp-granted',
+    event: 'PostToolUse · mcp',
+    purpose: 'Deja concedida el resto de la sesión la herramienta MCP que mcp-writes frena y que igual corrió, porque '
+      + 'alguien la aprobó; no frena nada.',
+  },
+  {
     name: 'secrets-shell',
     event: 'PreToolUse · shell',
     purpose: 'Bloquea leer o escribir por shell una credencial conocida o declarada; lo que la persona pidió en '
@@ -226,6 +245,12 @@ const hookMetadata = [
     event: 'PreToolUse · shell',
     purpose: 'Lo mismo que runtime, por shell: escribir, borrar, mover o cambiarle el permiso a esos archivos, '
       + 'también por su carpeta, un glob o git.',
+  },
+  {
+    name: 'line-command',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena armar una línea de trabajo, sumarle un repositorio y su `lines join` o `migrate --apply` hasta '
+      + 'que la persona nombre la línea en el chat o lo confirme en el turno.',
   },
   {
     name: 'migrations',
@@ -349,6 +374,9 @@ const exitCodeOf = (names, error) => (
 // Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
 // sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
+  // `judge` la pone para el proceso del guard del proyecto, y ahí apaga el diálogo (`confirm.js`). Un hook de una
+  // sesión que ese guard lance la heredaría sin ser él.
+  delete process.env.CAUCE_HOOK_EVENT
   // El guard de una instancia que no es la más cercana a la sesión no juzga (`nearer-install.js`).
   const { nearer } = require('./nearer-install')
   if (nearer(process.env.CLAUDE_PROJECT_DIR, process.env.CAUCE_SUBFOLDER_OF)) process.exit(0)

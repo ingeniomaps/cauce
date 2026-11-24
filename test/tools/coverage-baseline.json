@@ -139,6 +139,11 @@
     "branches": 66,
     "functions": 88
   },
+  "engine/cli/done.js": {
+    "lines": 98,
+    "branches": 69,
+    "functions": 100
+  },
   "engine/cli/governed.js": {
     "lines": 94,
     "branches": 64,
@@ -157,6 +162,11 @@
   "engine/cli/lines-join.js": {
     "lines": 94,
     "branches": 44,
+    "functions": 100
+  },
+  "engine/cli/line-env.js": {
+    "lines": 100,
+    "branches": 81,
     "functions": 100
   },
   "engine/cli/lines.js": {
@@ -459,6 +469,11 @@
     "branches": 73,
     "functions": 100
   },
+  "engine/planning/adopted.js": {
+    "lines": 100,
+    "branches": 91,
+    "functions": 100
+  },
   "engine/planning/checkpoints.js": {
     "lines": 100,
     "branches": 100,
@@ -467,6 +482,11 @@
   "engine/planning/claims.js": {
     "lines": 100,
     "branches": 88,
+    "functions": 100
+  },
+  "engine/planning/close.js": {
+    "lines": 100,
+    "branches": 94,
     "functions": 100
   },
   "engine/planning/contracts.js": {
@@ -659,6 +679,16 @@
     "branches": 96,
     "functions": 100
   },
+  "engine/hooks/line-command.js": {
+    "lines": 100,
+    "branches": 94,
+    "functions": 100
+  },
+  "engine/cli/review-read.js": {
+    "lines": 98,
+    "branches": 88,
+    "functions": 100
+  },
   "engine/hooks/unrecorded.js": {
     "lines": 100,
     "branches": 100,
@@ -679,6 +709,16 @@
     "branches": 98,
     "functions": 100
   },
+  "engine/hooks/github-api.js": {
+    "lines": 100,
+    "branches": 93,
+    "functions": 100
+  },
+  "engine/hooks/mcp-writes.js": {
+    "lines": 100,
+    "branches": 91,
+    "functions": 100
+  },
   "engine/automation/subfolder-hooks.js": {
     "lines": 95,
     "branches": 78,
@@ -692,6 +732,31 @@
   "engine/hooks/nearer-install.js": {
     "lines": 100,
     "branches": 69,
+    "functions": 100
+  },
+  "engine/automation/shared-record.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/automation/session-load.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
+  },
+  "engine/cli/copy.js": {
+    "lines": 97,
+    "branches": 57,
+    "functions": 100
+  },
+  "engine/planning/links.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/core/remote-credentials.js": {
+    "lines": 100,
+    "branches": 96,
     "functions": 100
   }
 }

@@ -5,7 +5,7 @@
 // menos en `ops-config`, que no veía la llave de push de esa copia.
 
 const { outsideTempRoot, writeWip } = require('../support/environment')
-const { blocked, git, initRepo, WIP_IDLE, WIP_CON_PLAN, BACKLOG_WITH_TASK } = require('../support/hooks-harness')
+const { blocked, git, initRepo, WIP_IDLE, WIP_WITH_PLAN, BACKLOG_WITH_TASK } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -86,7 +86,7 @@ test('instanceTreeOf reconoce el árbol aunque el archivo todavía no exista, y 
 })
 
 test('la llave de push en el ops.config.json de un worktree se frena igual que en el principal', () => {
-  const at = sidecar('cauce-wt-llave-', WIP_CON_PLAN)
+  const at = sidecar('cauce-wt-llave-', WIP_WITH_PLAN)
   const open = JSON.stringify({ ...at.config, runner: { allowPush: true } })
   blocked('ops-config', writes(at, path.join(at.root, 'ops.config.json'), open), /allowPush/)
   blocked('ops-config', writes(at, path.join(at.tree, 'ops.config.json'), open), /allowPush/)
@@ -95,7 +95,7 @@ test('la llave de push en el ops.config.json de un worktree se frena igual que e
 })
 
 test('escribir por shell el ops.config.json de un worktree se frena igual que en el principal', () => {
-  const at = sidecar('cauce-wt-shell-', WIP_CON_PLAN)
+  const at = sidecar('cauce-wt-shell-', WIP_WITH_PLAN)
   process.env.OPS_ROOT = at.root
   const command = (file) => ({ cwd: at.base, tool_input: { command: `printf x > ${file}` } })
   blocked('ops-config-shell', command(path.join(at.root, 'ops.config.json')), /ops\.config\.json/)
@@ -104,7 +104,7 @@ test('escribir por shell el ops.config.json de un worktree se frena igual que en
 })
 
 test('la llave de push no se saltea entrando al worktree por un enlace', () => {
-  const at = sidecar('cauce-wt-enlace-', WIP_CON_PLAN)
+  const at = sidecar('cauce-wt-enlace-', WIP_WITH_PLAN)
   const link = path.join(at.base, 'lnk')
   fs.symlinkSync(at.tree, link)
   const open = JSON.stringify({ ...at.config, runner: { allowPush: true } })
@@ -112,7 +112,7 @@ test('la llave de push no se saltea entrando al worktree por un enlace', () => {
 })
 
 test('un archivo que sólo se llama ops.config.json responde igual en los dos árboles', () => {
-  const at = sidecar('cauce-wt-nombre-', WIP_CON_PLAN)
+  const at = sidecar('cauce-wt-nombre-', WIP_WITH_PLAN)
   for (const tree of [at.root, at.tree]) {
     const file = path.join(tree, 'test', 'fix', 'ops.config.json')
     assert.doesNotThrow(() => execute('ops-config', writes(at, file, 'no json')), tree)
@@ -130,7 +130,7 @@ test('lo que la instancia posee se reconoce también entrando por un enlace', ()
 })
 
 test('la llave de push también se cuida en un worktree dentro de la raíz, y por un enlace con otro nombre', () => {
-  const at = sidecar('cauce-wt-adentro-', WIP_CON_PLAN)
+  const at = sidecar('cauce-wt-adentro-', WIP_WITH_PLAN)
   const open = JSON.stringify({ ...at.config, runner: { allowPush: true } })
   const nested = path.join(at.root, '.wt')
   git(['worktree', 'add', '-q', '-b', 'adentro', nested], at.root)

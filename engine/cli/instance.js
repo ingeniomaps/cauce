@@ -67,7 +67,7 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
 // `preserve` conserva todo lo que ya exista —es lo que `init` necesita— y `conservar` conserva sólo lo
 // que responda que sí, que es lo que `upgrade` necesita para saltear una edición local sin congelar el
 // resto del directorio. Son dos preguntas distintas y por eso no se unifican en una.
-function copyRuntime(source, target, preserve = false, boundary = target, skip = [], conservar = () => false) {
+function copyRuntime(source, target, preserve = false, boundary = target, skip = [], keep = () => false) {
   F.assertNoSymlinkPath(boundary, target)
   fs.mkdirSync(target, { recursive: true })
   const preserved = {}
@@ -75,8 +75,8 @@ function copyRuntime(source, target, preserve = false, boundary = target, skip =
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
     const to = path.join(target, entry.name)
-    if (!entry.isDirectory() && conservar(to)) continue
-    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip, conservar))
+    if (!entry.isDirectory() && keep(to)) continue
+    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip, keep))
     else if (preserve && fs.existsSync(to)) {
       console.log(`= conservado ${to}`)
       preserved[to] = M.digest(from)
@@ -140,10 +140,11 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   return root
 }
 
-// En embebido el `.gitignore` es del producto y el molde no lo escribe: lo que la instancia necesita ignorar va al
-// bloque de Cauce de ése (caso 513). En sidecar la instancia tiene el suyo y no hace falta.
+// Lo que la instancia necesita ignorar va al bloque de Cauce de su `.gitignore`. En embebido ese archivo es del
+// producto y el molde no lo escribe (caso 513); en sidecar el molde lo copia una sola vez, en init, y sin esto lo que
+// ignoró después no llegaba nunca (caso 555).
 function ignoreInstance(root) {
-  if (O.mode(root) !== 'embedded') return []
+  if (!['embedded', 'sidecar'].includes(O.mode(root))) return []
   const file = path.join(root, '.gitignore')
   const { added, skipped } = IB.add(file, IB.instanceLines(path.join(PROJECT_ROOT, 'template', 'gitignore')), root)
   if (added.length) console.log(`✓ ${file}: ${added.join(', ')} al bloque de Cauce`)
@@ -287,12 +288,13 @@ function upgrade(dir, cli) {
     // archivo de instrucciones —hoy `AGENTS.md`—, nunca dentro de un directorio del sistema.
     for (const relative of O.SYSTEM_FILES) {
       const file = path.join(root, relative)
-      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue
+      // El que se conserva por editado se queda con su bloque: avisar que se lo llevó era falso (caso 546).
+      if (keptFiles.has(relative) || !fs.existsSync(file) || !fs.statSync(file).isFile()) continue
       if (fs.readFileSync(file, 'utf8').includes(A.blockStart(runner))) droppedBlocks.push({ runner, relative })
     }
   }
 
-  const conservar = (file) => {
+  const keep = (file) => {
     const relative = path.relative(root, file).replace(/\\/g, '/')
     return keptFiles.has(relative) || collisions.has(relative)
   }
@@ -303,7 +305,7 @@ function upgrade(dir, cli) {
     if (keptFiles.has(relative)) continue
     // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
     // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
-    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root, [], conservar)
+    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root, [], keep)
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))

@@ -22,15 +22,15 @@ const { hookMetadata } = require('../../engine/hooks/run')
 // variables de entrada del hook no matchean, y no tienen por qué estar documentadas.
 test('toda variable que apague un guard está nombrada en el molde', () => {
   const hooks = path.resolve(__dirname, '..', '..', 'engine', 'hooks')
-  const molde = fs.readFileSync(path.resolve(__dirname, '..', '..', 'template', 'AGENTS.md'), 'utf8')
-  const interruptores = new Set()
+  const template = fs.readFileSync(path.resolve(__dirname, '..', '..', 'template', 'AGENTS.md'), 'utf8')
+  const switches = new Set()
   for (const file of fs.readdirSync(hooks).filter((one) => one.endsWith('.js'))) {
     const source = fs.readFileSync(path.join(hooks, file), 'utf8')
-    for (const hit of source.matchAll(/process\.env\.(OPS_[A-Z_]+)\s*===\s*'1'/g)) interruptores.add(hit[1])
+    for (const hit of source.matchAll(/process\.env\.(OPS_[A-Z_]+)\s*===\s*'1'/g)) switches.add(hit[1])
   }
 
-  assert.ok(interruptores.size >= 4, `sólo se encontraron ${interruptores.size} interruptores`)
-  assert.deepEqual([...interruptores].filter((one) => !molde.includes(one)), [],
+  assert.ok(switches.size >= 4, `sólo se encontraron ${switches.size} interruptores`)
+  assert.deepEqual([...switches].filter((one) => !template.includes(one)), [],
     'el motor apaga un guard con una variable que el molde no nombra')
 })
 
@@ -71,9 +71,8 @@ test('automation sobre algo que no es una instancia lo dice en una línea', () =
   }
 })
 
-// Un guard que a veces no corre tiene que decir cuándo, o el conteo de arriba promete una cobertura que
-// no está. Se mide contra una instancia recién creada —el estado en que `plan-first` queda inerte— y
-// contra la misma con una tarea, porque decir siempre lo mismo no informa nada.
+// Se mide contra una instancia recién creada, sin tareas, y contra la misma con una: el aviso sale en la
+// primera y no en la segunda, porque un aviso que sale siempre no informa nada.
 test('automation check avisa cuando plan-first está inerte', () => {
   const target = path.join(tempRoot('cauce-inerte-'), 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
@@ -83,8 +82,8 @@ test('automation check avisa cuando plan-first está inerte', () => {
   const backlog = path.join(target, 'planning', 'BACKLOG.md')
   fs.appendFileSync(backlog, '\n## Hito primero — Primer resultado\n\n'
     + '- [ ] **alta-de-cliente** [lite] — Alta. _Aceptación: responde 201._ (service: api)\n')
-  const conTarea = run(['automation', 'check', target])
-  assert.equal(conTarea.stdout.includes('plan-first: inerte'), false, 'con una tarea deja de estarlo')
+  const withTask = run(['automation', 'check', target])
+  assert.equal(withTask.stdout.includes('plan-first: inerte'), false, 'con una tarea deja de estarlo')
 })
 
 // La lista de scripts que `check` exige se deriva del registro de guards, no se copia a mano: una
@@ -216,13 +215,13 @@ test('uninstall no borra nada si la configuración del runner no se puede leer',
 
   const settingsFile = path.join(workspace, '.claude', 'settings.json')
   fs.writeFileSync(settingsFile, '{ "hooks": { ,,, ')
-  const antes = fs.readdirSync(path.join(workspace, '.claude', 'workflows'))
-  assert.ok(antes.length, 'el banco tiene qué perder')
+  const earlier = fs.readdirSync(path.join(workspace, '.claude', 'workflows'))
+  assert.ok(earlier.length, 'el banco tiene qué perder')
 
-  const roto = run(['automation', 'uninstall', target, 'claude'])
-  assert.equal(roto.status, 2)
-  assert.match(roto.stderr, /settings\.json/, 'y el error nombra el archivo que no se pudo leer')
-  assert.deepEqual(fs.readdirSync(path.join(workspace, '.claude', 'workflows')), antes,
+  const broken = run(['automation', 'uninstall', target, 'claude'])
+  assert.equal(broken.status, 2)
+  assert.match(broken.stderr, /settings\.json/, 'y el error nombra el archivo que no se pudo leer')
+  assert.deepEqual(fs.readdirSync(path.join(workspace, '.claude', 'workflows')), earlier,
     'nada borrado: se para antes de tocar el disco')
   assert.equal(fs.existsSync(path.join(workspace, '.claude', 'skills', 'product-manager')), true)
 
@@ -395,12 +394,12 @@ test('automation check nombra la config ilegible en vez de culpar al motor', () 
   assert.equal(run(['automation', 'check', target]).status, 0, 'con la config sana pasa')
 
   fs.writeFileSync(path.join(target, 'ops.config.json'), '{ "project": ')
-  const roto = run(['automation', 'check', target])
-  assert.notEqual(roto.status, 0)
-  assert.match(roto.stderr, /ops\.config\.json no se puede leer/, 'nombra la causa')
-  assert.doesNotMatch(roto.stderr, /npm install/,
+  const broken = run(['automation', 'check', target])
+  assert.notEqual(broken.status, 0)
+  assert.match(broken.stderr, /ops\.config\.json no se puede leer/, 'nombra la causa')
+  assert.doesNotMatch(broken.stderr, /npm install/,
     'y no manda a bajar una segunda copia de un motor que está instalado')
-  assert.doesNotMatch(roto.stderr, /falta engine/, 'ni enumera ausencias que salen de esa misma causa')
+  assert.doesNotMatch(broken.stderr, /falta engine/, 'ni enumera ausencias que salen de esa misma causa')
 })
 
 // Las dos salidas de `integration` que caían del lado equivocado del corte que define `engine/cli/io.js`:
@@ -415,12 +414,12 @@ test('un registro ilegible y un proveedor inexistente salen como mala invocació
   linkEngine(target)
   assert.equal(run(['integration', 'list', target]).status, 0, 'con el registro sano, list pasa')
 
-  const ausente = run(['integration', 'disable', target, 'no-existe'])
-  assert.equal(ausente.status, 2, ausente.stderr)
-  assert.match(ausente.stderr, /no está en integrations\/config\.json/)
+  const missing = run(['integration', 'disable', target, 'no-existe'])
+  assert.equal(missing.status, 2, missing.stderr)
+  assert.match(missing.stderr, /no está en integrations\/config\.json/)
 
   fs.writeFileSync(path.join(target, 'integrations', 'config.json'), '{ "providers": ')
-  const ilegible = run(['integration', 'list', target])
-  assert.equal(ilegible.status, 2, ilegible.stderr)
-  assert.match(ilegible.stderr, /integrations\/config\.json ilegible/)
+  const unreadable = run(['integration', 'list', target])
+  assert.equal(unreadable.status, 2, unreadable.stderr)
+  assert.match(unreadable.stderr, /integrations\/config\.json ilegible/)
 })

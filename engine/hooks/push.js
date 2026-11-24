@@ -9,10 +9,10 @@
 //
 // - Un subagente no publica, con ningún permiso: es trabajo que el agente delegó, dos pasos más lejos de
 //   la persona que la sesión. El push sale de la sesión principal.
-// - Una rama viva —`main`, `master` y la rama por defecto de cada remoto— no la alcanza ni `allowPush` ni
-//   una orden del chat si el proyecto no la nombró en `runner.pushToLiveBranches`. La línea exacta en
-//   `.ops-approval`, con el repositorio del que sale, sí la alcanza: la escribe una persona a mano y los
-//   guards de límites no dejan que el agente se la escriba.
+// - Una rama viva —`main`, `master`, la rama por defecto de cada remoto y las de `runner.liveBranches`— no la
+//   alcanza ni `allowPush` ni una orden del chat si el proyecto no la nombró en `runner.pushToLiveBranches`. La
+//   línea exacta en `.ops-approval`, con el repositorio del que sale, sí la alcanza: la escribe una persona a mano
+//   y los guards de límites no dejan que el agente se la escriba.
 // - A una rama de trabajo, o a una viva ya nombrada, la alcanzan `allowPush`, la línea exacta en
 //   `.ops-approval`, un mensaje de la persona que ordena ese push con su remoto y su rama, o un «dale» al
 //   push que quedó frenado. Qué cuenta como orden lo decide `chat.js`.
@@ -47,9 +47,11 @@ function git(dir, args) {
 
 // La rama por defecto de un remoto es la que git anota en `refs/remotes/<remoto>/HEAD`: la escribe el
 // `clone` y la cambia `git remote set-head`, así que el proyecto la declara sin un campo nuevo. `main` y
-// `master` cuentan siempre, porque un remoto agregado a mano no la anota.
-function liveBranches(dir) {
-  const live = new Set(['main', 'master'])
+// `master` cuentan siempre, porque un remoto agregado a mano no la anota. Y las que el proyecto declara en
+// `runner.liveBranches`: con GitFlow, `develop`, `staging` o `production` son tan vivas como `main` (caso 533).
+function liveBranches(dir, root) {
+  const declared = root ? (configOf(root).runner || {}).liveBranches : null
+  const live = new Set(['main', 'master', ...(Array.isArray(declared) ? declared : [])])
   const refs = git(dir, ['for-each-ref', '--format=%(refname)%09%(symref)', 'refs/remotes/'])
   for (const line of refs.split('\n')) {
     const [name, target] = line.split('\t')
@@ -189,7 +191,7 @@ function publish(input, command) {
   const runner = (root && configOf(root).runner) || {}
   const listed = new Set(Array.isArray(runner.pushToLiveBranches) ? runner.pushToLiveBranches : [])
   const filed = new Set(root ? AP.read(root) : [])
-  const live = liveBranches(dir)
+  const live = liveBranches(dir, root)
   const destinations = pushes.flatMap((match) => destinationsOf(match[1], dir))
   if (destinations.some((to) => to.unreadable)) block(UNREADABLE)
   const byFile = sure ? destinations.filter((to) => to.item && to.item.startsWith('push ')

@@ -11,6 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 // La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
 // this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
@@ -40,13 +41,13 @@ test('la investigación recibe las herramientas que su instrucción nombra, y no
   // El comando que el `AUTOMATION.md` nombra, en sus dos formas: el modelo elige cuál escribe y nadie
   // se lo dice. `backend-engineer` pidió `node engine/cli/ops.js learn <slug>` cuatro veces y su
   // `evaluate` dos más, todas negadas, porque sólo estaba concedido el `make` que ejecuta lo mismo.
-  for (const forma of ['make agent-learn \\*', 'make agent-evaluate \\*',
+  for (const form of ['make agent-learn \\*', 'make agent-evaluate \\*',
     'node engine/cli/ops\\.js learn \\*', 'node engine/cli/ops\\.js evaluate \\*']) {
-    assert.match(source, new RegExp(`'Bash\\(${forma}\\)'`), `concede ${forma.replace(/\\/g, '')}`)
+    assert.match(source, new RegExp(`'Bash\\(${form}\\)'`), `concede ${form.replace(/\\/g, '')}`)
   }
   // Y nada más: un `Bash` pelado o un comodín le daría lo que su instrucción le prohíbe.
-  const reglas = (source.match(/'Bash\([^)]*\)'/g) || []).length
-  assert.equal(reglas, 4, 'exactamente las cuatro formas, sin comodines de más')
+  const rules = (source.match(/'Bash\([^)]*\)'/g) || []).length
+  assert.equal(rules, 4, 'exactamente las cuatro formas, sin comodines de más')
 
   // Saltear permisos le daría justo lo que su instrucción le prohíbe: dependencias, código, SKILL.md,
   // planificación, commit y push. El guard más barato contra eso es no dárselo.
@@ -63,11 +64,11 @@ test('la investigación late mientras corre y deja dicho lo que costó', () => {
   const source = fs.readFileSync(file, 'utf8')
 
   assert.match(source, /while kill -0 "\$pid"/, 'el latido comprueba el proceso, no un reloj')
-  assert.match(source, /investigando, van \$\(\(espera \/ 60\)\) min/, 'y dice cuánto lleva')
+  assert.match(source, /investigando, van \$\(\(waited \/ 60\)\) min/, 'y dice cuánto lleva')
   // Poleo corto y voz cada minuto: con `sleep 60` una corrida de dos segundos esperaba el minuto
   // entero, y la prueba que ejecuta este paso con un `claude` falso se colgaba.
   assert.match(source, /sleep 5$/m, 'sin hacer esperar un minuto a lo que ya terminó')
-  assert.match(source, /return \$salida/, 'sin tragarse el código de salida del modelo')
+  assert.match(source, /return \$status/, 'sin tragarse el código de salida del modelo')
 
   // Lo que vuelve medible una corrida. Sin esto no había forma de saber qué cuesta una investigación,
   // y un permiso mal escrito sólo se veía leyendo dos líneas perdidas del log.
@@ -84,28 +85,28 @@ test('la investigación late mientras corre y deja dicho lo que costó', () => {
 test('una semana sin credencial se anuncia, en vez de quedar en verde y en silencio', () => {
   const source = workflow('agent-learning')
   const dir = tempRoot('cauce-creds-aviso-')
-  const salida = path.join(dir, 'github-output')
-  const correr = (env) => {
-    fs.writeFileSync(salida, '')
-    const hecho = spawnSync('bash', ['-c', workflowStep(source, 'id: creds')], {
-      cwd: dir, encoding: 'utf8', env: { ...process.env, OAUTH: '', KEY: '', ...env, GITHUB_OUTPUT: salida },
+  const output = path.join(dir, 'github-output')
+  const run = (env) => {
+    fs.writeFileSync(output, '')
+    const done = spawnSync('bash', ['-c', workflowStep(source, 'id: creds')], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, OAUTH: '', KEY: '', ...env, GITHUB_OUTPUT: output },
     })
-    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+    return { ...done, written: fs.readFileSync(output, 'utf8') }
   }
 
-  const sin = correr({})
-  assert.equal(sin.status, 0, 'no se falla la corrida: un rojo cada lunes se termina ignorando')
-  assert.match(sin.escrito, /^ready=false$/m, 'y research no arranca')
-  assert.match(sin.stdout, /^::warning title=[^:]+::/m,
+  const absent = run({})
+  assert.equal(absent.status, 0, 'no se falla la corrida: un rojo cada lunes se termina ignorando')
+  assert.match(absent.written, /^ready=false$/m, 'y research no arranca')
+  assert.match(absent.stdout, /^::warning title=[^:]+::/m,
     'el aviso sale como anotación; un echo suelto no se ve sin abrir el log')
-  assert.match(sin.stdout, /CLAUDE_CODE_OAUTH_TOKEN/,
+  assert.match(absent.stdout, /CLAUDE_CODE_OAUTH_TOKEN/,
     'y nombra qué cargar, no sólo que falta algo')
 
   // Con cualquiera de las dos alcanza, y entonces no hay nada que anunciar.
   for (const env of [{ OAUTH: 'x' }, { KEY: 'x' }]) {
-    const con = correr(env)
-    assert.match(con.escrito, /^ready=true$/m, `con ${Object.keys(env)[0]} se investiga`)
-    assert.equal(/::warning/.test(con.stdout), false, 'y no se avisa de una falta que no existe')
+    const present = run(env)
+    assert.match(present.written, /^ready=true$/m, `con ${Object.keys(env)[0]} se investiga`)
+    assert.equal(/::warning/.test(present.stdout), false, 'y no se avisa de una falta que no existe')
   }
 })
 
@@ -117,17 +118,17 @@ test('una semana sin credencial se anuncia, en vez de quedar en verde y en silen
 // Se busca el job por lo que concede y no por su nombre: atarlo a `research` haría pasar la prueba el
 // día que la evaluación se mude a otro job sin su historia, que es exactamente el fallo que cuida.
 test('el job que evalúa contratos se lleva la historia entera', () => {
-  const texto = workflow('agent-learning')
-  const jobs = texto.split(/\n  (?=[a-z][a-z-]*:\n)/)
-  const evalua = jobs.filter((job) => /Bash\(make agent-evaluate/.test(job))
-  assert.equal(evalua.length, 1, `se esperaba un job que corra agent-evaluate, hay ${evalua.length}`)
-  assert.match(evalua[0], /actions\/checkout@[^\n]*\n\s*with:\n\s*fetch-depth: 0/,
+  const text = workflow('agent-learning')
+  const jobs = text.split(/\n  (?=[a-z][a-z-]*:\n)/)
+  const evaluators = jobs.filter((job) => /Bash\(make agent-evaluate/.test(job))
+  assert.equal(evaluators.length, 1, `se esperaba un job que corra agent-evaluate, hay ${evaluators.length}`)
+  assert.match(evaluators[0], /actions\/checkout@[^\n]*\n\s*with:\n\s*fetch-depth: 0/,
     'sin historia, la fecha del contrato no se puede leer y el aviso se apaga entero')
 
   // Y los demás siguen con el checkout barato: la historia completa de este repositorio son 76 MB
   // contra 8, y ninguno de los otros tres jobs pregunta nada que la necesite.
-  const conHistoria = jobs.filter((job) => /fetch-depth: 0/.test(job))
-  assert.equal(conHistoria.length, 1, 'sólo el que evalúa la pide')
+  const withHistory = jobs.filter((job) => /fetch-depth: 0/.test(job))
+  assert.equal(withHistory.length, 1, 'sólo el que evalúa la pide')
 })
 
 // La suscripción primero, la API key como respaldo. No alcanza con poner las dos en el entorno: el
@@ -136,45 +137,43 @@ test('el job que evalúa contratos se lleva la historia entera', () => {
 // anota qué credencial vio, porque lo que hay que fijar es cuál llega al proceso.
 test('la investigación usa la suscripción y cae a la API key sólo si falla',
   { skip: process.platform === 'win32' }, () => {
-  const paso = workflowStep(workflow('agent-learning'), 'id: research')
-  assert.ok(paso.includes('claude -p'), 'no se encontró el paso que corre el modelo')
+  const step = workflowStep(workflow('agent-learning'), 'id: research')
+  assert.ok(step.includes('claude -p'), 'no se encontró el paso que corre el modelo')
 
   const dir = tempRoot('cauce-creds-')
-  const visto = path.join(dir, 'visto.txt')
+  const seen = path.join(dir, 'visto.txt')
   // Anota la credencial de cada invocación; falla cuando se le pide desde el entorno de la prueba.
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\n`
-    + `echo "oauth=\${CLAUDE_CODE_OAUTH_TOKEN:-} key=\${ANTHROPIC_API_KEY:-}" >> ${JSON.stringify(visto)}\n`
-    + `exit "\${FALLA_OAUTH:-0}"\n`, { mode: 0o755 })
-  // El respaldo tiene que salir bien aunque el primero falle: la segunda invocación no lleva OAuth.
-  fs.writeFileSync(path.join(dir, 'claude-fallible'), '', { mode: 0o755 })
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\n`
+    + `echo "oauth=\${CLAUDE_CODE_OAUTH_TOKEN:-} key=\${ANTHROPIC_API_KEY:-}" >> ${JSON.stringify(seen)}\n`
+    + `exit "\${FALLA_OAUTH:-0}"\n`)
 
-  const correr = (env) => {
-    fs.writeFileSync(visto, '')
-    const salida = require('node:child_process').spawnSync('bash', ['-c', paso], {
+  const run = (env) => {
+    fs.writeFileSync(seen, '')
+    const output = require('node:child_process').spawnSync('bash', ['-c', step], {
       cwd: dir, encoding: 'utf8',
       env: { ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', ...env },
     })
-    return { status: salida.status, llamadas: fs.readFileSync(visto, 'utf8').trim().split('\n').filter(Boolean) }
+    return { status: output.status, llamadas: fs.readFileSync(seen, 'utf8').trim().split('\n').filter(Boolean) }
   }
 
-  const conAmbas = correr({ OAUTH: 'tok', APIKEY: 'key' })
-  assert.equal(conAmbas.status, 0)
-  assert.deepEqual(conAmbas.llamadas, ['oauth=tok key='],
+  const withBoth = run({ OAUTH: 'tok', APIKEY: 'key' })
+  assert.equal(withBoth.status, 0)
+  assert.deepEqual(withBoth.llamadas, ['oauth=tok key='],
     'una sola corrida, con el token de suscripción y sin la API key en el entorno')
 
   // El mismo caso, con el primer intento fallando: recién ahí aparece la API key.
-  const falla = correr({ OAUTH: 'tok', APIKEY: 'key', FALLA_OAUTH: '3' })
-  assert.equal(falla.llamadas.length, 2, 'reintenta una vez')
-  assert.equal(falla.llamadas[0], 'oauth=tok key=', 'primero la suscripción')
-  assert.equal(falla.llamadas[1], 'oauth= key=key', 'después la API key, y sola')
+  const failing = run({ OAUTH: 'tok', APIKEY: 'key', FALLA_OAUTH: '3' })
+  assert.equal(failing.llamadas.length, 2, 'reintenta una vez')
+  assert.equal(failing.llamadas[0], 'oauth=tok key=', 'primero la suscripción')
+  assert.equal(failing.llamadas[1], 'oauth= key=key', 'después la API key, y sola')
 
-  const soloKey = correr({ OAUTH: '', APIKEY: 'key' })
-  assert.equal(soloKey.status, 0)
-  assert.deepEqual(soloKey.llamadas, ['oauth= key=key'], 'sin suscripción va directo a la API key')
+  const onlyKey = run({ OAUTH: '', APIKEY: 'key' })
+  assert.equal(onlyKey.status, 0)
+  assert.deepEqual(onlyKey.llamadas, ['oauth= key=key'], 'sin suscripción va directo a la API key')
 
-  const ninguna = correr({ OAUTH: '', APIKEY: '' })
-  assert.notEqual(ninguna.status, 0, 'sin credencial falla en vez de correr sin nada')
-  assert.deepEqual(ninguna.llamadas, [], 'y no invoca el modelo')
+  const none = run({ OAUTH: '', APIKEY: '' })
+  assert.notEqual(none.status, 0, 'sin credencial falla en vez de correr sin nada')
+  assert.deepEqual(none.llamadas, [], 'y no invoca el modelo')
 })
 
 // Cinco «Bash» seguidos en el resumen no distinguen cinco comandos distintos de uno repetido, y la
@@ -185,14 +184,14 @@ test('la investigación usa la suscripción y cae a la API key sólo si falla',
 // `node -e` embebido, y una aserción sobre el fuente del YAML lo da por bueno igual.
 test('el resumen dice qué comando se negó, no sólo que fue Bash',
   { skip: process.platform === 'win32' }, () => {
-  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const step = workflowStep(workflow('agent-learning'), 'id: research')
   const dir = tempRoot('cauce-denegados-')
-  const resumen = path.join(dir, 'step-summary')
-  fs.writeFileSync(resumen, '')
+  const summary = path.join(dir, 'step-summary')
+  fs.writeFileSync(summary, '')
 
   // El falso ocupa el lugar del modelo y devuelve por stdout el JSON que `informe` lee. Dos
   // denegaciones del mismo tool con comandos distintos: es el caso que la lista de nombres perdía.
-  const salidaJson = JSON.stringify({
+  const jsonOutput = JSON.stringify({
     total_cost_usd: 0.49, usage: { input_tokens: 30, output_tokens: 2718 },
     duration_ms: 39000, num_turns: 20,
     permission_denials: [
@@ -200,23 +199,23 @@ test('el resumen dice qué comando se negó, no sólo que fue Bash',
       { tool_name: 'Bash', tool_input: { command: 'npm ls --depth=0 | head' } },
     ],
   })
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${salidaJson}\nJSON\n`,
-    { mode: 0o755 })
+  // El JSON de una corrida, para medir el resumen del job sin gastar modelo.
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`)
 
-  const hecho = spawnSync('bash', ['-c', paso], {
+  const done = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
     env: {
       ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
-      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: resumen,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: summary,
     },
   })
-  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(done.status, 0, done.stderr)
 
-  const escrito = fs.readFileSync(resumen, 'utf8')
-  assert.match(escrito, /make agent-learn AGENT=probe/, 'el comando negado, que es lo que decide la causa')
-  assert.match(escrito, /npm ls --depth=0/, 'y el segundo, que una lista de nombres confundía con el primero')
+  const written = fs.readFileSync(summary, 'utf8')
+  assert.match(written, /make agent-learn AGENT=probe/, 'el comando negado, que es lo que decide la causa')
+  assert.match(written, /npm ls --depth=0/, 'y el segundo, que una lista de nombres confundía con el primero')
   // El `|` de un comando encadenado parte la fila en dos columnas y se lleva el resto del comando.
-  assert.match(escrito, /npm ls --depth=0 \\\| head/, 'con el pipe escapado, o la fila se rompe')
+  assert.match(written, /npm ls --depth=0 \\\| head/, 'con el pipe escapado, o la fila se rompe')
 })
 
 // De una investigación se sabía lo que costó, no cuánto de ese costo es salir a buscar, y sin ese
@@ -226,15 +225,15 @@ test('el resumen dice qué comando se negó, no sólo que fue Bash',
 // el YAML da ese cero por bueno.
 test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
   { skip: process.platform === 'win32' }, () => {
-  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const step = workflowStep(workflow('agent-learning'), 'id: research')
   const dir = tempRoot('cauce-busquedas-')
-  const resumen = path.join(dir, 'step-summary')
-  fs.writeFileSync(resumen, '')
+  const summary = path.join(dir, 'step-summary')
+  fs.writeFileSync(summary, '')
 
   // La forma que devuelve claude-code 2.1.261: la cuenta la lleva el submodelo que resuelve WebSearch
   // y el agregado de arriba queda en cero. Dos entradas porque se reparte entre los modelos que
   // corrieron, así que leer una sola devuelve una parte y parece un número entero.
-  const salidaJson = JSON.stringify({
+  const jsonOutput = JSON.stringify({
     total_cost_usd: 1.31,
     usage: { input_tokens: 42, output_tokens: 17364, server_tool_use: { web_search_requests: 0 } },
     duration_ms: 231000, num_turns: 33,
@@ -243,45 +242,44 @@ test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
       'claude-opus-5': { webSearchRequests: 1 },
     },
   })
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${salidaJson}\nJSON\n`,
-    { mode: 0o755 })
+  // Sin gastar modelo: el doble devuelve el JSON de esta corrida.
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${jsonOutput}\nJSON\n`)
 
-  const hecho = spawnSync('bash', ['-c', paso], {
+  const done = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
     env: {
       ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
-      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: resumen,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: summary,
     },
   })
-  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(done.status, 0, done.stderr)
 
-  const escrito = fs.readFileSync(resumen, 'utf8')
-  assert.match(escrito, /\| búsquedas web \| 12 /, 'la suma de los submodelos, no la de uno')
-  assert.doesNotMatch(escrito, /\| búsquedas web \| 0 /, 'y no el cero del agregado que no las cuenta')
+  const written = fs.readFileSync(summary, 'utf8')
+  assert.match(written, /\| búsquedas web \| 12 /, 'la suma de los submodelos, no la de uno')
+  assert.doesNotMatch(written, /\| búsquedas web \| 0 /, 'y no el cero del agregado que no las cuenta')
   // El número mide búsquedas y no accesos a la web. Sin la aclaración se lee como el total, y quien
   // dimensione con él se lleva otro número — es la forma que R15 nombra: completo de apariencia.
-  assert.match(escrito, /WebFetch no vuelven/, 'con el hueco dicho en la misma fila')
+  assert.match(written, /WebFetch no vuelven/, 'con el hueco dicho en la misma fila')
 
   // El job pinnea 2.1.233 y la forma de arriba se comprobó contra 2.1.261. Si esa versión no trae el
   // campo, un cero se lee como «no buscó» y el resumen da por medido lo que no se midió — que es el
   // fallo que esta fila vino a arreglar, reaparecido un escalón más abajo.
-  fs.writeFileSync(resumen, '')
-  const sinCampo = JSON.stringify({
+  fs.writeFileSync(summary, '')
+  const withoutField = JSON.stringify({
     total_cost_usd: 1.31, usage: { input_tokens: 42, output_tokens: 17364 },
     duration_ms: 231000, num_turns: 33,
     modelUsage: { 'claude-opus-5': { inputTokens: 42, outputTokens: 17364 } },
   })
-  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${sinCampo}\nJSON\n`,
-    { mode: 0o755 })
-  const mudo = spawnSync('bash', ['-c', paso], {
+  fakeCommand(dir, 'claude', `#!/usr/bin/env bash\ncat <<'JSON'\n${withoutField}\nJSON\n`)
+  const mute = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
     env: {
       ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
-      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: resumen,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: summary,
     },
   })
-  assert.equal(mudo.status, 0, mudo.stderr)
-  assert.match(fs.readFileSync(resumen, 'utf8'), /\| búsquedas web \| sin dato /,
+  assert.equal(mute.status, 0, mute.stderr)
+  assert.match(fs.readFileSync(summary, 'utf8'), /\| búsquedas web \| sin dato /,
     'sin el campo la fila lo dice, en vez de afirmar que no buscó')
 })
 
@@ -289,28 +287,27 @@ test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
 // dar: `security-engineer` gastó seis denegaciones pidiendo `node -v`, `npm -v` y `npm --version` en
 // una sola corrida, y las tres del 2026-08-31 terminaron con el informe vacío. Se le dan hechas en el
 // prompt en vez de abrirle Bash. Se ejecuta el paso porque lo que puede fallar es la interpolación:
-// un `entorno` que no se expande deja el prompt diciendo la palabra en vez del dato.
+// un `runtime_env` que no se expande deja el prompt diciendo la palabra en vez del dato.
 test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
   { skip: process.platform === 'win32' }, () => {
-  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const step = workflowStep(workflow('agent-learning'), 'id: research')
   const dir = tempRoot('cauce-entorno-')
-  const visto = path.join(dir, 'args.txt')
+  const seen = path.join(dir, 'args.txt')
 
   // El falso guarda lo que recibe y devuelve un JSON válido, para que el paso termine bien.
-  fs.writeFileSync(path.join(dir, 'claude'),
-    `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > ${JSON.stringify(visto)}\necho '{"num_turns":1}'\n`,
-    { mode: 0o755 })
+  fakeCommand(dir, 'claude',
+    `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > ${JSON.stringify(seen)}\necho '{"num_turns":1}'\n`)
 
-  const hecho = spawnSync('bash', ['-c', paso], {
+  const done = spawnSync('bash', ['-c', step], {
     cwd: dir, encoding: 'utf8',
     env: {
       ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
       AGENT: 'probe', OAUTH: 'tok', APIKEY: '',
     },
   })
-  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(done.status, 0, done.stderr)
 
-  const args = fs.readFileSync(visto, 'utf8')
+  const args = fs.readFileSync(seen, 'utf8')
   assert.match(args, /El entorno de esta corrida es Node v\d+\.\d+\.\d+\S* y npm \S+/,
     'las versiones resueltas, no la variable sin expandir')
   assert.equal(/\$entorno/.test(args), false, 'y expandidas de verdad')

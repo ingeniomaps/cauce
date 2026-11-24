@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 const REPO = path.resolve(__dirname, '..', '..')
 
@@ -56,7 +57,8 @@ function runSteps(t, { claude, oauth = 'x', apikey = 'y' }) {
     fails: 'exit 1',
     removes: `rm "${proposal}"\nexit 0`,
   }[claude]
-  fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\necho "$@" >> "${dir}/args"\n${fake}\n`, { mode: 0o755 })
+  // El modelo no corre acá: el `claude` falso anota sus argumentos y hace lo que el caso le pide.
+  fakeCommand(bin, 'claude', `#!/bin/sh\necho "$@" >> "${dir}/args"\n${fake}\n`)
 
   const source = workflow('agent-learning')
   const env = {
@@ -82,28 +84,28 @@ function runSteps(t, { claude, oauth = 'x', apikey = 'y' }) {
 }
 
 test('lo que decide si el recorrido hizo su trabajo es el documento, no el código de salida', (t) => {
-  const bien = runSteps(t, { claude: 'decides' })
-  assert.match(bien.args, /--allowedTools Workflow /, 'el recorrido tiene permiso para correrse')
-  assert.equal(bien.decision.status, 0)
-  assert.match(bien.decision.outputs, /^decided=true$/m, 'una propuesta que el recorrido completó queda decidida')
+  const fine = runSteps(t, { claude: 'decides' })
+  assert.match(fine.args, /--allowedTools Workflow /, 'el recorrido tiene permiso para correrse')
+  assert.equal(fine.decision.status, 0)
+  assert.match(fine.decision.outputs, /^decided=true$/m, 'una propuesta que el recorrido completó queda decidida')
 
   // Salir en cero sin escribir nada es lo que pasó en la corrida real: tiene que leerse como fallo.
-  const ocioso = runSteps(t, { claude: 'idle' })
-  assert.match(ocioso.decision.outputs, /^decided=false$/m, 'salir en cero sin escribir no es decidir')
+  const idle = runSteps(t, { claude: 'idle' })
+  assert.match(idle.decision.outputs, /^decided=false$/m, 'salir en cero sin escribir no es decidir')
 
   // Y un fallo no frena el paso: después vienen los sellos, y sin empujarlos el mes siguiente consume lo mismo.
-  const fallo = runSteps(t, { claude: 'fails' })
-  assert.equal(fallo.write.status, 0, 'el paso sigue, para que la rama salga con sus sellos')
-  assert.match(fallo.decision.outputs, /^decided=false$/m)
+  const failure = runSteps(t, { claude: 'fails' })
+  assert.equal(failure.write.status, 0, 'el paso sigue, para que la rama salga con sus sellos')
+  assert.match(failure.decision.outputs, /^decided=false$/m)
 
-  const sinDocumento = runSteps(t, { claude: 'removes' })
-  assert.equal(sinDocumento.decision.status, 0, 'no corta el job antes de empujar los sellos')
-  assert.match(sinDocumento.decision.outputs, /^decided=false$/m, 'sin el documento no hay nada decidido')
+  const withoutDocument = runSteps(t, { claude: 'removes' })
+  assert.equal(withoutDocument.decision.status, 0, 'no corta el job antes de empujar los sellos')
+  assert.match(withoutDocument.decision.outputs, /^decided=false$/m, 'sin el documento no hay nada decidido')
 
   // Sin credencial el ciclo degrada a propósito (caso 155): avisa y no se vuelve a preguntar nada.
-  const sinCredencial = runSteps(t, { claude: 'fails', oauth: '', apikey: '' })
-  assert.match(sinCredencial.write.out, /::notice title=Sin credencial para proponer::/)
-  assert.equal(sinCredencial.decision, null, 'faltar la credencial no pone el job en rojo')
+  const withoutCredential = runSteps(t, { claude: 'fails', oauth: '', apikey: '' })
+  assert.match(withoutCredential.write.out, /::notice title=Sin credencial para proponer::/)
+  assert.equal(withoutCredential.decision, null, 'faltar la credencial no pone el job en rojo')
 })
 
 test('el PR y el rojo leen el veredicto de después del recorrido', () => {
@@ -164,28 +166,28 @@ function runArchive(t, frontmatter, body = '') {
 }
 
 test('una propuesta que dice «cambia: no» se archiva con su motivo, y ninguna otra', (t) => {
-  const sinCambio = runArchive(t, 'cambia: no\n')
-  assert.equal(sinCambio.status, 0)
-  assert.ok(sinCambio.call, 'llama al CLI')
-  assert.deepEqual(sinCambio.call.argv.slice(0, 3), ['learn', 'probe', '--archived'])
+  const unchanged = runArchive(t, 'cambia: no\n')
+  assert.equal(unchanged.status, 0)
+  assert.ok(unchanged.call, 'llama al CLI')
+  assert.deepEqual(unchanged.call.argv.slice(0, 3), ['learn', 'probe', '--archived'])
   // Archiva la que leyó, nombrada por su archivo: sin período el CLI toma la última del cargo, que puede
   // ser otra (caso 265).
-  assert.equal(sinCambio.call.argv[sinCambio.call.argv.indexOf('--period') + 1], '2026-10-r2')
-  const reason = sinCambio.call.argv[sinCambio.call.argv.indexOf('--reason') + 1]
+  assert.equal(unchanged.call.argv[unchanged.call.argv.indexOf('--period') + 1], '2026-10-r2')
+  const reason = unchanged.call.argv[unchanged.call.argv.indexOf('--reason') + 1]
   assert.ok(reason && reason.trim(), 'con motivo: es lo que lee el informe siguiente')
-  assert.match(sinCambio.call.owner, /\S/, 'y con alguien a quien atribuirlo')
-  assert.match(sinCambio.outputs, /^archived=true$/m)
+  assert.match(unchanged.call.owner, /\S/, 'y con alguien a quien atribuirlo')
+  assert.match(unchanged.outputs, /^archived=true$/m)
 
   for (const [name, front] of [['cambia: si', 'cambia: si\n'], ['sin el campo', ''], ['otro valor', 'cambia: nop\n']]) {
-    const firma = runArchive(t, front)
-    assert.equal(firma.status, 0)
-    assert.equal(firma.call, null, `${name}: no se archiva`)
-    assert.equal(/archived=true/.test(firma.outputs), false, `${name}: sigue pidiendo firma`)
+    const signature = runArchive(t, front)
+    assert.equal(signature.status, 0)
+    assert.equal(signature.call, null, `${name}: no se archiva`)
+    assert.equal(/archived=true/.test(signature.outputs), false, `${name}: sigue pidiendo firma`)
   }
 
   // Sólo el frontmatter: la misma línea en el cuerpo es prosa, no una decisión.
-  const enElCuerpo = runArchive(t, '', 'cambia: no\n')
-  assert.equal(enElCuerpo.call, null)
+  const inBody = runArchive(t, '', 'cambia: no\n')
+  assert.equal(inBody.call, null)
 })
 
 test('la archivada abre su PR con auto-merge, y el recorrido sabe contestar el campo', () => {
@@ -200,7 +202,7 @@ test('la archivada abre su PR con auto-merge, y el recorrido sabe contestar el c
   assert.match(open, /if \[ "\$ARCHIVED" = 'true' \]; then[\s\S]*gh pr merge "\$branch" --auto --merge/,
     'la archivada se mergea sola cuando su CI pase')
 
-  const recorrido = fs.readFileSync(path.join(REPO, 'automatization', 'workflows', 'agent-propose.js'), 'utf8')
-  assert.match(recorrido, /cambia: si/)
-  assert.match(recorrido, /cambia: no/)
+  const flow = fs.readFileSync(path.join(REPO, 'automatization', 'workflows', 'agent-propose.js'), 'utf8')
+  assert.match(flow, /cambia: si/)
+  assert.match(flow, /cambia: no/)
 })

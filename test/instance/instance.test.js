@@ -12,6 +12,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { fakeCommand } = require('../support/fakes')
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
   const base = tempRoot('cauce-')
@@ -102,7 +103,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(run(['automation', 'doctor', target, 'gemini']).status, 0)
   assert.equal(run(['automation', 'install', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(workspace, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
-  // Un home propio: por qué, en el encabezado de test/wiring/registration.test.js.
+  // Un home aparte, como en test/wiring/registration.test.js, cuyo encabezado dice la razón.
   const home = path.join(base, 'home')
   fs.mkdirSync(home)
   assert.equal(run(['automation', 'doctor', target, 'antigravity'], undefined, { HOME: home }).status, 0)
@@ -202,7 +203,7 @@ test('init no crea una carpeta ops dentro de otra', () => {
   const base = tempRoot('cauce-anidada-')
   const repo = path.join(base, 'acme-ops')
   fs.mkdirSync(repo)
-  // Sólo `.git`: es lo que hay en la carpeta que alguien acaba de crear y versionar para la instancia.
+  // Sólo `.git`, que no cuenta como contenido: por qué, en `init` de `engine/cli/ops.js`.
   fs.mkdirSync(path.join(repo, '.git'))
   const created = run(['init', '--no-install'], repo)
   assert.equal(created.status, 0, created.stderr)
@@ -223,11 +224,8 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   fs.mkdirSync(repo)
   fs.mkdirSync(bin)
   const engine = path.resolve(__dirname, '..', '..')
-  fs.writeFileSync(
-    path.join(bin, 'npm'),
-    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${engine} node_modules/@ingeniomaps/cauce\n`,
-    { mode: 0o755 },
-  )
+  fakeCommand(bin, 'npm',
+    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${engine} node_modules/@ingeniomaps/cauce\n`)
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
   // Desde una terminal suelta: dentro de una sesión de Claude Code el cierre pide una nueva (caso 502).
@@ -257,7 +255,7 @@ test('init no disimula un npm install que falló', () => {
   const bin = path.join(base, 'bin')
   fs.mkdirSync(repo)
   fs.mkdirSync(bin)
-  fs.writeFileSync(path.join(bin, 'npm'), '#!/usr/bin/env bash\nexit 1\n', { mode: 0o755 })
+  fakeCommand(bin, 'npm', '#!/usr/bin/env bash\nexit 1\n')
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(process.execPath, [CLI, 'init', '--runner', 'claude', '--install'], {
@@ -364,10 +362,10 @@ test('el motor se encuentra cuando la instancia vive dentro del repo que lo inst
   // tienen que buscar en los mismos lugares está junto a `packageDir` (engine/core/ownership.js). Acá se
   // mide sobre el mismo target que el motor, en la misma prueba, porque separarlas es lo que dejó pasar
   // un año de verdes sobre medio layout (caso 171).
-  const cargos = run(['agents', 'list', target, '--json'])
-  assert.equal(cargos.status, 0, cargos.stderr)
-  assert.ok(JSON.parse(cargos.stdout).length >= MIN_ROLES,
-    `el catálogo llegó vacío con el paquete arriba: ${cargos.stdout.slice(0, 80)}`)
+  const roles = run(['agents', 'list', target, '--json'])
+  assert.equal(roles.status, 0, roles.stderr)
+  assert.ok(JSON.parse(roles.stdout).length >= MIN_ROLES,
+    `el catálogo llegó vacío con el paquete arriba: ${roles.stdout.slice(0, 80)}`)
   // Los recorridos salen del mismo `packageDir`, y se piden desde el target porque `flow list` resuelve
   // su raíz por `opsRoot()` y no por un posicional.
   assert.match(run(['flow', 'list'], target).stdout, /\w/, 'y los recorridos igual')
@@ -384,13 +382,13 @@ test('flow toma la raíz que le pasan, como el resto de los comandos', () => {
   linkEngine(target)
 
   // Desde un directorio que no es una instancia: sin la raíz no hay nada que listar, con ella sí.
-  const afuera = tempRoot('cauce-flow-afuera-')
-  assert.doesNotMatch(run(['flow', 'list'], afuera).stdout, /intake/, 'sin raíz mira donde está parado')
-  assert.match(run(['flow', 'list', target], afuera).stdout, /intake/, 'con raíz mira la que le pasaron')
+  const outside = tempRoot('cauce-flow-afuera-')
+  assert.doesNotMatch(run(['flow', 'list'], outside).stdout, /intake/, 'sin raíz mira donde está parado')
+  assert.match(run(['flow', 'list', target], outside).stdout, /intake/, 'con raíz mira la que le pasaron')
 
   // Y los que llevan recorrido la toman después de él, igual que `agents fork <cargo> [ops-root]`.
-  assert.equal(run(['flow', 'check', 'intake', target], afuera).status, 0)
-  assert.match(run(['flow', 'show', 'intake', target], afuera).stdout, /Intake/)
+  assert.equal(run(['flow', 'check', 'intake', target], outside).status, 0)
+  assert.match(run(['flow', 'show', 'intake', target], outside).stdout, /Intake/)
 })
 
 // Por qué el aviso va por `stderr` y sólo con la lista vacía está junto a `warnUnresolved`
@@ -403,17 +401,17 @@ test('un catálogo que no se pudo resolver lo dice, en vez de contestar vacío',
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar', '--no-install']).status, 0)
 
   // Sin el paquete en ninguna parte: la lista sale vacía y ahora se dice por qué.
-  const mudo = run(['agents', 'list', target])
-  assert.equal(mudo.status, 0, 'no rompe: una lista vacía sigue siendo una respuesta')
-  assert.match(mudo.stderr, /no se pudo resolver/, 'y dice que no es lo mismo que no tener cargos')
+  const mute = run(['agents', 'list', target])
+  assert.equal(mute.status, 0, 'no rompe: una lista vacía sigue siendo una respuesta')
+  assert.match(mute.stderr, /no se pudo resolver/, 'y dice que no es lo mismo que no tener cargos')
   assert.match(run(['flow', 'list', target]).stderr, /no se pudo resolver/, 'los recorridos igual')
   // El `--json` no cambia: lo consume un cron.
   assert.deepEqual(JSON.parse(run(['agents', 'list', target, '--json']).stdout), [])
 
   // Con el paquete resuelto no se avisa nada, que es la mitad que no se escribe sola.
   linkEngine(target)
-  const sano = run(['agents', 'list', target])
-  assert.equal(sano.status, 0)
-  assert.doesNotMatch(sano.stderr, /no se pudo resolver/, 'con cargos de verdad no hay aviso')
+  const healthy = run(['agents', 'list', target])
+  assert.equal(healthy.status, 0)
+  assert.doesNotMatch(healthy.stderr, /no se pudo resolver/, 'con cargos de verdad no hay aviso')
   assert.doesNotMatch(run(['flow', 'list', target]).stderr, /no se pudo resolver/)
 })

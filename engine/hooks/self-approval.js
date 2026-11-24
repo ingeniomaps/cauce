@@ -4,10 +4,9 @@
 // ofrece aprobarse se aprobaría solo. Pasaba —ningún guard miraba `planning/.ops-approval`— y en la prueba
 // en vivo del 092 el agente, frenado, intentó escribírsela (caso 098).
 //
-// Lo preguntan los dos guards de límites —el que mira un `Write` y el que mira el destino de un comando—,
-// que ya son los que deciden dónde puede caer una escritura. La persona edita el archivo a mano, que ningún
-// hook ve, o se lo pide al agente en el chat: nombrándolo, o confirmando el bloqueo que le mostró qué iba a
-// escribir. El registro del chat no lo escribe nunca una herramienta.
+// Lo preguntan los mismos dos guards que deciden dónde puede caer una escritura (ver `input.js`). La
+// persona edita el archivo a mano, que ningún hook ve, o se lo pide al agente en el chat: nombrándolo, o
+// confirmando el bloqueo que le mostró qué iba a escribir. El registro del chat no lo escribe nunca una herramienta.
 //
 // **Nombrar el archivo autoriza el archivo, no lo que se escribe adentro**, y hasta 0.83.0 eso era todo lo
 // que se comprobaba: la persona pedía agregar una ruta inocua, el agente escribía `push origin main`, y esa

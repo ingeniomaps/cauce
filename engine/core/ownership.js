@@ -230,9 +230,15 @@ function effectiveRules(root) {
   }
   const replaced = new Set(overrides(root).filter((one) => one.collection === 'planning/rules')
     .map((one) => one.system))
+  // Lo que un override adopta del sistema, generado aparte (caso 545). Se nombra aunque falte en disco: así el bloque
+  // de un runner que no lo tiene se lee viejo, y `check` avisa que hay que rehacerlo.
+  const AD = require('../planning/adopted')
+  const adopted = AD.declared(dir).filter((one) => one.system !== null)
+    .map((one) => `planning/rules/${AD.DIR}/${one.name}`)
   return [
     ...markdown('system').filter((name) => !replaced.has(name)).map((name) => `planning/rules/system/${name}`),
     ...markdown('').map((name) => `planning/rules/${name}`),
+    ...adopted,
   ]
 }
 
@@ -270,8 +276,8 @@ const TEMPLATE_OWN = {
   'organization/company.md': 'init',
   'organization/domains.md': 'init',
   'organization/product.md': 'init',
-  // 0.57.0. `AGENTS.md` lo nombra tres veces y se reemplaza en cada actualización, así que sin esto
-  // una instancia que actualiza queda leyendo una instrucción que apunta a un archivo que no tiene.
+  // 0.57.0. `AGENTS.md` lo nombra tres veces y se reemplaza en cada actualización, así que la instancia
+  // que actualiza también lo necesita.
   'organization/workspace.md': 'upgrade',
   'planning/BACKLOG.md': 'init',
   'planning/HUMAN_ACTIONS.md': 'init',

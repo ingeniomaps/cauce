@@ -7,7 +7,8 @@
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
 const VALUED_FLAGS = new Set([
   '--name', '--mode', '--fixture', '--payload', '--period', '--record', '--runner', '--integration',
-  '--task', '--promote', '--hito', '--reason', '--service', '--line', '--hash',
+  '--task', '--promote', '--hito', '--reason', '--service', '--line', '--hash', '--closed', '--fields', '--max-mb',
+  '--files', '--label', '--session',
 ])
 
 // Qué acepta cada comando, y a la vez qué comandos existen. Una bandera desconocida se rechaza en vez
@@ -17,11 +18,12 @@ const FLAGS = {
   init: ['--name', '--mode', '--force', '--runner', '--integration', '--install', '--no-install'],
   scan: ['--json'],
   onboard: ['--json'],
-  check: ['--json', '--skip-roots'],
+  check: ['--json', '--skip-roots', '--closed'],
   tree: ['--json', '--no-color'],
   context: ['--json', '--hito', '--line'],
   contract: ['--json'],
   bench: ['--force'],
+  copy: ['--max-mb'],
   recurring: ['--json', '--promote'],
   lessons: ['--json'],
   inbox: ['--json'],
@@ -29,12 +31,14 @@ const FLAGS = {
   'split-backlog': [],
   promote: [],
   'renumber-epic': [],
-  line: ['--json'],
+  line: ['--json', '--env'],
   lines: ['--json', '--apply'],
   claim: ['--json', '--line'],
   runners: ['--json'],
   worktree: ['--json', '--line'],
   release: ['--line'],
+  done: ['--fields', '--line', '--skip-roots'],
+  'review-read': ['--files', '--label', '--session'],
   governed: ['--json', '--service'],
   evidence: ['--json', '--task'],
   upgrade: ['--check', '--force'],

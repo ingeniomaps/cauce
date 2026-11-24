@@ -86,23 +86,23 @@ test('los módulos de Node se importan con el prefijo node:', () => {
 // esto, tres cuartas partes de lo que recibe una empresa es la contabilidad de cómo probamos nuestros
 // cargos, y crece una tanda entera por cada corrida de evaluación.
 test('el paquete no publica la evidencia de nuestras propias corridas', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const salida = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: raiz, encoding: 'utf8' })
-  assert.equal(salida.status, 0, salida.stderr)
+  const root = path.resolve(__dirname, '..', '..')
+  const output = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: root, encoding: 'utf8' })
+  assert.equal(output.status, 0, output.stderr)
   // npm 12 devuelve un objeto por nombre de paquete; los anteriores, una lista.
-  const paquete = Object.values(JSON.parse(salida.stdout))[0]
-  const archivos = paquete.files.map((entry) => entry.path)
+  const pkg = Object.values(JSON.parse(output.stdout))[0]
+  const files = pkg.files.map((entry) => entry.path)
 
-  for (const patron of [/evaluations\/results\//, /learning\/reports\//, /learning\/proposals\//]) {
-    assert.deepEqual(archivos.filter((ruta) => patron.test(ruta)), [], `${patron} viaja en el paquete`)
+  for (const pattern of [/evaluations\/results\//, /learning\/reports\//, /learning\/proposals\//]) {
+    assert.deepEqual(files.filter((route) => pattern.test(route)), [], `${pattern} viaja en el paquete`)
   }
   // Y la negación no puede llevarse puesto lo que el consumidor sí necesita del cargo.
-  for (const necesario of [/\/SKILL\.md$/, /evaluations\/cases\//, /\/references\//,
+  for (const required of [/\/SKILL\.md$/, /evaluations\/cases\//, /\/references\//,
     /learning\/HISTORY\.md$/, /learning\/sources\.yaml$/, /expected-behaviors\.yaml$/]) {
-    assert.ok(archivos.some((ruta) => necesario.test(ruta)), `${necesario} falta en el paquete`)
+    assert.ok(files.some((route) => required.test(route)), `${required} falta en el paquete`)
   }
-  for (const pieza of ['engine/cli/ops.js', 'template/planning/PROTOCOL.md']) {
-    assert.ok(archivos.includes(pieza), `${pieza} falta en el paquete`)
+  for (const piece of ['engine/cli/ops.js', 'template/planning/PROTOCOL.md']) {
+    assert.ok(files.includes(piece), `${piece} falta en el paquete`)
   }
 })
 
@@ -110,17 +110,17 @@ test('el paquete no publica la evidencia de nuestras propias corridas', () => {
 // frase lo diga: dos recorridos entraron al catálogo y la tabla siguió diciendo tres. Se deriva del
 // directorio, que es lo único que no envejece aparte.
 test('el README de recorridos nombra todos los que trae el catálogo', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const readme = fs.readFileSync(path.join(raiz, 'template', 'flows', 'README.md'), 'utf8')
-  const catalogo = fs.readdirSync(path.join(raiz, 'flows', 'system'), { withFileTypes: true })
+  const root = path.resolve(__dirname, '..', '..')
+  const readme = fs.readFileSync(path.join(root, 'template', 'flows', 'README.md'), 'utf8')
+  const catalog = fs.readdirSync(path.join(root, 'flows', 'system'), { withFileTypes: true })
     .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()
 
-  assert.ok(catalogo.length, 'el catálogo trae equipos')
-  for (const slug of catalogo) {
+  assert.ok(catalog.length, 'el catálogo trae equipos')
+  for (const slug of catalog) {
     assert.ok(readme.includes(`\`system/${slug}\``), `el README no nombra ${slug}`)
   }
-  const nombrados = [...new Set([...readme.matchAll(/`system\/([a-z-]+)`/g)].map((hit) => hit[1]))].sort()
-  assert.deepEqual(nombrados, catalogo, 'y no nombra ninguno que ya no exista')
+  const named = [...new Set([...readme.matchAll(/`system\/([a-z-]+)`/g)].map((hit) => hit[1]))].sort()
+  assert.deepEqual(named, catalog, 'y no nombra ninguno que ya no exista')
 })
 
 // Sin linter, un tope de largo sólo existe si algo lo cuenta, y tres líneas ya se habían pasado.
@@ -129,13 +129,13 @@ test('el README de recorridos nombra todos los que trae el catálogo', () => {
 // misma revisión: `awk` con locale UTF-8 cuenta bytes, y un comentario separador de 99 caracteres
 // hecho con `─` mide 236. Medido en bytes, tres archivos limpios parecían estar en falta.
 test('ninguna línea de código pasa los 120 caracteres que fija la convención', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const archivos = sourceFiles()
-  const largas = archivos.flatMap((file) => fs.readFileSync(file, 'utf8').split('\n')
-    .map((linea, i) => ({ file, n: i + 1, largo: [...linea].length }))
-    .filter((x) => x.largo > 120)
-    .map((x) => `${path.relative(raiz, x.file)}:${x.n} (${x.largo})`))
-  assert.deepEqual(largas, [], `pasan los 120 caracteres:\n  ${largas.join('\n  ')}`)
+  const root = path.resolve(__dirname, '..', '..')
+  const files = sourceFiles()
+  const long = files.flatMap((file) => fs.readFileSync(file, 'utf8').split('\n')
+    .map((sourceLine, i) => ({ file, n: i + 1, chars: [...sourceLine].length }))
+    .filter((x) => x.chars > 120)
+    .map((x) => `${path.relative(root, x.file)}:${x.n} (${x.chars})`))
+  assert.deepEqual(long, [], `pasan los 120 caracteres:\n  ${long.join('\n  ')}`)
 })
 
 
@@ -182,8 +182,8 @@ test('ningún archivo de código pasa las 500 líneas sin decir por qué', () =>
   const unexplained = Object.entries(over)
     .filter(([name]) => !JUSTIFIED[name] && !PENDING_SPLIT[name])
     .map(([name, count]) => `${name}: ${count} líneas y ninguna razón registrada`)
-  // Una entrada que ya no hace falta manda a cuidar algo que nadie escribió, y en `PENDING_SPLIT` es
-  // peor: deja la deuda anotada después de pagarla. Se retira igual que un piso de cobertura huérfano.
+  // Una entrada que sobra se retira igual que un par aceptado que quedó huérfano, y en `PENDING_SPLIT`
+  // además deja la deuda anotada después de pagarla.
   for (const name of [...Object.keys(JUSTIFIED), ...Object.keys(PENDING_SPLIT)]) {
     if (!over[name]) unexplained.push(`${name}: ya no pasa las ${MAX_LINES} líneas, sacalo del registro`)
   }
@@ -234,11 +234,11 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina',
   // runner efímero, así que la carpeta de nadie se escribe ahí—, y se exime el directorio y no cada
   // archivo porque crece solo, una vez por semana y por cargo. Los casos de `docs/issues/` no se eximen:
   // los escribe alguien que elige qué pegar.
-  const GENERADO = /^agents\/roles\/system\/[^/]+\/learning\/reports\//
+  const GENERATED = /^agents\/roles\/system\/[^/]+\/learning\/reports\//
   const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
   const found = []
   for (const file of tracked) {
-    if (DECLARED.has(file) || GENERADO.test(file)) continue
+    if (DECLARED.has(file) || GENERATED.test(file)) continue
     read(file).split('\n').forEach((line, i) => {
       if (names(line)) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 80)}`)
     })
@@ -249,9 +249,9 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina',
   assert.deepEqual([...DECLARED].filter((file) => !names(read(file))), [], 'declarado y ya sin ruta')
   // La exención se mide contra el árbol: un patrón que dejó de coincidir con dónde viven los informes
   // se ve igual que uno que funciona, porque las dos formas terminan sin eximir nada.
-  const eximidos = tracked.filter((file) => GENERADO.test(file))
-  assert.ok(eximidos.length > 0, 'el patrón ya no alcanza ningún informe: la exención quedó huérfana')
-  assert.deepEqual(eximidos.filter((one) => !/\/reports\/[\d-]+\.md$/.test(one)), [], 'sólo informes')
+  const exempted = tracked.filter((file) => GENERATED.test(file))
+  assert.ok(exempted.length > 0, 'el patrón ya no alcanza ningún informe: la exención quedó huérfana')
+  assert.deepEqual(exempted.filter((one) => !/\/reports\/[\d-]+\.md$/.test(one)), [], 'sólo informes')
 })
 
 // Ninguna prueba borra por su cuenta. El 2026-09-10 una lo hizo sobre la raíz de este repositorio —
@@ -266,23 +266,23 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina',
 // desmonta sus raíces al salir, y este mismo archivo escribe las líneas de ejemplo con las que se prueban
 // los detectores. El costo de la segunda exención es nulo hoy y conviene decirlo: acá no hay una sola
 // llamada real que escriba o borre — sólo se lee y se compara.
-const SIN_BARRER = [path.join('test', 'support', 'environment.js'), path.join('test', 'repo', 'repo.test.js')]
+const UNSWEPT = [path.join('test', 'support', 'environment.js'), path.join('test', 'repo', 'repo.test.js')]
 
 // El argumento de un borrado puede traer paréntesis —`path.join(...)`— así que el corte no puede ser el
 // primer `)`: con esa forma, la primera versión de este detector veía tres de siete.
-const BORRA_RECURSIVO = /\brmSync\(.*recursive\s*:\s*true/
+const DELETES_RECURSIVELY = /\brmSync\(.*recursive\s*:\s*true/
 
 test('ninguna prueba borra recursivamente por su cuenta', () => {
   const root = path.resolve(__dirname, '..', '..')
-  const propias = []
+  const own = []
   for (const file of sourceFiles().filter((one) => one.includes(`${path.sep}test${path.sep}`))) {
     const name = path.relative(root, file)
-    if (SIN_BARRER.includes(name)) continue
+    if (UNSWEPT.includes(name)) continue
     fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
-      if (BORRA_RECURSIVO.test(line)) propias.push(`${name}:${index + 1}`)
+      if (DELETES_RECURSIVELY.test(line)) own.push(`${name}:${index + 1}`)
     })
   }
-  assert.deepEqual(propias, [], `usan \`discard\` de test/support/environment.js:\n  ${propias.join('\n  ')}`)
+  assert.deepEqual(own, [], `usan \`discard\` de test/support/environment.js:\n  ${own.join('\n  ')}`)
 })
 
 // Ninguna prueba **crea** nada bajo el home de quien la corre. Por qué eso importa lo dice el banco de
@@ -291,20 +291,20 @@ test('ninguna prueba borra recursivamente por su cuenta', () => {
 // Nombrar el home no es escribir en él: cuatro pruebas se lo pasan a un guard para que decida sobre esa
 // ruta, y ninguna la crea. Por eso la condición mira las dos cosas juntas —la casa y una función que
 // escribe— en vez de prohibir la palabra, que habría marcado lo correcto y enseñado a apagar la puerta.
-const CREA = /\b(?:mkdtempSync|mkdirSync|cpSync|writeFileSync|copyFileSync)\s*\(/
+const CREATES = /\b(?:mkdtempSync|mkdirSync|cpSync|writeFileSync|copyFileSync)\s*\(/
 test('ninguna prueba crea su banco bajo el home de quien la corre', () => {
   const root = path.resolve(__dirname, '..', '..')
-  const caseros = []
+  const homemade = []
   for (const file of sourceFiles().filter((one) => one.includes(`${path.sep}test${path.sep}`))) {
     const name = path.relative(root, file)
-    if (SIN_BARRER.includes(name)) continue
+    if (UNSWEPT.includes(name)) continue
     fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
-      if (/\bhomedir\(\)/.test(line) && CREA.test(line) && !/^\s*\/\//.test(line)) {
-        caseros.push(`${name}:${index + 1}`)
+      if (/\bhomedir\(\)/.test(line) && CREATES.test(line) && !/^\s*\/\//.test(line)) {
+        homemade.push(`${name}:${index + 1}`)
       }
     })
   }
-  assert.deepEqual(caseros, [], `crean su banco en el home:\n  ${caseros.join('\n  ')}`)
+  assert.deepEqual(homemade, [], `crean su banco en el home:\n  ${homemade.join('\n  ')}`)
 })
 
 // Los dos detectores de arriba, contra líneas fabricadas. Un detector que deja de detectar convierte a su
@@ -312,39 +312,36 @@ test('ninguna prueba crea su banco bajo el home de quien la corre', () => {
 // en el primer paréntesis y veía tres de las siete que había. Las dos direcciones van juntas porque un
 // detector que marca todo pasaría la primera mitad y volvería inútil a la puerta.
 test('los detectores de borrado y de home ven lo que tienen que ver', () => {
-  const borran = [
+  const deleting = [
     "fs.rmSync(dir, { recursive: true, force: true })",
     "fs.rmSync(path.join(target, 'flows'), { recursive: true, force: true })",
     "  await fs.promises.rmSync(x, { force: true, recursive: true })",
   ]
-  for (const line of borran) assert.ok(BORRA_RECURSIVO.test(line), `no vio: ${line}`)
+  for (const line of deleting) assert.ok(DELETES_RECURSIVELY.test(line), `no vio: ${line}`)
   for (const line of ["fs.rmSync(archivo)", "discard(path.join(dir, 'claims'))", "// habla de rmSync"]) {
-    assert.equal(BORRA_RECURSIVO.test(line), false, `marcó de más: ${line}`)
+    assert.equal(DELETES_RECURSIVELY.test(line), false, `marcó de más: ${line}`)
   }
 
-  assert.ok(CREA.test("const base = fs.mkdtempSync(path.join(os.homedir(), '.cache'))"))
-  assert.ok(CREA.test("fs.writeFileSync(path.join(os.homedir(), 'x'), 'y')"))
-  assert.equal(CREA.test("assert.ok(salida.includes(path.join(os.homedir(), '.claude')))"), false,
+  assert.ok(CREATES.test("const base = fs.mkdtempSync(path.join(os.homedir(), '.cache'))"))
+  assert.ok(CREATES.test("fs.writeFileSync(path.join(os.homedir(), 'x'), 'y')"))
+  assert.equal(CREATES.test("assert.ok(salida.includes(path.join(os.homedir(), '.claude')))"), false,
     'nombrar la casa para que un guard decida sobre ella no es crear nada ahí')
 })
 
-// El nombre de un banco decide si una prueba pasa, porque la suite aísla lo que cada una mide filtrando
-// la salida de `check` por substring y esa salida empieza con la ruta absoluta del banco. Con el sufijo
-// aleatorio que agregaba mkdtemp esa decisión era del azar: `/adr\//` casó `…-w1cadr/` y un error de
-// `integrations` entró a una prueba de ADR (caso 085). Lo que se comprueba es la propiedad que lo
-// impide —el nombre es el pedido más un número y nada más—, no la ausencia de aquel fallo, que no se
-// puede volver a provocar a voluntad.
+// El nombre de un banco decide si una prueba pasa; por qué, en `test/support/environment.js` (caso 085).
+// Lo que se comprueba es la propiedad que lo impide —el nombre es el pedido más un número y nada más—,
+// no la ausencia de aquel fallo, que no se puede volver a provocar a voluntad.
 test('el nombre de un banco no trae nada que la prueba no haya pedido', () => {
   const { tempRoot, outsideTempRoot } = require('../support/environment')
-  for (const [donde, hacer] of [['tempRoot', tempRoot], ['outsideTempRoot', outsideTempRoot]]) {
-    const uno = hacer('cauce-nombre-de-banco-')
-    const otro = hacer('cauce-nombre-de-banco-')
-    for (const dir of [uno, otro]) {
+  for (const [where, make] of [['tempRoot', tempRoot], ['outsideTempRoot', outsideTempRoot]]) {
+    const one = make('cauce-nombre-de-banco-')
+    const other = make('cauce-nombre-de-banco-')
+    for (const dir of [one, other]) {
       assert.match(path.basename(dir), /^cauce-nombre-de-banco-\d+$/,
-        `${donde}: el nombre trae algo que nadie pidió — ${path.basename(dir)}`)
+        `${where}: el nombre trae algo que nadie pidió — ${path.basename(dir)}`)
     }
-    assert.notEqual(uno, otro, `${donde}: dos bancos con el mismo prefijo tienen que ser distintos`)
-    assert.ok(fs.existsSync(uno) && fs.existsSync(otro), `${donde}: el banco existe en disco`)
+    assert.notEqual(one, other, `${where}: dos bancos con el mismo prefijo tienen que ser distintos`)
+    assert.ok(fs.existsSync(one) && fs.existsSync(other), `${where}: el banco existe en disco`)
   }
 
   // Y la forma concreta que costó una corrida: el filtro que una prueba de ADR usa para quedarse con lo
@@ -353,11 +350,10 @@ test('el nombre de un banco no trae nada que la prueba no haya pedido', () => {
     'un error ajeno no puede entrar por el nombre del banco')
 })
 
-// `io.js` define la fecha de hoy y su comentario explica por qué vive en un solo lugar: «dejar una copia
-// a cada lado habría roto en silencio lo único que esta función promete». Igual había siete lugares
-// calculándola —dos copias de `TODAY` con el mismo nombre y cuatro expresiones sueltas—, y el silencio es
-// literal: el día que alguien cambie esa definición —la zona horaria es el candidato— los demás siguen
-// devolviendo lo de antes y dos comandos del mismo minuto empiezan a fechar distinto sin que nada falle.
+// `io.js` define la fecha de hoy y su comentario explica por qué vive en un solo lugar. Igual había siete
+// lugares calculándola —dos copias de `TODAY` con el mismo nombre y cuatro expresiones sueltas—, y el
+// silencio es literal: el día que alguien cambie esa definición —la zona horaria es el candidato— los
+// demás siguen devolviendo lo de antes y dos comandos del mismo minuto empiezan a fechar distinto sin que nada falle.
 //
 // Se mira la expresión y no el nombre: las copias no se detectan por llamarse igual —dos ni siquiera se
 // llamaban igual— sino por recalcular lo mismo. Y se mira el motor y no las pruebas: la promesa es que

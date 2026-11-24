@@ -7,8 +7,8 @@
 // los reinstala con su ruta y los ve modificados para siempre. Son generados —`automation install` los
 // rehace—, así que no tienen por qué viajar.
 //
-// `automation install` los suma al bloque de Cauce del `.gitignore` del repositorio, si es el de la instancia
-// o el de la carpeta donde se instaló (caso 513). Para lo demás —un repositorio de más arriba, lo que ya está
+// `automation install` los suma al bloque de Cauce del `.gitignore` del repositorio cuando es de este proyecto
+// (caso 513, `ignoreLoose`). Para lo demás —un repositorio de más arriba, lo que ya está
 // en git— queda este aviso, que pregunta por el **efecto** y no por el texto del `.gitignore`.
 //
 // Cuáles son no se enumera: sale de las plantillas de cada runner instalado, las que traen el marcador de

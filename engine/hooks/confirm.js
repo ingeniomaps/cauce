@@ -14,8 +14,8 @@
 
 const ASK = Symbol('cauce.ask')
 
-// Claude Code es el que manda `prompt_id` en cada llamada; Codex manda `turn_id` y Gemini ninguno
-// (`chat.js`, `idOf`). Sólo un `PreToolUse` puede pedir el diálogo.
+// Exigir `prompt_id` deja sólo a Claude Code: qué id manda cada runner está en `idOf` (chat.js). Sólo un
+// `PreToolUse` puede pedir el diálogo.
 //
 // Y sólo en un modo de permisos donde está medido que el diálogo lo contesta una persona. La lista es de
 // los que sí, y no de los que no, para que un modo nuevo nazca bloqueando: ahí el guard vuelve a la
@@ -46,10 +46,12 @@ const ANSWERED = new Set(['default', 'acceptEdits', 'auto'])
 // subagente lo trae con `agent_type: "general-purpose"`, y la del agente de un recorrido con
 // `agent_type: "workflow-subagent"`.
 //
-// Y nunca en una sesión delegada (caso 415): ahí no hay persona que lo conteste, en el modo que sea.
+// Y nunca en una sesión delegada (caso 415): ahí no hay persona que lo conteste, en el modo que sea. Ni dentro de un
+// guard del proyecto, que recibe la misma llamada y la marca que pone `askPerson` no sale de su proceso (caso 556).
+// `CAUCE_HOOK_EVENT` es lo que `judge` le pone en el entorno, y nada más en el motor lo pone.
 function native(input) {
   return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id && !input.agent_id
-    && ANSWERED.has(input.permission_mode) && process.env.CAUCE_DELEGATED !== '1')
+    && ANSWERED.has(input.permission_mode) && process.env.CAUCE_DELEGATED !== '1' && !process.env.CAUCE_HOOK_EVENT)
 }
 
 // Marca la llamada para que `run.js` responda con el diálogo en vez de bloquear. Va en la entrada y no en
