@@ -31,4 +31,22 @@ if [ -z "$runner" ]; then
   exit 2
 fi
 
-exec node "$runner" "$@"
+# Un motor que no carga —un `require` roto tira antes de que `run.js` decida— salía con 1, y Claude Code sólo frena con
+# 2: los guards dejaban pasar todo (caso 557). Node arranca con un atajador que lo convierte en 2 y después corre
+# `run.js` como su programa. Lo que no contesta no autoriza, salvo lo que no puede frenar por un defecto propio, que es
+# `CANNOT_STOP` de `run.js` y una prueba compara con esta lista. Va con `exec` para que la señal con que el runner
+# corta el hook le llegue a node y no a un bash intermedio, que la dejaría corriendo sin padre. `runMain` es lo que
+# hace a `run.js` el programa principal, y pide la ruta absoluta que arma este shim; si dejara de hacerlo,
+# `test/tools/hooks-smoke.sh` deja de ver el bloqueo.
+exec node -e '
+const quiet = new Set(["prompt", "prompt-notice", "stop", "chat", "rules-notice", "planning-drift"])
+const names = process.argv.slice(2)
+process.on("uncaughtException", (error) => {
+  const said = String(error && error.message).split("\n")[0]
+  const stops = !(names.length && names.every((name) => quiet.has(name)))
+  process.stderr.write(`${stops ? "BLOQUEADO" : "Aviso"} [${names.join(" ")}]: el motor de hooks falló sin decidir `
+    + `(${said})${stops ? ", y lo que no contesta no autoriza" : ""}. Revisá que el paquete de Cauce esté instalado `
+    + "entero (npm install en la raíz ops).\n")
+  process.exit(stops ? 2 : 1)
+})
+require("node:module").runMain()' "$runner" "$@"

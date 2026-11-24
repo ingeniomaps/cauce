@@ -396,5 +396,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  askOutput, execute, executeAll, exitCodeOf, guards, hookGroups, hookMetadata,
+  askOutput, CANNOT_STOP, execute, executeAll, exitCodeOf, guards, hookGroups, hookMetadata,
 }

@@ -172,3 +172,58 @@ test('una entrada de hook ilegible bloquea; la ausencia de entrada no', () => {
     'y sin entrada el guard sigue leyendo el entorno',
   )
 })
+
+// Caso 557: el motor que no carga frena, salvo en lo que no puede frenar. Por qué, en `run-hook.sh`.
+test('run-hook.sh frena cuando el motor no carga, y deja pasar lo que no puede frenar', () => {
+  const root = tempRoot('cauce-motor-roto-')
+  const hooks = path.join(root, 'automatization', 'hooks')
+  fs.mkdirSync(hooks, { recursive: true })
+  fs.mkdirSync(path.join(root, 'engine', 'hooks'), { recursive: true })
+  fs.copyFileSync(path.join(__dirname, '..', '..', 'automatization', 'hooks', 'run-hook.sh'),
+    path.join(hooks, 'run-hook.sh'))
+  fs.writeFileSync(path.join(root, 'engine', 'hooks', 'run.js'), "require('./moved-module')\n")
+  const shim = (name) => spawnSync('bash', [path.join(hooks, 'run-hook.sh'), name], { input: '{}', encoding: 'utf8' })
+  for (const name of ['pre-shell', 'pre-files', 'secrets-shell']) {
+    const ran = shim(name)
+    assert.equal(ran.status, 2, name)
+    assert.match(ran.stderr, /BLOQUEADO \[.+\]: el motor de hooks falló sin decidir \(Cannot find module/)
+  }
+  for (const name of ['stop', 'planning-drift', 'prompt', 'chat']) assert.equal(shim(name).status, 1, name)
+})
+
+// La lista del shim es la de `CANNOT_STOP`: una que diverja frena el cierre o el mensaje de la persona.
+test('lo que el shim deja pasar con el motor roto es exactamente lo que run.js no frena', () => {
+  const { CANNOT_STOP } = require('../../engine/hooks/run')
+  const text = fs.readFileSync(path.join(__dirname, '..', '..', 'automatization', 'hooks', 'run-hook.sh'), 'utf8')
+  const listed = (text.match(/const quiet = new Set\(\[([^\]]+)\]\)/) || [])[1]
+  assert.ok(listed, 'el shim declara su lista en const quiet = new Set([…])')
+  assert.deepEqual(listed.split(',').map((one) => one.trim().replace(/"/g, '')).sort(), [...CANNOT_STOP].sort())
+})
+
+// Sin `exec` el shim queda como padre de node: la entrada tiene que llegar, y el corte del runner tiene que alcanzarlo.
+test('run-hook.sh le pasa la llamada a node y le reenvía el corte', async () => {
+  const root = tempRoot('cauce-shim-senal-')
+  const hooks = path.join(root, 'automatization', 'hooks')
+  fs.mkdirSync(hooks, { recursive: true })
+  fs.mkdirSync(path.join(root, 'engine', 'hooks'), { recursive: true })
+  fs.copyFileSync(path.join(__dirname, '..', '..', 'automatization', 'hooks', 'run-hook.sh'),
+    path.join(hooks, 'run-hook.sh'))
+  const mark = path.join(root, 'vivo')
+  fs.writeFileSync(path.join(root, 'engine', 'hooks', 'run.js'), `let input = ''
+process.stdin.on('data', (chunk) => { input += chunk }).on('end', () => {
+  process.stdout.write('leí ' + input)
+  setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(mark)}, ''), 1500)
+  setTimeout(() => process.exit(0), 1600)
+})\n`)
+  const shim = path.join(hooks, 'run-hook.sh')
+  assert.equal(spawnSync('bash', [shim, 'pre-shell'], { input: '{"x":1}', encoding: 'utf8' }).stdout, 'leí {"x":1}')
+  fs.rmSync(mark, { force: true })
+  const { spawn } = require('node:child_process')
+  const child = spawn('bash', [shim, 'pre-shell'], { stdio: ['pipe', 'ignore', 'ignore'] })
+  child.stdin.end('{}')
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  child.kill('SIGTERM')
+  await new Promise((resolve) => child.on('exit', resolve))
+  await new Promise((resolve) => setTimeout(resolve, 1700))
+  assert.equal(fs.existsSync(mark), false, 'node no siguió después del corte')
+})
