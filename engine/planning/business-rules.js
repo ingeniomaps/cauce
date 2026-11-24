@@ -61,7 +61,7 @@ function validate(root) {
 // `upgrade` sería quitar sin deprecar. Lo que sí es error es citar un reemplazo que no existe, porque eso
 // no lo escribió nadie antes de esta regla: es una cita rota que se acaba de escribir.
 const REPLACED_BY = /\*\*Reemplazada por:\*\*\s*(BR-[A-Z0-9]+-\d{3})/
-const DROPPED = /\*\*Razón de baja:\*\*\s*\S/
+const DROPPED = /\*\*Razón de baja:\*\*[ \t]*\S/
 
 function lineage(root) {
   const errors = []
@@ -108,9 +108,9 @@ function lineage(root) {
 // Que falte avisa, por lo mismo que en `lineage`: las reglas de antes no lo traían. Lo escrito mal es
 // error, y ratificar exige autoridad propia: quien repite lo que leyó en un ticket no confirma nada.
 const VERIFICATIONS = ['propuesta', 'ratificada', 'discrepancia']
-const VERIFIED = /^> \*\*Verificación:\*\*\s*(\S[^\n|]*?)\s*$/m
+const VERIFIED = /^> \*\*Verificación:\*\*[ \t]*(\S[^\n|]*?)\s*$/m
 const CONFIRMED = /\*\*Confirmada por:\*\*[^\n]*autoridad propia/i
-const QUESTION = /\*\*Pregunta abierta:\*\*\s*\S/
+const QUESTION = /\*\*Pregunta abierta:\*\*[ \t]*\S/
 
 function verification(root) {
   const errors = []

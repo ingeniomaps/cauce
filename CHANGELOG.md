@@ -14,6 +14,44 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.125.0] - 2026-11-24
+
+### Agregado
+
+- **Un rojo declarado en `gate-known-red` vence** (caso 560). Cada fila puede terminar en `· vence AAAA-MM-DD`; vencida
+  no cuenta, y `verify` vuelve a frenar nombrando el vencimiento: renovarla es volver a decidirla. Una fila sin fecha
+  sigue contando en esta versión y `check` lo avisa: **deja de contar en la minor siguiente**, así que conviene
+  ponerles fecha ahora.
+
+- **`check` avisa la tarea cerrada fuera de `full` cuyos commits tocan una superficie crítica** (caso 561). Cada raíz
+  puede declarar `critical` en `ops.config.json`, como globs relativos a ella —migraciones, permisos, dinero—. El
+  carril se elige antes de construir, y esto lo contrasta con lo que el diff tocó de verdad, en lo cerrado los últimos
+  30 días y sin lo adoptado. Avisa y no frena, y también avisa el glob que no coincide con ningún archivo versionado.
+  Sin la clave no cambia nada.
+
+- **Dos frases en R15 y R16, y un párrafo en R10** (casos 562 y 563). Lo que se manda a otra parte nombra la unidad
+  que lo lleva, y esa unidad existe; un informe de un subagente se escribe en su destino apenas vuelve; y si un guard
+  cuida un paso, se intenta antes de preguntar, porque un sí dado antes no aprueba nada. Vale sólo donde se sabe que un
+  guard frena esa forma del comando; donde no, se sigue preguntando antes. El bloque de reglas pasa a pesar 48,0 KB por agente.
+
+### Corregido
+
+- **Los guards ya no dejan pasar todo cuando el motor no carga** (caso 557). Un `require` roto —un paquete a medio
+  actualizar— hacía salir a `run-hook.sh` con 1, y Claude Code sólo frena con 2. Ahora frena y dice por qué, salvo en
+  `stop` y `prompt`, que no frenan por un defecto propio.
+
+- **Un campo vacío ya no toma la línea de abajo** (caso 558). En las regex del motor que leen un campo por línea, un
+  `- Responsable:` vacío leía la línea siguiente como su valor, y `ops learn --applied` sellaba como firmada una
+  propuesta sin responsable; un `status:` vacío se tragaba el cierre del frontmatter, y una «Pregunta abierta» o una
+  «Razón de baja» vacías contaban como escritas.
+
+- **En `stop`, un guard del proyecto que falla o se pasa de tiempo avisa y deja cerrar** (caso 559). Frenaba el
+  cierre aunque el planning estuviera sano. El que frena con 2 sigue frenando.
+
+- **El bloqueo de `verify` dice cuándo un gate murió por una señal** (caso 564). Salía como «exit null», y un 137 como
+  un código más; ahora lo nombra, y para `SIGKILL` y 137 sugiere falta de memoria. Y una suite que pasa e imprime más
+  de 1 MB ya no falla en Verify: Node la cortaba por el búfer.
+
 ## [0.124.0] - 2026-11-21
 
 ### Agregado

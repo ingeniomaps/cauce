@@ -77,7 +77,7 @@ function cadence(root, agent) {
 // Basta con las líneas `tier:`: el archivo es del catálogo, no de un tercero, y agregar un parser de
 // YAML por un campo rompería la regla de cero dependencias.
 function sourceTiers(text) {
-  return [...sourcesBody(text).matchAll(/tier:\s*([A-Za-z-]+)/g)].map((hit) => hit[1])
+  return [...sourcesBody(text).matchAll(/tier:[ \t]*([A-Za-z-]+)/g)].map((hit) => hit[1])
 }
 
 // El cuerpo de `sources:` termina donde empieza `pending:`. Sin este corte, una pendiente entraba como

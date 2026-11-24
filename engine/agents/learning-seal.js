@@ -49,13 +49,13 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
       ? undefined : noteChange(root, { agent, kind, note, file, change: changeOf(text) })
     return noted ? { file, already: true, noted } : { file, already: true }
   }
-  if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
+  if (!/^status:[ \t]*\S+[ \t]*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
   // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
   // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
   // «Estado: pendiente» y «Cambio propuesto: Por definir»: el frontmatter decía `applied` y el cuerpo
   // decía lo contrario, dentro del mismo documento. Se comprueba para los dos porque la contradicción
   // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
-  const responsible = (approval(text).match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
+  const responsible = (approval(text).match(/^-\s*Responsable:[ \t]*(.+)$/m) || [])[1] || ''
   const change = changeOf(text)
   if (undecided(responsible.trim()) || undecided(change)) {
     throw new Error(
@@ -67,7 +67,7 @@ function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   // por `agent-promote`— quedaba sellada en silencio (revisión del caso 486).
   const print = printOf(text)
   if (!print.ok) throw new Error(mismatch(path.basename(file), print))
-  const stamped = inApproval(text.replace(/^status:\s*\S+\s*$/m, 'status: applied'), (part) => part
+  const stamped = inApproval(text.replace(/^status:[ \t]*\S+[ \t]*$/m, 'status: applied'), (part) => part
     // `aprobada` además de `pendiente`: cuando `seal` corre, la firma ya pasó y `sign-proposal.yml`
     // dejó «aprobada», así que buscar sólo «pendiente» no reemplazaba nunca por el camino real. Las 24
     // propuestas aplicadas del repositorio quedaron con `status: applied` y «- Estado: aprobada»: la
@@ -106,7 +106,7 @@ function noteChange(root, { agent, kind, note, file, change }) {
 // La primera idea de «Cambio propuesto», en una línea: el documento entero está en el cargo, y el
 // CHANGELOG lo lee quien actualiza antes de decidir, no quien aplica. La propuesta la escribe en su línea
 // `**En una línea:**`; sin ella, el primer párrafo, que suele decir dónde y por qué y no qué cambia (caso 497).
-const ONE_LINE = /^\s*(?:[-*]\s+)?\*\*En una línea:\*\*[ \t]*(.+)$/m
+const ONE_LINE = /^[ \t]*(?:[-*]\s+)?\*\*En una línea:\*\*[ \t]*(.+)$/m
 function summarize(change, limit = 240) {
   const first = ((change.match(ONE_LINE) || [])[1] || change.split(/\n\s*\n/)[0])
     .replace(/^\s*(?:\d+\.|[-*])\s+/, '').replace(/\s+/g, ' ').trim()
@@ -174,7 +174,7 @@ function archive(root, agent, period = '', kind = 'agent', reason = '') {
       + 'El motivo es lo que evita que el próximo informe lo vuelva a recomendar.',
     )
   }
-  const stamped = inApproval(text.replace(/^status:\s*\S+\s*$/m, 'status: archived'), (part) => {
+  const stamped = inApproval(text.replace(/^status:[ \t]*\S+[ \t]*$/m, 'status: archived'), (part) => {
     const done = part
       // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
       // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción

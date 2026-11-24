@@ -758,5 +758,10 @@
     "lines": 100,
     "branches": 96,
     "functions": 100
+  },
+  "engine/planning/critical-surface.js": {
+    "lines": 100,
+    "branches": 75,
+    "functions": 100
   }
 }

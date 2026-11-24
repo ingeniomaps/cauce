@@ -254,6 +254,9 @@ test('una regla derogada dice qué la reemplaza, y la cita tiene que llevar a al
     result = B.lineage(root)
     assert.deepEqual(result, { errors: [], warnings: [] }, line)
   }
+  // Vacía no es una razón, aunque la línea de abajo tenga texto (caso 558).
+  write('vieja.md', rule('BR-DEMO-001', 'derogada', '> **Razón de baja:**\n\n## Otra'))
+  assert.match(B.lineage(root).warnings.join('\n'), /vieja\.md: está derogada y no dice qué rige en su lugar/)
 
   write('vieja.md', rule('BR-DEMO-001', 'derogada', '> **Reemplazada por:** BR-DEMO-777'))
   assert.match(B.lineage(root).errors.join('\n'), /la reemplaza BR-DEMO-777, que no existe/)
@@ -313,6 +316,9 @@ test('una regla dice si alguien con autoridad la confirmó, aparte de si rige', 
   assert.match(check('> **Verificación:** discrepancia').errors.join('\n'), /no dice qué se discute/)
   assert.deepEqual(check('> **Verificación:** discrepancia\n> **Pregunta abierta:** ¿el cupón cubre el envío? '
     + '(decide: producto)'), { errors: [], warnings: [] })
+  // Vacía no es una pregunta: el texto de la línea de abajo no cuenta como su valor (caso 558).
+  assert.match(check('> **Verificación:** discrepancia\n> **Pregunta abierta:**\n\n## Otra').errors.join('\n'),
+    /no dice qué se discute/)
 })
 
 test('check avisa la regla sin verificación y rechaza una ratificada sin autoridad', () => {

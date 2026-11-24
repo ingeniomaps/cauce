@@ -288,3 +288,25 @@ test('verify conserva la puerta del repo para lo que queda fuera de toda raíz, 
   const inside = { cwd: path.join(dir, 'apps', 'api'), tool_input: { command: 'git commit -m x' } }
   assert.throws(() => execute('verify', inside), (error) => /Verify falló en web: test/.test(error.message))
 })
+
+// Caso 564: un gate que muere por una señal salía como «exit null», y un 137 de npm como un exit más. Las dos son,
+// casi siempre, falta de memoria, y el arreglo apuntaba al tope de tiempo.
+test('un gate que muere por una señal lo dice, y un 137 sugiere memoria', () => {
+  const killed = repo('cauce-verify-senal-', {}, { verify: 'kill -KILL $$' })
+  assert.match(messageOf('verify', commit(killed)),
+    /verify \(SIGKILL, [\d.]+ s\): lo mató SIGKILL antes del tope; casi siempre es falta de memoria/)
+  const npm = repo('cauce-verify-137-', {}, { verify: 'exit 137' })
+  assert.match(messageOf('verify', commit(npm)), /verify \(exit 137, [\d.]+ s\): 137 es SIGKILL antes del tope/)
+  // Otra señal se nombra sin culpar a la memoria: un SIGTERM es alguien que la paró.
+  // La señal queda también en la evidencia, no sólo en el mensaje.
+  assert.match(fs.readFileSync(path.join(killed, 'planning', '.verify-log'), 'utf8'), /"signal":"SIGKILL"/)
+  const stopped = messageOf('verify', commit(repo('cauce-verify-term-', {}, { verify: 'kill -TERM $$' })))
+  assert.match(stopped, /verify \(SIGTERM, [\d.]+ s\): lo mató SIGTERM/)
+  assert.doesNotMatch(stopped, /memoria/)
+})
+
+// Una suite que pasa y habla de más no es un gate en rojo: con el búfer de 1 MB, Node la mataba.
+test('un gate que pasa con más de un megabyte de salida no frena', () => {
+  const loud = repo('cauce-verify-ruidoso-', {}, { verify: 'head -c 2000000 /dev/zero | tr "\\0" a; exit 0' })
+  assert.doesNotThrow(() => execute('verify', commit(loud)))
+})

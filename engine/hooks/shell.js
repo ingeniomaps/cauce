@@ -400,15 +400,22 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
   delete env.NODE_TEST_CONTEXT
   const started = Date.now()
   const bounded = timeoutMs ? { timeout: timeoutMs, detached: true } : {}
-  const result = spawnSync(program, args, { cwd, encoding: 'utf8', stdio: 'pipe', env, ...bounded })
+  // Con el búfer de siempre, 1 MB, Node mataba con SIGTERM a una suite que pasaba y hablaba de más.
+  const result = spawnSync(program, args, { cwd, encoding: 'utf8', stdio: 'pipe', env, maxBuffer: 256 * 1024 * 1024,
+    ...bounded })
   const timedOut = Boolean(result.error && result.error.code === 'ETIMEDOUT')
   // Al cortar, `spawnSync` mata al proceso que lanzó y no a sus hijos: `npm run test` muere y el jest que
   // arrancó sigue comiendo memoria, huérfano. Lanzado como líder de su grupo (`detached`), se mata el grupo
   // entero —medido: sin esto el `sleep` de un script quedaba vivo después del corte (caso 240)—.
-  if (timedOut) { try { process.kill(-result.pid, 'SIGKILL') } catch { /* ya no está, o no hay grupos */ } }
+  const overflowed = Boolean(result.error && result.error.code === 'ENOBUFS')
+  if ((timedOut || overflowed) && timeoutMs) {
+    try { process.kill(-result.pid, 'SIGKILL') } catch { /* ya no está, o no hay grupos */ }
+  }
   return {
     ok: result.status === 0,
     status: result.status,
+    signal: result.signal,
+    overflowed,
     ms: Date.now() - started,
     output: `${result.stdout || ''}${result.stderr || ''}`.trim(),
     timedOut,

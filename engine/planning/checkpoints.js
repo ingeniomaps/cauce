@@ -47,7 +47,7 @@ function parse(relative, raw) {
   // anterior no trae frontmatter—. En el de un hito el estado es el del frontmatter: el cuerpo explica cómo
   // se destraba, y esa frase no puede ser la que lo destrabe.
   const status = relative === LEGACY
-    ? ((text.match(/^status:\s*(.*)$/mi) || [])[1] || '').trim()
+    ? ((text.match(/^status:[ \t]*(.*)$/mi) || [])[1] || '').trim()
     : field('status') || ''
   return { file: relative, status, hito: field('hito') || '', resolved: /^resuelta\b/i.test(status),
     written: line, line: line === undefined || line === '' || NAME.test(line) ? line : undefined }

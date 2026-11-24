@@ -34,7 +34,7 @@ const RETIRED = /^#~\s*(\S+)/
 
 // La huella: qué conjunto generó `adopt`. Doce hexadecimales alcanzan para lo que esto cuida —un
 // agregado a mano, no un ataque— y entran en la misma línea que la cuenta, que es lo que se lee primero.
-const SEAL = /^#\s*huella:\s*(\d+)\s+entradas?\s*·\s*sha256:([0-9a-f]{12})\s*$/m
+const SEAL = /^#\s*huella:[ \t]*(\d+)\s+entradas?\s*·\s*sha256:([0-9a-f]{12})\s*$/m
 
 // Sobre el conjunto ordenado y sin repetidos, no sobre el texto: así reordenar los renglones con
 // cualquier herramienta no dispara un aviso, y retirar uno sigue siendo detectable como retiro.

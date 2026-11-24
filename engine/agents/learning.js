@@ -25,7 +25,7 @@ const { SOURCE_TIERS, cadence, evaluate, evaluateTeam } = require('./learning-so
 // sea el registro sin sellar, y el mismo hallazgo entrando a la propuesta siguiente, que es exactamente
 // lo que sellar existe para evitar (caso 168).
 const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/
-const STATUS_LINE = /^status:\s*\S+\s*$/m
+const STATUS_LINE = /^status:[ \t]*\S+[ \t]*$/m
 
 function markConsolidated(file) {
   const text = fs.readFileSync(file, 'utf8')
@@ -196,7 +196,7 @@ const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n#
 
 // La nota que el juez deja sobre el contrato: una línea propia debajo del veredicto, no enterrada en el
 // contraste. Va a un documento que se firma, así que tiene que poder extraerse sin interpretar prosa.
-const CONTRACT_NOTE = /^-\s*Para el contrato:\s*(.+)$/m
+const CONTRACT_NOTE = /^-\s*Para el contrato:[ \t]*(.+)$/m
 
 function verdicts(text) {
   return [...text.matchAll(VERDICT)]

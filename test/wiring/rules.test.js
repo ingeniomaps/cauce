@@ -222,7 +222,9 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // al llevar también el relato de `process.md` (caso 443), 45,7 al sumarle a R9 el antes y el después de cambiar
   // quién hace algo, 45,9 al sumarle que una confirmación que estorba está cuidando algo, 46,0 al decir en R10
   // que la API de GitHub y el destino de un PR también se comprueban (casos 539 y 540), y 46,3 al decir en R12
-  // dónde se frena lo que se escribe por MCP (caso 541)— y la ventana se deja
+  // dónde se frena lo que se escribe por MCP (caso 541), y 48,0 al decir en R15 que lo devuelto nombra su unidad, en
+  // R16 que un informe se escribe al volver (caso 562) y en R10 que lo cuidado se intenta antes de preguntar (caso
+  // 563)— y la ventana se deja
   // angosta a propósito: que esta prueba falle en cada edición de una regla **es** la función, y es lo único que
   // obliga a medir lo que cada agente paga antes de moverla.
   //
@@ -230,7 +232,7 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
   // aritmética que había que recalcular; ahora es una invariante y por eso se asercia.
   assert.match(output.stdout,
-    /claude: el bloque de reglas carga 5 archivo\(s\), 46\.\d KB en cada agente \(0\.0 KB propias\)/,
+    /claude: el bloque de reglas carga 5 archivo\(s\), 48\.\d KB en cada agente \(0\.0 KB propias\)/,
     'declara cuántas, cuánto pesan y cuánto de eso puso el proyecto')
 })
 

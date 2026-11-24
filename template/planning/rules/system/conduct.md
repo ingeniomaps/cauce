@@ -199,6 +199,11 @@ y ninguno es el silencio: se hace, y entonces se dice qué encontró —también
 un resultado—; o no le toca a esta unidad, y entonces sale como unidad propia antes de cerrar. Igual que en
 R6, lo que decide entre los dos es quién puede resolverlo, no cuánto cuesta.
 
+Y «sale como unidad propia» quiere decir que esa unidad existe. La marca que manda algo a otra parte —«devuelto»,
+«→ la tanda siguiente», «queda para otra tarea»— nombra la unidad que lo lleva, y esa unidad está escrita en el mismo
+cambio que pone la marca. Una marca que no apunta a nada se lee como resuelta y nadie la levanta: tres hallazgos de
+una medición quedaron marcados como devueltos sin estar en ninguna tanda, y se perdió una vuelta entera.
+
 Por eso cerrar es un acto con su propio contraste, y no la consecuencia de que el código esté listo: se
 recorre lo que la unidad enumeró, ítem por ítem, y cada uno queda con qué pasó. Es el mismo paso mecánico
 del párrafo anterior aplicado a la unidad en vez de al entregable, y encuentra lo mismo que aquél: lo que

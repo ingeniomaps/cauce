@@ -78,7 +78,7 @@ function missingSections(root) {
   for (const name of ['company.md', 'product.md', 'domains.md', 'workspace.md']) {
     const written = path.join(root, 'organization', name)
     if (!fs.existsSync(written) || !fs.existsSync(path.join(template, name))) continue
-    const headings = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
+    const headings = (text) => new Set((text.match(/^##[ \t]+(.+)$/gm) || []).map((line) => line.trim()))
     const expected = headings(fs.readFileSync(path.join(template, name), 'utf8'))
     const present = headings(fs.readFileSync(written, 'utf8'))
     const missing = [...expected].filter((heading) => !present.has(heading))

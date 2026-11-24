@@ -108,11 +108,19 @@ function check(dir, cli) {
             warnings.push(`--skip-roots: ${skipped.length} raíz(ces) ausente(s) sin comprobar (${skipped.join(', ')})`)
           }
           // Un rojo declarado es una exención y se ve en cada corrida; uno mal escrito no declara nada (caso 241).
-          const red = KR.readKnownRed(root, config.workspaceRoots.map((one) => Object(one).name))
+          const red = KR.readKnownRed(root, config.workspaceRoots.map((one) => Object(one).name), TODAY())
           errors.push(...red.errors)
           for (const one of red.entries) {
             warnings.push(`planning/${KR.FILE}: ${one.root} ${one.gate} está en rojo declarado y no frena el `
               + `commit (${one.reason})`)
+            if (!one.expires) {
+              warnings.push(`planning/${KR.FILE}: ${one.root} ${one.gate} no dice cuándo vence; agregá «· vence `
+                + 'AAAA-MM-DD» al final: sin fecha deja de contar en la minor siguiente a 0.125.0')
+            }
+          }
+          for (const one of red.expired) {
+            warnings.push(`planning/${KR.FILE}: ${one.root} ${one.gate} venció el ${one.expires} y vuelve a frenar `
+              + 'el commit; renovarlo es volver a decidirlo, con una fecha nueva')
           }
         }
         // Es la única parte de la configuración que le levanta el límite a un guard, y quien la escribió
@@ -173,6 +181,8 @@ function check(dir, cli) {
   warnings.push(...require('../planning/links').linkWarnings(path.resolve(root, '..')))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   errors.push(...DE.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
+  warnings.push(...require('../planning/critical-surface')
+    .criticalWarnings(path.resolve(root, '..'), done.entries, TODAY(), new Set(adopted)))
   const ops = path.resolve(root, '..')
   warnings.push(...DC.unknownCommitWarnings(done.entries, (items) => R.commitStatus(ops, items)))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
