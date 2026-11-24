@@ -91,14 +91,17 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
     `git -C ${HOOKS} clean -fdx guard-files.sh`, `git -C ${HOOKS} apply --include=guard-files.sh x.diff`,
     "git apply --include='automatization/*' x.diff", "git checkout -- 'automatization/*.sh'",
     `find ${SHIM} -exec truncate -s0 {} +`, `find . -fprint0 ${SHIM}`, `uniq -f 1 /dev/null ${SHIM}`,
-    `sort -uo ${SHIM} /dev/null`, `yq -Pi '.x=1' ${SHIM}`, `git -c clean.requireForce=false clean -dx ${HOOKS}`,
+    `sort -uo ${SHIM} /dev/null`, `sort -o${SHIM} /dev/null`, `yq -Pi '.x=1' ${SHIM}`,
+    `git checkout HEAD~1 -- '${HOOKS}/[!z]*'`, `git -c clean.requireForce=false clean -dx ${HOOKS}`,
     `sort -o ${SHIM} /dev/null`, `uniq /dev/null ${SHIM}`, `awk -i inplace '{print}' ${SHIM}`, `find . -fprint ${SHIM}`,
     `yq -i '.x=1' ${SHIM}`, 'git clean -fdx', 'git clean -fdx -e keep', 'git clean -fdx --exclude=keep']) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
   for (const command of [`bash ${SHIM}`, `diff ${SHIM} /tmp/x`, `git log -p ${SHIM}`, `shellcheck ${SHIM}`,
     './propio.sh .', 'tar -czf /tmp/b.tgz .', `for f in ${HOOKS}/*.sh; do echo "$f"; done`, "./propio.sh -d '*'",
-    'tar czf /tmp/x.tgz automatization/*', 'git clean -n', 'git clean -fdn', "git restore '*'",
+    'tar czf /tmp/x.tgz automatization/*', 'git clean -n', 'git clean -fdn', 'git clean -d', "git restore '*'",
+    // Un `[` sin cerrar o una clase al revés no es un pathspec que se pueda leer, y no rompe el guard.
+    "git stash push -m 'wip [b'", "git stash push -m 'nota [z-a]'",
     "git checkout -- '*'",
     `node -e "console.log(require('./.cauce/manifest.json').files)"`, 'node --test test/x.test.js',
     // Un patrón que no es un glob válido no alcanza nada, y no rompe el guard.

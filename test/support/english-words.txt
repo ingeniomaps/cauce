@@ -310,6 +310,7 @@ citing
 claim
 claimed
 claims
+class
 classification
 classified
 classify

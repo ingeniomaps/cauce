@@ -72,9 +72,15 @@ const within = (dir, file) => file === dir || file.startsWith(`${dir}${path.sep}
 const GLOB = /[*?[]/
 // Un patrón que no es un glob válido —el de un `grep` que quedó como argumento— no alcanza nada, y no rompe el guard.
 const globbed = (file, pattern) => { try { return path.matchesGlob(file, pattern) } catch { return false } }
-// Un pathspec de git como expresión: `*` y `?` cruzan `/`, y una clase `[…]` queda como está.
-const spec = (pattern) => new RegExp(`^${pattern.replace(/\[[^\]]*\]|[*?]|[.+^${}()|\\]/g, (one) => (one === '*' ? '.*'
-  : one === '?' ? '.' : one.startsWith('[') ? one : `\\${one}`))}$`)
+// Un pathspec de git como expresión: `*` y `?` cruzan `/`, y una clase `[…]` queda como está con su `[!…]` negado.
+// Lo que no se pueda leer —un `[` sin cerrar, `[z-a]`— no alcanza nada, y no rompe el guard.
+const classOf = (one) => (one.startsWith('[!') ? `[^${one.slice(2)}` : one)
+const escaped = (one) => (one === '*' ? '.*' : one === '?' ? '.' : one.length > 1 ? classOf(one) : `\\${one}`)
+const spec = (pattern) => {
+  try {
+    return new RegExp(`^${pattern.replace(/\[[^\]]+\]|[*?]|[.+^${}()|\\]/g, escaped)}$`)
+  } catch { return /(?!)/ }
+}
 const exists = (one) => fs.existsSync(one)
 // El archivo y cada carpeta que lo contiene, que es lo que un glob puede nombrar.
 const chain = (file) => {
@@ -170,8 +176,9 @@ function gitTouched(rest, base) {
 // Lo que nombra un archivo entregado sin cambiarlo: lo lee, lo compara o lo ejecuta. Cerrado por defecto (R27):
 // cualquier otro programa que nombre uno cuenta como que lo toca —`dd of=`, `patch`, un script propio—, y hasta 0.124.0
 // era al revés: sólo contaban los de `COPIES` y `TOUCHES`. Lo que ya se juzga en otro lado —las escrituras, los
-// borrados, `find -delete`— no se vuelve a juzgar acá. `sort`, `uniq`, `awk`, `yq` y `find` no están aunque casi
-// siempre lean: con `-o`, una salida, `-i` o `-exec` reescriben, y leer cada forma de escribir no convergió.
+// borrados— no se vuelve a juzgar acá. `sort`, `uniq`, `awk`, `yq` y `find` no están aunque casi siempre lean:
+// con `-o`, una salida o `-i` reescriben, y leer cada forma de escribir no convergió. De `find -exec` cuenta sólo
+// el archivo que nombra: el que alcanza desde una carpeta no se ve.
 const LEAVES = new Set(['cat', 'head', 'tail', 'less', 'more', 'bat', 'nl', 'ls', 'stat', 'file', 'wc', 'grep', 'egrep',
   'fgrep', 'rg', 'diff', 'cmp', 'md5sum', 'sha1sum', 'sha256sum', 'readlink', 'realpath', 'basename', 'dirname',
   'test', '[', '[[', 'echo', 'printf', 'cd', 'pushd', 'du', 'tree', 'od', 'xxd', 'hexdump', 'strings', 'cut', 'jq',
@@ -231,11 +238,13 @@ function touched(ran) {
       }
       const from = rest.slice(0, Math.max(sub, 0)).reduce(moves, base)
       // `git clean` borra lo que nombra y lo de adentro, y sin ruta, el árbol entero; los demás, como cualquier
-      // programa, sólo el archivo exacto. Se juzga salvo en seco (`-n`, `-i`): sin `-f` también borra si la
-      // configuración lo permite (`clean.requireForce`). El valor de `-e` es lo que se queda, no una ruta.
+      // programa, sólo el archivo exacto. Borra con `-f`, o sin él si se apagó `clean.requireForce` en el mismo
+      // comando, y nunca en seco (`-n`, `-i`). El valor de `-e` es lo que se queda, no una ruta.
       const clean = rest[sub] === 'clean'
       const after = rest.slice(sub + 1)
-      const forced = !after.some((word) => /^(?:-[a-zA-Z]*[ni][a-zA-Z]*|--dry-run|--interactive)$/.test(word))
+      const unforced = rest.slice(0, sub).some((word) => /^clean\.requireforce=(?:false|no|off|0)$/i.test(word))
+      const forced = (unforced || after.some((word) => /^(?:-[a-zA-Z]*f[a-zA-Z]*|--force)$/.test(word)))
+        && !after.some((word) => /^(?:-[a-zA-Z]*[ni][a-zA-Z]*|--dry-run|--interactive)$/.test(word))
       const excludes = /^(?:-e|--exclude)$/
       const kept = after.filter((word, at) => !/^(?:-e|--exclude)(?:=|$)/.test(word)
         && !(at && excludes.test(after[at - 1])))
@@ -243,6 +252,12 @@ function touched(ran) {
         const paths = named(kept)
         if (clean && !paths.length) found.push({ raw: '.', base: from, removal: true })
         found.push(...paths.map((raw) => ({ raw, base: from, exact: !clean, removal: clean, pathspec: true })))
+      }
+    }
+    // `sort -oARCHIVO` lleva la salida pegada, y `named` no mira lo que empieza con `-`.
+    if (verb === 'sort') {
+      for (const word of rest.filter((one) => /^-[a-zA-Z]*?o./.test(one))) {
+        found.push({ raw: word.replace(/^-[a-zA-Z]*?o/, ''), base, exact: true })
       }
     }
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
