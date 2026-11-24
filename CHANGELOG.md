@@ -146,6 +146,28 @@ diseño — eso vive en el commit y en el código.
   configuración, o un `-e` cuyo valor parecía un `-n` borraban sin preguntar. Un `git clean -d` que git rechaza sin `-f`
   ahora también pregunta.
 
+- **`jira-adf` deja pasar la descripción de una tarjeta en HTML** (caso 554). Frenaba todo lo que no fuera ADF, y el
+  conector v2 de Atlassian sólo acepta `markdown` o `html` (su esquema: `contentFormat` con `enum: ["markdown",
+  "html"]`, default markdown). Con el v2 ninguna edición de descripción pasaba sin pegar una línea en `.ops-approval`
+  por tarjeta, y el mensaje proponía una salida que no existe. Ahora `html` pasa, en cualquier mayúscula, y el mensaje
+  nombra las dos salidas. Markdown, y una llamada sin formato, siguen frenando. Revierte en parte el caso 229.
+
+- **`upgrade` suma al `.gitignore` de una instancia sidecar lo que el molde empezó a ignorar después** (caso 555). El
+  molde lo copia una sola vez, en `init`, así que los rastros de aprobaciones y el staging de una integración quedaban
+  listos para commitear en toda sidecar anterior a su línea. Ahora llegan por el bloque de Cauce, como en embebido desde
+  el caso 513, sin tocar lo que la empresa escribió afuera; una línea del molde que la empresa sacó a propósito vuelve
+  dentro del bloque, y la forma de dejarla afuera es versionar lo que cubriría. Y la línea del staging del molde pasa a
+  ignorar el contenido y no la carpeta —`integrations/*/staging/*`, con su `README.md` y su `.gitkeep` afuera—: una
+  instancia con Jira anterior a 0.100.0 los versiona, y con la línea vieja `upgrade` la saltaba y lo bajado seguía sin
+  ignorar. Una instancia que ya tiene la línea vieja la conserva: lo bajado sigue ignorado, y el README de su staging
+  también queda ignorado, como antes.
+
+- **Un guard del proyecto que pide confirmar con `HOW` deja lo frenado esperando el sí** (caso 556). Dentro de su
+  proceso la llamada parecía tener diálogo, así que `HOW` lo prometía y no retenía nada, y el diálogo no se abre para
+  un guard del proyecto: la única salida era nombrar el ítem literal. Ahora, en cualquier modo, el mensaje siguiente que
+  no pregunta ni niega lo aprueba, como ese mismo guard ya hacía en `plan` y en los runners sin diálogo. Un guard que
+  necesite la orden literal la sigue pudiendo pedir con `unauthorizedNow` sin `HOW`.
+
 - **Review ya no aprueba sin cruce cuando no se pudo listar el diff** (caso 552). El clerk que saca la lista de archivos
   no tenía cómo decir «no pude»: con el comando denegado devolvía una lista vacía, y el cruce de `opened` no pedía nada.
   Pasó en 4 de 7 corridas reales. Ahora dice si el comando corrió, y si no corrió el recorrido para en Review con el
