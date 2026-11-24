@@ -64,8 +64,10 @@ function gitNamesOnly(rest) {
   const sub = gitSub(rest)
   const after = rest.slice(rest.indexOf(sub) + 1)
   if (sub === 'stash') return after[0] !== 'show'
-  if (sub === 'log' || sub === 'whatchanged') return !after.some((one) => GIT_PATCH.test(one))
-  if (sub === 'diff') return after.some((one) => GIT_NAMES.test(one)) && !after.some((one) => GIT_PATCH.test(one))
+  // `--diff-merges` también lleva su valor aparte: `--diff-merges cc`.
+  const patch = (one, at) => GIT_PATCH.test(one) || (one === '--diff-merges' && !/^(?:off|none)$/.test(after[at + 1]))
+  if (sub === 'log' || sub === 'whatchanged') return !after.some(patch)
+  if (sub === 'diff') return after.some((one) => GIT_NAMES.test(one)) && !after.some(patch)
   return GIT_NAMES_ONLY.has(sub)
 }
 
@@ -213,7 +215,9 @@ function scriptsOf(words, verb) {
     // `-c` es un script salvo detrás de un programa que lo usa para otra cosa —`wc -c`, `grep -c`, `git -c`— sin un
     // shell en el medio: `docker exec x sh -c` sí lo es (R27).
     const shell = () => words.slice(0, at).some((one) => RUNS_SCRIPT.test(path.basename(one)))
-    if (word === '-c' && words[at + 1] && (!OTHER_C.has(path.basename(verb)) || shell())) {
+    // Detrás de un shell también va agrupada: `bash -lc`, `sh -ec`.
+    const flag = word === '-c' || (/^-[a-zA-Z]+c$/.test(word) && shell())
+    if (flag && words[at + 1] && (!OTHER_C.has(path.basename(verb)) || shell())) {
       found.push(words[at + 1])
     }
     else if (word === '--command' && words[at + 1]) found.push(words[at + 1])
