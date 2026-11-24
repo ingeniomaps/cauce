@@ -215,8 +215,8 @@ function scriptsOf(words, verb) {
     // `-c` es un script salvo detrás de un programa que lo usa para otra cosa —`wc -c`, `grep -c`, `git -c`— sin un
     // shell en el medio: `docker exec x sh -c` sí lo es (R27).
     const shell = () => words.slice(0, at).some((one) => RUNS_SCRIPT.test(path.basename(one)))
-    // Detrás de un shell también va agrupada: `bash -lc`, `sh -ec`.
-    const flag = word === '-c' || (/^-[a-zA-Z]+c$/.test(word) && shell())
+    // Detrás de un shell también va agrupada: `bash -lc`, `sh -ec`, `bash -cex`.
+    const flag = word === '-c' || (/^-[a-zA-Z]*c[a-zA-Z]*$/.test(word) && shell())
     if (flag && words[at + 1] && (!OTHER_C.has(path.basename(verb)) || shell())) {
       found.push(words[at + 1])
     }
