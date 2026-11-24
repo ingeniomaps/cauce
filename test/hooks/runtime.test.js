@@ -86,18 +86,20 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
     `node -e "require('node:fs').writeFileSync('${SHIM}', '')"`, `python3 -c "open('${SHIM}', 'w')"`,
     `./propio.sh ${SHIM}`, `git clean -fdx ${HOOKS}`, `git apply --include=${SHIM} x.diff`,
     `perl -pi -e 's/a/b/' ${HOOKS}/*.sh`,
-    // Las rutas de git cuentan desde su `-C`, y en un pathspec el `*` cruza `/`. De los que leen, cuenta lo que
-    // reescriben con una bandera. `git clean` forzado sin ruta borra el árbol, aunque deje algo con `-e`.
+    // Las rutas de git cuentan desde su `-C`, y en un pathspec el `*` cruza `/`. `sort`, `uniq`, `awk`, `yq` y `find`
+    // cuentan aunque lean. `git clean` sin ruta borra el árbol, aunque deje algo con `-e` o no lleve `-f`.
     `git -C ${HOOKS} clean -fdx guard-files.sh`, `git -C ${HOOKS} apply --include=guard-files.sh x.diff`,
-    "git apply --include='automatization/*' x.diff", "git checkout -- 'automatization/*'",
+    "git apply --include='automatization/*' x.diff", "git checkout -- 'automatization/*.sh'",
+    `find ${SHIM} -exec truncate -s0 {} +`, `find . -fprint0 ${SHIM}`, `uniq -f 1 /dev/null ${SHIM}`,
+    `sort -uo ${SHIM} /dev/null`, `yq -Pi '.x=1' ${SHIM}`, `git -c clean.requireForce=false clean -dx ${HOOKS}`,
     `sort -o ${SHIM} /dev/null`, `uniq /dev/null ${SHIM}`, `awk -i inplace '{print}' ${SHIM}`, `find . -fprint ${SHIM}`,
     `yq -i '.x=1' ${SHIM}`, 'git clean -fdx', 'git clean -fdx -e keep', 'git clean -fdx --exclude=keep']) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
   for (const command of [`bash ${SHIM}`, `diff ${SHIM} /tmp/x`, `git log -p ${SHIM}`, `shellcheck ${SHIM}`,
     './propio.sh .', 'tar -czf /tmp/b.tgz .', `for f in ${HOOKS}/*.sh; do echo "$f"; done`, "./propio.sh -d '*'",
-    'tar czf /tmp/x.tgz automatization/*', 'git clean -n', 'git clean -fdn', `sort ${SHIM}`,
-    "find . -path './automatization/hooks/*' -print",
+    'tar czf /tmp/x.tgz automatization/*', 'git clean -n', 'git clean -fdn', "git restore '*'",
+    "git checkout -- '*'",
     `node -e "console.log(require('./.cauce/manifest.json').files)"`, 'node --test test/x.test.js',
     // Un patrón que no es un glob válido no alcanza nada, y no rompe el guard.
     "./propio.sh 'a/[[:space:]]+required: true[[:space:]]*\\$/'"]) {
