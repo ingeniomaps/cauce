@@ -455,7 +455,7 @@ function inboxSections(dir) {
   let skipped = 0
   for (const part of read(path.join(dir, 'INBOX.md')).split(/^##\s+/m)) {
     const title = part.split('\n')[0]
-    const bullets = (part.match(/^[-*]\s+(?:\[[ xX]\]\s+)?/gm) || []).length
+    const bullets = (part.match(/^[-*][ \t]+(?:\[[ xX]\]\s+)?/gm) || []).length
     const found = inboxEntries(part, 'INBOX.md')
     if (/Deuda|Ideas|Visi[oó]n|Propuestas|Lecciones/i.test(title)) skipped += bullets - found.length
     if (/Deuda/i.test(title)) entries.deuda = found

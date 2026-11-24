@@ -169,7 +169,7 @@ function proposalFiles(dir) {
 }
 
 function frontmatterState(text, fallback) {
-  return ((text.match(/^status:\s*(\S+)\s*$/m) || [])[1] || fallback).toLowerCase()
+  return ((text.match(/^status:[ \t]*(\S+)\s*$/m) || [])[1] || fallback).toLowerCase()
 }
 
 // La vigente de un período: con revisiones abiertas, la última. La usan componer y cerrar.

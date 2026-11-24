@@ -43,7 +43,7 @@ function summary(dir) {
   try {
     const text = fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8')
     const front = (text.match(/^---\n([\s\S]*?)\n---/) || [])[1] || ''
-    return ((front.match(/^summary:\s*(.+)$/m) || [])[1] || '').trim()
+    return ((front.match(/^summary:[ \t]*(.+)$/m) || [])[1] || '').trim()
   } catch { return '' }
 }
 

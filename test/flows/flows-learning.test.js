@@ -149,6 +149,13 @@ test('el ciclo de un recorrido se cierra: propone lo vivo, exige firma y deja hi
   // no tiene ese workflow, así que `--applied` sellaba lo que nadie decidió y el documento quedaba
   // diciendo `applied` en el frontmatter y «Estado: pendiente» en el cuerpo.
   assert.throws(() => L.seal(root, 'probe', '2099-01', 'flow'), /no la decidió nadie/)
+  // Firmada con el responsable vacío: la regex tomaba la línea de abajo por el nombre (caso 558).
+  const signed = fs.readFileSync(proposal.file, 'utf8')
+  sign(proposal.file)
+  const empty = fs.readFileSync(proposal.file, 'utf8').replace('- Responsable: Quien Firma', '- Responsable:')
+  fs.writeFileSync(proposal.file, empty)
+  assert.throws(() => L.seal(root, 'probe', '2099-01', 'flow'), /no la decidió nadie/)
+  fs.writeFileSync(proposal.file, signed)
 
   sign(proposal.file)
   L.seal(root, 'probe', '2099-01', 'flow')

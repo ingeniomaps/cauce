@@ -92,7 +92,7 @@ function plan(root, epicName) {
   const oversized = SZ.oversizedUnits({ milestones: planned })
   if (oversized.length) return { error: `${at} no pasa check:\n  ${oversized.join('\n  ')}\n` }
   const text = P.read(epic.path)
-  const activated = text.replace(/^status:\s*["']?open["']?[ \t]*$/m, 'status: active')
+  const activated = text.replace(/^status:[ \t]*["']?open["']?[ \t]*$/m, 'status: active')
   if (activated === text) return { error: `no se pudo reescribir "status: open" en ${at}` }
   const known = new Set(knownLines(root))
   const warnings = [...new Set(milestones.map((one) => one.line).filter((line) => line && !known.has(line)))]

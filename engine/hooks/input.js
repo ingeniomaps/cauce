@@ -131,7 +131,7 @@ function filesOf(input) {
   if (direct) files.add(direct)
   const patch = patchOf(input)
   // `*** Move to:` es el destino de un renombrado: una escritura más, en otra ruta (caso 366).
-  for (const match of patch.matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to):\s*(.+)$/gm)) {
+  for (const match of patch.matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to):[ \t]*(.+)$/gm)) {
     files.add(match[1].trim())
   }
   return [...files]

@@ -113,7 +113,7 @@ function validateBacklogFile(text, label, errors) {
 // sistema —ahí redefinir sus números es el punto—; en cualquier otro archivo, reusar un `R` crea una
 // segunda definición que nadie declaró y que ninguna herramienta veía. Las propias se numeran `P`.
 function ruleIds(file) {
-  return [...P.read(file).matchAll(/^##\s+([A-Z]\d+)\s+[—-]/gm)].map((match) => match[1])
+  return [...P.read(file).matchAll(/^##[ \t]+([A-Z]\d+)[ \t]+[—-]/gm)].map((match) => match[1])
 }
 
 // Qué IDs deja de regir un override por nombre: los que definía el archivo del sistema y el propio no
@@ -132,7 +132,7 @@ function competingSections(dir) {
   try { files = fs.readdirSync(roadmap).filter((file) => /^epic-\d{3}-/.test(file)) } catch { return [] }
   for (const file of files.sort()) {
     const text = P.read(path.join(roadmap, file))
-    const titles = [...text.matchAll(/^##\s+(.+)$/gm)].map((hit) => hit[1].trim())
+    const titles = [...text.matchAll(/^##[ \t]+(.+)$/gm)].map((hit) => hit[1].trim())
     for (const role of [/Criterios/i, /Historias/i]) {
       const matching = titles.filter((title) => role.test(title))
       if (matching.length < 2) continue
@@ -164,7 +164,8 @@ function unreadStories(dir) {
 // Un encabezado que numera una regla y no tiene la forma `## <letra><número> —` no existe para `check`: ni
 // cuenta como definida ni choca con otra, así que una propia escrita `## Regla 8` contradecía a R8 en silencio
 // (caso 224). Detectar la contradicción misma pide juicio; esto dice que la regla no se está leyendo.
-const RULE_LIKE = /^##\s+((?:Regla|Rule)\s*[-.]?\s*\d+\b.*|[A-Z][-.]\s*\d+\b.*|[A-Z]\d+\b(?!\s+[—-]).*)$/gm
+const RULE_LIKE = new RegExp(String.raw`^##[ \t]+((?:Regla|Rule)[ \t]*[-.]?[ \t]*\d+\b.*`
+  + String.raw`|[A-Z][-.][ \t]*\d+\b.*|[A-Z]\d+\b(?![ \t]+[—-]).*)$`, 'gm')
 function looseRuleHeadings(dir) {
   const rules = path.join(dir, 'rules')
   let files = []
@@ -230,7 +231,7 @@ const ADR_SECTIONS = ['Contexto', 'Decisión', 'Consecuencias', 'Estado de imple
 
 function validateAdrFile(at, text) {
   const errors = []
-  const declared = ((text.match(/^\*\*Estado:\*\*\s*(.+?)\s*$/m) || [])[1] || '').trim()
+  const declared = ((text.match(/^\*\*Estado:\*\*[ \t]*(.+?)\s*$/m) || [])[1] || '').trim()
   if (!declared) errors.push(`${at}: falta **Estado:**`)
   else if (declared.includes('|')) errors.push(`${at}: el estado sigue siendo el menú de la plantilla; elegí uno`)
   else if (!ADR_STATES.includes(declared) && !ADR_SUPERSEDED.test(declared)) {

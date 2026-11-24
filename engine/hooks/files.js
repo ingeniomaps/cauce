@@ -155,7 +155,7 @@ function testEvidence(input) {
     'lo fija. Si tiene que quedar afuera igual —flake conocido, entorno que acá no existe—, es una ' +
     'decisión con dueño.\n'
   const how = (file) => AP.HOW('OPS_TEST_EVIDENCE_OVERRIDE', [AP.at(input, file)], input)
-  for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
+  for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:[ \t]*(.+)$/gm)) {
     const removed = match[1].trim()
     if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}${how(removed)}`)
   }
@@ -328,7 +328,7 @@ const runnerOwn = (file) => file.startsWith(RUNNER_PLANS) && file.endsWith('.md'
 
 function workspaceBoundary(input) {
   const allowed = writableRoots(input)
-  const deleted = new Set([...patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)].map((one) => one[1].trim()))
+  const deleted = new Set([...patchOf(input).matchAll(/^\*\*\* Delete File:[ \t]*(.+)$/gm)].map((one) => one[1].trim()))
   const found = []
   const strayed = []
   const inner = []

@@ -210,7 +210,7 @@ function nextResult(root, agent, date, kind) {
 // existe, y `latest` decía «2 de 3» sobre una corrida que midió dos y pasó las dos.
 //
 // Un veredicto es un caso con su línea, nunca una línea suelta: sin el encabezado no hay a qué atribuirlo.
-const VERDICT = /\n###\s+([^\n]+)\n\n-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim
+const VERDICT = /\n###[ \t]+([^\n]+)\n\n-\s*Veredicto:[ \t]*(pasa|no pasa)\s*$/gim
 
 function caseVerdicts(text) {
   return [...text.matchAll(VERDICT)].map((hit) => ({
