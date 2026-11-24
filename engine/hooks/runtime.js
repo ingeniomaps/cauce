@@ -234,9 +234,13 @@ const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-z
 // converge —cabeceras de git, `-p`, `-d`, `--directory`, un `cd`—, así que se compara sólo el nombre del archivo: frena
 // si alguno de sus encabezados se llama como un archivo entregado. Y si el diff no se puede leer —llega por una
 // tubería, o no es un archivo— frena siempre que el comando corra donde hay algo entregado (R27).
-const APPLIES = (verb, rest) => verb === 'patch'
-  || (verb === 'git' && rest.some((word) => word === 'apply' || word === 'am'))
+// El subcomando de un `git`: la primera palabra que no es opción ni el valor de una global (`git commit -m apply` no
+// aplica nada).
+const gitSubAt = (rest) => rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
+const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply', 'am'].includes(rest[gitSubAt(rest)]))
 const HEADERS = /^(?:diff --git |--- |\+\+\+ |rename (?:from|to) |copy (?:from|to) |Index: )(.+)$/gm
+// Las opciones de `patch` que llevan su valor aparte y no es un diff; `-i` sí lo es y se lee.
+const PATCH_VALUED = /^-[BDdFgoprVYz]$/
 const readable = (file) => {
   try { return fs.statSync(file).isFile() && fs.statSync(file).size < 5e6 ? fs.readFileSync(file, 'utf8') : null }
   catch { return null }
@@ -248,27 +252,55 @@ const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
 }, base)
 // La carpeta en que aplica: la del `-C` de git o la del `-d` de `patch`.
 function appliedIn(verb, rest, base) {
-  if (verb === 'git') return gitDir(rest.slice(0, rest.findIndex((word) => word === 'apply' || word === 'am')), base)
+  if (verb === 'git') return gitDir(rest.slice(0, gitSubAt(rest)), base)
   const at = rest.findIndex((word) => word === '-d' || /^(?:-d.|--directory=)/.test(word))
   if (at < 0) return base
   const dir = rest[at] === '-d' ? rest[at + 1] : rest[at].replace(/^(?:-d|--directory=)/, '')
   return dir ? path.resolve(base || '/', dir) : base
+}
+// Los archivos que el comando le da a leer.
+function sourcesOf(verb, rest) {
+  const words = verb === 'git' ? rest.slice(gitSubAt(rest) + 1) : rest
+  const valued = (at) => verb === 'patch' && at && PATCH_VALUED.test(words[at - 1])
+  const files = words.filter((word, at) => !/^[-+]/.test(word) && !valued(at))
+  return files
+}
+// Un heredoc se lee como el diff sólo si su cuerpo es literal: con el delimitador entre comillas, o sin `$` ni
+// backticks adentro. Un cuerpo que expande algo —`$DIFF`— trae un diff que el texto no muestra.
+function heredocOf(command) {
+  const open = command.match(/<<-?\s*(['"\\]?)(\w+)\1/)
+  if (!open) return ''
+  const body = command.slice(command.indexOf('\n', open.index) + 1)
+  return open[1] || !/[$`]/.test(body) ? body : null
 }
 
 function patched(command, ran, guarded) {
   const hits = []
   for (const { verb, rest, base: from } of ran.filter((one) => APPLIES(one.verb, one.rest))) {
     const base = appliedIn(verb, rest, from)
-    const here = [...guarded.files].filter((file) => base === null || within(real(base), file) || within(base, file))
-    if (!here.length) continue
-    const texts = named(rest).map((one) => readable(path.resolve(base || '/', one))).filter((one) => one !== null)
-    const redirected = [...command.matchAll(/\b(?:patch|apply|am)\b[^;&|\n]*?(?<!<)<(?!<)\s*([^\s;&|<>]+)/g)]
-      .map((hit) => readable(path.resolve(base || '/', hit[1])))
-    if (/<</.test(command)) texts.push(command)
-    if (redirected.includes(null) || (!texts.length && !redirected.length)) { hits.push(...here); continue }
-    const names = new Set([...[...texts, ...redirected].join('\n').matchAll(HEADERS)]
+    // `git am` aplica desde la raíz del repositorio, no desde la carpeta en que corre: alcanza todo lo entregado.
+    const anywhere = verb === 'git' && rest[gitSubAt(rest)] === 'am'
+    const inside = (spot) => anywhere || base === null || within(real(base), spot) || within(base, spot)
+      || within(spot, real(base))
+    const here = [...guarded.files].filter(inside)
+    const trees = guarded.trees.filter(inside)
+    if (!here.length && !trees.length) continue
+    const files = sourcesOf(verb, rest)
+    const texts = files.map((one) => readable(path.resolve(base || '/', one)))
+    // La redirección la abre el shell, desde la carpeta del comando y no desde la del `-d`.
+    texts.push(...[...command.matchAll(/\b(?:patch|apply|am)\b[^;&|\n]*?(?<!<)<(?!<)\s*([^\s;&|<>]+)/g)]
+      .map((hit) => readable(path.resolve(from || '/', hit[1]))))
+    const heredoc = heredocOf(command)
+    if (heredoc) texts.push(heredoc)
+    const piped = /\|[^|;&\n]*\b(?:patch|apply|am)\b/.test(command)
+    // Sin nada que leer, con algo que no se pudo leer o con una tubería, no se sabe qué trae (R27).
+    if (texts.includes(null) || heredoc === null || piped || !texts.length) {
+      hits.push(...here, ...trees)
+      continue
+    }
+    const names = new Set([...texts.join('\n').matchAll(HEADERS)]
       .flatMap((hit) => hit[1].split(/\s+/)).map((one) => path.basename(one)))
-    hits.push(...here.filter((file) => names.has(path.basename(file))))
+    hits.push(...here.filter((file) => names.has(path.basename(file))), ...(names.size ? trees : []))
   }
   return hits
 }
