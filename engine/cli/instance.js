@@ -140,10 +140,11 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   return root
 }
 
-// En embebido el `.gitignore` es del producto y el molde no lo escribe: lo que la instancia necesita ignorar va al
-// bloque de Cauce de ése (caso 513). En sidecar la instancia tiene el suyo y no hace falta.
+// Lo que la instancia necesita ignorar va al bloque de Cauce de su `.gitignore`. En embebido ese archivo es del
+// producto y el molde no lo escribe (caso 513); en sidecar el molde lo copia una sola vez, en init, y sin esto lo que
+// ignoró después no llegaba nunca (caso 555).
 function ignoreInstance(root) {
-  if (O.mode(root) !== 'embedded') return []
+  if (!['embedded', 'sidecar'].includes(O.mode(root))) return []
   const file = path.join(root, '.gitignore')
   const { added, skipped } = IB.add(file, IB.instanceLines(path.join(PROJECT_ROOT, 'template', 'gitignore')), root)
   if (added.length) console.log(`✓ ${file}: ${added.join(', ')} al bloque de Cauce`)

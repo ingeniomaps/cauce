@@ -33,11 +33,10 @@ const forInstance = (root) => {
 
 // Cuáles de esos rastros **git no está ignorando** en esta instancia.
 //
-// La línea que los cubre la trae `template/gitignore`, y en sidecar ese archivo se escribe al **crear**
-// la instancia: `upgrade` no lo toca, porque es de la empresa y puede llevar líneas propias que un
-// reemplazo se llevaría puestas. Así que una instancia sidecar anterior a cada rastro nuevo se queda sin
-// su línea, y el archivo aparece en `git status` listo para commitearse por descuido. En embebido, desde
-// el caso 513, `upgrade` los suma al bloque de Cauce del `.gitignore` del producto.
+// La línea que los cubre la trae `template/gitignore`, y `upgrade` la suma al bloque de Cauce del `.gitignore`
+// de la instancia (casos 513 y 555). Este aviso queda para lo que el bloque todavía no cubre: una instancia que no
+// pasó por `upgrade`, o un `.gitignore` que es un enlace y `upgrade` no escribe. El rastro ya versionado tiene su
+// propio aviso, el de `rm --cached`.
 //
 // Se pregunta por el **efecto** y no por el texto del molde, y la diferencia importa en los dos
 // sentidos: la empresa puede cubrirlo con una regla propia —y comparar líneas daría un falso positivo—,
@@ -76,7 +75,8 @@ function warnings(root) {
   const out = []
   if (missing.length) {
     out.push(`${missing.length} rastro(s) local(es) que git no ignora (${missing.join(', ')}); `
-      + 'agregá esas líneas a tu .gitignore o van a entrar al repositorio')
+      + 'el próximo upgrade suma sus líneas al bloque de Cauce de tu .gitignore cuando puede; si no lo hace, '
+      + 'agregalas vos, o van a entrar al repositorio')
   }
   if (kept.length) {
     // Con `-C`: en sidecar la sesión se abre en el workspace, y desde ahí la ruta relativa a la instancia no existe.

@@ -69,6 +69,44 @@ test('en sidecar, install ignora en el repositorio lo que el runner escribe afue
   assert.equal(fs.readFileSync(path.join(repo, '.gitignore'), 'utf8'), 'node_modules/\n')
 })
 
+// Caso 555: en sidecar el `.gitignore` de la instancia se copia del molde una vez, en init. Lo que el molde ignoró
+// después llega por el bloque, y el staging de una instancia con Jira anterior a 0.100.0, que versiona su README y su
+// .gitkeep, queda ignorado sin dejar de versionarlos.
+test('en sidecar, upgrade suma al .gitignore de la instancia lo que el molde ignoró después', () => {
+  const target = path.join(tempRoot('cauce-ignore-side-old-'), 'ops')
+  assert.equal(run(['init', target, '--name', 'App', '--mode', 'sidecar', '--no-install']).status, 0)
+  git(target, 'init', '-q')
+  const file = path.join(target, '.gitignore')
+  const old = fs.readFileSync(file, 'utf8').split('\n')
+    .filter((one) => !/^!?integrations\/\*\/staging|^planning\/\.(?:grant-log|ops-approval)$/.test(one)).join('\n')
+  fs.writeFileSync(file, old)
+  const staging = path.join(target, 'integrations', 'jira', 'staging')
+  fs.mkdirSync(staging, { recursive: true })
+  for (const one of ['README.md', '.gitkeep']) fs.writeFileSync(path.join(staging, one), '')
+  git(target, 'add', '-f', '.gitignore', 'integrations/jira/staging/README.md', 'integrations/jira/staging/.gitkeep')
+  git(target, '-c', 'user.email=b@x.invalid', '-c', 'user.name=Banco', 'commit', '-qm', 'anterior')
+  linkEngine(target)
+  const LATER = ['integrations/jira/staging/X-1.json', 'planning/.grant-log', 'planning/.ops-approval']
+  assert.deepEqual(ignored(target, ...LATER), [], 'la instancia anterior no los ignora')
+
+  const upgrade = run(['upgrade', target, '--force'])
+  assert.equal(upgrade.status, 0, upgrade.stderr)
+  assert.match(upgrade.stdout, /\.gitignore: .*planning\/\.grant-log.* al bloque de Cauce/)
+  const text = fs.readFileSync(file, 'utf8')
+  assert.ok(text.startsWith(old), 'lo que estaba queda primero y como estaba')
+  assert.deepEqual(ignored(target, ...LATER), LATER)
+  assert.deepEqual(ignored(target, 'integrations/jira/staging/README.md', 'integrations/jira/staging/.gitkeep'), [],
+    'el README y el .gitkeep versionados siguen viajando')
+  assert.equal(run(['upgrade', target, '--force']).status, 0)
+  assert.equal(fs.readFileSync(file, 'utf8'), text, 'un segundo upgrade no cambia nada')
+})
+
+test('una sidecar recién creada no recibe bloque: su .gitignore ya trae todo', () => {
+  const target = path.join(tempRoot('cauce-ignore-side-new-'), 'ops')
+  assert.equal(run(['init', target, '--name', 'App', '--mode', 'sidecar', '--no-install']).status, 0)
+  assert.equal(IB.split(fs.readFileSync(path.join(target, '.gitignore'), 'utf8')).inside.length, 0)
+})
+
 test('el bloque conserva lo de afuera, no repite lo que la persona ya escribió y se saca entero', () => {
   const file = path.join(tempRoot('cauce-ignore-unit-'), '.gitignore')
   fs.writeFileSync(file, '# mío\n.env\n')

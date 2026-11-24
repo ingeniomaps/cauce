@@ -60,8 +60,8 @@ test('el aviso se calla sin repositorio, y también cuando la línea está', () 
   assert.deepEqual(warnings(planning), [], 'cubiertos por el .gitignore que trae el molde')
 })
 
-// El caso: una instancia creada antes de que el rastro existiera no tiene su línea, y `upgrade` no se la
-// va a traer nunca. Lo que se mide es que `check` lo diga nombrando la ruta, que es lo que hay que pegar.
+// El caso: una instancia creada antes de que el rastro existiera no tiene su línea hasta el próximo `upgrade`
+// (caso 555). Lo que se mide es que `check` lo diga nombrando la ruta, y que nombre el `upgrade` que la trae.
 test('check nombra el rastro que git no está ignorando', () => {
   const { target, planning } = instance('cauce-rastros-sin-linea-')
   fs.writeFileSync(path.join(target, '.gitignore'), 'node_modules/\n')
@@ -73,6 +73,7 @@ test('check nombra el rastro que git no está ignorando', () => {
     'planning/.ops-approval']) {
     assert.match(said[0], new RegExp(trail.replace(/[.*]/g, '\\$&')), `nombra ${trail}`)
   }
+  assert.match(said[0], /próximo upgrade/)
 
   // Y es advertencia, no error: el archivo es de la empresa y `check` no lo arregla.
   assert.equal(JSON.parse(run(['check', planning, '--json']).stdout).ok, true)
@@ -102,7 +103,7 @@ test('un archivo local ya versionado se nombra con cómo sacarlo del índice', (
   assert.ok(given, said[0])
   assert.equal(spawnSync('bash', ['-c', given[1]], { cwd: path.dirname(target), encoding: 'utf8' }).status, 0)
   git(target, 'add', '-f', 'planning/.ops-approval')
-  assert.doesNotMatch(said[0], /agregá esas líneas/, 'la línea ya está: lo que falta es sacarlo del índice')
+  assert.doesNotMatch(said[0], /próximo upgrade/, 'la línea ya está: lo que falta es sacarlo del índice')
 
   git(target, 'rm', '-q', '--cached', 'planning/.ops-approval')
   assert.deepEqual(warnings(planning), [], 'fuera del índice y cubierto, no queda nada que decir')

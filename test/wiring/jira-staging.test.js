@@ -9,6 +9,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const I = require('../../engine/integrations/registry')
 const S = require('../../engine/integrations/state')
 
@@ -65,8 +66,15 @@ test('sin curación, el ítem de otra persona sigue pasando a contexto', async (
   assert.equal(other.refreshed, 1)
 })
 
+// Lo bajado queda fuera de git, y el README y el .gitkeep del staging viajan (caso 555).
 test('el molde deja el staging fuera de git', () => {
-  assert.match(fs.readFileSync(TEMPLATE_GITIGNORE, 'utf8'), /^integrations\/\*\/staging\/$/m)
+  const repo = tempRoot('cauce-jira-staging-ignore-')
+  spawnSync('git', ['init', '-q'], { cwd: repo })
+  fs.copyFileSync(TEMPLATE_GITIGNORE, path.join(repo, '.gitignore'))
+  const files = ['integrations/jira/staging/X-1.json', 'integrations/jira/staging/README.md',
+    'integrations/jira/staging/.gitkeep']
+  const ignored = spawnSync('git', ['check-ignore', ...files], { cwd: repo, encoding: 'utf8' }).stdout
+  assert.deepEqual(ignored.split('\n').filter(Boolean), ['integrations/jira/staging/X-1.json'])
 })
 
 // Tres bordes del staging que la campaña del 2026-10-08 midió sobre una instancia nueva (caso 339): el

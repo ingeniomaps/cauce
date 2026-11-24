@@ -3,9 +3,9 @@
 // El bloque que Cauce escribe en un `.gitignore` que no creó (caso 513). Va entre dos marcas para que se pueda
 // rehacer, revisar en el diff y sacar sin tocar nada de lo que la persona escribió afuera.
 //
-// Existe para los dos `.gitignore` que el de la instancia no alcanza: el del producto en modo embebido —la
-// instancia es el repositorio, y su `.gitignore` es del producto— y el del repositorio donde el runner instala su
-// wiring en sidecar, que es el padre de la instancia.
+// Existe para los `.gitignore` que el molde no reescribe: el del producto en modo embebido —la instancia es el
+// repositorio, y su `.gitignore` es del producto—, el de una sidecar, que el molde copia sólo en init, y el del
+// repositorio donde el runner instala su wiring en sidecar, que es el padre de la instancia.
 
 const fs = require('node:fs')
 const path = require('node:path')
