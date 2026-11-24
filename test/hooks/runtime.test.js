@@ -11,6 +11,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 const { execute } = require('../../engine/hooks/run')
 
@@ -117,7 +118,12 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
   const { target, shell } = instance('cauce-runtime-alcance-')
   fs.writeFileSync(path.join(target, 'x.diff'), `--- a/${SHIM}\n+++ b/${SHIM}\n@@ -1 +1 @@\n-a\n+b\n`)
   fs.writeFileSync(path.join(target, 'ok.diff'), '--- a/src/app.js\n+++ b/src/app.js\n@@ -1 +1 @@\n-a\n+b\n')
-  for (const command of ['git apply x.diff', 'patch -p1 < x.diff', 'patch -p1 -i x.diff',
+  fs.writeFileSync(path.join(target, 'mode.diff'), `diff --git a/${SHIM} b/${SHIM}\nold mode 100755\nnew mode 100644\n`)
+  fs.writeFileSync(path.join(target, 'sub.diff'), '--- a/guard-files.sh\n+++ b/guard-files.sh\n@@ -1 +1 @@\n-a\n+b\n')
+  for (const command of ['git apply x.diff', 'patch -p1 < x.diff', 'patch -p1 -i x.diff', 'cat x.diff | patch -p1',
+    'git am x.diff', 'git apply mode.diff', `patch -d ${HOOKS} -p1 < sub.diff`, `cd ${HOOKS} && patch < ../../sub.diff`,
+    `git apply <<'EOF'\n--- a/${SHIM}\n+++ b/${SHIM}\nEOF`, 'git clean -fdx -e -n',
+    'git clean -fdx -- -n',
     `find ${HOOKS} -exec truncate -s0 {} +`, "find automatization -name 'guard*' -exec rm {} +",
     "git clean -fdx ':!keep'", "git checkout HEAD~5 -- ':/'",
     `git checkout HEAD~1 -- '${HOOKS}/guard[[:punct:]]files.sh'`, `git checkout HEAD~1 -- '${SHIM}[[:alpha:]]'`,
@@ -126,11 +132,21 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
-  for (const command of ['git apply ok.diff', 'patch -p1 < ok.diff', "find . -name '*.log' -exec rm {} +",
+  for (const command of ['git apply ok.diff', 'patch -p1 < ok.diff',
+    "git apply <<'EOF'\n--- a/src/x.js\n+++ b/src/x.js\nEOF", 'git -C /tmp/otra apply /tmp/otra/x.diff',
+    'patch -R -d /tmp/otra -p1 -i /tmp/otra/x.diff',
+    "find . -name '*.log' -exec rm {} +",
     `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'", 'git clean -fdn', 'git clean --dry-run',
     "git tag -a v1 -m '[x'"]) {
     assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
   }
+  // Un diff que no es un archivo regular no se lee: frena sin abrirlo. Va con un FIFO sin quien escriba y en otro
+  // proceso, porque leerlo bloquea para siempre: si vuelve el defecto, esto sale en rojo en vez de colgar la suite.
+  spawnSync('mkfifo', [path.join(target, 'pipe.diff')])
+  const run = `try { require(${JSON.stringify(require.resolve('../../engine/hooks/run'))}).execute('runtime-shell', `
+    + `{ cwd: ${JSON.stringify(target)}, tool_input: { command: 'git apply pipe.diff' } }); process.exit(3) } `
+    + 'catch (error) { process.exit(/entregó a la instancia/.test(error.message) ? 0 : 2) }'
+  assert.equal(spawnSync(process.execPath, ['-e', run], { timeout: 10000 }).status, 0, 'un FIFO frena sin leerse')
 })
 
 test('sin un registro legible se protege la carpeta entera', () => {

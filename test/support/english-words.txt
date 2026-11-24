@@ -549,6 +549,7 @@ dictated
 did
 diff
 differ
+diffs
 digest
 digests
 dimension
@@ -1389,6 +1390,7 @@ passing
 past
 paste
 patch
+patched
 patches
 path
 paths

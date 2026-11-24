@@ -230,15 +230,48 @@ function interpreted(rest) {
 // empieza con `-`: lo que sigue a la primera `o`.
 const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-zA-Z]*?o/, '') : '')
 
-// Las rutas que escribe un diff: `git apply x.diff` o `patch < x.diff` no nombran el archivo que cambian. Se toman
-// con y sin el `a/` o `b/` de delante, porque cuánto se recorta depende de `-p`. Un diff que no se lee no nombra nada.
-function diffTargets(file) {
-  let text = ''
-  try { if (fs.statSync(file).size < 5e6) text = fs.readFileSync(file, 'utf8') } catch { return [] }
-  return [...text.matchAll(/^(?:\+\+\+|---) ([^\t\n]+)/gm)].map((hit) => hit[1].trim())
-    .filter((one) => one !== '/dev/null').flatMap((one) => [one, one.replace(/^[ab]\//, '')])
+// `patch`, `git apply` y `git am` escriben lo que trae su diff, que el comando no nombra. Leer el diff entero no
+// converge —cabeceras de git, `-p`, `-d`, `--directory`, un `cd`—, así que se compara sólo el nombre del archivo: frena
+// si alguno de sus encabezados se llama como un archivo entregado. Y si el diff no se puede leer —llega por una
+// tubería, o no es un archivo— frena siempre que el comando corra donde hay algo entregado (R27).
+const APPLIES = (verb, rest) => verb === 'patch'
+  || (verb === 'git' && rest.some((word) => word === 'apply' || word === 'am'))
+const HEADERS = /^(?:diff --git |--- |\+\+\+ |rename (?:from|to) |copy (?:from|to) |Index: )(.+)$/gm
+const readable = (file) => {
+  try { return fs.statSync(file).isFile() && fs.statSync(file).size < 5e6 ? fs.readFileSync(file, 'utf8') : null }
+  catch { return null }
 }
-const PATCHES = /\b(?:patch|apply)\b[^;&|\n]*?<\s*([^\s;&|<>]+)/g
+// La carpeta en que corre un `git` después de sus `-C`, como en `gitTouched`.
+const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
+  if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
+  return /^-C./.test(word) ? path.resolve(dir || '/', word.slice(2)) : dir
+}, base)
+// La carpeta en que aplica: la del `-C` de git o la del `-d` de `patch`.
+function appliedIn(verb, rest, base) {
+  if (verb === 'git') return gitDir(rest.slice(0, rest.findIndex((word) => word === 'apply' || word === 'am')), base)
+  const at = rest.findIndex((word) => word === '-d' || /^(?:-d.|--directory=)/.test(word))
+  if (at < 0) return base
+  const dir = rest[at] === '-d' ? rest[at + 1] : rest[at].replace(/^(?:-d|--directory=)/, '')
+  return dir ? path.resolve(base || '/', dir) : base
+}
+
+function patched(command, ran, guarded) {
+  const hits = []
+  for (const { verb, rest, base: from } of ran.filter((one) => APPLIES(one.verb, one.rest))) {
+    const base = appliedIn(verb, rest, from)
+    const here = [...guarded.files].filter((file) => base === null || within(real(base), file) || within(base, file))
+    if (!here.length) continue
+    const texts = named(rest).map((one) => readable(path.resolve(base || '/', one))).filter((one) => one !== null)
+    const redirected = [...command.matchAll(/\b(?:patch|apply|am)\b[^;&|\n]*?(?<!<)<(?!<)\s*([^\s;&|<>]+)/g)]
+      .map((hit) => readable(path.resolve(base || '/', hit[1])))
+    if (/<</.test(command)) texts.push(command)
+    if (redirected.includes(null) || (!texts.length && !redirected.length)) { hits.push(...here); continue }
+    const names = new Set([...[...texts, ...redirected].join('\n').matchAll(HEADERS)]
+      .flatMap((hit) => hit[1].split(/\s+/)).map((one) => path.basename(one)))
+    hits.push(...here.filter((file) => names.has(path.basename(file))))
+  }
+  return hits
+}
 
 const DRY_RUN = new RegExp(`^(?:${CLEAN_DRY})$`)
 // Un racimo con `e`, o un prefijo de `--exclude`; y los que dejan el valor en la palabra siguiente.
@@ -260,17 +293,15 @@ function touched(ran) {
       found.push(...gitTouched(rest, base))
       const sub = rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
       // Las rutas cuentan desde el `-C`, como en `gitTouched`.
-      const moves = (dir, word, at, all) => {
-        if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
-        return /^-C./.test(word) ? path.resolve(dir || '/', word.slice(2)) : dir
-      }
-      const from = rest.slice(0, Math.max(sub, 0)).reduce(moves, base)
+      const from = gitDir(rest.slice(0, Math.max(sub, 0)), base)
       // `git clean` borra lo que nombra y lo de adentro, y sin ruta, el árbol entero; los demás, como cualquier
       // programa, sólo el archivo exacto. Se juzga salvo en seco (`CLEAN_DRY`). El valor de `-e` es lo que se queda,
       // no una ruta, también pegado (`-fde keep`, `-ekeep`) o abreviado (`--excl keep`).
       const clean = rest[sub] === 'clean'
       const after = rest.slice(sub + 1)
-      const forced = !after.some((word) => DRY_RUN.test(word))
+      // Qué cuenta como simulación, en `CLEAN_DRY`.
+      const options = after.slice(0, after.includes('--') ? after.indexOf('--') : after.length)
+      const forced = !options.some((word, at) => DRY_RUN.test(word) && !(at && EXCLUDE_ALONE.test(options[at - 1])))
       // Ni el valor de `-e` ni un mensaje (`-m`, `-F`) son rutas.
       const kept = after.filter((word, at) => !EXCLUDE.test(word) && !(at && EXCLUDE_ALONE.test(after[at - 1]))
         && !MESSAGE.test(word) && !(at && MESSAGE_ALONE.test(after[at - 1])))
@@ -282,10 +313,6 @@ function touched(ran) {
       }
     }
     if (verb === 'sort') for (const raw of rest.map(sortOutput)) if (raw) found.push({ raw, base, exact: true })
-    const applies = verb === 'patch' || (verb === 'git' && rest.includes('apply'))
-    for (const file of applies ? named(rest).map((one) => path.resolve(base || '/', one)) : []) {
-      for (const raw of diffTargets(file)) found.push({ raw, base, exact: true })
-    }
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
     // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
     for (const raw of INTERPRETERS.has(verb) ? interpreted(rest) : named(rest)) found.push({ raw, base, exact: true })
@@ -332,9 +359,8 @@ function runtimeShell(input) {
   }
   const written = writes(command, cwd).map((one) => ({ ...one, write: true }))
   const removed = removals(ran.filter((one) => one.verb !== 'find')).map((one) => ({ ...one, removal: true }))
-  const piped = [...command.matchAll(PATCHES)].flatMap((hit) => diffTargets(path.resolve(cwd, hit[1])))
-    .map((raw) => ({ raw, base: cwd, exact: true }))
-  judge(input, root, [...written, ...removed, ...findDeletes(ran), ...touched(ran), ...piped].flatMap(resolve))
+  const diffs = patched(command, ran, guardedOf(root)).map((raw) => ({ raw, base: '/', exact: true }))
+  judge(input, root, [...written, ...removed, ...findDeletes(ran), ...touched(ran), ...diffs].flatMap(resolve))
 }
 
 module.exports = { runtimeWrites, runtimeShell }
