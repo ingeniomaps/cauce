@@ -241,7 +241,8 @@ const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-z
 const gitSubAt = (rest) => rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
 const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply', 'am'].includes(rest[gitSubAt(rest)]))
 // Lo que elige el árbol por otro lado que la carpeta: no se ubica, y se juzga.
-const ELSEWHERE = /^--(?:directory|work-tree|git-dir)(?:=|$)/
+// `--unsafe-paths` deja que el diff escriba fuera del árbol, así que tampoco se ubica.
+const ELSEWHERE = /^--(?:directory|work-tree|git-dir|unsafe-paths)(?:=|$)/
 // La carpeta en que corre un `git` después de sus `-C`, como en `gitTouched`.
 const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
   if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
@@ -254,10 +255,40 @@ function appliedIn(verb, rest, base, env = {}) {
     if (moved || rest.some((word) => ELSEWHERE.test(word))) return null
     return gitDir(rest.slice(0, gitSubAt(rest)), base)
   }
-  const at = rest.findIndex((word) => /^(?:-d|--directory)(?:=.*|.+)?$/.test(word))
-  if (at < 0) return base
-  const dir = /^(?:-d|--directory)$/.test(rest[at]) ? rest[at + 1] : rest[at].replace(/^(?:-d|--directory=?)/, '')
-  return dir ? path.resolve(base || '/', dir) : null
+  // `patch` hace `chdir` en cada `-d`: uno relativo cuenta desde el anterior.
+  const { dirs } = patchOptions(rest)
+  return dirs.includes('') ? null : dirs.reduce((dir, one) => path.resolve(dir || '/', one), base)
+}
+
+// La carpeta y la salida de `patch`, leídas como las lee getopt: un grupo de cortas (`-Rd dir`, `-odir/x`), una larga
+// abreviada (`--dir=`, `--out x`), todas en orden. Una carpeta que no se puede leer queda como ''.
+const PATCH_SHORT_VALUED = 'BDdFgioprVYz'
+// Con el prefijo más corto que `patch` acepta sin ambigüedad: `--d` podría ser `--dry-run` o `--debug`.
+const PATCH_LONG = { directory: ['d', 'di'], output: ['o', 'o'] }
+function patchOptions(rest) {
+  const dirs = []
+  const outputs = []
+  const take = (letter, value) => {
+    if (letter === 'd') dirs.push(value || '')
+    if (letter === 'o') outputs.push(value || '')
+  }
+  for (let at = 0; at < rest.length; at += 1) {
+    const word = rest[at]
+    const long = word.match(/^--([a-z-]+)(?:=(.*))?$/s)
+    if (long) {
+      const name = Object.keys(PATCH_LONG)
+        .find((one) => one.startsWith(long[1]) && long[1].startsWith(PATCH_LONG[one][1]))
+      if (name) take(PATCH_LONG[name][0], long[2] ?? rest[(at += 1)])
+      continue
+    }
+    if (!/^-[a-zA-Z]/.test(word)) continue
+    for (let letter = 1; letter < word.length; letter += 1) {
+      if (!PATCH_SHORT_VALUED.includes(word[letter])) continue
+      take(word[letter], word.slice(letter + 1) || rest[(at += 1)])
+      break
+    }
+  }
+  return { dirs, outputs }
 }
 // El repositorio que contiene a la instancia: `git am` aplica desde su raíz, y una carpeta hermana alcanza lo
 // entregado.
@@ -274,7 +305,7 @@ function patched(ran, guarded, root) {
     // También sobre una carpeta que lo contiene: `cd .. && patch -p1 < x.diff`.
     const reaches = base === null || [top, real(top), root, real(root)].some((dir) => within(dir, base)
       || within(dir, real(base)) || within(base, dir) || within(real(base), dir))
-    if (reaches) return [...[...guarded.files].filter((file) => fs.existsSync(file)), ...guarded.trees]
+    if (reaches) return [...guarded.files, ...guarded.trees]
   }
   return []
 }
@@ -319,6 +350,7 @@ function touched(ran) {
       }
     }
     if (verb === 'sort') for (const raw of rest.map(sortOutput)) if (raw) found.push({ raw, base, exact: true })
+    if (verb === 'patch') for (const raw of patchOptions(rest).outputs) if (raw) found.push({ raw, base, exact: true })
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
     // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
     for (const raw of INTERPRETERS.has(verb) ? interpreted(rest) : named(rest)) found.push({ raw, base, exact: true })

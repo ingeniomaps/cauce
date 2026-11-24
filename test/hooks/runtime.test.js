@@ -121,6 +121,8 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     'cat x.diff | env git apply ok.diff -',
     `git apply <<'EOF'\n--- a/src/x.js\nEOF`, 'git apply --directory=sub x.diff', 'git am x.diff', 'git am --continue',
     'git am --skip', 'git am --abort', 'git apply --check x.diff', 'git apply --check --app x.diff', 'git am --quit',
+    'git apply --stat x.diff', 'git apply --numstat x.diff', 'git am --show-current-patch',
+    'patch --dry-run -p1 < x.diff',
     'git apply --exclude --check x.diff', 'cd .. && patch -p1 < x.diff', `git --work-tree=${target} am x.diff`,
     `GIT_WORK_TREE=${target} git apply x.diff`, `cd ${HOOKS} && patch < ../../sub.diff`,
     'git clean -fdx -e -n', 'git clean -fdx -- -n',
@@ -138,6 +140,8 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     'git clean --dry-run', "git tag -a v1 -m '[x'"]) {
     assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
   }
+  // El freno nombra también lo que el diff podría crear: el motor sombra todavía no existe y se pide igual.
+  blocked('runtime-shell', shell('git apply x.diff'), /engine\/hooks\/run\.js/)
   // Con repositorio, una carpeta hermana de la instancia también cuenta (`topOf`).
   const repo = path.dirname(target)
   spawnSync('git', ['init', '-q', repo])
@@ -147,7 +151,10 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
   process.env.OPS_ROOT = target
   try {
     for (const command of [`patch -d ${target} -p1 -i x.diff`, `git --work-tree=${target} am x.diff`,
-      `GIT_WORK_TREE=${target} git apply x.diff`]) {
+      `GIT_WORK_TREE=${target} git apply x.diff`, 'git apply --unsafe-paths ../x.diff',
+      `patch --dir=${target} -i x.diff`, `patch -Rd ${target} -i x.diff`, `patch -d /tmp/otra -d ${target} -i x.diff`,
+      `patch -i x.diff -o${target}/${SHIM}`,
+      `patch -i x.diff --out ${target}/${SHIM}`]) {
       blocked('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } }, RUNTIME)
     }
   } finally {
