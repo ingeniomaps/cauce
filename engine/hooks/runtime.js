@@ -245,7 +245,7 @@ const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply',
 const elsewhere = (word) => {
   const name = word.match(/^--([a-z-]+)(?:=|$)/)?.[1]
   return Boolean(name) && (['work-tree', 'git-dir'].includes(name)
-    || (name.length > 1 && ['directory', 'unsafe-paths'].some((one) => one.startsWith(name))))
+    || ['directory', 'unsafe-paths'].some((one) => one.startsWith(name)))
 }
 // Lo que `patch` acepta sin mover dónde escribe. Leer sus opciones como getopt tampoco convergió (`-o` relativo a `-d`,
 // el valor de `--suffix` leído como `-d`), así que se ubica sólo con éstas, y con cualquier otra se juzga.

@@ -155,6 +155,7 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
       `patch --dir=${target} -i x.diff`, `patch -Rd ${target} -i x.diff`, `patch -d /tmp/otra -d ${target} -i x.diff`,
       `patch -i x.diff -o${target}/${SHIM}`, `patch -d /tmp/otra -o ../..${target}/${SHIM} -i x.diff`,
       'patch --suffix -d/tmp/otra -i x.diff', 'git apply --unsafe ../x.diff', 'git am --direc=x y.diff',
+      'git apply --d=x y.diff', `git --git-dir=${target}/.git am x.diff`, `GIT_DIR=${target}/.git git apply x.diff`,
       `patch -d /tmp -d otra -i x.diff`, 'cd "$X" && git -C sub apply x.diff']) {
       blocked('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } }, RUNTIME)
     }
