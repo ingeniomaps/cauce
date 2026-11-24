@@ -31,6 +31,11 @@ la aceptación tiene un borde sin decidir.
 El carril reduce ceremonia y nunca seguridad, aceptación ni evidencia: WIP, Verify y el registro en DONE corren
 en los cuatro carriles del recorrido.
 
+La clasificación se toma antes de construir, por lo que dice la aceptación, y puede fallar: una `express` cuyo diff
+cruza una migración cierra sin que nadie mire el diff. Por eso cada raíz puede declarar sus superficies críticas en
+`critical` de `ops.config.json`, y `check` avisa la tarea cerrada fuera de `full` cuyos commits las tocan (caso 561).
+Avisa y no frena; el glob que no coincide con ningún archivo versionado también se avisa, porque no avisaría nunca.
+
 ## Alternativas consideradas
 
 - **Derivar el carril en cada corrida:** costaba una llamada por tarea y el resultado se tiraba al terminar,

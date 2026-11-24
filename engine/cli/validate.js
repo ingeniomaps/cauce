@@ -181,6 +181,8 @@ function check(dir, cli) {
   warnings.push(...require('../planning/links').linkWarnings(path.resolve(root, '..')))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   errors.push(...DE.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
+  warnings.push(...require('../planning/critical-surface')
+    .criticalWarnings(path.resolve(root, '..'), done.entries, TODAY(), new Set(adopted)))
   const ops = path.resolve(root, '..')
   warnings.push(...DC.unknownCommitWarnings(done.entries, (items) => R.commitStatus(ops, items)))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente

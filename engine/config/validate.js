@@ -269,7 +269,7 @@ function validateWorkspaces(workspaces, errors) {
       continue
     }
     for (const key of Object.keys(workspace)) {
-      if (!['name', 'path', 'verify', 'scope'].includes(key)) {
+      if (!['name', 'path', 'verify', 'scope', 'critical'].includes(key)) {
         errors.push(`ops.config.json: workspaceRoots[${index}].${key} no está permitido`)
       }
     }
@@ -290,6 +290,11 @@ function validateWorkspaces(workspaces, errors) {
       } else if (scope.some((one) => typeof one !== 'string' || !one.trim())) {
         errors.push(`ops.config.json: workspaceRoots[${index}].scope: cada entrada es un patrón de ruta`)
       }
+    }
+    // Las superficies críticas de la raíz (caso 561): se rechaza vacía por la razón de `scope`.
+    if ('critical' in workspace && (!Array.isArray(workspace.critical) || !workspace.critical.length
+      || workspace.critical.some((one) => typeof one !== 'string' || !one.trim()))) {
+      errors.push(`ops.config.json: workspaceRoots[${index}].critical debe ser una lista de globs, o no estar`)
     }
     if (typeof workspace.name !== 'string' || !workspace.name.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].name es obligatorio`)

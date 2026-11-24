@@ -124,7 +124,6 @@ function staysInTree(roots, repoDir, deltaLines) {
   return !reachesGate(declared, repoDir, deltaLines.map(fileOf))
 }
 
-// Sólo lo que otro módulo consume, por lo que dice el cierre de `cli/bench.js`. `toRegExp` se queda
-// adentro y no pierde nada: lo que hay que fijar de él son sus respuestas, y se ven igual preguntándole
-// a `reachesGate`.
-module.exports = { reachesGate, staysInTree }
+// Sólo lo que otro módulo consume, por lo que dice el cierre de `cli/bench.js`. `toRegExp` lo usa además
+// `planning/critical-surface.js`, para que `critical` hable el mismo vocabulario que `scope` (caso 561).
+module.exports = { reachesGate, staysInTree, toRegExp }
