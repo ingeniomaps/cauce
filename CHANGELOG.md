@@ -136,7 +136,7 @@ diseño — eso vive en el commit y en el código.
   viera. Leer el diff no alcanzó: cada forma de leerlo dejaba pasar otra (un heredoc, una tubería, `-p`, `--directory`,
   una sesión de `git am`). Ahora frenan dentro del repositorio que contiene a la instancia, sobre una carpeta que la
   contiene, o cuando el árbol se elige con `--directory`, `--work-tree` o `GIT_WORK_TREE`, sin excepciones de modo:
-  también `git apply --check` y `patch --dry-run`. Fuera de ese repositorio no se juzgan.
+  también `git apply --check` y `patch --dry-run`. Desde afuera se juzgan sólo si apuntan a la instancia —con `patch -d`, una salida `-o` o `--unsafe-paths`—.
 
 - **`destructive` pregunta antes de todo `git clean` que no simula.** Preguntaba sólo con `-f` o `--force`, así que
   `git clean --forc` (git acepta cualquier prefijo de una opción larga), un `clean.requireForce` apagado en la
