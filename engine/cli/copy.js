@@ -43,7 +43,8 @@ function tmpfsLimit(dir) {
   }
   const real = (() => { try { return fs.realpathSync(dir) } catch { return dir } })()
   const point = mounts.split('\n').map((line) => line.split(' ')).filter((one) => one[1] && (real === one[1]
-    || real.startsWith(one[1].endsWith('/') ? one[1] : `${one[1]}/`))).sort((a, b) => b[1].length - a[1].length)[0]
+    || real.startsWith(one[1].endsWith('/') ? one[1] : `${one[1]}/`)))
+    .reduce((deepest, one) => (!deepest || one[1].length > deepest[1].length ? one : deepest), null)
   if (!point || point[2] !== 'tmpfs') return Infinity
   const available = Number((/^MemAvailable:\s+(\d+) kB/m.exec(meminfo) || [])[1])
   return Number.isFinite(available) ? (available * 1024) / 4 : Infinity
