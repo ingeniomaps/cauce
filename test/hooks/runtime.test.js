@@ -112,50 +112,35 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
   }
 })
 
-// Lo que alcanza a un guard sin nombrarlo: un diff que lo trae, un `find` que le pasa lo que encuentra a otro
-// programa, un pathspec mágico o que no se sabe traducir, y un `git clean` que se disfraza de simulación.
+// Lo que alcanza a un guard sin nombrarlo: un diff aplicado en el repositorio de la instancia, un `find` que le pasa lo
+// que encuentra a otro programa, un pathspec mágico o que no se sabe traducir, y un `git clean` que se disfraza de
+// simulación. Un diff se frena sin leerse, venga de donde venga: por qué, en `patched` de `engine/hooks/runtime.js`.
 test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
   const { target, shell } = instance('cauce-runtime-alcance-')
-  fs.writeFileSync(path.join(target, 'x.diff'), `--- a/${SHIM}\n+++ b/${SHIM}\n@@ -1 +1 @@\n-a\n+b\n`)
-  fs.writeFileSync(path.join(target, 'ok.diff'), '--- a/src/app.js\n+++ b/src/app.js\n@@ -1 +1 @@\n-a\n+b\n')
-  fs.writeFileSync(path.join(target, 'mode.diff'), `diff --git a/${SHIM} b/${SHIM}\nold mode 100755\nnew mode 100644\n`)
-  fs.writeFileSync(path.join(target, 'sub.diff'), '--- a/guard-files.sh\n+++ b/guard-files.sh\n@@ -1 +1 @@\n-a\n+b\n')
-  for (const command of ['git apply x.diff', 'patch -p1 < x.diff', 'patch -p1 -i x.diff', 'cat x.diff | patch -p1',
-    'git am x.diff', 'git apply mode.diff', `patch -d ${HOOKS} -p1 < sub.diff`, `cd ${HOOKS} && patch < ../../sub.diff`,
-    `git apply <<'EOF'\n--- a/${SHIM}\n+++ b/${SHIM}\nEOF`, 'git clean -fdx -e -n',
-    'git clean -fdx -- -n', 'git apply <<< "$(cat x.diff)"', 'git apply <<EOF\n$(cat x.diff)\nEOF',
-    'git apply <<EOF\n$D\nEOF', "cat <<'A' >/dev/null\nhi\nA\ngit apply <<B\n$D\nB", 'git apply ok.diff - <<< "$D"',
-    'cat x.diff | git apply ok.diff -',
+  for (const command of ['git apply x.diff', 'git apply ok.diff', 'patch -p1 < x.diff',
+    'cat x.diff | env git apply ok.diff -',
+    `git apply <<'EOF'\n--- a/src/x.js\nEOF`, 'git apply --directory=sub x.diff', 'git am x.diff', 'git am --continue',
+    'git am --skip', 'git am --abort', 'git apply --check --apply x.diff', `cd ${HOOKS} && patch < ../../sub.diff`,
+    'git clean -fdx -e -n', 'git clean -fdx -- -n',
     `find ${HOOKS} -exec truncate -s0 {} +`, "find automatization -name 'guard*' -exec rm {} +",
     "git clean -fdx ':!keep'", "git checkout HEAD~5 -- ':/'",
     `git checkout HEAD~1 -- '${HOOKS}/guard[[:punct:]]files.sh'`, `git checkout HEAD~1 -- '${SHIM}[[:alpha:]]'`,
     `git checkout HEAD~1 -- '${HOOKS}/guard\\-files.sh'`, 'git clean -fdx -einit', 'git clean -fdx --excl foo',
-    'git clean -fdx --excl=foo',
-    'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
+    'git clean -fdx --excl=foo', 'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
-  for (const command of ['git apply ok.diff', 'patch -p1 < ok.diff',
-    "git apply <<'EOF'\n--- a/src/x.js\n+++ b/src/x.js\nEOF", 'git -C /tmp/otra apply /tmp/otra/x.diff',
-    'patch -R -d /tmp/otra -p1 -i /tmp/otra/x.diff', 'git commit -m apply', 'git log --grep am', 'git branch am',
-    'false || git apply ok.diff', 'git apply ok.diff && echo x | grep am', 'patch -p1 --input=ok.diff',
-    'patch --strip 1 < ok.diff', 'git am --abort', 'git -C /tmp/otra am /tmp/otra/x.diff',
-    'git apply <<\\EOF\n--- a/src/app.js\nEOF',
-    `patch -d ${HOOKS} -p1 < ok.diff`,
-    "find . -name '*.log' -exec rm {} +",
-    `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'", 'git clean -fdn', 'git clean --dry-run',
-    "git tag -a v1 -m '[x'"]) {
+  for (const command of ['git apply --check x.diff', 'git apply --stat x.diff', 'git am --quit',
+    'git am --show-current-patch', 'git -C /tmp/otra apply /tmp/otra/x.diff', 'patch -R -d /tmp/otra -p1 -i x.diff',
+    'git -C /tmp/otra am x.diff', 'git commit -m apply', 'git log --grep am', 'git branch am',
+    "find . -name '*.log' -exec rm {} +", `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'",
+    'git clean -fdn',
+    'git clean --dry-run', "git tag -a v1 -m '[x'"]) {
     assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
   }
-  // Un diff que no es un archivo regular no se lee: frena sin abrirlo. Va con un FIFO sin quien escriba y en otro
-  // proceso, porque leerlo bloquea para siempre: si vuelve el defecto, esto sale en rojo en vez de colgar la suite.
-  spawnSync('mkfifo', [path.join(target, 'pipe.diff')])
-  const run = `try { require(${JSON.stringify(require.resolve('../../engine/hooks/run'))}).execute('runtime-shell', `
-    + `{ cwd: ${JSON.stringify(target)}, tool_input: { command: 'git apply pipe.diff' } }); process.exit(3) } `
-    + 'catch (error) { process.exit(/entregó a la instancia/.test(error.message) ? 0 : 2) }'
-  assert.equal(spawnSync(process.execPath, ['-e', run], { timeout: 10000 }).status, 0, 'un FIFO frena sin leerse')
-  // `git am` aplica desde la raíz del repositorio, aunque corra en una subcarpeta.
-  fs.mkdirSync(path.join(target, 'src'), { recursive: true })
-  blocked('runtime-shell', { cwd: path.join(target, 'src'), tool_input: { command: 'git am ../x.diff' } }, RUNTIME)
+  // Con repositorio, una carpeta hermana de la instancia también cuenta (`topOf`).
+  const repo = path.dirname(target)
+  spawnSync('git', ['init', '-q', repo])
+  blocked('runtime-shell', shell('git -C ../app am x.diff'), RUNTIME)
 })
 
 test('sin un registro legible se protege la carpeta entera', () => {
@@ -165,10 +150,7 @@ test('sin un registro legible se protege la carpeta entera', () => {
   fs.rmSync(path.join(target, '.cauce/manifest.json'))
   blocked('runtime', write(path.join(target, SHIM)), RUNTIME)
   // También un diff que aplica adentro, que no nombra el archivo.
-  fs.writeFileSync(path.join(target, 'x.diff'), `--- a/${SHIM}\n+++ b/${SHIM}\n@@ -1 +1 @@\n-a\n+b\n`)
   blocked('runtime-shell', { cwd: target, tool_input: { command: 'git apply x.diff' } }, RUNTIME)
-  fs.writeFileSync(path.join(target, 'ok.diff'), '--- a/src/app.js\n+++ b/src/app.js\n@@ -1 +1 @@\n-a\n+b\n')
-  assert.doesNotThrow(() => execute('runtime-shell', { cwd: target, tool_input: { command: 'git apply ok.diff' } }))
 })
 
 test('la persona lo confirma en el turno, sin línea que lo deje abierto', () => {
