@@ -1389,6 +1389,7 @@ paste
 patch
 path
 paths
+pathspec
 pattern
 patterns
 paying

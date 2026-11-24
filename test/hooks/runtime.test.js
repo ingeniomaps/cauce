@@ -86,15 +86,18 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
     `node -e "require('node:fs').writeFileSync('${SHIM}', '')"`, `python3 -c "open('${SHIM}', 'w')"`,
     `./propio.sh ${SHIM}`, `git clean -fdx ${HOOKS}`, `git apply --include=${SHIM} x.diff`,
     `perl -pi -e 's/a/b/' ${HOOKS}/*.sh`,
-    // Lo que halló la revisión independiente: el `-C` de git, lo que reescribe con una bandera y `git clean` sin ruta.
+    // Las rutas de git cuentan desde su `-C`, y en un pathspec el `*` cruza `/`. De los que leen, cuenta lo que
+    // reescriben con una bandera. `git clean` forzado sin ruta borra el árbol, aunque deje algo con `-e`.
     `git -C ${HOOKS} clean -fdx guard-files.sh`, `git -C ${HOOKS} apply --include=guard-files.sh x.diff`,
+    "git apply --include='automatization/*' x.diff", "git checkout -- 'automatization/*'",
     `sort -o ${SHIM} /dev/null`, `uniq /dev/null ${SHIM}`, `awk -i inplace '{print}' ${SHIM}`, `find . -fprint ${SHIM}`,
-    'git clean -fdx']) {
+    `yq -i '.x=1' ${SHIM}`, 'git clean -fdx', 'git clean -fdx -e keep', 'git clean -fdx --exclude=keep']) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
   for (const command of [`bash ${SHIM}`, `diff ${SHIM} /tmp/x`, `git log -p ${SHIM}`, `shellcheck ${SHIM}`,
     './propio.sh .', 'tar -czf /tmp/b.tgz .', `for f in ${HOOKS}/*.sh; do echo "$f"; done`, "./propio.sh -d '*'",
-    'tar czf /tmp/x.tgz automatization/*',
+    'tar czf /tmp/x.tgz automatization/*', 'git clean -n', 'git clean -fdn', `sort ${SHIM}`,
+    "find . -path './automatization/hooks/*' -print",
     `node -e "console.log(require('./.cauce/manifest.json').files)"`, 'node --test test/x.test.js',
     // Un patrón que no es un glob válido no alcanza nada, y no rompe el guard.
     "./propio.sh 'a/[[:space:]]+required: true[[:space:]]*\\$/'"]) {
