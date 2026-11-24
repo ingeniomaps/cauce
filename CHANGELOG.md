@@ -136,9 +136,10 @@ diseño — eso vive en el commit y en el código.
   viera. Leer el diff no alcanzó: cada forma de leerlo dejaba pasar otra (un heredoc, una tubería, `-p`, `--directory`,
   una sesión de `git am`). Ahora frenan dentro del repositorio que contiene a la instancia o sobre una carpeta que la
   contiene, sin excepciones de modo: también `git apply --check` y `patch --dry-run`. Fuera de ese repositorio se
-  juzgan igual cuando no se puede saber dónde escriben: `git apply` o `git am` con `--directory`, `--work-tree`,
-  `--git-dir`, `--unsafe-paths` (o un prefijo de ellas), `GIT_WORK_TREE` o `GIT_DIR`, y `patch` con cualquier opción
-  fuera de las que no mueven dónde escribe (`-p`, `-R`, `-N`, `-i`, `--dry-run` y parecidas), como `-d` u `-o`.
+  juzgan igual cuando no se puede saber dónde escriben: `git apply` o `git am` con `--directory` o `--unsafe-paths`
+  (también abreviadas, como las acepta git), `--work-tree`, `--git-dir`, `GIT_WORK_TREE`, `GIT_DIR` o un `-C` relativo
+  cuando no se sabe desde dónde corre, y `patch` con cualquier opción fuera de las que no mueven dónde escribe (`-p`,
+  `-R`, `-N`, `-i`, `-F`, `--dry-run` y parecidas), como `-d`, `-o` o `-B`.
 
 - **`destructive` pregunta antes de todo `git clean` que no simula.** Preguntaba sólo con `-f` o `--force`, así que
   `git clean --forc` (git acepta cualquier prefijo de una opción larga), un `clean.requireForce` apagado en la
