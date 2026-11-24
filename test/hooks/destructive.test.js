@@ -425,7 +425,7 @@ test('git clean se frena si no simula, en cualquier opción, y no si sólo simul
     blocked('destructive', { tool_input: { command } }, /borra archivos sin seguimiento/)
   }
   for (const command of ['git clean -fdn', 'git clean -n -fd', 'git clean -fd --dry-run', 'git clean -nd',
-    'git clean -e fixtures -n', 'git clean --dry -fd']) {
+    'git clean -e fixtures -n', 'git clean --dry -fd', 'git clean --force -n', 'git clean -f my-file -n']) {
     assert.doesNotThrow(() => execute('destructive', { tool_input: { command } }), command)
   }
 })

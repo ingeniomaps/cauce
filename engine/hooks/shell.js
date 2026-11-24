@@ -151,7 +151,7 @@ function rulesOf(input) {
     // Todo `git clean` que no simula, en cualquiera de sus opciones: mirando sólo la primera, `-d -f` borraba sin
     // preguntar y `-fdn`, que no borra nada, se frenaba (caso 452). Qué simula, en `CLEAN_DRY`.
     [new RegExp(String.raw`\bgit\s+clean\b(?!(?:(?!\s--(?:\s|$))${SAME_COMMAND})*\s`
-      + String.raw`(?<!(?:-[a-df-zA-Z]*e|--e[a-z]*)\s)(?:${CLEAN_DRY})\b)`),
+      + String.raw`(?<!\s(?:-[a-df-zA-Z]*e|--e[a-z]*)\s)(?:${CLEAN_DRY})\b)`),
     "'git clean -f' borra archivos sin seguimiento.", true, null, REPO],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
