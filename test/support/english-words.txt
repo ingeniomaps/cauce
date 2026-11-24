@@ -703,6 +703,8 @@ expected
 expects
 experiment
 expire
+expired
+expires
 explain
 explicit
 export

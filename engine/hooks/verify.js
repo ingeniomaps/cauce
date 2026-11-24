@@ -15,6 +15,7 @@ const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, configOf, w
 const AP = require('./approval')
 const EV = require('../core/evidence')
 const KR = require('../core/known-red')
+const { TODAY, useRoot } = require('../cli/io')
 const SC = require('../core/scope')
 const { run } = require('./shell')
 const { holdMachine, memoryShort } = require('./machine-lock')
@@ -378,13 +379,23 @@ function verifyGates(root, dir, unapproved, env, input, timeoutMs, tree) {
   const ops = opsRoot(input)
   const failures = []
   // El rojo que la instancia declaró se anota igual y no frena (caso 241); qué se declara, en `core/known-red.js`.
-  const known = ops ? KR.readKnownRed(path.join(ops, 'planning')).entries : []
+  // El día de la zona que declara esta instancia, y no la del directorio desde donde corre el hook.
+  if (ops) useRoot(ops)
+  const declared = ops ? KR.readKnownRed(path.join(ops, 'planning'), null, TODAY()) : { entries: [], expired: [] }
+  const known = declared.entries
   const config = rootOf(input, dir) || {}
   const gate = (label, program, args) => {
     const result = run(program, args, root, env, { timeoutMs })
     const extra = { ...(tree ? { tree } : {}), ...(result.signal ? { signal: result.signal } : {}) }
     EV.record(ops, label, result.status, result.ms, extra)
-    if (!result.ok && !KR.isKnownRed(known, config.name, label)) failures.push(failure(label, result, timeoutMs))
+    if (result.ok || KR.isKnownRed(known, config.name, label)) return
+    const lapsed = declared.expired.find((one) => one.root === config.name && one.gate === label)
+    const failed = failure(label, result, timeoutMs)
+    if (lapsed) {
+      const said = failed.line ? `; ${failed.line}` : ''
+      failed.line = `${label} estaba declarado en rojo hasta el ${lapsed.expires}${said}`
+    }
+    failures.push(failed)
   }
   // El gate que la raíz declara reemplaza al que se adivina por el stack (caso 547): es el que el agente corre en
   // Verify y el que el proyecto dijo que es su puerta, y correr los dos pagaba dos veces la misma suite.

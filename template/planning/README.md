@@ -15,7 +15,7 @@ Se lee y se escribe en cada tarea.
 | `checkpoints/` | Un archivo por hito terminado que espera revisión; frena a la línea que lo escribió hasta que diga `resuelta`. |
 | `AWAITING_REVIEW.md` | Freno de toda la instancia, escrito a mano; mientras no diga `resuelta` ninguna línea inicia trabajo. |
 | `QA.md` | Cómo se prueba una entrega en la fase QA, paso por paso. |
-| `gate-known-red` | Opcional. Los gates que ya estaban en rojo, `<raíz>: <gate> — <motivo>`: `verify` no frena el commit por ellos y `check` los lista mientras sigan ahí. |
+| `gate-known-red` | Opcional. Los gates que ya estaban en rojo, `<raíz>: <gate> — <motivo> · vence AAAA-MM-DD`: `verify` no frena el commit por ellos hasta esa fecha, y `check` los lista mientras sigan ahí. Vencido vuelve a frenar: renovarlo es volver a decidirlo. |
 
 ## Intención y horizonte
 
