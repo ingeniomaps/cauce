@@ -233,26 +233,31 @@ const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-z
 
 // `patch`, `git apply` y `git am` escriben lo que trae su diff, que el comando no nombra. Leer el diff no convergió: en
 // cinco vueltas de revisión cada forma de hacerlo dejó pasar otra —un heredoc, una tubería con un envoltorio, `-p`,
-// `--directory`, una sesión de `am`—. Así que no se lee (R27): frenan siempre que apliquen dentro del repositorio de la
-// instancia, salvo los modos que no escriben.
+// `--directory`, una sesión de `am`—, y lo mismo pasó con las excepciones de modo (`--check --app`). Así que ni se lee
+// ni se exceptúa (R27): frenan siempre que apliquen dentro del repositorio de la instancia o sobre una carpeta que la
+// contiene, y también cuando el árbol se elige de una forma que no se ubica.
 // El subcomando de un `git`: la primera palabra que no es opción ni el valor de una global (`git commit -m apply` no
 // aplica nada).
 const gitSubAt = (rest) => rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
 const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply', 'am'].includes(rest[gitSubAt(rest)]))
-// Lo que no escribe: `git apply` que sólo comprueba o resume, y una sesión de `am` que sólo se muestra o se suelta.
-const READS_ONLY = { apply: /^--(?:check|stat|numstat|summary)$/, am: /^--(?:show-current-patch(?:=.*)?|quit)$/ }
+// Lo que elige el árbol por otro lado que la carpeta: no se ubica, y se juzga.
+const ELSEWHERE = /^--(?:directory|work-tree|git-dir)(?:=|$)/
 // La carpeta en que corre un `git` después de sus `-C`, como en `gitTouched`.
 const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
   if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
   return /^-C./.test(word) ? path.resolve(dir || '/', word.slice(2)) : dir
 }, base)
-// La carpeta en que aplica: la del `-C` de git, o la del `-d` de `patch`.
-function appliedIn(verb, rest, base) {
-  if (verb === 'git') return gitDir(rest.slice(0, gitSubAt(rest)), base)
+// La carpeta en que aplica: la del `-C` de git, o la del `-d` de `patch`; null si el árbol se elige de otra forma.
+function appliedIn(verb, rest, base, env = {}) {
+  if (verb === 'git') {
+    const moved = env.GIT_WORK_TREE !== undefined || env.GIT_DIR !== undefined
+    if (moved || rest.some((word) => ELSEWHERE.test(word))) return null
+    return gitDir(rest.slice(0, gitSubAt(rest)), base)
+  }
   const at = rest.findIndex((word) => /^(?:-d|--directory)(?:=.*|.+)?$/.test(word))
   if (at < 0) return base
   const dir = /^(?:-d|--directory)$/.test(rest[at]) ? rest[at + 1] : rest[at].replace(/^(?:-d|--directory=?)/, '')
-  return dir ? path.resolve(base || '/', dir) : base
+  return dir ? path.resolve(base || '/', dir) : null
 }
 // El repositorio que contiene a la instancia: `git am` aplica desde su raíz, y una carpeta hermana alcanza lo
 // entregado.
@@ -263,17 +268,13 @@ function topOf(root) {
 
 function patched(ran, guarded, root) {
   let top = null
-  for (const { verb, rest, base: from } of ran.filter((one) => APPLIES(one.verb, one.rest))) {
-    const sub = verb === 'git' ? rest[gitSubAt(rest)] : null
-    const options = sub ? rest.slice(gitSubAt(rest) + 1) : rest
-    const writes = sub === 'apply' ? !options.some((word) => READS_ONLY.apply.test(word)) || options.includes('--apply')
-      : sub !== 'am' || !options.some((word) => READS_ONLY.am.test(word))
-    if (!writes) continue
-    const base = appliedIn(verb, rest, from)
+  for (const { verb, rest, base: from, env } of ran.filter((one) => APPLIES(one.verb, one.rest))) {
+    const base = appliedIn(verb, rest, from, env)
     top = top || topOf(root)
-    if (base === null || [top, real(top)].some((dir) => within(dir, base) || within(dir, real(base)))) {
-      return [...guarded.files, ...guarded.trees]
-    }
+    // También sobre una carpeta que lo contiene: `cd .. && patch -p1 < x.diff`.
+    const reaches = base === null || [top, real(top), root, real(root)].some((dir) => within(dir, base)
+      || within(dir, real(base)) || within(base, dir) || within(real(base), dir))
+    if (reaches) return [...[...guarded.files].filter((file) => fs.existsSync(file)), ...guarded.trees]
   }
   return []
 }

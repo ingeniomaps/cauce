@@ -4,7 +4,7 @@
 // el runner— no se reescribe, mueve ni borra sin que una persona lo confirme, por archivo ni por shell. Un guard propio
 // al lado sí, y lo demás del proyecto también.
 
-const { installedProject } = require('../support/environment')
+const { installedProject, tempRoot } = require('../support/environment')
 const { blocked, chatSession, messageOf } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -120,7 +120,9 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
   for (const command of ['git apply x.diff', 'git apply ok.diff', 'patch -p1 < x.diff',
     'cat x.diff | env git apply ok.diff -',
     `git apply <<'EOF'\n--- a/src/x.js\nEOF`, 'git apply --directory=sub x.diff', 'git am x.diff', 'git am --continue',
-    'git am --skip', 'git am --abort', 'git apply --check --apply x.diff', `cd ${HOOKS} && patch < ../../sub.diff`,
+    'git am --skip', 'git am --abort', 'git apply --check x.diff', 'git apply --check --app x.diff', 'git am --quit',
+    'git apply --exclude --check x.diff', 'cd .. && patch -p1 < x.diff', `git --work-tree=${target} am x.diff`,
+    `GIT_WORK_TREE=${target} git apply x.diff`, `cd ${HOOKS} && patch < ../../sub.diff`,
     'git clean -fdx -e -n', 'git clean -fdx -- -n',
     `find ${HOOKS} -exec truncate -s0 {} +`, "find automatization -name 'guard*' -exec rm {} +",
     "git clean -fdx ':!keep'", "git checkout HEAD~5 -- ':/'",
@@ -129,8 +131,7 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     'git clean -fdx --excl=foo', 'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
-  for (const command of ['git apply --check x.diff', 'git apply --stat x.diff', 'git am --quit',
-    'git am --show-current-patch', 'git -C /tmp/otra apply /tmp/otra/x.diff', 'patch -R -d /tmp/otra -p1 -i x.diff',
+  for (const command of ['git -C /tmp/otra apply /tmp/otra/x.diff', 'patch -R -d /tmp/otra -p1 -i x.diff',
     'git -C /tmp/otra am x.diff', 'git commit -m apply', 'git log --grep am', 'git branch am',
     "find . -name '*.log' -exec rm {} +", `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'",
     'git clean -fdn',
@@ -141,6 +142,18 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
   const repo = path.dirname(target)
   spawnSync('git', ['init', '-q', repo])
   blocked('runtime-shell', shell('git -C ../app am x.diff'), RUNTIME)
+  // Y desde afuera, nombrando la instancia con `-d` o eligiéndola como árbol, con `OPS_ROOT` como arriba.
+  const before = process.env.OPS_ROOT
+  process.env.OPS_ROOT = target
+  try {
+    for (const command of [`patch -d ${target} -p1 -i x.diff`, `git --work-tree=${target} am x.diff`,
+      `GIT_WORK_TREE=${target} git apply x.diff`]) {
+      blocked('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } }, RUNTIME)
+    }
+  } finally {
+    if (before === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = before
+  }
 })
 
 test('sin un registro legible se protege la carpeta entera', () => {
@@ -177,7 +190,6 @@ test('la persona lo confirma en el turno, sin línea que lo deje abierto', () =>
 
 // En el repositorio de Cauce los scripts son el producto que se edita: ahí no hay instancia, así que no hay raíz ops.
 test('en el toolkit no protege nada', () => {
-  const { tempRoot } = require('../support/environment')
   const root = tempRoot('cauce-runtime-toolkit-')
   fs.mkdirSync(path.join(root, HOOKS), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'T', mode: 'toolkit' }))
