@@ -207,3 +207,22 @@ test('la release se autentica por OIDC y no guarda un token de npm', () => {
     'sólo un cambio de versión en main dispara la publicación')
   assert.equal(/tags:/.test(source), false, 'un tag ya no publica')
 })
+
+// La puerta compara cada veredicto con la historia de su caso (`verdicts.test.js`), y en un clon de un solo commit
+// falla. `release.yml` la corre por `prepublishOnly` al publicar, y su checkout no traía historia: la 0.124.0 no salió
+// por eso. Cualquier job que corra la puerta —`npm run ci`, o `npm publish`— clona con historia.
+test('todo job que corre la puerta clona con historia', () => {
+  const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
+  const shallow = []
+  for (const file of fs.readdirSync(dir).filter((one) => one.endsWith('.yml'))) {
+    const code = fs.readFileSync(path.join(dir, file), 'utf8').split('\n')
+      .filter((line) => !/^\s*#/.test(line)).join('\n')
+    const jobs = code.slice(code.indexOf('\njobs:\n')).split(/\n {2}(?=[a-z][\w-]*:\n)/).slice(1)
+    for (const job of jobs) {
+      if (/npm run ci\b|npm publish\b/.test(job) && !/fetch-depth: 0\b/.test(job)) {
+        shallow.push(`${file}: ${job.split(':')[0]}`)
+      }
+    }
+  }
+  assert.deepEqual(shallow, [])
+})

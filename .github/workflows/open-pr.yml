@@ -38,8 +38,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.branch }}
-          # El mensaje del último commit es el cuerpo del PR, y para leerlo hace falta el commit entero.
-          fetch-depth: 1
+          # La puerta de abajo necesita la historia (por qué, en `ci.yml`), y con ella viene el último commit,
+          # cuyo mensaje es el cuerpo del PR.
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
