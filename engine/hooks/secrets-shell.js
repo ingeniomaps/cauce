@@ -47,7 +47,8 @@ const SHOWN = /^\/dev\/(?:stdout|stderr|tty|fd\/\d+)$/
 const GIT_NAMES_ONLY = new Set(['add', 'rm', 'mv', 'check-ignore', 'ls-files', 'status', 'restore', 'checkout', 'reset',
   'clean', 'commit', 'stash', 'update-index'])
 const GIT_PATCH = new RegExp(String.raw`^(?:-p|-u|-U\d*|--patch|--word-diff(?:=.*)?|--color-words(?:=.*)?`
-  + String.raw`|-[a-zA-Z]*p[a-zA-Z]*|-L.*|--cc|-c|--diff-merges(?:=.*)?|-m)$`)
+  + String.raw`|-[a-zA-Z]*p[a-zA-Z]*|-L.*|--cc|-c|--dd|--remerge-diff|--patch-with-(?:stat|raw)`
+  + String.raw`|--diff-merges=(?!off$|none$).*)$`)
 const GIT_NAMES = /^--(?:name-only|name-status|stat|numstat|shortstat|dirstat|summary|quiet)(?:=.*)?$/
 // `find` nombra lo que encuentra, salvo que se lo pase a un programa que lo lea o lo imprima con formato.
 const FIND_RUNS = /^-(?:exec|execdir|ok|okdir)$/
@@ -115,7 +116,10 @@ function argumentsOf(text) {
     const unquoted = word.replace(/"([^"]*)"|'([^']*)'/g, '$1$2').replace(/^[({]+/, '')
     const bare = /[({]/.test(unquoted) ? unquoted : unquoted.replace(/[)}]+$/, '')
     const valued = bare.startsWith('-') || /^[A-Za-z_][\w.-]*=/.test(bare)
-    const value = (valued ? bare.split(/=(.*)/s)[1] : bare)?.replace(/^(?:[\w.-]*=)?[@<]/, '')
+    // `-d@.env` lleva el archivo pegado a la bandera; `f=@.env;type=text/plain` termina en el `;`.
+    const glued = bare.match(/^-[A-Za-z]([@<].+)$/)
+    const value = (glued ? glued[1] : valued ? bare.split(/=(.*)/s)[1] : bare)?.replace(/^(?:[\w.-]*=)?[@<]/, '')
+      .replace(/;.*$/, '')
     if (value && !/\s/.test(value)) found.push(value)
     // `HEAD:.env` es el `.env` de esa revisión, y `host:.env` el de esa máquina.
     if (value && /^[^/:]+:[^/]/.test(value)) found.push(value.replace(/^[^:]*:/, ''))
@@ -198,13 +202,18 @@ function quotedSeparator(text) {
 // Lo que corre otro shell: el valor de `-c` o `--command` —`sh -c`, `docker exec … bash -c`, `gcloud compute ssh
 // --command`—, lo que sigue a `eval` y el comando remoto de `ssh`. Se lee como un comando, sea cual sea el verbo de
 // afuera: `docker` sólo nombra, y el `. ./.env` de su `sh -c` sí lee.
-const RUNS_SCRIPT = /^(?:sh|bash|zsh|dash|ksh|ash|mksh|su|runuser|flock)$/
+const RUNS_SCRIPT = /^(?:sh|bash|zsh|dash|ksh|ash|mksh|fish|csh|tcsh|pwsh|busybox|su|runuser|flock)$/
+const OTHER_C = new Set(['wc', 'ls', 'du', 'grep', 'egrep', 'fgrep', 'rg', 'cut', 'head', 'tail', 'git', 'gzip',
+  'gunzip', 'zcat', 'xz', 'bzip2', 'tar', 'python', 'python3', 'perl', 'ruby', 'psql', 'ssh', 'scp', 'sftp', 'gcc',
+  'cc', 'cmp', 'docker', 'podman', 'sort', 'uniq'])
 const SSH_VALUED = /^-[BbcDEeFIiJLlmOoPpQRSWw]$/
 function scriptsOf(words, verb) {
   const found = []
   words.forEach((word, at) => {
-    // `-c` es el script sólo si antes en el tramo hay un shell: en `wc -c` o `ls -c` es otra cosa.
-    if (word === '-c' && words[at + 1] && words.slice(0, at).some((one) => RUNS_SCRIPT.test(path.basename(one)))) {
+    // `-c` es un script salvo detrás de un programa que lo usa para otra cosa —`wc -c`, `grep -c`, `git -c`— sin un
+    // shell en el medio: `docker exec x sh -c` sí lo es (R27).
+    const shell = () => words.slice(0, at).some((one) => RUNS_SCRIPT.test(path.basename(one)))
+    if (word === '-c' && words[at + 1] && (!OTHER_C.has(path.basename(verb)) || shell())) {
       found.push(words[at + 1])
     }
     else if (word === '--command' && words[at + 1]) found.push(words[at + 1])
