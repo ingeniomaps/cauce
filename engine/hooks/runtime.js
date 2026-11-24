@@ -240,20 +240,20 @@ const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-z
 // aplica nada).
 const gitSubAt = (rest) => rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
 const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply', 'am'].includes(rest[gitSubAt(rest)]))
-// Lo que elige el árbol por otro lado que la carpeta: no se ubica, y se juzga.
 // Las opciones de git que eligen el árbol por otro lado que la carpeta, o dejan escribir fuera de él
-// (`--unsafe-paths`). git acepta cualquier prefijo de una larga, así que se comparan por prefijo.
-const ELSEWHERE = ['directory', 'work-tree', 'git-dir', 'unsafe-paths']
+// (`--unsafe-paths`). Las de `apply` y `am` se aceptan abreviadas (`--unsafe`); las globales, sólo enteras.
 const elsewhere = (word) => {
   const name = word.match(/^--([a-z-]+)(?:=|$)/)?.[1]
-  return Boolean(name) && ELSEWHERE.some((one) => one.startsWith(name))
+  return Boolean(name) && (['work-tree', 'git-dir'].includes(name)
+    || (name.length > 1 && ['directory', 'unsafe-paths'].some((one) => one.startsWith(name))))
 }
 // Lo que `patch` acepta sin mover dónde escribe. Leer sus opciones como getopt tampoco convergió (`-o` relativo a `-d`,
 // el valor de `--suffix` leído como `-d`), así que se ubica sólo con éstas, y con cualquier otra se juzga.
 const PATCH_LONG = ['dry-run', 'verbose', 'silent', 'quiet', 'forward', 'reverse', 'force', 'batch', 'unified',
-  'ignore-whitespace', 'remove-empty-files']
-const PATCH_PLAIN = new RegExp(String.raw`^(?:-(?=.)[RNsftElu]*(?:p\d*|i.*)?`
-  + String.raw`|--(?:${PATCH_LONG.join('|')}|strip=\d+|input=.+))$`)
+  'ignore-whitespace', 'remove-empty-files', 'no-backup-if-mismatch', 'backup', 'posix', 'context', 'normal', 'ed',
+  'merge(?:=[a-z0-9]+)?', 'strip(?:=\\d+)?', 'fuzz(?:=\\d+)?', 'input(?:=.+)?', 'set-utc', 'set-time']
+const PATCH_PLAIN = new RegExp(String.raw`^(?:--|-(?=.)[RNsftEluZTbcne]*(?:p\d*|F\d*|i.*)?`
+  + String.raw`|--(?:${PATCH_LONG.join('|')}))$`)
 // La carpeta en que corre un `git` después de sus `-C`, como en `gitTouched`.
 const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
   if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])

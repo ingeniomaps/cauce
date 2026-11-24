@@ -159,7 +159,8 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
       blocked('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } }, RUNTIME)
     }
     // Con las opciones conocidas de `patch` se ubica, y afuera no se juzga.
-    for (const command of ['patch -Np1 -i x.diff', 'patch -Rp 1 --dry-run < x.diff', 'git apply x.diff']) {
+    for (const command of ['patch -Np1 -i x.diff', 'patch -Rp 1 --dry-run < x.diff', 'git apply x.diff',
+      'patch -bp1 -F3 --no-backup-if-mismatch -- x', 'git apply --w=fix x.diff', 'git apply --whitespace=fix x.diff']) {
       execute('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } })
     }
   } finally {
