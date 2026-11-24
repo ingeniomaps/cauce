@@ -93,7 +93,7 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
     `find ${SHIM} -exec truncate -s0 {} +`, `find . -fprint0 ${SHIM}`, `uniq -f 1 /dev/null ${SHIM}`,
     `sort -uo ${SHIM} /dev/null`, `sort -o${SHIM} /dev/null`, `yq -Pi '.x=1' ${SHIM}`,
     `git checkout HEAD~1 -- '${HOOKS}/[!z]*'`, `git -c clean.requireForce=false clean -dx ${HOOKS}`,
-    `git clean --forc -dx ${HOOKS}`, `git clean -dx ${HOOKS}`,
+    `git clean --forc -dx ${HOOKS}`, `git clean -dx ${HOOKS}`, 'git clean -d', 'git clean',
     `sort -o ${SHIM} /dev/null`, `uniq /dev/null ${SHIM}`, `awk -i inplace '{print}' ${SHIM}`, `find . -fprint ${SHIM}`,
     `yq -i '.x=1' ${SHIM}`, 'git clean -fdx', 'git clean -fdx -e keep', 'git clean -fdx --exclude=keep']) {
     blocked('runtime-shell', shell(command), RUNTIME)

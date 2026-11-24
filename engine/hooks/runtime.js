@@ -219,7 +219,8 @@ function interpreted(rest) {
   return [...literals, ...(code < 0 ? args.slice(1) : args)]
 }
 
-// La salida pegada a un grupo de banderas cortas de `sort`: lo que sigue a la primera `o` (`-o`, `-uo`).
+// La salida pegada a un grupo de banderas cortas de `sort` (`-oARCHIVO`, `-uoARCHIVO`), que `named` no mira porque
+// empieza con `-`: lo que sigue a la primera `o`.
 const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-zA-Z]*?o/, '') : '')
 
 function touched(ran) {
@@ -255,7 +256,6 @@ function touched(ran) {
         found.push(...paths.map((raw) => ({ raw, base: from, exact: !clean, removal: clean, pathspec: true })))
       }
     }
-    // `sort -oARCHIVO` lleva la salida pegada, y `named` no mira lo que empieza con `-`.
     if (verb === 'sort') for (const raw of rest.map(sortOutput)) if (raw) found.push({ raw, base, exact: true })
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
     // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
