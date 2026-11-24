@@ -133,7 +133,7 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     'git clean -fdx --excl=foo', 'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
     blocked('runtime-shell', shell(command), RUNTIME)
   }
-  for (const command of ['git -C /tmp/otra apply /tmp/otra/x.diff', 'patch -R -d /tmp/otra -p1 -i x.diff',
+  for (const command of ['git -C /tmp/otra apply /tmp/otra/x.diff',
     'git -C /tmp/otra am x.diff', 'git commit -m apply', 'git log --grep am', 'git branch am',
     "find . -name '*.log' -exec rm {} +", `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'",
     'git clean -fdn',
@@ -153,9 +153,14 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     for (const command of [`patch -d ${target} -p1 -i x.diff`, `git --work-tree=${target} am x.diff`,
       `GIT_WORK_TREE=${target} git apply x.diff`, 'git apply --unsafe-paths ../x.diff',
       `patch --dir=${target} -i x.diff`, `patch -Rd ${target} -i x.diff`, `patch -d /tmp/otra -d ${target} -i x.diff`,
-      `patch -i x.diff -o${target}/${SHIM}`,
-      `patch -i x.diff --out ${target}/${SHIM}`]) {
+      `patch -i x.diff -o${target}/${SHIM}`, `patch -d /tmp/otra -o ../..${target}/${SHIM} -i x.diff`,
+      'patch --suffix -d/tmp/otra -i x.diff', 'git apply --unsafe ../x.diff', 'git am --direc=x y.diff',
+      `patch -d /tmp -d otra -i x.diff`, 'cd "$X" && git -C sub apply x.diff']) {
       blocked('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } }, RUNTIME)
+    }
+    // Con las opciones conocidas de `patch` se ubica, y afuera no se juzga.
+    for (const command of ['patch -Np1 -i x.diff', 'patch -Rp 1 --dry-run < x.diff', 'git apply x.diff']) {
+      execute('runtime-shell', { cwd: tempRoot('cauce-runtime-afuera-'), tool_input: { command } })
     }
   } finally {
     if (before === undefined) delete process.env.OPS_ROOT

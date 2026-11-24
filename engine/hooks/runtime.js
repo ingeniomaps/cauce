@@ -241,54 +241,37 @@ const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-z
 const gitSubAt = (rest) => rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
 const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply', 'am'].includes(rest[gitSubAt(rest)]))
 // Lo que elige el árbol por otro lado que la carpeta: no se ubica, y se juzga.
-// `--unsafe-paths` deja que el diff escriba fuera del árbol, así que tampoco se ubica.
-const ELSEWHERE = /^--(?:directory|work-tree|git-dir|unsafe-paths)(?:=|$)/
+// Las opciones de git que eligen el árbol por otro lado que la carpeta, o dejan escribir fuera de él
+// (`--unsafe-paths`). git acepta cualquier prefijo de una larga, así que se comparan por prefijo.
+const ELSEWHERE = ['directory', 'work-tree', 'git-dir', 'unsafe-paths']
+const elsewhere = (word) => {
+  const name = word.match(/^--([a-z-]+)(?:=|$)/)?.[1]
+  return Boolean(name) && ELSEWHERE.some((one) => one.startsWith(name))
+}
+// Lo que `patch` acepta sin mover dónde escribe. Leer sus opciones como getopt tampoco convergió (`-o` relativo a `-d`,
+// el valor de `--suffix` leído como `-d`), así que se ubica sólo con éstas, y con cualquier otra se juzga.
+const PATCH_LONG = ['dry-run', 'verbose', 'silent', 'quiet', 'forward', 'reverse', 'force', 'batch', 'unified',
+  'ignore-whitespace', 'remove-empty-files']
+const PATCH_PLAIN = new RegExp(String.raw`^(?:-(?=.)[RNsftElu]*(?:p\d*|i.*)?`
+  + String.raw`|--(?:${PATCH_LONG.join('|')}|strip=\d+|input=.+))$`)
 // La carpeta en que corre un `git` después de sus `-C`, como en `gitTouched`.
 const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
   if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
   return /^-C./.test(word) ? path.resolve(dir || '/', word.slice(2)) : dir
 }, base)
-// La carpeta en que aplica: la del `-C` de git, o la del `-d` de `patch`; null si el árbol se elige de otra forma.
+// La carpeta en que aplica, o null si no se ubica: el árbol elegido de otra forma, una opción de `patch` que no está
+// entre las conocidas, o un `-C` relativo cuando no se sabe desde dónde corre.
 function appliedIn(verb, rest, base, env = {}) {
   if (verb === 'git') {
     const moved = env.GIT_WORK_TREE !== undefined || env.GIT_DIR !== undefined
-    if (moved || rest.some((word) => ELSEWHERE.test(word))) return null
-    return gitDir(rest.slice(0, gitSubAt(rest)), base)
+    if (moved || rest.some(elsewhere)) return null
+    const globals = rest.slice(0, gitSubAt(rest))
+    const relative = globals.some((word, at) => (word === '-C' && !path.isAbsolute(globals[at + 1] || ''))
+      || (/^-C./.test(word) && !path.isAbsolute(word.slice(2))))
+    return base === null && relative ? null : gitDir(globals, base)
   }
-  // `patch` hace `chdir` en cada `-d`: uno relativo cuenta desde el anterior.
-  const { dirs } = patchOptions(rest)
-  return dirs.includes('') ? null : dirs.reduce((dir, one) => path.resolve(dir || '/', one), base)
-}
-
-// La carpeta y la salida de `patch`, leídas como las lee getopt: un grupo de cortas (`-Rd dir`, `-odir/x`), una larga
-// abreviada (`--dir=`, `--out x`), todas en orden. Una carpeta que no se puede leer queda como ''.
-const PATCH_SHORT_VALUED = 'BDdFgioprVYz'
-// Con el prefijo más corto que `patch` acepta sin ambigüedad: `--d` podría ser `--dry-run` o `--debug`.
-const PATCH_LONG = { directory: ['d', 'di'], output: ['o', 'o'] }
-function patchOptions(rest) {
-  const dirs = []
-  const outputs = []
-  const take = (letter, value) => {
-    if (letter === 'd') dirs.push(value || '')
-    if (letter === 'o') outputs.push(value || '')
-  }
-  for (let at = 0; at < rest.length; at += 1) {
-    const word = rest[at]
-    const long = word.match(/^--([a-z-]+)(?:=(.*))?$/s)
-    if (long) {
-      const name = Object.keys(PATCH_LONG)
-        .find((one) => one.startsWith(long[1]) && long[1].startsWith(PATCH_LONG[one][1]))
-      if (name) take(PATCH_LONG[name][0], long[2] ?? rest[(at += 1)])
-      continue
-    }
-    if (!/^-[a-zA-Z]/.test(word)) continue
-    for (let letter = 1; letter < word.length; letter += 1) {
-      if (!PATCH_SHORT_VALUED.includes(word[letter])) continue
-      take(word[letter], word.slice(letter + 1) || rest[(at += 1)])
-      break
-    }
-  }
-  return { dirs, outputs }
+  const options = rest.filter((word) => word.startsWith('-') && word !== '-')
+  return options.every((word) => PATCH_PLAIN.test(word)) ? base : null
 }
 // El repositorio que contiene a la instancia: `git am` aplica desde su raíz, y una carpeta hermana alcanza lo
 // entregado.
@@ -350,7 +333,6 @@ function touched(ran) {
       }
     }
     if (verb === 'sort') for (const raw of rest.map(sortOutput)) if (raw) found.push({ raw, base, exact: true })
-    if (verb === 'patch') for (const raw of patchOptions(rest).outputs) if (raw) found.push({ raw, base, exact: true })
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
     // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
     for (const raw of INTERPRETERS.has(verb) ? interpreted(rest) : named(rest)) found.push({ raw, base, exact: true })
