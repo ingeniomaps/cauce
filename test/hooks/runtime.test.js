@@ -124,7 +124,7 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
     'git am x.diff', 'git apply mode.diff', `patch -d ${HOOKS} -p1 < sub.diff`, `cd ${HOOKS} && patch < ../../sub.diff`,
     `git apply <<'EOF'\n--- a/${SHIM}\n+++ b/${SHIM}\nEOF`, 'git clean -fdx -e -n',
     'git clean -fdx -- -n', 'git apply <<< "$(cat x.diff)"', 'git apply <<EOF\n$(cat x.diff)\nEOF',
-    'git apply <<EOF\n$D\nEOF',
+    'git apply <<EOF\n$D\nEOF', "cat <<'A' >/dev/null\nhi\nA\ngit apply <<B\n$D\nB", 'git apply ok.diff - <<< "$D"',
     'cat x.diff | git apply ok.diff -',
     `find ${HOOKS} -exec truncate -s0 {} +`, "find automatization -name 'guard*' -exec rm {} +",
     "git clean -fdx ':!keep'", "git checkout HEAD~5 -- ':/'",
@@ -137,6 +137,9 @@ test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
   for (const command of ['git apply ok.diff', 'patch -p1 < ok.diff',
     "git apply <<'EOF'\n--- a/src/x.js\n+++ b/src/x.js\nEOF", 'git -C /tmp/otra apply /tmp/otra/x.diff',
     'patch -R -d /tmp/otra -p1 -i /tmp/otra/x.diff', 'git commit -m apply', 'git log --grep am', 'git branch am',
+    'false || git apply ok.diff', 'git apply ok.diff && echo x | grep am', 'patch -p1 --input=ok.diff',
+    'patch --strip 1 < ok.diff', 'git am --abort', 'git -C /tmp/otra am /tmp/otra/x.diff',
+    'git apply <<\\EOF\n--- a/src/app.js\nEOF',
     `patch -d ${HOOKS} -p1 < ok.diff`,
     "find . -name '*.log' -exec rm {} +",
     `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'", 'git clean -fdn', 'git clean --dry-run',
@@ -164,6 +167,8 @@ test('sin un registro legible se protege la carpeta entera', () => {
   // También un diff que aplica adentro, que no nombra el archivo.
   fs.writeFileSync(path.join(target, 'x.diff'), `--- a/${SHIM}\n+++ b/${SHIM}\n@@ -1 +1 @@\n-a\n+b\n`)
   blocked('runtime-shell', { cwd: target, tool_input: { command: 'git apply x.diff' } }, RUNTIME)
+  fs.writeFileSync(path.join(target, 'ok.diff'), '--- a/src/app.js\n+++ b/src/app.js\n@@ -1 +1 @@\n-a\n+b\n')
+  assert.doesNotThrow(() => execute('runtime-shell', { cwd: target, tool_input: { command: 'git apply ok.diff' } }))
 })
 
 test('la persona lo confirma en el turno, sin línea que lo deje abierto', () => {

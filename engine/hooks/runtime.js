@@ -239,8 +239,9 @@ const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-z
 const gitSubAt = (rest) => rest.findIndex((word, at) => !word.startsWith('-') && !(at && GIT_VALUED.has(rest[at - 1])))
 const APPLIES = (verb, rest) => verb === 'patch' || (verb === 'git' && ['apply', 'am'].includes(rest[gitSubAt(rest)]))
 const HEADERS = /^(?:diff --git |--- |\+\+\+ |rename (?:from|to) |copy (?:from|to) |Index: )(.+)$/gm
-// Las opciones de `patch` que llevan su valor aparte y no es un diff; `-i` sí lo es y se lee.
-const PATCH_VALUED = /^-[BDdFgoprVYz]$/
+// Las opciones que llevan su valor aparte y no es un diff, de `patch` y de `git apply`. `-i` y `--input` sí lo son.
+const VALUED_APPLY = new RegExp(String.raw`^(?:-[BDdFgoprVYzC]|--(?:strip|directory|output|reject-file|prefix|suffix`
+  + String.raw`|basename-prefix|fuzz|exclude|include|quoting-style|version-control|reject-format|read-only))$`)
 const readable = (file) => {
   try { return fs.statSync(file).isFile() && fs.statSync(file).size < 5e6 ? fs.readFileSync(file, 'utf8') : null }
   catch { return null }
@@ -250,57 +251,88 @@ const gitDir = (globals, base) => globals.reduce((dir, word, at, all) => {
   if (word === '-C' && all[at + 1]) return path.resolve(dir || '/', all[at + 1])
   return /^-C./.test(word) ? path.resolve(dir || '/', word.slice(2)) : dir
 }, base)
-// La carpeta en que aplica: la del `-C` de git o la del `-d` de `patch`.
+// La carpeta en que aplica: la del `-C` de git, o la del `-d` o `--directory` de `patch` y `git apply`.
 function appliedIn(verb, rest, base) {
-  if (verb === 'git') return gitDir(rest.slice(0, gitSubAt(rest)), base)
-  const at = rest.findIndex((word) => word === '-d' || /^(?:-d.|--directory=)/.test(word))
-  if (at < 0) return base
-  const dir = rest[at] === '-d' ? rest[at + 1] : rest[at].replace(/^(?:-d|--directory=)/, '')
-  return dir ? path.resolve(base || '/', dir) : base
+  const from = verb === 'git' ? gitDir(rest.slice(0, gitSubAt(rest)), base) : base
+  const moves = (word) => /^(?:-d|--directory)(?:=.*|.+)?$/.test(word) && !(verb === 'git' && word === '-d')
+  const at = rest.findIndex(moves)
+  if (at < 0) return from
+  const dir = /^(?:-d|--directory)$/.test(rest[at]) ? rest[at + 1] : rest[at].replace(/^(?:-d|--directory=?)/, '')
+  return dir ? path.resolve(from || '/', dir) : from
 }
-// Los archivos que el comando le da a leer.
+// Los archivos que el comando le da a leer, y si lee de la entrada: con `-` o sin ningún archivo.
 function sourcesOf(verb, rest) {
   const words = verb === 'git' ? rest.slice(gitSubAt(rest) + 1) : rest
-  const valued = (at) => verb === 'patch' && at && PATCH_VALUED.test(words[at - 1])
-  const files = words.filter((word, at) => !/^[-+]/.test(word) && !valued(at))
-  return files
+  const files = []
+  for (let at = 0; at < words.length; at += 1) {
+    const word = words[at]
+    if (word === '-i' || word === '--input') files.push(words[(at += 1)])
+    else if (/^(?:-i.|--input=)/.test(word)) files.push(word.replace(/^(?:-i|--input=)/, ''))
+    else if (VALUED_APPLY.test(word)) at += 1
+    else if (!/^[-+]/.test(word)) files.push(word)
+  }
+  return { files: files.filter(Boolean), stdin: words.includes('-') || !files.length }
 }
-// Un heredoc se lee como el diff sólo si su cuerpo es literal: con el delimitador entre comillas, o sin `$` ni
-// backticks adentro. Un cuerpo que expande algo —`$DIFF`— trae un diff que el texto no muestra.
+// Los heredocs del comando, cada uno con su cuerpo. Uno se lee como el diff sólo si es literal: con el delimitador
+// entre comillas o escapado (`<<'EOF'`, `<<\EOF`), o sin `$` ni backticks adentro. Uno que expande algo —`$DIFF`—
+// trae un diff que el texto no muestra: si hay uno así, el texto no alcanza (null).
 function heredocOf(command) {
-  const open = command.match(/<<-?\s*(['"\\]?)(\w+)\1/)
-  if (!open) return ''
-  const body = command.slice(command.indexOf('\n', open.index) + 1)
-  return open[1] || !/[$`]/.test(body) ? body : null
+  const bodies = []
+  for (const open of command.matchAll(/<<-?\s*(?:(['"])(.+?)\1|\\?([^\s;&|<>()]+))/g)) {
+    const name = open[2] ?? open[3]
+    const lines = command.slice(command.indexOf('\n', open.index) + 1).split('\n')
+    const end = lines.findIndex((line) => line.replace(/^\t+/, '') === name)
+    const body = lines.slice(0, end < 0 ? lines.length : end).join('\n')
+    if (!open[1] && !/^\\/.test(open[0].replace(/^<<-?\s*/, '')) && /[$`]/.test(body)) return null
+    bodies.push(body)
+  }
+  return bodies.join('\n')
+}
+// Una tubería que alimenta a quien aplica: `cat x.diff | git apply`, no un `||` ni una tubería que va a otro lado.
+const FEEDS_APPLIER = new RegExp(String.raw`(?<!\|)\|(?!\|)\s*(?:[A-Za-z_]\w*=\S*\s+)*(?:sudo\s+)?(?:\S*\/)?`
+  + String.raw`(?:patch|git(?:\s+-\S+(?:\s+[^-\s]\S*)?)*\s+(?:apply|am))\b`)
+// Lo que maneja una sesión de `git am` ya abierta, sin traer un diff nuevo.
+const AM_CONTROL = /^--(?:abort|quit|skip|continue|show-current-patch(?:=.*)?|resolved)$/
+const filesUnder = (dir) => {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory()
+      ? filesUnder(path.join(dir, entry.name)) : [path.join(dir, entry.name)]))
+  } catch { return [] }
 }
 
-function patched(command, ran, guarded) {
+function patched(command, ran, guarded, root) {
   const hits = []
   for (const { verb, rest, base: from } of ran.filter((one) => APPLIES(one.verb, one.rest))) {
+    const am = verb === 'git' && rest[gitSubAt(rest)] === 'am'
+    if (am && rest.slice(gitSubAt(rest) + 1).some((word) => AM_CONTROL.test(word))) continue
     const base = appliedIn(verb, rest, from)
-    // `git am` aplica desde la raíz del repositorio, no desde la carpeta en que corre: alcanza todo lo entregado.
-    const anywhere = verb === 'git' && rest[gitSubAt(rest)] === 'am'
+    // `git am` aplica desde la raíz del repositorio, no desde la carpeta en que corre: si corre dentro de la instancia,
+    // alcanza todo lo entregado.
+    const anywhere = am && base !== null
+      && [root, real(root)].some((dir) => within(dir, base) || within(dir, real(base)))
     const inside = (spot) => anywhere || base === null || within(real(base), spot) || within(base, spot)
       || within(spot, real(base))
     const here = [...guarded.files].filter(inside)
     const trees = guarded.trees.filter(inside)
     if (!here.length && !trees.length) continue
-    const files = sourcesOf(verb, rest)
+    const { files, stdin } = sourcesOf(verb, rest)
     const texts = files.map((one) => readable(path.resolve(base || '/', one)))
     // La redirección la abre el shell, desde la carpeta del comando y no desde la del `-d`.
     texts.push(...[...command.matchAll(/\b(?:patch|apply|am)\b[^;&|\n]*?(?<!<)<(?!<)\s*([^\s;&|<>]+)/g)]
       .map((hit) => readable(path.resolve(from || '/', hit[1]))))
     const heredoc = heredocOf(command)
     if (heredoc) texts.push(heredoc)
-    const piped = /\|[^|;&\n]*\b(?:patch|apply|am)\b/.test(command)
-    // Sin nada que leer, con algo que no se pudo leer o con una tubería, no se sabe qué trae (R27).
-    if (texts.includes(null) || heredoc === null || piped || !texts.length) {
+    // Leer de la entrada sin heredoc ni redirección que se vean —una tubería, un `<<<`— es traer un diff que no se ve.
+    const unseen = FEEDS_APPLIER.test(command) || (stdin && /<<</.test(command))
+    // Sin nada que leer, con algo que no se pudo leer o con una entrada que no se ve, no se sabe qué trae (R27).
+    if (texts.includes(null) || heredoc === null || unseen || !texts.length) {
       hits.push(...here, ...trees)
       continue
     }
     const names = new Set([...texts.join('\n').matchAll(HEADERS)]
       .flatMap((hit) => hit[1].split(/\s+/)).map((one) => path.basename(one)))
-    hits.push(...here.filter((file) => names.has(path.basename(file))), ...(names.size ? trees : []))
+    hits.push(...here.filter((file) => names.has(path.basename(file))),
+      ...trees.filter((tree) => filesUnder(tree).some((file) => names.has(path.basename(file)))))
   }
   return hits
 }
@@ -391,7 +423,7 @@ function runtimeShell(input) {
   }
   const written = writes(command, cwd).map((one) => ({ ...one, write: true }))
   const removed = removals(ran.filter((one) => one.verb !== 'find')).map((one) => ({ ...one, removal: true }))
-  const diffs = patched(command, ran, guardedOf(root)).map((raw) => ({ raw, base: '/', exact: true }))
+  const diffs = patched(command, ran, guardedOf(root), root).map((raw) => ({ raw, base: '/', exact: true }))
   judge(input, root, [...written, ...removed, ...findDeletes(ran), ...touched(ran), ...diffs].flatMap(resolve))
 }
 
