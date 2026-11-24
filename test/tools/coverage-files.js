@@ -71,6 +71,10 @@ const NOT_COVERED = ['automatization/workflows/', 'automatization/shared/']
 // se le atribuye. Medido el 2026-09-23 dos veces: 100/85/100 con esa prueba y 84/77/83 sin ella, así
 // que quitarla hace caer los tres.
 const SLACK = 1
+// Y una unidad, si pesa más que el punto. En un archivo con pocas ramas una sola vale más de un punto —con
+// cincuenta, perderla baja de 100 a 98—, y una rama que un subproceso no alcanza a contar en una corrida tiraba la
+// puerta: pasó con `planning/done-entry.js` en el release de 0.124.0, 100 en `main` y 98 sobre el mismo código.
+const SLACK_UNITS = 1
 
 // Cuán lejos puede quedar un piso de lo que el archivo mide. Registrar un piso y comprobar que sirve son
 // dos actos distintos, y hasta el 129 sólo el primero tenía mecanismo: el del puente de Antigravity llegó
@@ -90,6 +94,11 @@ const SLACK = 1
 const MAX_DISTANCE = 25
 const SHOW = 15
 
+// Los conteos de cada métrica, `[alcanzadas, total]`, de la corrida que dio el mínimo: la holgura en unidades
+// (`SLACK_UNITS`) los necesita, y el porcentaje solo no dice cuántas son.
+const counted = {}
+let lastCounts = {}
+
 function measure(lcov) {
   const found = {}
   let cur = null
@@ -100,6 +109,7 @@ function measure(lcov) {
       found[cur.file] = {
         lines: pct(cur.LH, cur.LF), branches: pct(cur.BRH, cur.BRF), functions: pct(cur.FNH, cur.FNF),
       }
+      lastCounts[cur.file] = { lines: [cur.LH, cur.LF], branches: [cur.BRH, cur.BRF], functions: [cur.FNH, cur.FNF] }
       cur = null
     } else if (cur) {
       const match = line.match(/^(LF|LH|BRF|BRH|FNF|FNH):(\d+)/)
@@ -139,8 +149,12 @@ if (!lcovs.length) {
 function floorOf(lcovFiles) {
   const found = {}
   for (const lcovFile of lcovFiles) {
+    lastCounts = {}
     for (const [file, metrics] of Object.entries(measure(lcovFile))) {
       const previous = found[file]
+      for (const k of Object.keys(metrics)) {
+        if (!previous || metrics[k] < previous[k]) (counted[file] = counted[file] || {})[k] = lastCounts[file][k]
+      }
       found[file] = previous
         ? Object.fromEntries(Object.keys(metrics).map((k) => [k, Math.min(metrics[k], previous[k])]))
         : metrics
@@ -212,6 +226,12 @@ if (updating) {
   process.exit(0)
 }
 
+// Cuántas unidades le faltan a la métrica para llegar a su piso.
+function short(file, metric, floor) {
+  const [hit, total] = (counted[file] || {})[metric] || [0, 0]
+  return Math.ceil((floor / 100) * total) - hit
+}
+
 const floors = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
 const errors = []
 const far = []
@@ -224,7 +244,7 @@ for (const file of onDisk()) {
   }
   if (!has) { errors.push(`${file}: tiene piso pero ningún test lo carga`); continue }
   for (const metric of ['lines', 'branches', 'functions']) {
-    if (has[metric] < needs[metric] - SLACK) {
+    if (has[metric] < needs[metric] - SLACK && short(file, metric, needs[metric]) > SLACK_UNITS) {
       errors.push(`${file}: ${metric} bajó de ${needs[metric]}% a ${has[metric]}%`)
       continue
     }
