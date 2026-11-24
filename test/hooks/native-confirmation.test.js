@@ -104,13 +104,16 @@ test('una lectura de credencial también pide el diálogo, y la salida es la que
     session_id: 'cauce-native-proceso',
     cwd: reader, tool_name: 'Read', tool_input: { file_path: path.join(reader, '.env') } }
   asks(() => executeAll(['pre-read'], input))
-  const ran = spawnSync('node', [RUN, 'pre-read'], { input: JSON.stringify(input), encoding: 'utf8',
-    env: { ...process.env, OPS_ROOT: reader } })
-  assert.equal(ran.status, 0, ran.stderr)
-  const out = JSON.parse(ran.stdout).hookSpecificOutput
-  assert.equal(out.hookEventName, 'PreToolUse')
-  assert.equal(out.permissionDecision, 'ask')
-  assert.match(out.permissionDecisionReason, /\.env/)
+  // Y con `CAUCE_HOOK_EVENT` heredado: por qué no cuenta, al arrancar `run.js`.
+  for (const inherited of [{}, { CAUCE_HOOK_EVENT: 'pre-shell' }]) {
+    const ran = spawnSync('node', [RUN, 'pre-read'], { input: JSON.stringify(input), encoding: 'utf8',
+      env: { ...process.env, OPS_ROOT: reader, ...inherited } })
+    assert.equal(ran.status, 0, ran.stderr)
+    const out = JSON.parse(ran.stdout).hookSpecificOutput
+    assert.equal(out.hookEventName, 'PreToolUse')
+    assert.equal(out.permissionDecision, 'ask')
+    assert.match(out.permissionDecisionReason, /\.env/)
+  }
 })
 
 test('sin nada que aprobar no hay diálogo: plan-first con un plan a la vista pide el plan, no un sí', () => {

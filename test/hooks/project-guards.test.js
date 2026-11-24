@@ -4,6 +4,7 @@
 // `engine/hooks/project-guards.js`.
 
 const { installedProject } = require('../support/environment')
+const { chatSession } = require('../support/hooks-harness')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -376,4 +377,32 @@ test('el aviso guardado por el puente se entrega una vez, y sin conversación no
   keepNotices({}, ['[g] suelto'])
   assert.deepEqual(pendingNotices({}), {})
   assert.deepEqual(pendingNotices(null), {})
+})
+
+// Caso 556: un guard del proyecto que carga el motor y pide confirmar con `HOW`. Dentro de su proceso la llamada
+// parece tener diálogo, pero nadie lo abre, así que lo frenado queda esperando el sí del mensaje siguiente.
+const ASKING = `const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'))
+const A = require(${JSON.stringify(path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'approval.js'))})
+const C = require(${JSON.stringify(path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'chat.js'))})
+const item = 'release push api line/acme:line/acme'
+if (!C.unauthorizedNow(input, [item]).length) process.exit(0)
+process.stderr.write(A.HOW(null, [item], input))
+process.exit(2)`
+
+test('un guard del proyecto que pide confirmar deja lo frenado esperando el sí, sin prometer un diálogo', () => {
+  withGuards('cauce-guards-pide-', { 'pide.sh': 'exec node "$OPS_ROOT/guards/pide.cjs"' },
+    { 'pre-shell': ['guards/pide.sh'] }, ({ target }) => {
+      fs.writeFileSync(path.join(target, 'guards', 'pide.cjs'), ASKING)
+      const call = (said) => ({ hook_event_name: 'PreToolUse', permission_mode: 'auto', ...said(shell(target, 'ls')) })
+      for (const [answer, passes] of [['dale', true], ['no, esperá', false]]) {
+        const chat = chatSession()
+        try {
+          assert.throws(() => executeAll(['pre-shell'], call(chat.says('revisado'))), (error) => error.blocked
+            && !error.ask && /release push api/.test(error.message) && !/diálogo/.test(error.message))
+          const next = () => executeAll(['pre-shell'], call(chat.says(answer)))
+          if (passes) assert.doesNotThrow(next, answer)
+          else blockedBy(next, /niega o frena/)
+        } finally { chat.close() }
+      }
+    })
 })

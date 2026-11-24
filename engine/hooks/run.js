@@ -374,6 +374,9 @@ const exitCodeOf = (names, error) => (
 // Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
 // sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
+  // `judge` la pone para el proceso del guard del proyecto, y ahí apaga el diálogo (`confirm.js`). Un hook de una
+  // sesión que ese guard lance la heredaría sin ser él.
+  delete process.env.CAUCE_HOOK_EVENT
   // El guard de una instancia que no es la más cercana a la sesión no juzga (`nearer-install.js`).
   const { nearer } = require('./nearer-install')
   if (nearer(process.env.CLAUDE_PROJECT_DIR, process.env.CAUCE_SUBFOLDER_OF)) process.exit(0)
