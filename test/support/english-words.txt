@@ -1150,6 +1150,7 @@ lowercase
 lowered
 machine
 made
+magic
 main
 major
 make
@@ -1388,6 +1389,7 @@ passing
 past
 paste
 patch
+patches
 path
 paths
 pathspec
@@ -1552,6 +1554,7 @@ rank
 raw
 reach
 reached
+reaching
 read
 readable
 reader

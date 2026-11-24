@@ -111,6 +111,28 @@ test('por shell se frena el programa que no conoce, y el que sólo lee o ejecuta
   }
 })
 
+// Lo que alcanza a un guard sin nombrarlo: un diff que lo trae, un `find` que le pasa lo que encuentra a otro
+// programa, un pathspec mágico o que no se sabe traducir, y un `git clean` que se disfraza de simulación.
+test('por shell se frena lo que alcanza un guard sin nombrarlo', () => {
+  const { target, shell } = instance('cauce-runtime-alcance-')
+  fs.writeFileSync(path.join(target, 'x.diff'), `--- a/${SHIM}\n+++ b/${SHIM}\n@@ -1 +1 @@\n-a\n+b\n`)
+  fs.writeFileSync(path.join(target, 'ok.diff'), '--- a/src/app.js\n+++ b/src/app.js\n@@ -1 +1 @@\n-a\n+b\n')
+  for (const command of ['git apply x.diff', 'patch -p1 < x.diff', 'patch -p1 -i x.diff',
+    `find ${HOOKS} -exec truncate -s0 {} +`, "find automatization -name 'guard*' -exec rm {} +",
+    "git clean -fdx ':!keep'", "git checkout HEAD~5 -- ':/'",
+    `git checkout HEAD~1 -- '${HOOKS}/guard[[:punct:]]files.sh'`, `git checkout HEAD~1 -- '${SHIM}[[:alpha:]]'`,
+    `git checkout HEAD~1 -- '${HOOKS}/guard\\-files.sh'`, 'git clean -fdx -einit', 'git clean -fdx --excl foo',
+    'git clean -fdx --excl=foo',
+    'git clean -fdxe foo', "printf 'c\\n' | git clean -dxi"]) {
+    blocked('runtime-shell', shell(command), RUNTIME)
+  }
+  for (const command of ['git apply ok.diff', 'patch -p1 < ok.diff', "find . -name '*.log' -exec rm {} +",
+    `find ${HOOKS} -exec grep -l x {} +`, "git checkout -- ':/'", 'git clean -fdn', 'git clean --dry-run',
+    "git tag -a v1 -m '[x'"]) {
+    assert.doesNotThrow(() => execute('runtime-shell', shell(command)), command)
+  }
+})
+
 test('sin un registro legible se protege la carpeta entera', () => {
   const { target, write } = instance('cauce-runtime-registro-')
   fs.writeFileSync(path.join(target, '.cauce/manifest.json'), '{roto')

@@ -27,7 +27,7 @@ const CHAT = require('./chat')
 const AP = require('./approval')
 const { writes, removals, steps } = require('./shell-changes')
 const { real } = require('./boundary')
-const { GIT_VALUED } = require('./git-globals')
+const { CLEAN_DRY, GIT_VALUED } = require('./git-globals')
 const M = require('../core/manifest')
 const { installRoot } = require('../automation/runners')
 
@@ -68,19 +68,25 @@ function guardedOf(root) {
   return { files: new Set(files.map(real)), trees }
 }
 
-const within = (dir, file) => file === dir || file.startsWith(`${dir}${path.sep}`)
+const within = (dir, file) => file === dir || file.startsWith(dir.endsWith(path.sep) ? dir : `${dir}${path.sep}`)
 const GLOB = /[*?[]/
 // Un patrón que no es un glob válido —el de un `grep` que quedó como argumento— no alcanza nada, y no rompe el guard.
 const globbed = (file, pattern) => { try { return path.matchesGlob(file, pattern) } catch { return false } }
 // Un pathspec de git como expresión: `*` y `?` cruzan `/`, y una clase `[…]` queda como está con su `[!…]` negado.
-// Lo que no se pueda leer —un `[` sin cerrar, `[z-a]`— no alcanza nada, y no rompe el guard.
+// Lo que no se sabe traducir —una clase POSIX, un escape con `\`, un `[` sin cerrar, `[z-a]`— alcanza todo lo que
+// empieza con su parte literal (R27): no rompe el guard, y no deja pasar lo que git sí alcanzaría.
 const classOf = (one) => (one.startsWith('[!') ? `[^${one.slice(2)}` : one)
 const escaped = (one) => (one === '*' ? '.*' : one === '?' ? '.' : one.length > 1 ? classOf(one) : `\\${one}`)
+const literal = (text) => text.replace(/[.+^${}()|[\]\\*?]/g, (one) => `\\${one}`)
+const prefixOf = (pattern) => new RegExp(`^${literal(pattern.split(/[*?[\\]/)[0])}`)
 const spec = (pattern) => {
+  if (/\[:|\\/.test(pattern)) return prefixOf(pattern)
   try {
     return new RegExp(`^${pattern.replace(/\[[^\]]+\]|[*?]|[.+^${}()|\\]/g, escaped)}$`)
-  } catch { return /(?!)/ }
+  } catch { return prefixOf(pattern) }
 }
+// Un pathspec mágico —`:/`, `:!x`, `:(exclude)x`— puede alcanzar el repositorio entero: se juzga como la raíz.
+const magic = (raw) => (raw.startsWith(':') ? '/' : raw)
 const exists = (one) => fs.existsSync(one)
 // El archivo y cada carpeta que lo contiene, que es lo que un glob puede nombrar.
 const chain = (file) => {
@@ -95,7 +101,8 @@ const chain = (file) => {
 function reached(guarded, raw, exact = false, removal = false, pathspec = false) {
   // Con `exact`, el glob tiene que alcanzar el archivo, no sólo la carpeta que lo contiene. En un pathspec de git el
   // `*` cruza `/`, también dentro de un segmento: `git apply --include='automatization/*.sh'` alcanza lo de adentro.
-  if (GLOB.test(raw)) {
+  // En un pathspec, un `\` también es sintaxis: `guard\-files.sh` es `guard-files.sh`.
+  if (GLOB.test(raw) || (pathspec && raw.includes('\\'))) {
     const match = pathspec ? (at) => spec(raw).test(at) : (at) => globbed(at, raw)
     return [...guarded.files].filter((one) => (exact ? [one] : chain(one)).some(match))
   }
@@ -170,7 +177,7 @@ function gitTouched(rest, base) {
   const exact = (sub === 'checkout' || sub === 'restore') && !foreign
   // Volver a `HEAD` con `'*'` es lo mismo que con `.`: no cambia nada que no se haya escrito antes.
   return paths.filter((raw) => !(exact && /^[*?]+$/.test(raw)))
-    .map((raw) => ({ raw, base: from, exact, pathspec: true }))
+    .map((raw) => ({ raw: magic(raw), base: from, exact, pathspec: true }))
 }
 
 // Lo que nombra un archivo entregado sin cambiarlo: lo lee, lo compara o lo ejecuta. Cerrado por defecto (R27):
@@ -223,6 +230,23 @@ function interpreted(rest) {
 // empieza con `-`: lo que sigue a la primera `o`.
 const sortOutput = (word) => (/^-[a-zA-Z]*?o./.test(word) ? word.replace(/^-[a-zA-Z]*?o/, '') : '')
 
+// Las rutas que escribe un diff: `git apply x.diff` o `patch < x.diff` no nombran el archivo que cambian. Se toman
+// con y sin el `a/` o `b/` de delante, porque cuánto se recorta depende de `-p`. Un diff que no se lee no nombra nada.
+function diffTargets(file) {
+  let text = ''
+  try { if (fs.statSync(file).size < 5e6) text = fs.readFileSync(file, 'utf8') } catch { return [] }
+  return [...text.matchAll(/^(?:\+\+\+|---) ([^\t\n]+)/gm)].map((hit) => hit[1].trim())
+    .filter((one) => one !== '/dev/null').flatMap((one) => [one, one.replace(/^[ab]\//, '')])
+}
+const PATCHES = /\b(?:patch|apply)\b[^;&|\n]*?<\s*([^\s;&|<>]+)/g
+
+const DRY_RUN = new RegExp(`^(?:${CLEAN_DRY})$`)
+// Un racimo con `e`, o un prefijo de `--exclude`; y los que dejan el valor en la palabra siguiente.
+const EXCLUDE = /^(?:-[a-df-zA-Z]*e|--e(?:x(?:c(?:l(?:u(?:d(?:e)?)?)?)?)?)?(?:=|$))/
+const MESSAGE = /^(?:-[mF].|--(?:message|file)=)/
+const MESSAGE_ALONE = /^(?:-[mF]|--message|--file)$/
+const EXCLUDE_ALONE = /^(?:-[a-df-zA-Z]*e|--e(?:x(?:c(?:l(?:u(?:d(?:e)?)?)?)?)?)?)$/
+
 function touched(ran) {
   const found = []
   for (const { verb, rest, base } of ran) {
@@ -242,21 +266,26 @@ function touched(ran) {
       }
       const from = rest.slice(0, Math.max(sub, 0)).reduce(moves, base)
       // `git clean` borra lo que nombra y lo de adentro, y sin ruta, el árbol entero; los demás, como cualquier
-      // programa, sólo el archivo exacto. Se juzga salvo en seco (`-n`, `-i`): sin `-f` también borra si la
-      // configuración lo permite, y el guard no la lee (R27). El valor de `-e` es lo que se queda, no una ruta.
+      // programa, sólo el archivo exacto. Se juzga salvo en seco (`CLEAN_DRY`). El valor de `-e` es lo que se queda,
+      // no una ruta, también pegado (`-fde keep`, `-ekeep`) o abreviado (`--excl keep`).
       const clean = rest[sub] === 'clean'
       const after = rest.slice(sub + 1)
-      const forced = !after.some((word) => /^(?:-[a-zA-Z]*[ni][a-zA-Z]*|--dry-run|--interactive)$/.test(word))
-      const excludes = /^(?:-e|--exclude)$/
-      const kept = after.filter((word, at) => !/^(?:-e|--exclude)(?:=|$)/.test(word)
-        && !(at && excludes.test(after[at - 1])))
+      const forced = !after.some((word) => DRY_RUN.test(word))
+      // Ni el valor de `-e` ni un mensaje (`-m`, `-F`) son rutas.
+      const kept = after.filter((word, at) => !EXCLUDE.test(word) && !(at && EXCLUDE_ALONE.test(after[at - 1]))
+        && !MESSAGE.test(word) && !(at && MESSAGE_ALONE.test(after[at - 1])))
       if (sub >= 0 && !GIT_LEAVES.has(rest[sub]) && (!clean || forced)) {
         const paths = named(kept)
         if (clean && !paths.length) found.push({ raw: '.', base: from, removal: true })
-        found.push(...paths.map((raw) => ({ raw, base: from, exact: !clean, removal: clean, pathspec: true })))
+        const spot = (raw) => ({ raw: magic(raw), base: from, exact: !clean, removal: clean, pathspec: true })
+        found.push(...paths.map(spot))
       }
     }
     if (verb === 'sort') for (const raw of rest.map(sortOutput)) if (raw) found.push({ raw, base, exact: true })
+    const applies = verb === 'patch' || (verb === 'git' && rest.includes('apply'))
+    for (const file of applies ? named(rest).map((one) => path.resolve(base || '/', one)) : []) {
+      for (const raw of diffTargets(file)) found.push({ raw, base, exact: true })
+    }
     if (!verb || LEAVES.has(verb) || HANDLED.has(verb) || verb === 'mv') continue
     // Sólo el archivo que nombra, no la carpeta que lo contiene: `tar -C .` o `script.sh .` no reescriben los guards.
     for (const raw of INTERPRETERS.has(verb) ? interpreted(rest) : named(rest)) found.push({ raw, base, exact: true })
@@ -266,8 +295,16 @@ function touched(ran) {
 
 // Un `find -delete` borra lo que su filtro nombra bajo cada carpeta de arranque. Con `-name`, sólo eso; con otro
 // filtro o sin ninguno, todo lo de adentro.
+const FIND_READS = new Set(['cat', 'head', 'tail', 'grep', 'egrep', 'fgrep', 'rg', 'wc', 'ls', 'stat', 'file', 'md5sum',
+  'sha1sum', 'sha256sum', 'diff', 'cmp', 'echo', 'printf', 'basename', 'dirname', 'realpath', 'readlink', 'test', '[',
+  'du', 'strings', 'od', 'xxd', 'hexdump', 'cut', 'jq', 'shellcheck'])
 function findDeletes(ran) {
-  return ran.filter((one) => one.verb === 'find' && one.rest.includes('-delete')).flatMap(({ rest, base }) => {
+  // `-exec` con un programa que no sólo lee hace con cada archivo lo que quiera: `-exec truncate -s0 {} +`, y
+  // también `-exec rm`, que acá no pasa por los borrados.
+  const runsWriter = (rest) => rest.some((word, at) => at && /^-(?:exec|execdir|ok|okdir)$/.test(rest[at - 1])
+    && !FIND_READS.has(path.basename(word)))
+  const reaching = ran.filter((one) => one.verb === 'find' && (one.rest.includes('-delete') || runsWriter(one.rest)))
+  return reaching.flatMap(({ rest, base }) => {
     const start = rest.findIndex((word) => /^[-(!]/.test(word))
     const roots = start < 0 ? rest : start ? rest.slice(0, start) : ['.']
     const named = rest.indexOf('-name') >= 0 ? rest[rest.indexOf('-name') + 1] : null
@@ -295,7 +332,9 @@ function runtimeShell(input) {
   }
   const written = writes(command, cwd).map((one) => ({ ...one, write: true }))
   const removed = removals(ran.filter((one) => one.verb !== 'find')).map((one) => ({ ...one, removal: true }))
-  judge(input, root, [...written, ...removed, ...findDeletes(ran), ...touched(ran)].flatMap(resolve))
+  const piped = [...command.matchAll(PATCHES)].flatMap((hit) => diffTargets(path.resolve(cwd, hit[1])))
+    .map((raw) => ({ raw, base: cwd, exact: true }))
+  judge(input, root, [...written, ...removed, ...findDeletes(ran), ...touched(ran), ...piped].flatMap(resolve))
 }
 
 module.exports = { runtimeWrites, runtimeShell }
