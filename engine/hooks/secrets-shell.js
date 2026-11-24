@@ -204,7 +204,8 @@ function quotedSeparator(text) {
 // Lo que corre otro shell: el valor de `-c` o `--command` —`sh -c`, `docker exec … bash -c`, `gcloud compute ssh
 // --command`—, lo que sigue a `eval` y el comando remoto de `ssh`. Se lee como un comando, sea cual sea el verbo de
 // afuera: `docker` sólo nombra, y el `. ./.env` de su `sh -c` sí lee.
-const VALUED_SHELL = /^[-+][a-zA-Z]*[oO]$/
+// Cuántas palabras se lleva un racimo de opciones del shell: una por cada `o` u `O` (`-o pipefail`, `-oe pipefail`).
+const taken = (word) => (/^[-+][a-zA-Z]+$/.test(word) ? (word.match(/[oO]/g) || []).length : 0)
 const RUNS_SCRIPT = /^(?:sh|bash|zsh|dash|ksh|ash|mksh|fish|csh|tcsh|pwsh|busybox|su|runuser|flock)$/
 const OTHER_C = new Set(['wc', 'ls', 'du', 'grep', 'egrep', 'fgrep', 'rg', 'cut', 'head', 'tail', 'git', 'gzip',
   'gunzip', 'zcat', 'xz', 'bzip2', 'tar', 'python', 'python3', 'perl', 'ruby', 'psql', 'ssh', 'scp', 'sftp', 'gcc',
@@ -212,14 +213,10 @@ const OTHER_C = new Set(['wc', 'ls', 'du', 'grep', 'egrep', 'fgrep', 'rg', 'cut'
 const SSH_VALUED = /^-[BbcDEeFIiJLlmOoPpQRSWw]$/
 function scriptsOf(words, verb) {
   const found = []
-  // Dónde empieza el script a partir de cada palabra, calculado de una sola pasada desde el final: `next` si la palabra
-  // puede ser el script, `nextSkipped` si es el valor de la opción anterior. Así un comando largo cuesta lineal.
+  // Dónde empieza el script a partir de cada palabra, calculado de una sola pasada desde el final: la palabra misma si
+  // no es opción, y si lo es, lo que sigue a los valores que se lleva. Así un comando largo cuesta lineal.
   const next = []
-  const nextSkipped = []
-  for (let k = words.length - 1; k >= 0; k -= 1) {
-    nextSkipped[k] = next[k + 1]
-    next[k] = !/^[-+]/.test(words[k]) ? k : VALUED_SHELL.test(words[k]) ? nextSkipped[k + 1] : next[k + 1]
-  }
+  for (let k = words.length - 1; k >= 0; k -= 1) next[k] = !/^[-+]/.test(words[k]) ? k : next[k + 1 + taken(words[k])]
   const firstShell = words.findIndex((one) => RUNS_SCRIPT.test(path.basename(one)))
   words.forEach((word, at) => {
     // `-c` es un script salvo detrás de un programa que lo usa para otra cosa —`wc -c`, `grep -c`, `git -c`— sin un
@@ -228,9 +225,9 @@ function scriptsOf(words, verb) {
     // Detrás de un shell también va agrupada: `bash -lc`, `sh -ec`, `bash -cex`.
     const flag = word === '-c' || (/^-[a-zA-Z]*c[a-zA-Z]*$/.test(word) && shell())
     // El script es el primer argumento que no es opción: el shell sigue leyendo opciones después de `-c` (`-e`, `+e`,
-    // `-o pipefail`, `-O extglob`), y un racimo que termina en `o` u `O` —también el del `-c`: `-co pipefail`— se lleva
-    // la palabra siguiente.
-    const script = flag && words[VALUED_SHELL.test(word) ? nextSkipped[at + 1] : next[at + 1]]
+    // `-o pipefail`, `-O extglob`), y cada `o` u `O` de un racimo —también el del `-c`: `-oc pipefail`— se lleva una
+    // palabra.
+    const script = flag && words[next[at + 1 + taken(word)]]
     if (script && (!OTHER_C.has(path.basename(verb)) || shell())) found.push(script)
     else if (word === '--command' && words[at + 1]) found.push(words[at + 1])
     else if (word.startsWith('--command=')) found.push(word.slice('--command='.length))
